@@ -3,7 +3,7 @@
 ## Current State
 - **Phase:** backend
 - **Gate:** G1 approved — backend implementation in progress
-- **Last completed:** Module 5 — Contractors & Contracts — 2026-05-29
+- **Last completed:** Module 6 — Announcements — 2026-05-29
 - **Blocked:** No
 
 ---
@@ -39,7 +39,7 @@
 | 3 | Residents & Vehicles | ✅ done | No |
 | 4 | Ticket Management | ✅ done | No |
 | 5 | Contractors & Contracts | ✅ done | No |
-| 6 | Announcements | pending | No |
+| 6 | Announcements | ✅ done | No |
 | 7 | Amenity Booking | pending | No |
 | 8 | Parking | pending | No |
 | 9 | Reports & Dashboard | pending | No |

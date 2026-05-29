@@ -3,7 +3,7 @@
 ## Current State
 - **Phase:** backend
 - **Gate:** G1 approved — backend implementation in progress
-- **Last completed:** Module 2 — Apartments & Blocks — 2026-05-29
+- **Last completed:** Module 3 — Residents & Vehicles — 2026-05-29
 - **Blocked:** No
 
 ---
@@ -16,6 +16,7 @@
 | API Spec v2 | architect | N/A | Yes |
 | Auth + RBAC | backend | Yes | Yes |
 | Apartments & Blocks | backend | Yes | Pending commit |
+| Residents & Vehicles | backend | Yes (Docker required) | Pending commit |
 
 ---
 
@@ -34,8 +35,8 @@
 |---|--------|--------|-----------|
 | 0 | Project scaffold (pom.xml, docker-compose, Flyway base) | ✅ done | Yes |
 | 1 | Auth + RBAC | ✅ done | Yes |
-| 2 | Apartments & Blocks | pending | No |
-| 3 | Residents & Vehicles | pending | No |
+| 2 | Apartments & Blocks | ✅ done | No |
+| 3 | Residents & Vehicles | ✅ done | No |
 | 4 | Ticket Management | pending | No |
 | 5 | Contractors & Contracts | pending | No |
 | 6 | Announcements | pending | No |

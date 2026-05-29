@@ -27,8 +27,10 @@ import java.util.UUID;
 /**
  * JPA entity representing the {@code vehicles} table.
  *
- * <p>Stub created in Module 2 to support apartment detail queries.
- * Fully implemented in Module 3 (Residents and Vehicles).
+ * <p>A vehicle record belongs to a resident and is associated with an apartment.
+ * Soft deletion is used: setting {@code isActive} to {@code false} deactivates the
+ * registration without removing the historical record.
+ * License plates are globally unique across all vehicle records.
  */
 @Getter
 @Setter
@@ -61,7 +63,7 @@ public class Vehicle {
     @Column(name = "type", nullable = false, columnDefinition = "vehicle_type")
     private VehicleType type;
 
-    /** Vehicle license plate number. Must be unique across all vehicles. */
+    /** Vehicle license plate number. Must be globally unique across all vehicle records. */
     @Column(name = "license_plate", nullable = false, length = 20, unique = true)
     private String licensePlate;
 
@@ -73,7 +75,7 @@ public class Vehicle {
     @Column(name = "model", length = 100)
     private String model;
 
-    /** Optional vehicle color. */
+    /** Optional vehicle colour. */
     @Column(name = "color", length = 50)
     private String color;
 
@@ -81,7 +83,10 @@ public class Vehicle {
     @Column(name = "notes", columnDefinition = "TEXT")
     private String notes;
 
-    /** Whether this vehicle registration is active. */
+    /**
+     * Whether this vehicle registration is active.
+     * Set to {@code false} on soft deletion; never physically deleted.
+     */
     @Column(name = "is_active", nullable = false)
     private boolean active = true;
 
@@ -89,7 +94,7 @@ public class Vehicle {
     @Column(name = "created_at", nullable = false, updatable = false)
     private OffsetDateTime createdAt;
 
-    /** Record last-modified timestamp. */
+    /** Record last-modified timestamp. Updated by the service layer on every write. */
     @Column(name = "updated_at", nullable = false)
     private OffsetDateTime updatedAt;
 }

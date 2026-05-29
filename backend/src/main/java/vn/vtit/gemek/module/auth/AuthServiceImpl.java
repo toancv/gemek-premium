@@ -317,11 +317,20 @@ public class AuthServiceImpl implements AuthService {
      * @return whether the address is private or loopback.
      */
     private boolean isPrivateOrLoopback(String ip) {
-        return ip.startsWith("127.")
-                || ip.startsWith("10.")
+        if (ip.startsWith("127.") || ip.startsWith("10.")
                 || ip.startsWith("192.168.")
-                || ip.startsWith("172.")
-                || ip.equals("0:0:0:0:0:0:0:1")
-                || ip.equals("::1");
+                || ip.equals("0:0:0:0:0:0:0:1") || ip.equals("::1")) {
+            return true;
+        }
+        // RFC 1918: 172.16.0.0/12 covers 172.16.x.x through 172.31.x.x only
+        if (ip.startsWith("172.")) {
+            try {
+                int second = Integer.parseInt(ip.split("\\.")[1]);
+                return second >= 16 && second <= 31;
+            } catch (NumberFormatException | ArrayIndexOutOfBoundsException e) {
+                return false;
+            }
+        }
+        return false;
     }
 }

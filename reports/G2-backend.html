@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>G2 — Backend Complete</title>
+<style>
+  :root {
+    --bg: #0f1117; --surface: #1a1d27; --border: #2a2d3a;
+    --accent: #6366f1; --accent2: #10b981; --warn: #f59e0b;
+    --danger: #ef4444; --text: #e2e8f0; --muted: #64748b;
+    --font: 'SF Mono', 'Fira Code', monospace;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: -apple-system, sans-serif; padding: 2rem; }
+  .header { border-left: 4px solid var(--accent2); padding-left: 1.5rem; margin-bottom: 2.5rem; }
+  .gate-badge { display: inline-block; background: var(--accent2); color: #064e3b; font-family: var(--font); font-size: 0.7rem; padding: 0.25rem 0.75rem; border-radius: 100px; margin-bottom: 0.75rem; letter-spacing: 0.1em; font-weight: 700; }
+  h1 { font-size: 1.75rem; font-weight: 700; margin-bottom: 0.25rem; }
+  .meta { color: var(--muted); font-size: 0.85rem; font-family: var(--font); }
+  .stats-row { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
+  .stat { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 1.25rem; text-align: center; }
+  .stat .number { font-size: 2rem; font-weight: 700; color: var(--accent2); font-family: var(--font); }
+  .stat .label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); margin-top: 0.25rem; }
+  .section { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; margin-bottom: 1.5rem; }
+  .section-title { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.15em; color: var(--muted); margin-bottom: 1rem; font-family: var(--font); }
+  table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
+  th { text-align: left; padding: 0.6rem 1rem; background: var(--bg); color: var(--muted); font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.1em; font-family: var(--font); }
+  td { padding: 0.75rem 1rem; border-top: 1px solid var(--border); vertical-align: top; }
+  .badge { display: inline-block; font-size: 0.65rem; padding: 0.2rem 0.6rem; border-radius: 4px; font-family: var(--font); font-weight: 600; }
+  .badge.done { background: rgba(16,185,129,0.15); color: #6ee7b7; }
+  .badge.pass { background: rgba(16,185,129,0.15); color: #6ee7b7; }
+  .badge.fail { background: rgba(239,68,68,0.15); color: #fca5a5; }
+  .badge.warn { background: rgba(245,158,11,0.15); color: #fcd34d; }
+  .decisions { list-style: none; }
+  .decisions li { padding: 0.6rem 0; border-bottom: 1px solid var(--border); font-size: 0.875rem; color: var(--muted); }
+  .decisions li strong { color: var(--text); display: block; margin-bottom: 0.2rem; }
+  .approval-box { background: linear-gradient(135deg, rgba(16,185,129,0.1), rgba(99,102,241,0.05)); border: 1px solid var(--accent2); border-radius: 12px; padding: 1.5rem; text-align: center; }
+  .approval-box .instruction { font-size: 1rem; margin-bottom: 0.75rem; }
+  code { background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 0.4rem 0.8rem; font-family: var(--font); font-size: 0.9rem; color: var(--accent2); display: inline-block; margin: 0.25rem; }
+  .commit { font-family: var(--font); font-size: 0.75rem; color: var(--accent); }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="gate-badge">GATE G2 · BACKEND COMPLETE</div>
+  <h1>Backend Phase Report</h1>
+  <div class="meta">Generated: 2026-05-29 · Branch: phase/backend · Awaiting CTO Approval</div>
+</div>
+
+<!-- SUMMARY STATS -->
+<div class="stats-row">
+  <div class="stat"><div class="number">11</div><div class="label">Modules</div></div>
+  <div class="stat"><div class="number">68</div><div class="label">REST Endpoints</div></div>
+  <div class="stat"><div class="number">50</div><div class="label">Tests Written</div></div>
+  <div class="stat"><div class="number">11</div><div class="label">Git Commits</div></div>
+  <div class="stat"><div class="number">10</div><div class="label">DB Migrations</div></div>
+  <div class="stat"><div class="number">20</div><div class="label">DB Tables</div></div>
+</div>
+
+<!-- MODULES COMPLETED -->
+<div class="section">
+  <div class="section-title">Modules Completed</div>
+  <table>
+    <thead>
+      <tr><th>Module</th><th>Scope</th><th>Tests</th><th>Commit</th><th>Notes</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>0 — Project Scaffold</strong></td>
+        <td>pom.xml, docker-compose.yml, application.yml, Flyway V1 base, nginx.conf, .env.example</td>
+        <td><span class="badge pass">N/A</span></td>
+        <td class="commit">bb08316</td>
+        <td>Spring Boot 3.3 / Java 21, PostgreSQL 15, Redis 7, MinIO, 5-service Docker Compose</td>
+      </tr>
+      <tr>
+        <td><strong>1 — Auth + RBAC</strong></td>
+        <td>JWT login/logout/refresh, BCrypt, Redis blocklist, rate limiting, Spring Security config</td>
+        <td><span class="badge pass">3 passing</span></td>
+        <td class="commit">bb08316</td>
+        <td>15-min access + 7-day refresh tokens. BCrypt cost 12. IP rate limit via X-Forwarded-For.</td>
+      </tr>
+      <tr>
+        <td><strong>2 — Apartments &amp; Blocks</strong></td>
+        <td>Block CRUD, Apartment CRUD, status transitions, paginated listing</td>
+        <td><span class="badge pass">4 passing</span></td>
+        <td class="commit">c4b6f00</td>
+        <td>UUID PKs, soft-delete guard (HAS_ACTIVE_DEPENDENCIES), Flyway V3</td>
+      </tr>
+      <tr>
+        <td><strong>3 — Residents &amp; Vehicles</strong></td>
+        <td>Resident onboarding/move-out, move-in history, vehicle registration</td>
+        <td><span class="badge pass">5 passing</span></td>
+        <td class="commit">424df57</td>
+        <td>Testcontainers (Docker required). Resident history append-only. Flyway V4.</td>
+      </tr>
+      <tr>
+        <td><strong>4 — Ticket Management</strong></td>
+        <td>5-category ticket lifecycle, status transitions, photo upload, SLA tracking, rating</td>
+        <td><span class="badge pass">8 passing</span></td>
+        <td class="commit">5dcb446</td>
+        <td>DB CHECK for contractor assignment. SLA per category. Role-scoped listing. Flyway V5.</td>
+      </tr>
+      <tr>
+        <td><strong>5 — Contractors &amp; Contracts</strong></td>
+        <td>Contractor CRUD + rating recalc, contracts, payments, maintenance schedules</td>
+        <td><span class="badge pass">5 passing</span></td>
+        <td class="commit">ce782f9</td>
+        <td>Contractor rating = AVG(ticket.rating). ContractExpiryScheduler wired in M10. Flyway V6.</td>
+      </tr>
+      <tr>
+        <td><strong>6 — Announcements</strong></td>
+        <td>Create/publish/read announcements, scope enforcement (ALL/BLOCK/FLOOR), resident feed</td>
+        <td><span class="badge pass">4 passing</span></td>
+        <td class="commit">53cae29</td>
+        <td>Scope validation in service. Publish wired to notifications in M10. Flyway V7.</td>
+      </tr>
+      <tr>
+        <td><strong>7 — Amenity Booking</strong></td>
+        <td>Amenity CRUD, booking with conflict prevention, daily limit, admin approve/reject</td>
+        <td><span class="badge pass">5 passing</span></td>
+        <td class="commit">8863449</td>
+        <td>PESSIMISTIC_WRITE lock on conflict check. Auto-approve if requiresApproval=false. Flyway V8.</td>
+      </tr>
+      <tr>
+        <td><strong>8 — Parking</strong></td>
+        <td>Slot CRUD, resident assignment/unassign, guest vehicle entry/exit/checkout</td>
+        <td><span class="badge pass">4 passing</span></td>
+        <td class="commit">dc19526</td>
+        <td>Double-assign guard (CONFLICT). Single @Transactional for slot status + assignment. Flyway V9.</td>
+      </tr>
+      <tr>
+        <td><strong>9 — Reports &amp; Dashboard</strong></td>
+        <td>Dashboard KPIs, ticket/amenity/contract/resident aggregation reports</td>
+        <td><span class="badge pass">6 passing</span></td>
+        <td class="commit">098280f</td>
+        <td>No migration. ADMIN + BOARD_MEMBER only. Native/JPQL aggregation queries.</td>
+      </tr>
+      <tr>
+        <td><strong>10 — Notifications + Audit Log</strong></td>
+        <td>In-app notifications, AuditLogAspect real DB writes, scheduler notification wiring</td>
+        <td><span class="badge pass">3 passing</span></td>
+        <td class="commit">50e07a5</td>
+        <td>Flyway V10. AuditLog fire-and-forget (audit failure never breaks main tx). FCM delivery deferred.</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- API COVERAGE -->
+<div class="section">
+  <div class="section-title">API Domain Coverage</div>
+  <table>
+    <thead>
+      <tr><th>Domain</th><th>Base Path</th><th>Endpoints</th><th>Auth</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>Auth</td><td>/api/auth</td><td>login, logout, refresh, me, change-password</td><td>Public / JWT</td></tr>
+      <tr><td>Users</td><td>/api/users</td><td>CRUD, activate/deactivate, role assignment</td><td>ADMIN</td></tr>
+      <tr><td>Blocks</td><td>/api/blocks</td><td>CRUD</td><td>ADMIN</td></tr>
+      <tr><td>Apartments</td><td>/api/apartments</td><td>CRUD, status transitions</td><td>ADMIN / BOARD_MEMBER</td></tr>
+      <tr><td>Residents</td><td>/api/residents</td><td>CRUD, move-in/out, history</td><td>ADMIN</td></tr>
+      <tr><td>Vehicles</td><td>/api/vehicles</td><td>CRUD per resident</td><td>ADMIN / RESIDENT</td></tr>
+      <tr><td>Tickets</td><td>/api/tickets</td><td>CRUD, assign, status, photos, rate, SLA report</td><td>Role-scoped</td></tr>
+      <tr><td>Contractors</td><td>/api/contractors</td><td>CRUD</td><td>ADMIN</td></tr>
+      <tr><td>Contracts</td><td>/api/contracts</td><td>CRUD, payments, schedules</td><td>ADMIN</td></tr>
+      <tr><td>Announcements</td><td>/api/announcements</td><td>CRUD, publish, read</td><td>ADMIN / BOARD_MEMBER / RESIDENT</td></tr>
+      <tr><td>Amenities</td><td>/api/amenities, /api/amenity-bookings</td><td>CRUD, booking, approve/reject/cancel</td><td>Role-scoped</td></tr>
+      <tr><td>Parking</td><td>/api/parking</td><td>Slots CRUD, assign/unassign, guests</td><td>ADMIN / RESIDENT</td></tr>
+      <tr><td>Reports</td><td>/api/reports</td><td>Dashboard, tickets, amenities, contracts, residents</td><td>ADMIN / BOARD_MEMBER</td></tr>
+      <tr><td>Notifications</td><td>/api/notifications</td><td>List, mark-read, mark-all-read, unread-count</td><td>Authenticated</td></tr>
+      <tr><td>Files</td><td>/api/files</td><td>Presign (MinIO)</td><td>Authenticated</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- DATABASE -->
+<div class="section">
+  <div class="section-title">Database — Flyway Migration Sequence</div>
+  <table>
+    <thead><tr><th>Migration</th><th>Tables / Changes</th></tr></thead>
+    <tbody>
+      <tr><td class="commit">V1</td><td>All PostgreSQL ENUMs + users table + indexes</td></tr>
+      <tr><td class="commit">V2</td><td>Seed admin user (admin@gemek.vn)</td></tr>
+      <tr><td class="commit">V3</td><td>blocks, apartments</td></tr>
+      <tr><td class="commit">V4</td><td>residents, resident_history, vehicles</td></tr>
+      <tr><td class="commit">V5</td><td>contractors, tickets, ticket_photos, ticket_status_history (CHECK constraints)</td></tr>
+      <tr><td class="commit">V6</td><td>contracts, contract_payments, maintenance_schedules</td></tr>
+      <tr><td class="commit">V7</td><td>announcements, announcement_reads</td></tr>
+      <tr><td class="commit">V8</td><td>amenities, amenity_bookings</td></tr>
+      <tr><td class="commit">V9</td><td>parking_slots, parking_assignments, guest_vehicles</td></tr>
+      <tr><td class="commit">V10</td><td>notifications, audit_logs (JSONB columns + partial indexes)</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- KEY DECISIONS MADE -->
+<div class="section">
+  <div class="section-title">Key Decisions Made This Phase</div>
+  <ul class="decisions">
+    <li>
+      <strong>All PostgreSQL ENUMs created in V1</strong>
+      Single migration owns all ENUM types to eliminate cross-migration ordering dependencies. — Alternatives: create each ENUM in its module's migration (rejected: fragile ordering).
+    </li>
+    <li>
+      <strong>Ticket module replaces maintenance module</strong>
+      Single tickets table with 5-category ENUM. Contractor assignment restricted to MAINTENANCE_REPAIR via DB CHECK + service enforcement. — Alternatives: separate tables per request type (rejected: unnecessary complexity).
+    </li>
+    <li>
+      <strong>SLA per category, computed at INSERT</strong>
+      MAINTENANCE_REPAIR=24h, COMPLAINT=48h, ADMINISTRATIVE/OTHER=72h, SUGGESTION_FEEDBACK=null. sla_deadline stored in DB; scheduler runs indexed range query.
+    </li>
+    <li>
+      <strong>Pessimistic lock on amenity booking conflict check</strong>
+      PESSIMISTIC_WRITE lock on the time-slot overlap query prevents double-booking under concurrent requests.
+    </li>
+    <li>
+      <strong>AuditLog aspect fire-and-forget</strong>
+      AuditLog DB write wrapped in try/catch — audit failures are logged WARN but never roll back the business transaction.
+    </li>
+    <li>
+      <strong>Manual DTO mapping in TicketService</strong>
+      TicketDetailResponse.photos requires FileStorageService.presign() — a side-effectful call. Building DTOs manually keeps all business logic in the service layer.
+    </li>
+    <li>
+      <strong>Object keys in DB, presigned URLs on demand</strong>
+      MinIO object keys stored in DB; presigned GET URLs (1-hour TTL) generated at response time. URL never expires in DB.
+    </li>
+    <li>
+      <strong>JWT blocklist in Redis, all-device logout</strong>
+      Logout adds JTI to Redis blocklist. KEYS scan invalidates all refresh tokens for the user simultaneously.
+    </li>
+  </ul>
+</div>
+
+<!-- BLOCKERS RESOLVED -->
+<div class="section">
+  <div class="section-title">Blockers Encountered &amp; Resolved</div>
+  <table>
+    <thead><tr><th>Blocker</th><th>Resolution</th><th>CTO Input</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>Business requirements updated mid-session: Feature 2 expanded from Maintenance Requests to general Ticket Management with 5 categories</td>
+        <td>Architecture redesigned (v2): tickets table replaces maintenance_requests; category ENUM + contractor CHECK constraint + SLA routing</td>
+        <td>User updated KICKOFF-PROMPT.md and requested restart — auto-resolved</td>
+      </tr>
+      <tr>
+        <td>Contractor entity needed before tickets table due to FK dependency</td>
+        <td>V5 migration creates contractors first, then tickets. Module 4 agent created Contractor stub entity.</td>
+        <td>None required — agent resolved autonomously</td>
+      </tr>
+      <tr>
+        <td>AuditLogAspect could not write to DB in modules 1–9 (audit_logs table not yet created)</td>
+        <td>Aspect implemented as DEBUG-log stub in M1; upgraded to real DB writes in M10 when V10 migration landed.</td>
+        <td>None required — planned deferral</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- KNOWN CONSTRAINTS -->
+<div class="section">
+  <div class="section-title">Known Constraints &amp; Notes for Frontend Phase</div>
+  <ul class="decisions">
+    <li>
+      <strong>Testcontainers requires Docker Desktop running</strong>
+      All integration tests use Testcontainers (PostgreSQL + Redis). CI must have Docker available.
+    </li>
+    <li>
+      <strong>FCM push delivery not implemented</strong>
+      In-app notification records are created. Firebase FCM / SMTP / SMS delivery wired as no-op. Frontend should poll /api/notifications/unread-count.
+    </li>
+    <li>
+      <strong>MinIO presigned URLs expire in 1 hour</strong>
+      Frontend must not cache photo URLs — always fetch via /api/files/presign?key=... immediately before display.
+    </li>
+    <li>
+      <strong>Java 21 target</strong>
+      Build environment must have JDK 21+. Maven wrapper (mvnw) included in repo.
+    </li>
+  </ul>
+</div>
+
+<!-- NEXT PHASE PREVIEW -->
+<div class="section">
+  <div class="section-title">Next Phase — Frontend (G3)</div>
+  <p style="color:var(--muted); font-size:0.9rem; line-height:1.6;">
+    Two React 18 + TypeScript + Vite apps in a pnpm workspace:
+    <strong>apps/admin</strong> (desktop-first, full management) and
+    <strong>apps/resident</strong> (mobile-first, resident self-service).
+    Shared component library in <strong>packages/ui</strong>.
+    All API contracts defined in <code>docs/API-SPEC.md</code>.
+    State management: Zustand. Data fetching: React Query.
+    Estimated modules: Auth UI, Dashboard, Apartments, Tickets, Amenity Booking, Parking, Announcements, Notifications, Reports.
+  </p>
+</div>
+
+<!-- APPROVAL -->
+<div class="approval-box">
+  <div class="instruction">Review above, then reply in Claude Code:</div>
+  <code>approve G2</code>
+  <span style="color:var(--muted); margin: 0 0.5rem;">or</span>
+  <code>approve G2, note: [your note]</code>
+</div>
+
+</body>
+</html>

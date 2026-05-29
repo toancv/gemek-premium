@@ -37,7 +37,7 @@
 | 1 | Auth + RBAC | ✅ done | Yes |
 | 2 | Apartments & Blocks | ✅ done | No |
 | 3 | Residents & Vehicles | ✅ done | No |
-| 4 | Ticket Management | pending | No |
+| 4 | Ticket Management | ✅ done | No |
 | 5 | Contractors & Contracts | pending | No |
 | 6 | Announcements | pending | No |
 | 7 | Amenity Booking | pending | No |

@@ -2,8 +2,8 @@
 
 ## Current State
 - **Phase:** backend
-- **Gate:** G1 approved — backend modules 9-10 in progress
-- **Last completed:** Module 8 — Parking — 2026-05-29
+- **Gate:** G1 approved — module 10 complete, awaiting G2
+- **Last completed:** Module 10 — Notifications + Audit Log — 2026-05-29
 - **Blocked:** No
 
 ---
@@ -14,9 +14,15 @@
 | System Architecture v2 | architect | N/A | Yes |
 | DB Schema v2 | architect | N/A | Yes |
 | API Spec v2 | architect | N/A | Yes |
-| Auth + RBAC | backend | Yes | Yes |
-| Apartments & Blocks | backend | Yes | Pending commit |
-| Residents & Vehicles | backend | Yes (Docker required) | Pending commit |
+| Auth + RBAC | backend | 3 tests | Yes (bb08316) |
+| Apartments & Blocks | backend | 4 tests | Yes (c4b6f00) |
+| Residents & Vehicles | backend | 5 tests (Docker req.) | Yes (424df57) |
+| Ticket Management | backend | 8 tests | Yes (5dcb446) |
+| Contractors & Contracts | backend | 5 tests | Yes (ce782f9) |
+| Announcements | backend | 4 tests | Yes (53cae29) |
+| Amenity Booking | backend | 5 tests | Yes (8863449) |
+| Parking | backend | 4 tests | Yes (dc19526) |
+| Notifications + Audit Log | backend | 3 tests | Yes (pending commit) |
 
 ---
 
@@ -35,15 +41,15 @@
 |---|--------|--------|-----------|
 | 0 | Project scaffold (pom.xml, docker-compose, Flyway base) | ✅ done | Yes |
 | 1 | Auth + RBAC | ✅ done | Yes |
-| 2 | Apartments & Blocks | ✅ done | No |
-| 3 | Residents & Vehicles | ✅ done | No |
-| 4 | Ticket Management | ✅ done | No |
-| 5 | Contractors & Contracts | ✅ done | No |
-| 6 | Announcements | ✅ done | No |
+| 2 | Apartments & Blocks | ✅ done | Yes |
+| 3 | Residents & Vehicles | ✅ done | Yes |
+| 4 | Ticket Management | ✅ done | Yes |
+| 5 | Contractors & Contracts | ✅ done | Yes |
+| 6 | Announcements | ✅ done | Yes |
 | 7 | Amenity Booking | ✅ done | Yes |
 | 8 | Parking | ✅ done | Yes |
-| 9 | Reports & Dashboard | pending | No |
-| 10 | Notifications | pending | No |
+| 9 | Reports & Dashboard | 🔄 in progress | No |
+| 10 | Notifications + Audit Log | ✅ done | Yes |
 
 ---
 

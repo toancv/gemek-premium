@@ -3,7 +3,7 @@
 ## Current State
 - **Phase:** backend
 - **Gate:** G1 approved — backend implementation in progress
-- **Last completed:** Module 8 — Parking — 2026-05-29
+- **Last completed:** Module 7 — Amenity Booking — 2026-05-29
 - **Blocked:** No
 
 ---
@@ -40,7 +40,7 @@
 | 4 | Ticket Management | ✅ done | No |
 | 5 | Contractors & Contracts | ✅ done | No |
 | 6 | Announcements | ✅ done | No |
-| 7 | Amenity Booking | pending | No |
+| 7 | Amenity Booking | ✅ done | Yes |
 | 8 | Parking | ✅ done | Yes |
 | 9 | Reports & Dashboard | pending | No |
 | 10 | Notifications | pending | No |

@@ -32,19 +32,19 @@ public class JwtTokenProvider {
     private static final Logger log = LoggerFactory.getLogger(JwtTokenProvider.class);
 
     /** Claim key for the user's email address. */
-    static final String CLAIM_EMAIL = "email";
+    public static final String CLAIM_EMAIL = "email";
 
     /** Claim key for the user's role. */
-    static final String CLAIM_ROLE = "role";
+    public static final String CLAIM_ROLE = "role";
 
     /** Claim key to distinguish token type (access vs refresh). */
-    static final String CLAIM_TOKEN_TYPE = "type";
+    public static final String CLAIM_TOKEN_TYPE = "type";
 
     /** Token type value for access tokens. */
-    static final String TOKEN_TYPE_ACCESS = "access";
+    public static final String TOKEN_TYPE_ACCESS = "access";
 
     /** Token type value for refresh tokens. */
-    static final String TOKEN_TYPE_REFRESH = "refresh";
+    public static final String TOKEN_TYPE_REFRESH = "refresh";
 
     private final JwtConfig jwtConfig;
     private final SecretKey signingKey;

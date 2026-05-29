@@ -3,7 +3,7 @@
 ## Current State
 - **Phase:** backend
 - **Gate:** G1 approved — backend implementation in progress
-- **Last completed:** Architecture design v2 — 2026-05-29
+- **Last completed:** Module 2 — Apartments & Blocks — 2026-05-29
 - **Blocked:** No
 
 ---
@@ -14,6 +14,8 @@
 | System Architecture v2 | architect | N/A | Yes |
 | DB Schema v2 | architect | N/A | Yes |
 | API Spec v2 | architect | N/A | Yes |
+| Auth + RBAC | backend | Yes | Yes |
+| Apartments & Blocks | backend | Yes | Pending commit |
 
 ---
 

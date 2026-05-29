@@ -15,8 +15,11 @@ import { ParkingPage } from './pages/ParkingPage';
 import { ReportsPage } from './pages/ReportsPage';
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
-  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
-  if (!isAuthenticated()) return <Navigate to="/login" replace />;
+  // SECURITY-FIX: Select scalar !!accessToken directly for a reactive Zustand subscription.
+  // Selecting the isAuthenticated function reference does not subscribe to accessToken changes,
+  // so the component would not re-render on logout.
+  const isAuthenticated = useAuthStore((s) => !!s.accessToken);
+  if (!isAuthenticated) return <Navigate to="/login" replace />;
   return <>{children}</>;
 }
 

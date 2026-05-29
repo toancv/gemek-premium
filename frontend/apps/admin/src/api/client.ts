@@ -1,4 +1,6 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
+// SECURITY-FIX: Import store directly instead of reading from window.__gemekAuthState global.
+import { useAuthStore } from '../store/authStore';
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? '/api';
 
@@ -6,10 +8,10 @@ export const apiClient = axios.create({ baseURL: BASE_URL });
 
 // Attach access token from store to every request
 apiClient.interceptors.request.use((config: InternalAxiosRequestConfig) => {
-  // Dynamically import to avoid circular dep — read from store state directly
-  const storeState = (window as any).__gemekAuthState?.();
-  if (storeState?.accessToken) {
-    config.headers.Authorization = `Bearer ${storeState.accessToken}`;
+  // SECURITY-FIX: Read token directly from Zustand store state — no window global needed.
+  const token = useAuthStore.getState().accessToken;
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
   }
   return config;
 });
@@ -46,7 +48,8 @@ apiClient.interceptors.response.use(
       try {
         const res = await axios.post(`${BASE_URL}/auth/refresh`, { refreshToken: rt });
         const newToken: string = res.data.accessToken;
-        (window as any).__gemekSetToken?.(newToken);
+        // SECURITY-FIX: Call store setter directly instead of window.__gemekSetToken global.
+        useAuthStore.getState().setTokenAndUser(newToken, useAuthStore.getState().user!);
         processQueue(null, newToken);
         original.headers.Authorization = `Bearer ${newToken}`;
         return apiClient(original);

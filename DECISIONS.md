@@ -70,7 +70,31 @@ Format: Date | Decision | Reasoning | Alternatives
 ---
 
 ## Backend Decisions
-_(backend-dev agent fills this)_
+
+### 2026-05-29 | V1 migration creates all ENUM types upfront
+**Decision:** V1__create_enums_and_users.sql creates all PostgreSQL ENUM types (not just user_role), even though only the users table is created in this migration.
+**Reasoning:** Flyway applies migrations in order; later module migrations reference these ENUMs. Creating them all in V1 avoids cross-migration dependencies and eliminates the risk of a future migration failing because its ENUM type does not yet exist.
+**Alternatives:** Create each ENUM in the migration where it is first used. Rejected because migration ordering becomes a fragile dependency.
+
+### 2026-05-29 | BCrypt strength 12 for password encoder
+**Decision:** BCryptPasswordEncoder configured with cost factor 12.
+**Reasoning:** ~250ms per hash on modern hardware — strong enough against brute force, acceptable latency for a login endpoint that is rate-limited to 10/min/IP anyway.
+**Alternatives:** Cost 10 (Spring default, faster but weaker). Argon2 (overkill complexity for this scale).
+
+### 2026-05-29 | Redis KEYS pattern scan for refresh token deletion on logout
+**Decision:** On logout, `redisTemplate.keys("refresh:{userId}:*")` is used to delete all refresh tokens for the user.
+**Reasoning:** Invalidates all devices simultaneously on logout, which is the correct security behaviour. The KEYS command is acceptable because Redis holds only a small number of refresh token entries per user and the production deployment is a single Redis instance.
+**Alternatives:** Track refresh JTIs in a Redis set per user (more correct at scale, unnecessary complexity now).
+
+### 2026-05-29 | X-Forwarded-For header honoured for IP rate limiting
+**Decision:** AuthServiceImpl reads X-Forwarded-For (first IP in chain) when present, falling back to RemoteAddr.
+**Reasoning:** Requests arrive via Nginx reverse proxy; RemoteAddr would always be the Nginx container IP, making per-IP rate limiting useless. Trusting X-Forwarded-For from Nginx is safe in this single-proxy setup.
+**Alternatives:** Configure Nginx to set X-Real-IP instead (equivalent, chose standard header).
+
+### 2026-05-29 | AuditLogAspect implemented as a stub
+**Decision:** AuditLogAspect intercepts @Auditable methods but only logs at DEBUG level — no DB write yet.
+**Reasoning:** The audit_logs table is not created in this module's migration. The annotation and aspect are wired now so future modules annotate freely; the full implementation will be added in the reporting module when audit_logs migration is introduced.
+**Alternatives:** Skip @Auditable entirely for now. Rejected because it would require a refactor pass across all services later.
 
 ## Frontend Decisions
 _(frontend-dev agent fills this)_

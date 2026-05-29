@@ -30,8 +30,8 @@
 ## Backend Module Queue
 | # | Module | Status | Committed |
 |---|--------|--------|-----------|
-| 0 | Project scaffold (pom.xml, docker-compose, Flyway base) | ⏳ in progress | No |
-| 1 | Auth + RBAC | pending | No |
+| 0 | Project scaffold (pom.xml, docker-compose, Flyway base) | ✅ done | Yes |
+| 1 | Auth + RBAC | ✅ done | Yes |
 | 2 | Apartments & Blocks | pending | No |
 | 3 | Residents & Vehicles | pending | No |
 | 4 | Ticket Management | pending | No |

@@ -1,9 +1,9 @@
 # PROGRESS — Apartment Management System
 
 ## Current State
-- **Phase:** architect
-- **Gate:** G1 pending CTO approval
-- **Last completed:** Architecture design v2 (updated ticket module) — 2026-05-29
+- **Phase:** backend
+- **Gate:** G1 approved — backend implementation in progress
+- **Last completed:** Architecture design v2 — 2026-05-29
 - **Blocked:** No
 
 ---
@@ -11,19 +11,36 @@
 ## Completed Modules
 | Module | Phase | Tests | Committed |
 |--------|-------|-------|-----------|
-| System Architecture v2 | architect | N/A | No |
-| DB Schema v2 | architect | N/A | No |
-| API Spec v2 | architect | N/A | No |
+| System Architecture v2 | architect | N/A | Yes |
+| DB Schema v2 | architect | N/A | Yes |
+| API Spec v2 | architect | N/A | Yes |
 
 ---
 
 ## Approved Gates
 | Gate | Approved | CTO Notes |
 |------|---------|-----------|
-| G1 — Techstack | ☐ pending | |
+| G1 — Techstack | ✅ 2026-05-29 | |
 | G2 — Backend | ☐ | |
 | G3 — Frontend | ☐ | |
 | G4 — Testing | ☐ | |
+
+---
+
+## Backend Module Queue
+| # | Module | Status | Committed |
+|---|--------|--------|-----------|
+| 0 | Project scaffold (pom.xml, docker-compose, Flyway base) | ⏳ in progress | No |
+| 1 | Auth + RBAC | pending | No |
+| 2 | Apartments & Blocks | pending | No |
+| 3 | Residents & Vehicles | pending | No |
+| 4 | Ticket Management | pending | No |
+| 5 | Contractors & Contracts | pending | No |
+| 6 | Announcements | pending | No |
+| 7 | Amenity Booking | pending | No |
+| 8 | Parking | pending | No |
+| 9 | Reports & Dashboard | pending | No |
+| 10 | Notifications | pending | No |
 
 ---
 
@@ -33,6 +50,5 @@ If context is lost, read these files in order:
 2. `DECISIONS.md` — all decisions made
 3. `docs/ARCHITECTURE.md` — system design
 4. `docs/API-SPEC.md` — API contracts
-5. Then continue from "Current State" above
-
-Next step after G1 approval: create branch `phase/backend`, start backend-dev on module 1 (Auth + RBAC).
+5. `docs/DB-SCHEMA.sql` — database schema
+6. Then continue from "Current State" above

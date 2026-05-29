@@ -198,7 +198,8 @@ public class TicketController {
     @Operation(summary = "Assign ticket to staff or contractor")
     public ResponseEntity<TicketDetailResponse> assignTicket(
             @PathVariable UUID id,
-            @RequestBody AssignTicketRequest req,
+            // SECURITY-FIX: added @Valid to trigger bean validation including @AssertTrue on DTO
+            @Valid @RequestBody AssignTicketRequest req,
             @AuthenticationPrincipal UserPrincipal principal) {
 
         return ResponseEntity.ok(ticketService.assignTicket(id, req, principal.getId()));

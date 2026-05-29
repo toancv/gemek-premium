@@ -288,17 +288,40 @@ public class AuthServiceImpl implements AuthService {
 
     /**
      * Resolves the client IP address, honouring the {@code X-Forwarded-For} header
-     * when the request passes through Nginx.
+     * only when the immediate connection originates from a private/loopback address
+     * (i.e. a trusted reverse proxy). This prevents an attacker from spoofing the
+     * header on a direct public connection to bypass rate limiting.
      *
      * @param request the HTTP servlet request.
      * @return the resolved client IP address.
      */
     private String resolveClientIp(HttpServletRequest request) {
-        String forwarded = request.getHeader("X-Forwarded-For");
-        if (forwarded != null && !forwarded.isBlank()) {
-            // X-Forwarded-For may contain a comma-separated chain; take the first value.
-            return forwarded.split(",")[0].trim();
+        String remoteAddr = request.getRemoteAddr();
+        // SECURITY-FIX: only trust X-Forwarded-For when the direct connection is from a
+        // private/loopback address (reverse proxy), not from an arbitrary internet client
+        if (isPrivateOrLoopback(remoteAddr)) {
+            String xForwardedFor = request.getHeader("X-Forwarded-For");
+            if (xForwardedFor != null && !xForwardedFor.isBlank()) {
+                // X-Forwarded-For may contain a comma-separated chain; take the first value.
+                return xForwardedFor.split(",")[0].trim();
+            }
         }
-        return request.getRemoteAddr();
+        return remoteAddr;
+    }
+
+    /**
+     * Returns {@code true} when the IP is a private or loopback address
+     * that identifies a trusted internal reverse proxy.
+     *
+     * @param ip the IP address string to test.
+     * @return whether the address is private or loopback.
+     */
+    private boolean isPrivateOrLoopback(String ip) {
+        return ip.startsWith("127.")
+                || ip.startsWith("10.")
+                || ip.startsWith("192.168.")
+                || ip.startsWith("172.")
+                || ip.equals("0:0:0:0:0:0:0:1")
+                || ip.equals("::1");
     }
 }

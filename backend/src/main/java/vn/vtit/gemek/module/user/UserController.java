@@ -32,6 +32,10 @@ import vn.vtit.gemek.module.user.dto.UserDetailResponse;
 import vn.vtit.gemek.module.user.dto.UserResponse;
 import vn.vtit.gemek.module.user.entity.UserRole;
 
+import vn.vtit.gemek.common.exception.AppException;
+import vn.vtit.gemek.common.exception.ErrorCode;
+
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -44,6 +48,9 @@ import java.util.UUID;
 @RequestMapping("/api/users")
 @Tag(name = "Users", description = "User account management (ADMIN only)")
 public class UserController {
+
+    // SECURITY-FIX: allowlist for sort fields to prevent ORDER BY injection
+    private static final Set<String> ALLOWED_SORT_FIELDS = Set.of("createdAt", "fullName", "email", "role");
 
     private final UserService userService;
 
@@ -82,6 +89,10 @@ public class UserController {
 
         // Cap page size at 100 to prevent unbounded queries.
         int cappedSize = Math.min(size, 100);
+        // SECURITY-FIX: validate sort field against allowlist to prevent ORDER BY injection
+        if (!ALLOWED_SORT_FIELDS.contains(sort)) {
+            throw new AppException(ErrorCode.VALIDATION_ERROR, "Invalid sort field: " + sort);
+        }
         Sort.Direction sortDir = "asc".equalsIgnoreCase(direction) ? Sort.Direction.ASC : Sort.Direction.DESC;
         Pageable pageable = PageRequest.of(page, cappedSize, Sort.by(sortDir, sort));
 

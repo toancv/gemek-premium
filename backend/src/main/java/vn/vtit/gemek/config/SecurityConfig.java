@@ -4,11 +4,14 @@
  */
 package vn.vtit.gemek.config;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
+import org.springframework.security.authorization.AuthorizationDecision;
+import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -37,6 +40,10 @@ public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final UserRepository userRepository;
+
+    // SECURITY-FIX: read active profile to conditionally block Swagger on prod
+    @Value("${spring.profiles.active:dev}")
+    private String activeProfile;
 
     /**
      * Constructs the security configuration with required dependencies.
@@ -72,13 +79,29 @@ public class SecurityConfig {
                 // Stateless session — JWT is the sole auth mechanism.
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                // SECURITY-FIX: HTTP security headers — CSP, X-Content-Type-Options, HSTS, X-Frame-Options
+                .headers(headers -> headers
+                        .contentTypeOptions(Customizer.withDefaults())
+                        .frameOptions(frame -> frame.deny())
+                        .httpStrictTransportSecurity(hsts -> hsts
+                                .includeSubDomains(true)
+                                .maxAgeInSeconds(31536000))
+                        .contentSecurityPolicy(csp -> csp
+                                .policyDirectives("default-src 'self'; script-src 'self'; " +
+                                        "style-src 'self' 'unsafe-inline'; " +
+                                        "img-src 'self' data: blob:; connect-src 'self'")))
                 .authorizeHttpRequests(auth -> auth
                         // Public auth endpoints.
                         .requestMatchers(HttpMethod.POST, "/api/auth/login").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/auth/refresh").permitAll()
-                        // Health check and OpenAPI docs — always public.
+                        // Health check — always public.
                         .requestMatchers("/actuator/health", "/actuator/info").permitAll()
-                        .requestMatchers("/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
+                        // SECURITY-FIX: Swagger UI blocked on prod profile; permitted on dev/test only
+                        .requestMatchers("/api-docs/**", "/swagger-ui/**", "/swagger-ui.html")
+                                .access((authentication, context) -> {
+                                    boolean isProd = activeProfile.contains("prod");
+                                    return new AuthorizationDecision(!isProd);
+                                })
                         // All other endpoints require authentication.
                         .anyRequest().authenticated())
                 // Insert JWT filter before the standard username/password filter.

@@ -34,4 +34,16 @@ public interface TicketPhotoRepository extends JpaRepository<TicketPhoto, UUID> 
      * @param id       the photo UUID.
      */
     void deleteByTicketIdAndId(UUID ticketId, UUID id);
+
+    /**
+     * Returns {@code true} when a photo record with the given object storage key exists.
+     *
+     * <p>Used by the presign endpoint to verify the requested key belongs to a known
+     * resource before issuing a presigned URL, preventing cross-tenant enumeration.
+     *
+     * @param fileUrl the MinIO object key stored in {@code file_url}.
+     * @return whether a matching photo record exists.
+     */
+    // SECURITY-FIX: added to support ownership check in FileController presign endpoint
+    boolean existsByFileUrl(String fileUrl);
 }

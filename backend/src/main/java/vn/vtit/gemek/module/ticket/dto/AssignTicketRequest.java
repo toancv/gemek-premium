@@ -4,6 +4,7 @@
  */
 package vn.vtit.gemek.module.ticket.dto;
 
+import jakarta.validation.constraints.AssertTrue;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -42,4 +43,18 @@ public class AssignTicketRequest {
 
     /** Optional notes about the assignment. */
     private String notes;
+
+    /**
+     * Validates that at least one assignee is specified.
+     *
+     * <p>The service also validates that both are not set simultaneously; this
+     * constraint ensures the request is not completely empty of assignees.
+     *
+     * @return {@code true} when at least one of the assignee fields is non-null.
+     */
+    // SECURITY-FIX: cross-field validation ensures at least one assignee is provided
+    @AssertTrue(message = "At least one assignee (user or contractor) must be specified.")
+    public boolean isAssigneePresent() {
+        return assignedToUserId != null || assignedToContractorId != null;
+    }
 }

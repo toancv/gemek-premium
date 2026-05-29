@@ -9,6 +9,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import vn.vtit.gemek.common.exception.AppException;
+import vn.vtit.gemek.common.exception.ErrorCode;
 import vn.vtit.gemek.module.amenity.entity.Amenity;
 import vn.vtit.gemek.module.amenity.repository.AmenityBookingRepository;
 import vn.vtit.gemek.module.amenity.repository.AmenityRepository;
@@ -30,6 +32,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -44,6 +47,9 @@ import java.util.UUID;
 public class ReportServiceImpl implements ReportService {
 
     private static final Logger log = LoggerFactory.getLogger(ReportServiceImpl.class);
+
+    // SECURITY-FIX: allowlist for groupBy to prevent logic/query injection via unchecked parameter
+    private static final Set<String> ALLOWED_GROUP_BY = Set.of("month", "category", "status", "assignee");
 
     private final ApartmentRepository apartmentRepository;
     private final TicketRepository ticketRepository;
@@ -123,6 +129,11 @@ public class ReportServiceImpl implements ReportService {
         OffsetDateTime toDt = effectiveTo.plusDays(1).atStartOfDay().atOffset(ZoneOffset.UTC);
 
         String effectiveGroupBy = (groupBy != null && !groupBy.isBlank()) ? groupBy : "month";
+
+        // SECURITY-FIX: validate groupBy against allowlist before passing to repository query
+        if (!ALLOWED_GROUP_BY.contains(effectiveGroupBy)) {
+            throw new AppException(ErrorCode.VALIDATION_ERROR, "Invalid groupBy value: " + effectiveGroupBy);
+        }
 
         log.debug("Ticket report: from={} to={} groupBy={}", effectiveFrom, effectiveTo, effectiveGroupBy);
 

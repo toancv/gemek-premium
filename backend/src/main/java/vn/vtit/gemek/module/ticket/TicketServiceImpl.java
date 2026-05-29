@@ -5,6 +5,7 @@
 package vn.vtit.gemek.module.ticket;
 
 import jakarta.persistence.criteria.Predicate;
+import org.apache.tika.Tika;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
@@ -70,6 +71,10 @@ public class TicketServiceImpl implements TicketService {
 
     /** Maximum allowed file size in bytes (10 MB). */
     private static final long MAX_FILE_SIZE_BYTES = 10L * 1024 * 1024;
+
+    // SECURITY-FIX: Tika instance for magic-byte MIME detection, replacing client-supplied Content-Type
+    private static final Tika TIKA = new Tika();
+    private static final Set<String> ALLOWED_MIME_TYPES = Set.of("image/jpeg", "image/png");
 
     /**
      * SLA hours per category. SUGGESTION_FEEDBACK is absent intentionally — it carries no SLA.
@@ -466,11 +471,8 @@ public class TicketServiceImpl implements TicketService {
                 throw new AppException(ErrorCode.VALIDATION_ERROR,
                         "File " + file.getOriginalFilename() + " exceeds the 10 MB size limit.");
             }
-            String contentType = file.getContentType();
-            if (!"image/jpeg".equals(contentType) && !"image/png".equals(contentType)) {
-                throw new AppException(ErrorCode.VALIDATION_ERROR,
-                        "Only image/jpeg and image/png files are accepted.");
-            }
+            // SECURITY-FIX: use magic-byte detection instead of trusting client-supplied Content-Type
+            validateFileMimeType(file);
         }
 
         User uploader = userRepository.findById(principalId).orElse(null);
@@ -919,6 +921,28 @@ public class TicketServiceImpl implements TicketService {
                 .id(contractor.getId())
                 .companyName(contractor.getCompanyName())
                 .build();
+    }
+
+    /**
+     * Validates the MIME type of an uploaded file using magic-byte detection via Apache Tika.
+     *
+     * <p>This approach is resistant to bypass via a spoofed {@code Content-Type} header because
+     * it inspects the actual file bytes rather than trusting the client-supplied value.
+     *
+     * @param file the uploaded multipart file.
+     * @throws AppException with {@link ErrorCode#VALIDATION_ERROR} if the detected type is not allowed.
+     */
+    private void validateFileMimeType(MultipartFile file) {
+        try {
+            // SECURITY-FIX: detect MIME from file bytes, not from client-supplied Content-Type
+            String detectedMime = TIKA.detect(file.getInputStream());
+            if (!ALLOWED_MIME_TYPES.contains(detectedMime)) {
+                throw new AppException(ErrorCode.VALIDATION_ERROR,
+                        "File type not allowed. Only JPEG and PNG are accepted.");
+            }
+        } catch (java.io.IOException e) {
+            throw new AppException(ErrorCode.VALIDATION_ERROR, "Unable to validate file type.");
+        }
     }
 
     /**

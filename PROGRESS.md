@@ -2,7 +2,7 @@
 
 ## Current State
 - **Phase:** frontend — COMPLETE
-- **Gate:** G3 ready — all frontend modules done, awaiting CTO approval
+- **Gate:** G2 approved, G3 ready — all frontend modules done, awaiting CTO approval
 - **Last completed:** Frontend — Admin (12 pages) + Resident (9 pages) — 2026-05-29
 - **Blocked:** No
 
@@ -23,6 +23,9 @@
 | Amenity Booking | backend | 5 tests | Yes (8863449) |
 | Parking | backend | 4 tests | Yes (dc19526) |
 | Notifications + Audit Log | backend | 3 tests | Yes (50e07a5) |
+| Admin Portal (12 pages) | frontend | N/A | Yes (ba1c634) |
+| Resident Portal (9 pages) | frontend | N/A | Yes (ba1c634) |
+| Shared UI Package | frontend | N/A | Yes (ba1c634) |
 
 ---
 
@@ -30,8 +33,8 @@
 | Gate | Approved | CTO Notes |
 |------|---------|-----------|
 | G1 — Techstack | ✅ 2026-05-29 | |
-| G2 — Backend | ☐ | |
-| G3 — Frontend | ✅ 2026-05-29 | 12 admin pages + 9 resident pages |
+| G2 — Backend | ✅ 2026-05-29 | |
+| G3 — Frontend | ☐ | |
 | G4 — Testing | ☐ | |
 
 ---

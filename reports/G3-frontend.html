@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>G3 — Frontend Complete</title>
+<style>
+  :root {
+    --bg: #0f1117; --surface: #1a1d27; --border: #2a2d3a;
+    --accent: #6366f1; --accent2: #10b981; --warn: #f59e0b;
+    --danger: #ef4444; --text: #e2e8f0; --muted: #64748b;
+    --font: 'SF Mono', 'Fira Code', monospace;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: -apple-system, sans-serif; padding: 2rem; }
+  .header { border-left: 4px solid var(--accent2); padding-left: 1.5rem; margin-bottom: 2.5rem; }
+  .gate-badge { display: inline-block; background: var(--accent2); color: #064e3b; font-family: var(--font); font-size: 0.7rem; padding: 0.25rem 0.75rem; border-radius: 100px; margin-bottom: 0.75rem; letter-spacing: 0.1em; font-weight: 700; }
+  h1 { font-size: 1.75rem; font-weight: 700; margin-bottom: 0.25rem; }
+  .meta { color: var(--muted); font-size: 0.85rem; font-family: var(--font); }
+  .stats-row { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
+  .stat { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 1.25rem; text-align: center; }
+  .stat .number { font-size: 2rem; font-weight: 700; color: var(--accent2); font-family: var(--font); }
+  .stat .label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); margin-top: 0.25rem; }
+  .section { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; margin-bottom: 1.5rem; }
+  .section-title { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.15em; color: var(--muted); margin-bottom: 1rem; font-family: var(--font); }
+  table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
+  th { text-align: left; padding: 0.6rem 1rem; background: var(--bg); color: var(--muted); font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.1em; font-family: var(--font); }
+  td { padding: 0.75rem 1rem; border-top: 1px solid var(--border); vertical-align: top; }
+  .badge { display: inline-block; font-size: 0.65rem; padding: 0.2rem 0.6rem; border-radius: 4px; font-family: var(--font); font-weight: 600; }
+  .badge.done { background: rgba(16,185,129,0.15); color: #6ee7b7; }
+  .decisions { list-style: none; }
+  .decisions li { padding: 0.6rem 0; border-bottom: 1px solid var(--border); font-size: 0.875rem; color: var(--muted); }
+  .decisions li strong { color: var(--text); display: block; margin-bottom: 0.2rem; }
+  .approval-box { background: linear-gradient(135deg, rgba(16,185,129,0.1), rgba(99,102,241,0.05)); border: 1px solid var(--accent2); border-radius: 12px; padding: 1.5rem; text-align: center; }
+  .approval-box .instruction { font-size: 1rem; margin-bottom: 0.75rem; }
+  code { background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 0.4rem 0.8rem; font-family: var(--font); font-size: 0.9rem; color: var(--accent2); display: inline-block; margin: 0.25rem; }
+  .commit { font-family: var(--font); font-size: 0.75rem; color: var(--accent); }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="gate-badge">GATE G3 · FRONTEND COMPLETE</div>
+  <h1>Frontend Phase Report</h1>
+  <div class="meta">Generated: 2026-05-29 · Branch: phase/frontend · Commit: ba1c634 · Awaiting CTO Approval</div>
+</div>
+
+<div class="stats-row">
+  <div class="stat"><div class="number">21</div><div class="label">Pages</div></div>
+  <div class="stat"><div class="number">2</div><div class="label">Apps</div></div>
+  <div class="stat"><div class="number">7</div><div class="label">Shared Components</div></div>
+  <div class="stat"><div class="number">60</div><div class="label">Files</div></div>
+  <div class="stat"><div class="number">1</div><div class="label">Git Commit</div></div>
+</div>
+
+<div class="section">
+  <div class="section-title">Admin Portal — apps/admin (desktop-first, min-width 1280px)</div>
+  <table>
+    <thead>
+      <tr><th>Page</th><th>Route</th><th>API Calls</th><th>Roles</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><strong>Login</strong></td><td>/login</td><td>POST /api/auth/login</td><td>Public</td></tr>
+      <tr><td><strong>Dashboard</strong></td><td>/dashboard</td><td>GET /api/reports/dashboard</td><td>ADMIN, BOARD_MEMBER, TECHNICIAN</td></tr>
+      <tr><td><strong>Apartments</strong></td><td>/apartments</td><td>GET /api/apartments, /api/blocks</td><td>ADMIN, BOARD_MEMBER</td></tr>
+      <tr><td><strong>Residents</strong></td><td>/residents</td><td>GET /api/residents, POST /api/residents</td><td>ADMIN</td></tr>
+      <tr><td><strong>Tickets</strong></td><td>/tickets</td><td>GET /api/tickets (filtered, paginated)</td><td>ADMIN, TECHNICIAN</td></tr>
+      <tr><td><strong>Ticket Detail</strong></td><td>/tickets/:id</td><td>GET /api/tickets/:id, PUT assign/status</td><td>ADMIN, TECHNICIAN</td></tr>
+      <tr><td><strong>Contractors</strong></td><td>/contractors</td><td>GET/POST /api/contractors</td><td>ADMIN</td></tr>
+      <tr><td><strong>Announcements</strong></td><td>/announcements</td><td>GET/POST /api/announcements, POST publish</td><td>ADMIN, BOARD_MEMBER</td></tr>
+      <tr><td><strong>Amenities</strong></td><td>/amenities</td><td>GET /api/amenities, /api/amenity-bookings (approve/reject)</td><td>ADMIN</td></tr>
+      <tr><td><strong>Parking</strong></td><td>/parking</td><td>GET /api/parking/slots, /api/parking/guests</td><td>ADMIN</td></tr>
+      <tr><td><strong>Reports</strong></td><td>/reports</td><td>GET /api/reports/tickets, /amenities, /contracts, /dashboard</td><td>ADMIN, BOARD_MEMBER</td></tr>
+      <tr><td><strong>Layout</strong></td><td>—</td><td>GET /api/notifications/unread-count, POST /read-all</td><td>All roles</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="section">
+  <div class="section-title">Resident Portal — apps/resident (mobile-first, max-width 480px, bottom nav)</div>
+  <table>
+    <thead>
+      <tr><th>Page</th><th>Route</th><th>API Calls</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><strong>Login</strong></td><td>/login</td><td>POST /api/auth/login</td></tr>
+      <tr><td><strong>Home</strong></td><td>/</td><td>GET /api/auth/me, /api/announcements, /api/tickets (own)</td></tr>
+      <tr><td><strong>My Tickets</strong></td><td>/tickets</td><td>GET /api/tickets, POST /api/tickets</td></tr>
+      <tr><td><strong>Ticket Detail</strong></td><td>/tickets/:id</td><td>GET /api/tickets/:id, POST rate</td></tr>
+      <tr><td><strong>Amenities</strong></td><td>/amenities</td><td>GET /api/amenities, POST /api/amenity-bookings</td></tr>
+      <tr><td><strong>My Bookings</strong></td><td>/bookings</td><td>GET /api/amenity-bookings, PUT cancel</td></tr>
+      <tr><td><strong>Parking</strong></td><td>/parking</td><td>GET /api/parking/assignments, POST /api/parking/guests</td></tr>
+      <tr><td><strong>Announcements</strong></td><td>/announcements</td><td>GET /api/announcements, POST /read</td></tr>
+      <tr><td><strong>Profile</strong></td><td>/profile</td><td>GET /api/auth/me, POST /api/auth/change-password</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="section">
+  <div class="section-title">Shared UI Package — packages/ui</div>
+  <table>
+    <thead><tr><th>Component</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td>Button</td><td>Variants: primary, secondary, danger, ghost</td></tr>
+      <tr><td>Card / CardHeader / CardContent</td><td>Surface background, rounded border</td></tr>
+      <tr><td>Badge / StatusBadge / CategoryBadge</td><td>Maps ticket/booking status and category to Tailwind color</td></tr>
+      <tr><td>Spinner / PageSpinner</td><td>Inline and full-page loading states</td></tr>
+      <tr><td>Input / Select / Textarea / Label</td><td>Form primitives with consistent focus ring</td></tr>
+      <tr><td>Modal</td><td>Div overlay with backdrop, no portal</td></tr>
+      <tr><td>PageTitle</td><td>h1 + optional subtitle</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="section">
+  <div class="section-title">Key Frontend Decisions</div>
+  <ul class="decisions">
+    <li>
+      <strong>Access token in Zustand memory only</strong>
+      Refresh token in localStorage (<code>gemek_refresh</code>). On page reload, app calls refresh immediately before first render to restore session.
+    </li>
+    <li>
+      <strong>Axios 401 interceptor with queued retry</strong>
+      On 401: calls <code>POST /api/auth/refresh</code>, re-queues all failed requests, retries with new token. On refresh failure: clears auth + redirects to /login.
+    </li>
+    <li>
+      <strong>window.__gemekAuthState bridge</strong>
+      Zustand store exposed on <code>window.__gemekAuthState</code> to break circular import between the axios instance and the store.
+    </li>
+    <li>
+      <strong>No chart library — Tailwind CSS stat cards</strong>
+      Reports use numeric summaries + table breakdowns. No recharts/chart.js. Reduces bundle size.
+    </li>
+    <li>
+      <strong>Native date/time inputs</strong>
+      <code>&lt;input type="date"&gt;</code> and <code>&lt;input type="time"&gt;</code> for booking forms — no date picker library.
+    </li>
+    <li>
+      <strong>RequireRole wrapper for route gating</strong>
+      BOARD_MEMBER sees Dashboard, Reports, Apartments only. All other routes redirect to /dashboard.
+    </li>
+  </ul>
+</div>
+
+<div class="section">
+  <div class="section-title">Known Constraints for Testing Phase</div>
+  <ul class="decisions">
+    <li><strong>No frontend unit tests</strong> — E2E and integration tests handled in G4 phase.</li>
+    <li><strong>Photo display requires MinIO running</strong> — images show broken without Docker Compose startup.</li>
+    <li><strong>FCM web push not wired</strong> — notification bell polls unread-count API; no service worker.</li>
+    <li><strong>Build requires pnpm</strong> — <code>pnpm install</code> from <code>frontend/</code>, then <code>pnpm --filter admin build</code>.</li>
+  </ul>
+</div>
+
+<div class="section">
+  <div class="section-title">Next Phase — Integration &amp; E2E Testing (G4)</div>
+  <p style="color:var(--muted); font-size:0.9rem; line-height:1.6;">
+    Full-stack integration tests verifying critical user flows end-to-end:
+    login → create ticket → assign → status transitions → rate;
+    create announcement → publish → resident reads;
+    book amenity → approve → conflict rejection.
+    Docker Compose must be running. Backend Testcontainers tests already passing (50 tests).
+  </p>
+</div>
+
+<div class="approval-box">
+  <div class="instruction">Review above, then reply in Claude Code:</div>
+  <code>approve G3</code>
+  <span style="color:var(--muted); margin: 0 0.5rem;">or</span>
+  <code>approve G3, note: [your note]</code>
+</div>
+
+</body>
+</html>

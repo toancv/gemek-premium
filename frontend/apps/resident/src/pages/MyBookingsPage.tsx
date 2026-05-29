@@ -1,0 +1,43 @@
+import React from 'react';
+import { useMyBookings, useCancelBooking } from '../api/hooks';
+
+const STATUS_BG: Record<string, string> = {
+  PENDING: 'bg-yellow-100 text-yellow-700', APPROVED: 'bg-green-100 text-green-700',
+  REJECTED: 'bg-red-100 text-red-700', CANCELLED: 'bg-gray-100 text-gray-500',
+  COMPLETED: 'bg-blue-100 text-blue-700',
+};
+
+export function MyBookingsPage() {
+  const { data, isLoading } = useMyBookings({ size: 20 });
+  const cancel = useCancelBooking();
+
+  return (
+    <div className="p-4">
+      <h1 className="text-lg font-bold text-gray-900 mb-4">My Bookings</h1>
+      {isLoading && <div className="text-center py-8 text-gray-400">Loading...</div>}
+      {!isLoading && !data?.data?.length && (
+        <div className="text-center py-12 text-gray-400">
+          <p className="text-4xl mb-2">📅</p>
+          <p>No bookings yet</p>
+        </div>
+      )}
+      <div className="space-y-3">
+        {data?.data?.map((b: any) => (
+          <div key={b.id} className="bg-white rounded-xl border border-gray-200 p-4">
+            <div className="flex items-start justify-between gap-2">
+              <div>
+                <p className="font-semibold text-gray-900">{b.amenity?.name}</p>
+                <p className="text-sm text-gray-500 mt-0.5">{b.bookingDate} • {b.startTime} - {b.endTime}</p>
+              </div>
+              <span className={`flex-shrink-0 text-xs px-2 py-0.5 rounded-full ${STATUS_BG[b.status] ?? 'bg-gray-100 text-gray-700'}`}>{b.status}</span>
+            </div>
+            {b.status === 'PENDING' && (
+              <button onClick={() => { if (window.confirm('Cancel this booking?')) cancel.mutate(b.id); }} disabled={cancel.isPending}
+                className="mt-3 text-xs text-red-600 hover:underline disabled:opacity-50">Cancel booking</button>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}

@@ -1,0 +1,10 @@
+{
+  "name": "gemek-frontend",
+  "private": true,
+  "scripts": {
+    "dev:admin": "pnpm --filter admin dev",
+    "dev:resident": "pnpm --filter resident dev",
+    "build:admin": "pnpm --filter admin build",
+    "build:resident": "pnpm --filter resident build"
+  }
+}

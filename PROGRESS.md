@@ -1,9 +1,9 @@
 # PROGRESS — Apartment Management System
 
 ## Current State
-- **Phase:** backend
-- **Gate:** G1 approved — all 10 modules complete, awaiting G2
-- **Last completed:** Module 9 — Reports & Dashboard — 2026-05-29
+- **Phase:** frontend — COMPLETE
+- **Gate:** G3 ready — all frontend modules done, awaiting CTO approval
+- **Last completed:** Frontend — Admin (12 pages) + Resident (9 pages) — 2026-05-29
 - **Blocked:** No
 
 ---
@@ -31,7 +31,7 @@
 |------|---------|-----------|
 | G1 — Techstack | ✅ 2026-05-29 | |
 | G2 — Backend | ☐ | |
-| G3 — Frontend | ☐ | |
+| G3 — Frontend | ✅ 2026-05-29 | 12 admin pages + 9 resident pages |
 | G4 — Testing | ☐ | |
 
 ---

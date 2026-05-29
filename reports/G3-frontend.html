@@ -153,6 +153,42 @@
 </div>
 
 <div class="section">
+  <div class="section-title">Security SAST Results — Pre-Approval Scan</div>
+  <table>
+    <thead><tr><th>Scope</th><th>Initial Verdict</th><th>Findings Fixed</th><th>Re-Scan Verdict</th><th>Commits</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><strong>Backend</strong></td>
+        <td><span class="badge" style="background:rgba(239,68,68,0.15);color:#fca5a5;">FAIL — 3C 6H</span></td>
+        <td>3 Critical + 6 High + 1 Low fixed; 1 new High introduced (172.x) → fixed in follow-up commit</td>
+        <td><span class="badge done">PASS WITH NOTES</span></td>
+        <td class="commit">6e43ebf, 6519fa7</td>
+      </tr>
+      <tr>
+        <td><strong>Frontend</strong></td>
+        <td><span class="badge warn">PASS WITH NOTES — 0C 2H</span></td>
+        <td>2 High + 3 Medium fixed (window globals removed, reactive auth guard, devtools gated)</td>
+        <td><span class="badge done">PASS WITH NOTES</span></td>
+        <td class="commit">3854108</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <p style="margin-top:1rem; font-size:0.875rem; color:var(--muted);">
+    <strong style="color:var(--text);">Backend fixes:</strong>
+    Sort field allowlist (ORDER BY injection), groupBy allowlist, admin password comment removed, X-Forwarded-For trust scoped to RFC 1918 only, MinIO presign key existence validation, Swagger blocked on prod profile, Apache Tika magic-byte MIME validation, @Valid + @AssertTrue on AssignTicketRequest, HTTP security headers (CSP, HSTS, X-Content-Type-Options, X-Frame-Options), multipart size limits.
+  </p>
+  <p style="margin-top:0.75rem; font-size:0.875rem; color:var(--muted);">
+    <strong style="color:var(--text);">Frontend fixes:</strong>
+    window.__gemekAuthState / window.__gemekSetToken globals eliminated; axios client imports Zustand store directly; RequireAuth uses reactive scalar selector; ReactQueryDevtools removed from production bundle.
+  </p>
+  <p style="margin-top:0.75rem; font-size:0.875rem; color:var(--warn);">
+    <strong>Tracked / deferred:</strong>
+    Refresh token in localStorage (frontend) — pre-existing design decision; full remediation requires HttpOnly cookie support on the backend /auth/refresh endpoint. Tracked for G4 phase. MinIO presign endpoint checks key existence but not per-user ownership — tracked as MEDIUM for post-G4 hardening.
+  </p>
+</div>
+
+<div class="section">
   <div class="section-title">Next Phase — Integration &amp; E2E Testing (G4)</div>
   <p style="color:var(--muted); font-size:0.9rem; line-height:1.6;">
     Full-stack integration tests verifying critical user flows end-to-end:

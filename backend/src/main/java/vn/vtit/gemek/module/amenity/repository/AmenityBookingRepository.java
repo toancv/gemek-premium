@@ -16,6 +16,7 @@ import vn.vtit.gemek.module.amenity.entity.AmenityBooking;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 /**
@@ -99,4 +100,101 @@ public interface AmenityBookingRepository
     List<AmenityBooking> findByAmenityAndDate(
             @Param("amenityId") UUID amenityId,
             @Param("date") LocalDate date);
+
+    /**
+     * Counts all bookings for a specific amenity within the given date range.
+     *
+     * <p>Used by the amenity-usage report to compute {@code totalBookings}.
+     *
+     * @param amenityId the amenity UUID.
+     * @param from      start date (inclusive).
+     * @param to        end date (inclusive).
+     * @return total booking count.
+     */
+    @Query("""
+            SELECT COUNT(b) FROM AmenityBooking b
+            WHERE b.amenity.id = :amenityId
+              AND b.bookingDate >= :from
+              AND b.bookingDate <= :to
+            """)
+    long countByAmenityAndPeriod(
+            @Param("amenityId") UUID amenityId,
+            @Param("from") LocalDate from,
+            @Param("to") LocalDate to);
+
+    /**
+     * Counts bookings for a specific amenity, date range, and status.
+     *
+     * <p>Used by the amenity-usage report for APPROVED/REJECTED/CANCELLED breakdowns.
+     *
+     * @param amenityId the amenity UUID.
+     * @param from      start date (inclusive).
+     * @param to        end date (inclusive).
+     * @param status    booking status string (e.g. {@code "APPROVED"}).
+     * @return count of bookings matching all criteria.
+     */
+    @Query(value = """
+            SELECT COUNT(*) FROM amenity_bookings
+            WHERE amenity_id = :amenityId
+              AND booking_date >= :from
+              AND booking_date <= :to
+              AND status = CAST(:status AS booking_status)
+            """, nativeQuery = true)
+    long countByAmenityPeriodAndStatus(
+            @Param("amenityId") UUID amenityId,
+            @Param("from") LocalDate from,
+            @Param("to") LocalDate to,
+            @Param("status") String status);
+
+    /**
+     * Returns the date with the highest booking count for the given amenity and period.
+     *
+     * <p>Used by the amenity-usage report to populate {@code peakDay}.
+     *
+     * @param amenityId the amenity UUID.
+     * @param from      start date (inclusive).
+     * @param to        end date (inclusive).
+     * @return the peak {@link LocalDate}, or empty if no bookings exist in the period.
+     */
+    @Query("""
+            SELECT b.bookingDate FROM AmenityBooking b
+            WHERE b.amenity.id = :amenityId
+              AND b.bookingDate >= :from
+              AND b.bookingDate <= :to
+            GROUP BY b.bookingDate
+            ORDER BY COUNT(b) DESC
+            """)
+    List<LocalDate> findPeakDay(
+            @Param("amenityId") UUID amenityId,
+            @Param("from") LocalDate from,
+            @Param("to") LocalDate to,
+            org.springframework.data.domain.Pageable pageable);
+
+    /**
+     * Counts total bookings created in the current calendar month (any status).
+     *
+     * <p>Used by the dashboard KPI.
+     *
+     * @param from first day of the current month.
+     * @param to   today or last day of month.
+     * @return total booking count.
+     */
+    @Query("""
+            SELECT COUNT(b) FROM AmenityBooking b
+            WHERE b.bookingDate >= :from
+              AND b.bookingDate <= :to
+            """)
+    long countBookingsInPeriod(
+            @Param("from") LocalDate from,
+            @Param("to") LocalDate to);
+
+    /**
+     * Counts bookings currently in PENDING status.
+     *
+     * <p>Used by the dashboard KPI.
+     *
+     * @return count of PENDING bookings.
+     */
+    @Query("SELECT COUNT(b) FROM AmenityBooking b WHERE b.status = 'PENDING'")
+    long countPending();
 }

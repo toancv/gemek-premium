@@ -2,8 +2,8 @@
 
 ## Current State
 - **Phase:** backend
-- **Gate:** G1 approved — module 10 complete, awaiting G2
-- **Last completed:** Module 10 — Notifications + Audit Log — 2026-05-29
+- **Gate:** G1 approved — all 10 modules complete, awaiting G2
+- **Last completed:** Module 9 — Reports & Dashboard — 2026-05-29
 - **Blocked:** No
 
 ---
@@ -22,7 +22,7 @@
 | Announcements | backend | 4 tests | Yes (53cae29) |
 | Amenity Booking | backend | 5 tests | Yes (8863449) |
 | Parking | backend | 4 tests | Yes (dc19526) |
-| Notifications + Audit Log | backend | 3 tests | Yes (pending commit) |
+| Notifications + Audit Log | backend | 3 tests | Yes (50e07a5) |
 
 ---
 
@@ -48,7 +48,7 @@
 | 6 | Announcements | ✅ done | Yes |
 | 7 | Amenity Booking | ✅ done | Yes |
 | 8 | Parking | ✅ done | Yes |
-| 9 | Reports & Dashboard | 🔄 in progress | No |
+| 9 | Reports & Dashboard | ✅ done | Yes |
 | 10 | Notifications + Audit Log | ✅ done | Yes |
 
 ---

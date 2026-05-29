@@ -96,4 +96,27 @@ public interface ResidentRepository extends JpaRepository<Resident, UUID>, JpaSp
     Optional<Resident> findActiveByUserIdAndApartmentId(
             @Param("userId") UUID userId,
             @Param("apartmentId") UUID apartmentId);
+
+    /**
+     * Returns resident demographics for the report endpoint.
+     *
+     * <p>Returns one {@code Object[]} row:
+     * [totalActive, owners, tenants, occupiedApartments].
+     * Optionally filtered by block.
+     *
+     * @param blockId optional block UUID; {@code null} means all apartments.
+     * @return single-element list with one aggregate row.
+     */
+    @Query(value = """
+            SELECT
+              COUNT(*)                                                             AS totalActive,
+              COUNT(CASE WHEN r.resident_type = 'OWNER'  THEN 1 END)             AS owners,
+              COUNT(CASE WHEN r.resident_type = 'TENANT' THEN 1 END)             AS tenants,
+              COUNT(DISTINCT r.apartment_id)                                      AS occupiedApartments
+            FROM residents r
+            JOIN apartments a ON a.id = r.apartment_id
+            WHERE r.move_out_date IS NULL
+              AND (:blockId IS NULL OR a.block_id = :blockId)
+            """, nativeQuery = true)
+    Object[] getResidentDemographics(@Param("blockId") UUID blockId);
 }

@@ -96,4 +96,30 @@ public interface ApartmentRepository extends JpaRepository<Apartment, UUID> {
             @Param("status") ApartmentStatus status,
             @Param("search") String search,
             Pageable pageable);
+
+    /**
+     * Returns counts of apartments per status for the dashboard KPI.
+     *
+     * <p>Each row is {@code [statusText, count]}. All statuses with at least one
+     * apartment are represented; missing statuses can be defaulted to 0 by the caller.
+     *
+     * @return list of two-element rows.
+     */
+    @Query(value = """
+            SELECT a.status::text AS status, COUNT(*) AS cnt
+            FROM apartments a
+            GROUP BY a.status
+            """, nativeQuery = true)
+    java.util.List<Object[]> countByStatus();
+
+    /**
+     * Counts total apartments optionally filtered by block.
+     *
+     * <p>Used by the resident report when scoped to a single block.
+     *
+     * @param blockId optional block UUID; {@code null} means count all apartments.
+     * @return total apartment count matching the filter.
+     */
+    @Query("SELECT COUNT(a) FROM Apartment a WHERE (:blockId IS NULL OR a.block.id = :blockId)")
+    long countByOptionalBlock(@Param("blockId") UUID blockId);
 }

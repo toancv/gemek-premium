@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{{GATE_ID}} — {{PHASE_NAME}} Complete</title>
+<style>
+  :root {
+    --bg: #0f1117; --surface: #1a1d27; --border: #2a2d3a;
+    --accent: #6366f1; --accent2: #10b981; --warn: #f59e0b;
+    --danger: #ef4444; --text: #e2e8f0; --muted: #64748b;
+    --font: 'SF Mono', 'Fira Code', monospace;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: -apple-system, sans-serif; padding: 2rem; }
+  .header { border-left: 4px solid var(--accent2); padding-left: 1.5rem; margin-bottom: 2.5rem; }
+  .gate-badge { display: inline-block; background: var(--accent2); color: #064e3b; font-family: var(--font); font-size: 0.7rem; padding: 0.25rem 0.75rem; border-radius: 100px; margin-bottom: 0.75rem; letter-spacing: 0.1em; font-weight: 700; }
+  h1 { font-size: 1.75rem; font-weight: 700; margin-bottom: 0.25rem; }
+  .meta { color: var(--muted); font-size: 0.85rem; font-family: var(--font); }
+  .stats-row { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
+  .stat { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 1.25rem; text-align: center; }
+  .stat .number { font-size: 2rem; font-weight: 700; color: var(--accent2); font-family: var(--font); }
+  .stat .label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); margin-top: 0.25rem; }
+  .section { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; margin-bottom: 1.5rem; }
+  .section-title { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.15em; color: var(--muted); margin-bottom: 1rem; font-family: var(--font); }
+  table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
+  th { text-align: left; padding: 0.6rem 1rem; background: var(--bg); color: var(--muted); font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.1em; font-family: var(--font); }
+  td { padding: 0.75rem 1rem; border-top: 1px solid var(--border); vertical-align: top; }
+  .badge { display: inline-block; font-size: 0.65rem; padding: 0.2rem 0.6rem; border-radius: 4px; font-family: var(--font); font-weight: 600; }
+  .badge.done { background: rgba(16,185,129,0.15); color: #6ee7b7; }
+  .badge.pass { background: rgba(16,185,129,0.15); color: #6ee7b7; }
+  .badge.fail { background: rgba(239,68,68,0.15); color: #fca5a5; }
+  .badge.warn { background: rgba(245,158,11,0.15); color: #fcd34d; }
+  .decisions { list-style: none; }
+  .decisions li { padding: 0.6rem 0; border-bottom: 1px solid var(--border); font-size: 0.875rem; color: var(--muted); }
+  .decisions li strong { color: var(--text); display: block; margin-bottom: 0.2rem; }
+  .approval-box { background: linear-gradient(135deg, rgba(16,185,129,0.1), rgba(99,102,241,0.05)); border: 1px solid var(--accent2); border-radius: 12px; padding: 1.5rem; text-align: center; }
+  .approval-box .instruction { font-size: 1rem; margin-bottom: 0.75rem; }
+  code { background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 0.4rem 0.8rem; font-family: var(--font); font-size: 0.9rem; color: var(--accent2); display: inline-block; margin: 0.25rem; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="gate-badge">GATE {{GATE_ID}} · {{PHASE_NAME}} COMPLETE</div>
+  <h1>{{PHASE_NAME}} Phase Report</h1>
+  <div class="meta">Generated: {{DATE}} · Awaiting CTO Approval</div>
+</div>
+
+<!-- SUMMARY STATS -->
+<div class="stats-row">
+  <div class="stat"><div class="number">{{MODULES_COUNT}}</div><div class="label">Modules</div></div>
+  <div class="stat"><div class="number">{{ENDPOINTS_COUNT}}</div><div class="label">Endpoints / Pages</div></div>
+  <div class="stat"><div class="number">{{TESTS_PASS}}</div><div class="label">Tests Passing</div></div>
+  <div class="stat"><div class="number">{{COMMITS_COUNT}}</div><div class="label">Git Commits</div></div>
+</div>
+
+<!-- MODULES COMPLETED -->
+<div class="section">
+  <div class="section-title">Modules Completed</div>
+  <table>
+    <thead>
+      <tr><th>Module</th><th>Scope</th><th>Tests</th><th>Review</th><th>Notes</th></tr>
+    </thead>
+    <tbody>
+      <!-- PM fills one row per module -->
+      <tr>
+        <td><strong>{{MODULE_NAME}}</strong></td>
+        <td>{{MODULE_SCOPE}}</td>
+        <td><span class="badge pass">{{TEST_COUNT}} passing</span></td>
+        <td><span class="badge done">Approved</span></td>
+        <td>{{NOTES}}</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- KEY DECISIONS MADE -->
+<div class="section">
+  <div class="section-title">Key Decisions Made This Phase</div>
+  <ul class="decisions">
+    <li>
+      <strong>{{DECISION_TITLE}}</strong>
+      {{DECISION_DETAIL}} — Alternatives: {{ALTERNATIVES}}
+    </li>
+    <!-- repeat per decision -->
+  </ul>
+</div>
+
+<!-- BLOCKERS RESOLVED -->
+<div class="section">
+  <div class="section-title">Blockers Encountered & Resolved</div>
+  <table>
+    <thead><tr><th>Blocker</th><th>Resolution</th><th>CTO Input</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>{{BLOCKER_DESCRIPTION}}</td>
+        <td>{{BLOCKER_RESOLUTION}}</td>
+        <td>{{CTO_DECISION}}</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- NEXT PHASE PREVIEW -->
+<div class="section">
+  <div class="section-title">Next Phase</div>
+  <p style="color:var(--muted); font-size:0.9rem; line-height:1.6;">{{NEXT_PHASE_DESCRIPTION}}</p>
+</div>
+
+<!-- APPROVAL -->
+<div class="approval-box">
+  <div class="instruction">Review above, then reply in Claude Code:</div>
+  <code>approve {{GATE_ID}}</code>
+  <span style="color:var(--muted); margin: 0 0.5rem;">or</span>
+  <code>approve {{GATE_ID}}, note: [your note]</code>
+</div>
+
+</body>
+</html>

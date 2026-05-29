@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>G4 — Test Report</title>
+<style>
+  :root {
+    --bg: #0f1117; --surface: #1a1d27; --border: #2a2d3a;
+    --accent: #6366f1; --accent2: #10b981; --warn: #f59e0b;
+    --danger: #ef4444; --text: #e2e8f0; --muted: #64748b;
+    --font: 'SF Mono', 'Fira Code', monospace;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: -apple-system, sans-serif; padding: 2rem; }
+  .header { border-left: 4px solid var(--warn); padding-left: 1.5rem; margin-bottom: 2.5rem; }
+  .gate-badge { display: inline-block; background: var(--warn); color: #78350f; font-family: var(--font); font-size: 0.7rem; padding: 0.25rem 0.75rem; border-radius: 100px; margin-bottom: 0.75rem; letter-spacing: 0.1em; font-weight: 700; }
+  h1 { font-size: 1.75rem; font-weight: 700; margin-bottom: 0.25rem; }
+  .meta { color: var(--muted); font-size: 0.85rem; font-family: var(--font); }
+  .verdict-banner { border-radius: 12px; padding: 1.25rem 1.5rem; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 1rem; }
+  .verdict-banner.pass { background: rgba(16,185,129,0.1); border: 1px solid var(--accent2); }
+  .verdict-banner.fail { background: rgba(239,68,68,0.1); border: 1px solid var(--danger); }
+  .verdict-icon { font-size: 2rem; }
+  .verdict-text .label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); font-family: var(--font); }
+  .verdict-text .value { font-size: 1.25rem; font-weight: 700; }
+  .stats-row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 1rem; margin-bottom: 1.5rem; }
+  .stat { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 1rem; text-align: center; }
+  .stat .number { font-size: 1.75rem; font-weight: 700; font-family: var(--font); }
+  .stat .label { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); margin-top: 0.2rem; }
+  .stat.green .number { color: var(--accent2); }
+  .stat.red .number { color: var(--danger); }
+  .stat.yellow .number { color: var(--warn); }
+  .section { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; margin-bottom: 1.5rem; }
+  .section-title { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.15em; color: var(--muted); margin-bottom: 1rem; font-family: var(--font); }
+  table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
+  th { text-align: left; padding: 0.6rem 1rem; background: var(--bg); color: var(--muted); font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.1em; font-family: var(--font); }
+  td { padding: 0.75rem 1rem; border-top: 1px solid var(--border); vertical-align: top; font-size: 0.85rem; }
+  .badge { display: inline-block; font-size: 0.65rem; padding: 0.2rem 0.6rem; border-radius: 4px; font-family: var(--font); font-weight: 600; }
+  .badge.pass { background: rgba(16,185,129,0.15); color: #6ee7b7; }
+  .badge.fail { background: rgba(239,68,68,0.15); color: #fca5a5; }
+  .badge.skip { background: rgba(100,116,139,0.2); color: var(--muted); }
+  .badge.high { background: rgba(239,68,68,0.15); color: #fca5a5; }
+  .badge.medium { background: rgba(245,158,11,0.15); color: #fcd34d; }
+  .badge.low { background: rgba(16,185,129,0.15); color: #6ee7b7; }
+  .error-detail { font-family: var(--font); font-size: 0.75rem; color: var(--danger); margin-top: 0.3rem; background: rgba(239,68,68,0.05); padding: 0.4rem; border-radius: 4px; }
+  .progress-bar { height: 8px; background: var(--border); border-radius: 4px; overflow: hidden; margin-top: 0.5rem; }
+  .progress-fill { height: 100%; border-radius: 4px; }
+  .approval-box { background: linear-gradient(135deg, rgba(245,158,11,0.1), rgba(99,102,241,0.05)); border: 1px solid var(--warn); border-radius: 12px; padding: 1.5rem; text-align: center; }
+  .approval-box .instruction { font-size: 1rem; margin-bottom: 0.75rem; }
+  code { background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 0.4rem 0.8rem; font-family: var(--font); font-size: 0.9rem; color: var(--accent2); display: inline-block; margin: 0.25rem; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="gate-badge">GATE G4 · TEST REPORT</div>
+  <h1>Integration & E2E Test Report</h1>
+  <div class="meta">Generated: {{DATE}} · Awaiting CTO Approval to Deploy</div>
+</div>
+
+<!-- VERDICT BANNER -->
+<div class="verdict-banner {{VERDICT_CLASS}}">
+  <div class="verdict-icon">{{VERDICT_ICON}}</div>
+  <div class="verdict-text">
+    <div class="label">Overall Verdict</div>
+    <div class="value">{{VERDICT}} — {{VERDICT_SUMMARY}}</div>
+  </div>
+</div>
+
+<!-- STATS -->
+<div class="stats-row">
+  <div class="stat green"><div class="number">{{TOTAL_TESTS}}</div><div class="label">Total Tests</div></div>
+  <div class="stat green"><div class="number">{{PASSING}}</div><div class="label">Passing</div></div>
+  <div class="stat red"><div class="number">{{FAILING}}</div><div class="label">Failing</div></div>
+  <div class="stat yellow"><div class="number">{{SKIPPED}}</div><div class="label">Skipped</div></div>
+  <div class="stat green"><div class="number">{{COVERAGE}}%</div><div class="label">Coverage</div></div>
+</div>
+
+<!-- COVERAGE BY MODULE -->
+<div class="section">
+  <div class="section-title">Coverage by Module</div>
+  <table>
+    <thead><tr><th>Module</th><th>Tests</th><th>Pass</th><th>Coverage</th><th>Bar</th></tr></thead>
+    <tbody>
+      <!-- one row per module -->
+      <tr>
+        <td>{{MODULE}}</td>
+        <td>{{TEST_COUNT}}</td>
+        <td><span class="badge pass">{{PASS_COUNT}}</span></td>
+        <td>{{COVERAGE_PCT}}%</td>
+        <td style="width:200px">
+          <div class="progress-bar">
+            <div class="progress-fill" style="width:{{COVERAGE_PCT}}%; background:{{BAR_COLOR}}"></div>
+          </div>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- FAILING TESTS -->
+<div class="section">
+  <div class="section-title">Failing Tests</div>
+  <table>
+    <thead><tr><th>Test</th><th>Module</th><th>Error</th><th>Severity</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>{{TEST_NAME}}</td>
+        <td>{{MODULE}}</td>
+        <td><div class="error-detail">{{ERROR_MESSAGE}}</div></td>
+        <td><span class="badge {{SEVERITY}}">{{SEVERITY}}</span></td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- E2E USER FLOWS -->
+<div class="section">
+  <div class="section-title">E2E User Flow Results</div>
+  <table>
+    <thead><tr><th>Role</th><th>Flow</th><th>Result</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>Admin</td>
+        <td>{{FLOW_NAME}}</td>
+        <td><span class="badge {{RESULT_CLASS}}">{{RESULT}}</span></td>
+        <td>{{FLOW_NOTES}}</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- KNOWN ISSUES (non-blocking) -->
+<div class="section">
+  <div class="section-title">Known Issues (Non-Blocking)</div>
+  <table>
+    <thead><tr><th>Issue</th><th>Severity</th><th>Workaround</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>{{ISSUE}}</td>
+        <td><span class="badge medium">Medium</span></td>
+        <td>{{WORKAROUND}}</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- APPROVAL -->
+<div class="approval-box">
+  <div class="instruction">Review test results, then reply in Claude Code:</div>
+  <code>approve G4</code>
+  <span style="color:var(--muted); margin: 0 0.5rem;">or</span>
+  <code>approve G4, note: fix failing auth tests first</code>
+</div>
+
+</body>
+</html>

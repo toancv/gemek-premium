@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>G1 — Techstack Report</title>
+<style>
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --border: #2a2d3a;
+    --accent: #6366f1;
+    --accent2: #10b981;
+    --warn: #f59e0b;
+    --danger: #ef4444;
+    --text: #e2e8f0;
+    --muted: #64748b;
+    --font: 'SF Mono', 'Fira Code', monospace;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: -apple-system, sans-serif; padding: 2rem; min-height: 100vh; }
+  .header { border-left: 4px solid var(--accent); padding-left: 1.5rem; margin-bottom: 2.5rem; }
+  .gate-badge { display: inline-block; background: var(--accent); color: white; font-family: var(--font); font-size: 0.7rem; padding: 0.25rem 0.75rem; border-radius: 100px; margin-bottom: 0.75rem; letter-spacing: 0.1em; }
+  h1 { font-size: 1.75rem; font-weight: 700; margin-bottom: 0.25rem; }
+  .meta { color: var(--muted); font-size: 0.85rem; font-family: var(--font); }
+  .section { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; margin-bottom: 1.5rem; }
+  .section-title { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.15em; color: var(--muted); margin-bottom: 1rem; font-family: var(--font); }
+  .stack-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1rem; }
+  .stack-card { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 1.25rem; }
+  .stack-card .layer { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); margin-bottom: 0.4rem; font-family: var(--font); }
+  .stack-card .tech { font-size: 1.1rem; font-weight: 600; color: var(--accent2); margin-bottom: 0.5rem; }
+  .stack-card .reason { font-size: 0.85rem; color: var(--muted); line-height: 1.5; }
+  .alternatives { font-size: 0.75rem; color: var(--muted); margin-top: 0.5rem; font-family: var(--font); }
+  .alternatives span { color: var(--warn); }
+  table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
+  th { text-align: left; padding: 0.6rem 1rem; background: var(--bg); color: var(--muted); font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.1em; font-family: var(--font); }
+  td { padding: 0.75rem 1rem; border-top: 1px solid var(--border); }
+  tr:hover td { background: rgba(99,102,241,0.05); }
+  .tag { display: inline-block; font-size: 0.65rem; padding: 0.2rem 0.5rem; border-radius: 4px; font-family: var(--font); }
+  .tag.high { background: rgba(239,68,68,0.15); color: #fca5a5; }
+  .tag.medium { background: rgba(245,158,11,0.15); color: #fcd34d; }
+  .tag.low { background: rgba(16,185,129,0.15); color: #6ee7b7; }
+  .approval-box { background: linear-gradient(135deg, rgba(99,102,241,0.1), rgba(16,185,129,0.05)); border: 1px solid var(--accent); border-radius: 12px; padding: 1.5rem; text-align: center; }
+  .approval-box .instruction { font-size: 1rem; margin-bottom: 0.75rem; }
+  .approval-box code { background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 0.4rem 0.8rem; font-family: var(--font); font-size: 0.9rem; color: var(--accent2); display: inline-block; margin: 0.25rem; }
+  .arch-diagram { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 1.25rem; font-family: var(--font); font-size: 0.8rem; line-height: 1.8; color: var(--muted); white-space: pre; overflow-x: auto; }
+  .arch-diagram .highlight { color: var(--accent2); }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="gate-badge">GATE G1 · TECHSTACK REPORT</div>
+  <h1>Apartment Management System</h1>
+  <div class="meta">Generated: {{DATE}} · Awaiting CTO Approval</div>
+</div>
+
+<!-- SELECTED STACK -->
+<div class="section">
+  <div class="section-title">Selected Techstack</div>
+  <div class="stack-grid">
+
+    <div class="stack-card">
+      <div class="layer">Backend</div>
+      <div class="tech">{{BACKEND_TECH}}</div>
+      <div class="reason">{{BACKEND_REASON}}</div>
+      <div class="alternatives">Alternatives considered: <span>{{BACKEND_ALTERNATIVES}}</span></div>
+    </div>
+
+    <div class="stack-card">
+      <div class="layer">Frontend</div>
+      <div class="tech">{{FRONTEND_TECH}}</div>
+      <div class="reason">{{FRONTEND_REASON}}</div>
+      <div class="alternatives">Alternatives considered: <span>{{FRONTEND_ALTERNATIVES}}</span></div>
+    </div>
+
+    <div class="stack-card">
+      <div class="layer">Database</div>
+      <div class="tech">{{DATABASE_TECH}}</div>
+      <div class="reason">{{DATABASE_REASON}}</div>
+      <div class="alternatives">Alternatives considered: <span>{{DATABASE_ALTERNATIVES}}</span></div>
+    </div>
+
+    <div class="stack-card">
+      <div class="layer">Auth</div>
+      <div class="tech">{{AUTH_TECH}}</div>
+      <div class="reason">{{AUTH_REASON}}</div>
+      <div class="alternatives">Alternatives considered: <span>{{AUTH_ALTERNATIVES}}</span></div>
+    </div>
+
+    <div class="stack-card">
+      <div class="layer">Infrastructure</div>
+      <div class="tech">{{INFRA_TECH}}</div>
+      <div class="reason">{{INFRA_REASON}}</div>
+      <div class="alternatives">Alternatives considered: <span>{{INFRA_ALTERNATIVES}}</span></div>
+    </div>
+
+    <div class="stack-card">
+      <div class="layer">Other / Supporting</div>
+      <div class="tech">{{OTHER_TECH}}</div>
+      <div class="reason">{{OTHER_REASON}}</div>
+      <div class="alternatives">Alternatives considered: <span>{{OTHER_ALTERNATIVES}}</span></div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ARCHITECTURE OVERVIEW -->
+<div class="section">
+  <div class="section-title">System Architecture</div>
+  <div class="arch-diagram">{{ARCHITECTURE_DIAGRAM}}</div>
+</div>
+
+<!-- MODULE PLAN -->
+<div class="section">
+  <div class="section-title">Module Implementation Plan</div>
+  <table>
+    <thead>
+      <tr>
+        <th>Phase</th>
+        <th>Module</th>
+        <th>Description</th>
+        <th>Priority</th>
+        <th>Estimated Complexity</th>
+      </tr>
+    </thead>
+    <tbody>
+      <!-- PM Agent fills this in -->
+      <tr>
+        <td>Backend</td>
+        <td>Auth</td>
+        <td>Login, JWT, role middleware</td>
+        <td><span class="tag high">High</span></td>
+        <td>Medium</td>
+      </tr>
+      <!-- Add rows per module -->
+    </tbody>
+  </table>
+</div>
+
+<!-- RISKS -->
+<div class="section">
+  <div class="section-title">Known Risks</div>
+  <table>
+    <thead>
+      <tr><th>Risk</th><th>Impact</th><th>Mitigation</th></tr>
+    </thead>
+    <tbody>
+      <!-- PM fills in -->
+    </tbody>
+  </table>
+</div>
+
+<!-- APPROVAL -->
+<div class="approval-box">
+  <div class="instruction">Review techstack above, then reply in Claude Code:</div>
+  <code>approve G1</code>
+  <span style="color:var(--muted); margin: 0 0.5rem;">or</span>
+  <code>approve G1, note: use PostgreSQL instead of MySQL</code>
+</div>
+
+</body>
+</html>

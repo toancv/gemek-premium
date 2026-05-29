@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>⏸ BLOCKER — Decision Required</title>
+<style>
+  :root {
+    --bg: #0f1117; --surface: #1a1d27; --border: #2a2d3a;
+    --accent: #6366f1; --danger: #ef4444; --text: #e2e8f0; --muted: #64748b;
+    --font: 'SF Mono', 'Fira Code', monospace;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: -apple-system, sans-serif; padding: 2rem; }
+  .header { border-left: 4px solid var(--danger); padding-left: 1.5rem; margin-bottom: 2.5rem; }
+  .blocker-badge { display: inline-block; background: var(--danger); color: white; font-family: var(--font); font-size: 0.7rem; padding: 0.25rem 0.75rem; border-radius: 100px; margin-bottom: 0.75rem; letter-spacing: 0.1em; font-weight: 700; }
+  h1 { font-size: 1.75rem; font-weight: 700; margin-bottom: 0.25rem; }
+  .meta { color: var(--muted); font-size: 0.85rem; font-family: var(--font); }
+  .context-box { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; margin-bottom: 1.5rem; }
+  .section-title { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.15em; color: var(--muted); margin-bottom: 1rem; font-family: var(--font); }
+  p { color: var(--muted); font-size: 0.9rem; line-height: 1.7; }
+  .options-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem; }
+  .option-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; }
+  .option-card .option-label { font-family: var(--font); font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); margin-bottom: 0.5rem; }
+  .option-card h2 { font-size: 1.1rem; margin-bottom: 0.75rem; color: var(--accent); }
+  .pros-cons { margin-top: 1rem; }
+  .pros-cons .group { margin-bottom: 0.75rem; }
+  .pros-cons .group-label { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.1em; font-family: var(--font); margin-bottom: 0.3rem; }
+  .pros-cons .group-label.pro { color: #6ee7b7; }
+  .pros-cons .group-label.con { color: #fca5a5; }
+  .pros-cons ul { list-style: none; }
+  .pros-cons li { font-size: 0.83rem; color: var(--muted); padding: 0.2rem 0; }
+  .pros-cons li::before { content: "→ "; color: inherit; opacity: 0.5; }
+  .recommendation { background: rgba(99,102,241,0.08); border: 1px solid rgba(99,102,241,0.3); border-radius: 10px; padding: 1.25rem; margin-bottom: 1.5rem; }
+  .recommendation .rec-label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent); font-family: var(--font); margin-bottom: 0.5rem; }
+  .recommendation p { color: var(--text); }
+  .approval-box { background: rgba(239,68,68,0.08); border: 1px solid var(--danger); border-radius: 12px; padding: 1.5rem; text-align: center; }
+  .approval-box .instruction { font-size: 1rem; margin-bottom: 0.75rem; }
+  code { background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 0.4rem 0.8rem; font-family: var(--font); font-size: 0.85rem; color: #fca5a5; display: inline-block; margin: 0.25rem; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="blocker-badge">⏸ BLOCKER · DECISION REQUIRED</div>
+  <h1>{{BLOCKER_TITLE}}</h1>
+  <div class="meta">Phase: {{CURRENT_PHASE}} · Generated: {{DATE}}</div>
+</div>
+
+<!-- CONTEXT -->
+<div class="context-box">
+  <div class="section-title">Why This Is Blocked</div>
+  <p>{{BLOCKER_CONTEXT}}</p>
+</div>
+
+<!-- OPTIONS -->
+<div class="options-grid">
+  <div class="option-card">
+    <div class="option-label">Option A</div>
+    <h2>{{OPTION_A_TITLE}}</h2>
+    <p style="font-size:0.85rem; color:var(--muted); line-height:1.6;">{{OPTION_A_DESCRIPTION}}</p>
+    <div class="pros-cons">
+      <div class="group">
+        <div class="group-label pro">Pros</div>
+        <ul>
+          <li>{{A_PRO_1}}</li>
+          <li>{{A_PRO_2}}</li>
+        </ul>
+      </div>
+      <div class="group">
+        <div class="group-label con">Cons</div>
+        <ul>
+          <li>{{A_CON_1}}</li>
+          <li>{{A_CON_2}}</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="option-card">
+    <div class="option-label">Option B</div>
+    <h2>{{OPTION_B_TITLE}}</h2>
+    <p style="font-size:0.85rem; color:var(--muted); line-height:1.6;">{{OPTION_B_DESCRIPTION}}</p>
+    <div class="pros-cons">
+      <div class="group">
+        <div class="group-label pro">Pros</div>
+        <ul>
+          <li>{{B_PRO_1}}</li>
+          <li>{{B_PRO_2}}</li>
+        </ul>
+      </div>
+      <div class="group">
+        <div class="group-label con">Cons</div>
+        <ul>
+          <li>{{B_CON_1}}</li>
+          <li>{{B_CON_2}}</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- AGENT RECOMMENDATION -->
+<div class="recommendation">
+  <div class="rec-label">Agent Recommendation</div>
+  <p>{{AGENT_RECOMMENDATION}}</p>
+</div>
+
+<!-- DECISION REQUEST -->
+<div class="approval-box">
+  <div class="instruction">Reply with your decision to unblock:</div>
+  <code>choose A</code>
+  <code>choose B</code>
+  <code>choose A, note: but use X instead of Y</code>
+</div>
+
+</body>
+</html>

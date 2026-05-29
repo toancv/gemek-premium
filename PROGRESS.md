@@ -2,8 +2,8 @@
 
 ## Current State
 - **Phase:** backend
-- **Gate:** G1 approved — backend implementation in progress
-- **Last completed:** Module 7 — Amenity Booking — 2026-05-29
+- **Gate:** G1 approved — backend modules 9-10 in progress
+- **Last completed:** Module 8 — Parking — 2026-05-29
 - **Blocked:** No
 
 ---

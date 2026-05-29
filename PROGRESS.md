@@ -3,7 +3,7 @@
 ## Current State
 - **Phase:** architect
 - **Gate:** G1 pending CTO approval
-- **Last completed:** Architecture design (docs/ARCHITECTURE.md, docs/DB-SCHEMA.sql, docs/API-SPEC.md) — 2026-05-29
+- **Last completed:** Architecture design v2 (updated ticket module) — 2026-05-29
 - **Blocked:** No
 
 ---
@@ -11,9 +11,9 @@
 ## Completed Modules
 | Module | Phase | Tests | Committed |
 |--------|-------|-------|-----------|
-| System Architecture | architect | N/A | No |
-| DB Schema | architect | N/A | No |
-| API Spec | architect | N/A | No |
+| System Architecture v2 | architect | N/A | No |
+| DB Schema v2 | architect | N/A | No |
+| API Spec v2 | architect | N/A | No |
 
 ---
 

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>G1 — Techstack Report</title>
+<title>G1 — Techstack Report v2</title>
 <style>
   :root {
     --bg: #0f1117;
@@ -21,6 +21,7 @@
   body { background: var(--bg); color: var(--text); font-family: -apple-system, sans-serif; padding: 2rem; min-height: 100vh; }
   .header { border-left: 4px solid var(--accent); padding-left: 1.5rem; margin-bottom: 2.5rem; }
   .gate-badge { display: inline-block; background: var(--accent); color: white; font-family: var(--font); font-size: 0.7rem; padding: 0.25rem 0.75rem; border-radius: 100px; margin-bottom: 0.75rem; letter-spacing: 0.1em; }
+  .version-badge { display: inline-block; background: var(--warn); color: #1a1d27; font-family: var(--font); font-size: 0.65rem; padding: 0.2rem 0.6rem; border-radius: 100px; margin-left: 0.5rem; font-weight: 700; }
   h1 { font-size: 1.75rem; font-weight: 700; margin-bottom: 0.25rem; }
   .meta { color: var(--muted); font-size: 0.85rem; font-family: var(--font); }
   .section { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; margin-bottom: 1.5rem; }
@@ -40,68 +41,75 @@
   .tag.high { background: rgba(239,68,68,0.15); color: #fca5a5; }
   .tag.medium { background: rgba(245,158,11,0.15); color: #fcd34d; }
   .tag.low { background: rgba(16,185,129,0.15); color: #6ee7b7; }
+  .tag.info { background: rgba(99,102,241,0.15); color: #a5b4fc; }
   .approval-box { background: linear-gradient(135deg, rgba(99,102,241,0.1), rgba(16,185,129,0.05)); border: 1px solid var(--accent); border-radius: 12px; padding: 1.5rem; text-align: center; }
   .approval-box .instruction { font-size: 1rem; margin-bottom: 0.75rem; }
   .approval-box code { background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 0.4rem 0.8rem; font-family: var(--font); font-size: 0.9rem; color: var(--accent2); display: inline-block; margin: 0.25rem; }
-  .arch-diagram { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 1.25rem; font-family: var(--font); font-size: 0.8rem; line-height: 1.8; color: var(--muted); white-space: pre; overflow-x: auto; }
+  .arch-diagram { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 1.25rem; font-family: var(--font); font-size: 0.78rem; line-height: 1.8; color: var(--muted); white-space: pre; overflow-x: auto; }
   .decision-list { list-style: none; padding: 0; }
   .decision-list li { padding: 0.6rem 0; border-top: 1px solid var(--border); font-size: 0.875rem; line-height: 1.6; }
   .decision-list li:first-child { border-top: none; }
   .decision-list strong { color: var(--accent2); }
+  .routing-table td code { background: rgba(99,102,241,0.1); color: #a5b4fc; padding: 0.1rem 0.4rem; border-radius: 4px; font-family: var(--font); font-size: 0.8rem; }
+  .change-note { background: rgba(245,158,11,0.08); border: 1px solid rgba(245,158,11,0.3); border-radius: 8px; padding: 1rem 1.25rem; margin-bottom: 1.5rem; font-size: 0.875rem; color: var(--warn); }
 </style>
 </head>
 <body>
 
 <div class="header">
-  <div class="gate-badge">GATE G1 · TECHSTACK REPORT</div>
+  <div class="gate-badge">GATE G1 · TECHSTACK REPORT <span class="version-badge">v2 — REVISED</span></div>
   <h1>Apartment Management System</h1>
   <div class="meta">Generated: 2026-05-29 · Awaiting CTO Approval · Scale: ~1000 apartments</div>
 </div>
 
+<div class="change-note">
+  <strong>Revision note:</strong> Business requirements updated. Feature 2 expanded from "Maintenance request tracking" to general <strong>Ticket Management</strong> with 5 categories (MAINTENANCE_REPAIR, COMPLAINT, ADMINISTRATIVE, SUGGESTION_FEEDBACK, OTHER). Only MAINTENANCE_REPAIR tickets can be assigned to contractors. All artifacts regenerated from updated requirements.
+</div>
+
 <!-- SELECTED STACK -->
 <div class="section">
-  <div class="section-title">Selected Techstack</div>
+  <div class="section-title">Selected Techstack — Unchanged from Requirements</div>
   <div class="stack-grid">
 
     <div class="stack-card">
       <div class="layer">Backend</div>
       <div class="tech">Spring Boot 3.3 + Java 21</div>
-      <div class="reason">De-facto enterprise standard. Java 21 virtual threads handle I/O-heavy workloads efficiently. Strong security and data layers. Native Docker image support. Aligns with VTIT team convention.</div>
+      <div class="reason">VTIT team standard. Java 21 virtual threads handle I/O-heavy notification dispatching. Strong security and data layers. Native Docker image support via Buildpacks.</div>
       <div class="alternatives">Alternatives considered: <span>Node.js/Fastify, Python/FastAPI</span></div>
     </div>
 
     <div class="stack-card">
       <div class="layer">Frontend</div>
-      <div class="tech">React 18 + Vite 5 + TypeScript 5 + Tailwind CSS 3</div>
-      <div class="reason">Fast HMR in dev, strong type safety, large ecosystem. shadcn/ui for accessible component system. TanStack Query for server state, Zustand for client state. Two portals: admin (desktop-first) + resident (mobile-first).</div>
+      <div class="tech">React 18 + Vite 5 + TypeScript 5 + Tailwind CSS 3 + shadcn/ui</div>
+      <div class="reason">Fast HMR, strong type safety catches API contract drift early. TanStack Query for server state. Zustand for client state. pnpm workspace: two apps (admin desktop-first + resident mobile-first) sharing packages/ui.</div>
       <div class="alternatives">Alternatives considered: <span>Vue 3/Nuxt, Next.js</span></div>
     </div>
 
     <div class="stack-card">
       <div class="layer">Database</div>
       <div class="tech">PostgreSQL 15</div>
-      <div class="reason">ACID compliant. JSONB for audit log old/new values. Excellent Docker support. Partial indexes for soft-status queries. Proven at this scale (&lt;10 GB for years of operation).</div>
+      <div class="reason">ACID compliant. Native ENUM types for ticket category/status. JSONB for audit log payloads. Partial indexes for SLA queries. Proven at this scale (&lt;10 GB years of operation).</div>
       <div class="alternatives">Alternatives considered: <span>MySQL 8, MariaDB</span></div>
     </div>
 
     <div class="stack-card">
       <div class="layer">Auth</div>
-      <div class="tech">Spring Security 6 + JWT (JJWT 0.12)</div>
-      <div class="reason">Stateless — no session affinity needed. 15-min access tokens + 7-day refresh tokens in Redis. Logout via JWT blocklist in Redis. BCrypt strength 12 for passwords.</div>
+      <div class="tech">Spring Security 6 + JWT (JJWT 0.12) + Redis 7</div>
+      <div class="reason">Stateless — no session affinity needed. 15-min access tokens + 7-day refresh tokens. Logout via JWT blocklist in Redis with TTL. BCrypt strength 12. Redis also handles rate-limiting counters.</div>
       <div class="alternatives">Alternatives considered: <span>Keycloak, Spring Session</span></div>
     </div>
 
     <div class="stack-card">
       <div class="layer">Infrastructure</div>
-      <div class="tech">Docker Compose + Nginx + Redis 7 + MinIO</div>
-      <div class="reason">Required constraint (single-command startup). Nginx serves React build + proxies /api/*. Redis for JWT blocklist and rate limiting. MinIO (S3-compatible, self-hosted) for maintenance photos and contract attachments — no cloud vendor lock-in.</div>
+      <div class="tech">Docker Compose + Nginx 1.25 + MinIO</div>
+      <div class="reason">Required constraint. Nginx serves React build + proxies /api/*. MinIO self-hosted S3-compatible for ticket photos and contract attachments. Object keys stored in DB; presigned GET URLs issued on demand.</div>
       <div class="alternatives">Alternatives considered: <span>AWS S3, Cloudflare R2</span></div>
     </div>
 
     <div class="stack-card">
       <div class="layer">Migrations + Notifications</div>
-      <div class="tech">Flyway + Firebase FCM + JavaMailSender + SMS interface</div>
-      <div class="reason">Flyway: SQL-first, version-controlled schema changes applied on startup. FCM: push notifications to residents (free tier sufficient). JavaMailSender over configurable SMTP. SMS behind pluggable interface — no-op by default, swap in real Vietnamese telco provider without code change.</div>
+      <div class="tech">Flyway + Firebase FCM + JavaMailSender + SmsGateway interface</div>
+      <div class="reason">Flyway: SQL-first version-controlled schema. FCM free tier covers 1000 residents. SMTP via JavaMailSender. SMS abstracted behind SmsGateway interface (no-op default; real Vietnamese telco provider injected via @ConditionalOnProperty).</div>
       <div class="alternatives">Alternatives considered: <span>Liquibase, AWS SNS</span></div>
     </div>
 
@@ -112,42 +120,94 @@
 <div class="section">
   <div class="section-title">System Architecture — Modular Monolith</div>
   <div class="arch-diagram">
-+---------------------------------------------------------------------+
-|                          Docker Compose Network                      |
-|                                                                      |
-|  +----------+    +---------------------------------------------+    |
-|  |  Nginx   |    |              Spring Boot 3 (API)             |    |
-|  |  :80/443 +--&gt; |                  :8080                       |    |
-|  |          |    |  +-----------+  +----------+  +----------+  |    |
-|  |  /       |    |  |   Auth    |  |Residents |  |Maintnce  |  |    |
-|  |  (React) |    |  |  Module   |  | Module   |  | Module   |  |    |
-|  |          |    |  +-----------+  +----------+  +----------+  |    |
-|  |  /api/*  |    |  |Amenities  |  |Contracts |  |Parking   |  |    |
-|  |  (proxy) |    |  |  Module   |  |  Module  |  | Module   |  |    |
-|  +----------+    |  +-----------+  +----------+  +----------+  |    |
-|                  |  |Announce   |  | Reports  |  |  RBAC /  |  |    |
-|                  |  |  Module   |  |  Module  |  |  Audit   |  |    |
-|                  |  +-----------+  +----------+  +----------+  |    |
-|                  |                                              |    |
-|                  |  +--------------------------------------+   |    |
-|                  |  |  JWT Filter | Audit AOP | Rate Limit |   |    |
-|                  |  +--------------------------------------+   |    |
-|                  +-------+----------+-----------+----------+    |
-|                          |          |           |               |
-|                  +-------v------+ +-v-------+ +-v----------+   |
-|                  |  PostgreSQL  | |  Redis  | |   MinIO    |   |
-|                  |     :5432    | |  :6379  | |   :9000    |   |
-|                  +--------------+ +---------+ +------------+   |
-|                                                                      |
-|  +--------------------------------------------------------------+   |
-|  |  Firebase FCM (push) | SMTP Relay (email) | SMS Gateway      |   |
-|  +--------------------------------------------------------------+   |
-+---------------------------------------------------------------------+
++-------------------------------------------------------------------------+
+|                          Docker Compose Network                          |
+|                                                                          |
+|  +--------------+    +-------------------------------------------+      |
+|  |    Nginx     |    |         Spring Boot 3 (API)  :8080          |      |
+|  |  :80 / :443  +--&gt; |                                             |      |
+|  |              |    |  +----------+  +-----------+  +----------+ |      |
+|  |  /           |    |  |   Auth   |  |   Users   |  |Apartments| |      |
+|  |  (React SPA) |    |  |  Module  |  |  Module   |  | &amp; Blocks | |      |
+|  |              |    |  +----------+  +-----------+  +----------+ |      |
+|  |  /api/*      |    |  |Residents |  |  Tickets  |  | Parking  | |      |
+|  |  (proxy)     |    |  |  Module  |  |  Module   |  |  Module  | |      |
+|  +--------------+    |  +----------+  +-----------+  +----------+ |      |
+|                      |  |Amenities |  |Contractors|  |Announce- | |      |
+|                      |  |  Module  |  |&amp; Contracts|  |  ments   | |      |
+|                      |  +----------+  +-----------+  +----------+ |      |
+|                      |  | Reports  |  |  RBAC /   |  |  Files / | |      |
+|                      |  |  Module  |  |   Audit   |  |  MinIO   | |      |
+|                      |  +----------+  +-----------+  +----------+ |      |
+|                      |                                             |      |
+|                      |  +---------------------------------------+  |      |
+|                      |  | JWT Filter | Audit AOP | Rate Limiter |  |      |
+|                      |  | Global Exception Handler | MinIO Client|  |      |
+|                      |  | Notification Service (FCM/SMTP/SMS)   |  |      |
+|                      |  +---------------------------------------+  |      |
+|                      +-------+----------+-----------+----------+   |      |
+|                              |          |           |               |      |
+|                  +-----------v---+ +----v----+ +----v-------+       |      |
+|                  |  PostgreSQL   | |  Redis  | |   MinIO    |       |      |
+|                  |     :5432     | |  :6379  | | :9000/9001 |       |      |
+|                  +---------------+ +---------+ +------------+       |      |
+|                                                                      |      |
+|  +----------------------------------------------------------------+  |      |
+|  | Firebase FCM (push) | SMTP Relay (email) | SMS Gateway (plugg) |  |      |
+|  +----------------------------------------------------------------+  |      |
++-------------------------------------------------------------------------+
 
-  Admin Portal  (desktop-first)  --&gt;  Nginx :80 -&gt; React SPA -&gt; /api/*
-  Resident Portal (mobile-first) --&gt;  Nginx :80 -&gt; React SPA -&gt; /api/*
-  (Two separate React apps in pnpm workspace — admin/ and resident/)
+  Admin Portal  (desktop-first)  --&gt;  Nginx -&gt; apps/admin  React SPA -&gt; /api/*
+  Resident Portal (mobile-first) --&gt;  Nginx -&gt; apps/resident React SPA -&gt; /api/*
   </div>
+</div>
+
+<!-- TICKET ROUTING -->
+<div class="section">
+  <div class="section-title">Ticket Category Routing Rules (Key Business Logic)</div>
+  <table class="routing-table">
+    <thead>
+      <tr><th>Category</th><th>Description</th><th>Assignable To</th><th>Contractor Allowed</th><th>SLA Default</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>MAINTENANCE_REPAIR</code></td>
+        <td>Physical repair, equipment failure, infrastructure issue</td>
+        <td>Internal staff OR contractor</td>
+        <td><span class="tag low">Yes</span></td>
+        <td>24h</td>
+      </tr>
+      <tr>
+        <td><code>COMPLAINT</code></td>
+        <td>Noise, neighbor dispute, cleanliness, security</td>
+        <td>Internal staff only</td>
+        <td><span class="tag high">No</span></td>
+        <td>48h</td>
+      </tr>
+      <tr>
+        <td><code>ADMINISTRATIVE</code></td>
+        <td>Document request, key card issue, info update</td>
+        <td>Admin / staff only</td>
+        <td><span class="tag high">No</span></td>
+        <td>72h</td>
+      </tr>
+      <tr>
+        <td><code>SUGGESTION_FEEDBACK</code></td>
+        <td>Ideas, feedback, suggestions</td>
+        <td>Admin review queue (no assignee required)</td>
+        <td><span class="tag high">No</span></td>
+        <td>None (best-effort)</td>
+      </tr>
+      <tr>
+        <td><code>OTHER</code></td>
+        <td>Catch-all</td>
+        <td>Internal staff</td>
+        <td><span class="tag high">No</span></td>
+        <td>72h</td>
+      </tr>
+    </tbody>
+  </table>
+  <p style="margin-top:1rem; font-size:0.8rem; color:var(--muted);">Enforcement: PostgreSQL CHECK constraint at DB level + service layer validation returns <code>400 CONTRACTOR_ASSIGNMENT_NOT_ALLOWED</code> before hitting DB.</p>
 </div>
 
 <!-- MODULE PLAN -->
@@ -155,112 +215,21 @@
   <div class="section-title">Module Implementation Plan</div>
   <table>
     <thead>
-      <tr>
-        <th>#</th>
-        <th>Phase</th>
-        <th>Module</th>
-        <th>Description</th>
-        <th>Priority</th>
-        <th>Complexity</th>
-      </tr>
+      <tr><th>#</th><th>Phase</th><th>Module</th><th>Description</th><th>Priority</th><th>Complexity</th></tr>
     </thead>
     <tbody>
-      <tr>
-        <td>1</td>
-        <td>Backend</td>
-        <td>Auth + RBAC</td>
-        <td>Login, JWT, refresh, logout, role middleware, account management</td>
-        <td><span class="tag high">High</span></td>
-        <td>Medium</td>
-      </tr>
-      <tr>
-        <td>2</td>
-        <td>Backend</td>
-        <td>Apartments &amp; Blocks</td>
-        <td>Block/apartment CRUD, floor/unit structure, status management</td>
-        <td><span class="tag high">High</span></td>
-        <td>Low</td>
-      </tr>
-      <tr>
-        <td>3</td>
-        <td>Backend</td>
-        <td>Residents &amp; Vehicles</td>
-        <td>Owner/tenant profiles, resident history, vehicle registration</td>
-        <td><span class="tag high">High</span></td>
-        <td>Medium</td>
-      </tr>
-      <tr>
-        <td>4</td>
-        <td>Backend</td>
-        <td>Maintenance Requests</td>
-        <td>Submit with photos, assign to staff/contractor, status flow, SLA, rating</td>
-        <td><span class="tag high">High</span></td>
-        <td>High</td>
-      </tr>
-      <tr>
-        <td>5</td>
-        <td>Backend</td>
-        <td>Contractors &amp; Contracts</td>
-        <td>Vendor profiles, contracts, payment records, maintenance schedules, expiry alerts</td>
-        <td><span class="tag high">High</span></td>
-        <td>High</td>
-      </tr>
-      <tr>
-        <td>6</td>
-        <td>Backend</td>
-        <td>Announcements</td>
-        <td>Create/target by block/floor/all, push/email/SMS dispatch, read confirmation</td>
-        <td><span class="tag medium">Medium</span></td>
-        <td>Medium</td>
-      </tr>
-      <tr>
-        <td>7</td>
-        <td>Backend</td>
-        <td>Amenity Booking</td>
-        <td>Amenity CRUD, availability calendar, booking flow, approval, conflict prevention</td>
-        <td><span class="tag medium">Medium</span></td>
-        <td>High</td>
-      </tr>
-      <tr>
-        <td>8</td>
-        <td>Backend</td>
-        <td>Parking</td>
-        <td>Slot assignment, vehicle registration, parking cards, guest vehicle log</td>
-        <td><span class="tag medium">Medium</span></td>
-        <td>Medium</td>
-      </tr>
-      <tr>
-        <td>9</td>
-        <td>Backend</td>
-        <td>Reports &amp; Dashboard</td>
-        <td>Maintenance stats, amenity usage, contracts expiring, role-filtered access</td>
-        <td><span class="tag medium">Medium</span></td>
-        <td>Low</td>
-      </tr>
-      <tr>
-        <td>10</td>
-        <td>Backend</td>
-        <td>Notifications</td>
-        <td>In-app notification list, mark read, FCM/email delivery wiring</td>
-        <td><span class="tag low">Low</span></td>
-        <td>Low</td>
-      </tr>
-      <tr>
-        <td>11</td>
-        <td>Frontend</td>
-        <td>Admin Portal</td>
-        <td>All operational modules — desktop-first, full CRUD, dashboards</td>
-        <td><span class="tag high">High</span></td>
-        <td>High</td>
-      </tr>
-      <tr>
-        <td>12</td>
-        <td>Frontend</td>
-        <td>Resident Portal</td>
-        <td>Mobile-first: maintenance submission, booking, announcements, profile</td>
-        <td><span class="tag high">High</span></td>
-        <td>Medium</td>
-      </tr>
+      <tr><td>1</td><td>Backend</td><td>Auth + RBAC</td><td>Login, JWT, refresh, logout, FCM token update, role middleware, account management</td><td><span class="tag high">High</span></td><td>Medium</td></tr>
+      <tr><td>2</td><td>Backend</td><td>Apartments &amp; Blocks</td><td>Block/apartment CRUD, floor/unit structure, status management</td><td><span class="tag high">High</span></td><td>Low</td></tr>
+      <tr><td>3</td><td>Backend</td><td>Residents &amp; Vehicles</td><td>Owner/tenant profiles, resident history, vehicle registration</td><td><span class="tag high">High</span></td><td>Medium</td></tr>
+      <tr><td>4</td><td>Backend</td><td><strong>Ticket Management</strong></td><td>Submit with photos, category routing, assign to staff/contractor (MAINTENANCE_REPAIR only), status flow, SLA per category, rating</td><td><span class="tag high">High</span></td><td>High</td></tr>
+      <tr><td>5</td><td>Backend</td><td>Contractors &amp; Contracts</td><td>Vendor profiles, contracts, payment records, maintenance schedules, expiry alerts, contractor ratings from MAINTENANCE_REPAIR tickets</td><td><span class="tag high">High</span></td><td>High</td></tr>
+      <tr><td>6</td><td>Backend</td><td>Announcements</td><td>Create/target by block/floor/all, push/email/SMS dispatch, read confirmation</td><td><span class="tag medium">Medium</span></td><td>Medium</td></tr>
+      <tr><td>7</td><td>Backend</td><td>Amenity Booking</td><td>Amenity CRUD, availability calendar, booking flow, approval, SELECT FOR UPDATE conflict prevention</td><td><span class="tag medium">Medium</span></td><td>High</td></tr>
+      <tr><td>8</td><td>Backend</td><td>Parking</td><td>Slot assignment, vehicle registration, parking cards, guest vehicle log</td><td><span class="tag medium">Medium</span></td><td>Medium</td></tr>
+      <tr><td>9</td><td>Backend</td><td>Reports &amp; Dashboard</td><td>Ticket stats BY CATEGORY, amenity usage, contracts expiring, role-filtered access</td><td><span class="tag medium">Medium</span></td><td>Low</td></tr>
+      <tr><td>10</td><td>Backend</td><td>Notifications</td><td>In-app notification list, mark read, FCM/email delivery wiring</td><td><span class="tag low">Low</span></td><td>Low</td></tr>
+      <tr><td>11</td><td>Frontend</td><td>Admin Portal</td><td>All operational modules — desktop-first, full CRUD, dashboards, ticket queue by category</td><td><span class="tag high">High</span></td><td>High</td></tr>
+      <tr><td>12</td><td>Frontend</td><td>Resident Portal</td><td>Mobile-first: ticket submission (any category), booking, announcements, profile</td><td><span class="tag high">High</span></td><td>Medium</td></tr>
     </tbody>
   </table>
 </div>
@@ -269,78 +238,29 @@
 <div class="section">
   <div class="section-title">Key Architectural Decisions</div>
   <ul class="decision-list">
-    <li><strong>Modular Monolith over Microservices</strong> — 1000 apartments, small team. Distributed services overhead unjustified. Internal module boundaries clean for future extraction.</li>
-    <li><strong>Single PostgreSQL instance, no schema sharding</strong> — Data volume &lt;10 GB for years of operation. Cross-module joins trivial. Shared connection pool.</li>
-    <li><strong>UUID primary keys throughout</strong> — Sequential integers allow enumeration attacks. gen_random_uuid() prevents this at no meaningful performance cost.</li>
-    <li><strong>MinIO: store object keys, not full URLs</strong> — DB stores keys (e.g., maintenance/2026/05/uuid.jpg). Backend issues presigned GET URLs on demand with 1-hour expiry. URLs never expire in DB.</li>
-    <li><strong>SLA deadline computed at INSERT time</strong> — Stored as created_at + category.sla_hours. SLA scheduler runs simple indexed range query without joining categories on every cycle.</li>
-    <li><strong>Notification delivery: fire-and-forget</strong> — FCM/SMTP/SMS failures logged at WARN, do not roll back business transaction. In-app record always created.</li>
-    <li><strong>Two separate React apps in pnpm workspace</strong> — admin/ (desktop-first) + resident/ (mobile-first). Shared packages/ui component library.</li>
-    <li><strong>SMS gateway: pluggable no-op by default</strong> — SmsGateway interface; real Vietnamese telco provider injected via @ConditionalOnProperty without code change.</li>
+    <li><strong>Modular Monolith over Microservices</strong> — 1000 apartments, small team. Distributed services overhead unjustified. Cross-module operations (assign ticket → update contractor rating) benefit from single transaction.</li>
+    <li><strong>Ticket module (not maintenance module)</strong> — Feature 2 expanded to general resident request tracking. Single <code>tickets</code> table with category ENUM handles all request types. Contractor assignment constrained at DB level to MAINTENANCE_REPAIR only.</li>
+    <li><strong>DB-level routing enforcement</strong> — CHECK constraint <code>assigned_to_contractor_id IS NULL OR category = 'MAINTENANCE_REPAIR'</code> prevents invalid assignments even if service layer is bypassed.</li>
+    <li><strong>SLA per category, stored at INSERT</strong> — <code>sla_deadline = created_at + category.sla_hours</code> stored on ticket. Partial index on <code>(sla_deadline) WHERE status NOT IN ('DONE','CANCELLED')</code> keeps hourly scheduler fast.</li>
+    <li><strong>UUID PKs throughout</strong> — Sequential integers allow enumeration attacks. No meaningful performance cost at this scale.</li>
+    <li><strong>MinIO: object keys not full URLs</strong> — DB stores keys (e.g., <code>tickets/2026/05/uuid.jpg</code>). Presigned GET URLs with 1-hour expiry issued on demand by backend.</li>
+    <li><strong>Notification delivery: fire-and-forget</strong> — FCM/SMTP/SMS failures logged WARN, never roll back business transaction. In-app record always created.</li>
+    <li><strong>SMS: pluggable no-op interface</strong> — SmsGateway interface; real Vietnamese telco provider injected via @ConditionalOnProperty without code change.</li>
+    <li><strong>SUGGESTION_FEEDBACK special flow</strong> — No assignee required. Admin can close directly NEW → DONE. No SLA enforced (best-effort).</li>
   </ul>
-</div>
-
-<!-- RISKS -->
-<div class="section">
-  <div class="section-title">Known Risks</div>
-  <table>
-    <thead>
-      <tr><th>Risk</th><th>Likelihood</th><th>Impact</th><th>Mitigation</th></tr>
-    </thead>
-    <tbody>
-      <tr>
-        <td>MinIO disk fills up (photos, PDFs)</td>
-        <td><span class="tag medium">Medium</span></td>
-        <td><span class="tag high">High</span></td>
-        <td>MinIO lifecycle policy to archive old objects; disk usage monitoring alert</td>
-      </tr>
-      <tr>
-        <td>Amenity double-booking under concurrent load</td>
-        <td><span class="tag low">Low</span></td>
-        <td><span class="tag high">High</span></td>
-        <td>SELECT FOR UPDATE at DB level before inserting booking record</td>
-      </tr>
-      <tr>
-        <td>Redis unavailable — JWT blocklist inaccessible</td>
-        <td><span class="tag low">Low</span></td>
-        <td><span class="tag medium">Medium</span></td>
-        <td>Fail-open; 15-minute access token lifetime limits exposure window</td>
-      </tr>
-      <tr>
-        <td>Flyway migration fails on startup</td>
-        <td><span class="tag low">Low</span></td>
-        <td><span class="tag high">High</span></td>
-        <td>Migrations tested in CI; V-versioned, never edited after deploy</td>
-      </tr>
-      <tr>
-        <td>FCM token expiry (residents reinstall app)</td>
-        <td><span class="tag medium">Medium</span></td>
-        <td><span class="tag low">Low</span></td>
-        <td>Token refresh on app startup; dead tokens cleaned periodically</td>
-      </tr>
-      <tr>
-        <td>SLA scheduler misses breaches during downtime</td>
-        <td><span class="tag low">Low</span></td>
-        <td><span class="tag medium">Medium</span></td>
-        <td>Scheduler is idempotent; catches up on restart with indexed range query</td>
-      </tr>
-    </tbody>
-  </table>
 </div>
 
 <!-- DB SCHEMA SUMMARY -->
 <div class="section">
-  <div class="section-title">Database Schema — Table Summary (20 tables)</div>
+  <div class="section-title">Database Schema — Table Summary (~20 tables)</div>
   <table>
-    <thead>
-      <tr><th>Domain</th><th>Tables</th></tr>
-    </thead>
+    <thead><tr><th>Domain</th><th>Tables</th></tr></thead>
     <tbody>
       <tr><td>Identity</td><td>users</td></tr>
       <tr><td>Property</td><td>blocks, apartments</td></tr>
       <tr><td>Residents</td><td>residents, resident_history, vehicles</td></tr>
       <tr><td>Parking</td><td>parking_slots, parking_assignments, guest_vehicles</td></tr>
-      <tr><td>Maintenance</td><td>maintenance_categories, maintenance_requests, maintenance_photos, maintenance_status_history</td></tr>
+      <tr><td><strong>Tickets</strong></td><td><strong>tickets</strong>, ticket_photos, ticket_status_history <span style="color:var(--warn); font-size:0.75rem;">(replaces maintenance_requests)</span></td></tr>
       <tr><td>Amenities</td><td>amenities, amenity_bookings</td></tr>
       <tr><td>Contractors</td><td>contractors, contracts, contract_payments, maintenance_schedules</td></tr>
       <tr><td>Communications</td><td>announcements, announcement_reads, notifications</td></tr>
@@ -349,27 +269,40 @@
   </table>
 </div>
 
-<!-- API SCOPE SUMMARY -->
+<!-- API SCOPE -->
 <div class="section">
   <div class="section-title">API Scope — Endpoint Domains</div>
   <table>
-    <thead>
-      <tr><th>Domain</th><th>Base Path</th><th>Key Operations</th></tr>
-    </thead>
+    <thead><tr><th>Domain</th><th>Base Path</th><th>Key Operations</th></tr></thead>
     <tbody>
-      <tr><td>Auth</td><td>/api/auth</td><td>login, refresh, logout, me</td></tr>
+      <tr><td>Auth</td><td>/api/auth</td><td>login, refresh, logout, me, fcm-token update</td></tr>
       <tr><td>Users</td><td>/api/users</td><td>CRUD, role management (admin only)</td></tr>
       <tr><td>Apartments &amp; Blocks</td><td>/api/blocks, /api/apartments</td><td>CRUD, filter by block/floor/status</td></tr>
-      <tr><td>Residents</td><td>/api/residents</td><td>CRUD, history, primary contact toggle</td></tr>
-      <tr><td>Vehicles</td><td>/api/vehicles</td><td>CRUD per apartment/resident</td></tr>
-      <tr><td>Maintenance</td><td>/api/maintenance</td><td>submit, assign, status update, photos, rate, SLA report</td></tr>
-      <tr><td>Amenities</td><td>/api/amenities</td><td>CRUD amenities, booking create/approve/reject, availability calendar</td></tr>
+      <tr><td>Residents</td><td>/api/residents</td><td>CRUD, history, vehicles</td></tr>
+      <tr><td><strong>Tickets</strong></td><td><strong>/api/tickets</strong></td><td>submit, list (filter by category/status/priority), assign staff or contractor, status update, photos, rate, SLA report by category</td></tr>
+      <tr><td>Amenities</td><td>/api/amenities</td><td>CRUD amenities, booking CRUD, approve/reject, availability calendar</td></tr>
       <tr><td>Contractors</td><td>/api/contractors</td><td>CRUD contractors, CRUD contracts, payment records, schedules</td></tr>
       <tr><td>Parking</td><td>/api/parking</td><td>slot CRUD, assign/unassign, guest vehicle log</td></tr>
-      <tr><td>Announcements</td><td>/api/announcements</td><td>create, list, target by scope, mark read</td></tr>
-      <tr><td>Reports</td><td>/api/reports</td><td>maintenance stats, amenity usage, expiring contracts</td></tr>
+      <tr><td>Announcements</td><td>/api/announcements</td><td>create, list, mark read, target by scope</td></tr>
+      <tr><td>Reports</td><td>/api/reports</td><td>ticket stats by category, amenity usage, expiring contracts</td></tr>
       <tr><td>Notifications</td><td>/api/notifications</td><td>list, mark read, mark all read</td></tr>
       <tr><td>Files</td><td>/api/files</td><td>presigned URL generation</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- RISKS -->
+<div class="section">
+  <div class="section-title">Known Risks</div>
+  <table>
+    <thead><tr><th>Risk</th><th>Likelihood</th><th>Impact</th><th>Mitigation</th></tr></thead>
+    <tbody>
+      <tr><td>MinIO disk fills up (photos, PDFs)</td><td><span class="tag medium">Medium</span></td><td><span class="tag high">High</span></td><td>MinIO lifecycle policy; disk usage monitoring alert</td></tr>
+      <tr><td>Amenity double-booking under concurrent load</td><td><span class="tag low">Low</span></td><td><span class="tag high">High</span></td><td>SELECT FOR UPDATE at DB level before inserting booking</td></tr>
+      <tr><td>Redis unavailable — JWT blocklist inaccessible</td><td><span class="tag low">Low</span></td><td><span class="tag medium">Medium</span></td><td>Fail-open; 15-minute access token lifetime limits exposure</td></tr>
+      <tr><td>Flyway migration fails on startup</td><td><span class="tag low">Low</span></td><td><span class="tag high">High</span></td><td>Migrations tested in CI; V-versioned, never edited after deploy</td></tr>
+      <tr><td>FCM token expiry (app reinstalls)</td><td><span class="tag medium">Medium</span></td><td><span class="tag low">Low</span></td><td>PUT /api/auth/me/fcm-token on app startup; dead token cleanup</td></tr>
+      <tr><td>Staff accidentally assigned MAINTENANCE_REPAIR ticket to contractor when category should be COMPLAINT</td><td><span class="tag low">Low</span></td><td><span class="tag medium">Medium</span></td><td>DB CHECK constraint rejects; UI hides contractor field for non-MAINTENANCE_REPAIR tickets</td></tr>
     </tbody>
   </table>
 </div>

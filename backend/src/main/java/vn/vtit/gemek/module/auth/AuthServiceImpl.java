@@ -31,6 +31,8 @@ import vn.vtit.gemek.module.user.mapper.UserMapper;
 import vn.vtit.gemek.module.user.repository.UserRepository;
 
 import java.time.OffsetDateTime;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
@@ -214,10 +216,15 @@ public class AuthServiceImpl implements AuthService {
             }
 
             // Delete all refresh tokens for this user to invalidate all sessions.
-            // Pattern-based delete: refresh:{userId}:*
+            // SECURITY-FIX: SEC-14 — use cursor SCAN instead of blocking O(N) KEYS command
             String pattern = REFRESH_KEY_PREFIX + principal.getId() + ":*";
-            var keys = redisTemplate.keys(pattern);
-            if (keys != null && !keys.isEmpty()) {
+            List<String> keys = new ArrayList<>();
+            try (var cursor = redisTemplate.scan(
+                    org.springframework.data.redis.core.ScanOptions.scanOptions()
+                            .match(pattern).count(100).build())) {
+                cursor.forEachRemaining(keys::add);
+            }
+            if (!keys.isEmpty()) {
                 redisTemplate.delete(keys);
             }
 

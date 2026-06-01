@@ -183,12 +183,13 @@ class VehicleControllerTest {
     @Test
     @DisplayName("POST /api/vehicles — ADMIN registers vehicle, returns 201")
     void createVehicle_adminRole_returns201() throws Exception {
-        UUID blockId = createBlock("VehBlock-Create-" + System.nanoTime());
-        UUID apartmentId = createApartment(blockId, "V101");
-        UUID userId = createResidentUser("veh.create." + System.nanoTime() + "@test.com");
+        String uid = UUID.randomUUID().toString().replace("-", "").substring(0, 8);
+        UUID blockId = createBlock("VehBlock-Create-" + uid);
+        UUID apartmentId = createApartment(blockId, "V1-" + uid);
+        UUID userId = createResidentUser("veh.create." + uid + "@test.com");
         UUID residentId = createResident(userId, apartmentId);
 
-        String plate = "51A-" + System.nanoTime() % 100000;
+        String plate = "51A-" + uid;
         CreateVehicleRequest req = new CreateVehicleRequest(
                 residentId, apartmentId, VehicleType.CAR, plate, "Toyota", "Camry", "White", null);
 
@@ -205,12 +206,13 @@ class VehicleControllerTest {
     @Test
     @DisplayName("POST /api/vehicles — duplicate license plate returns 409 CONFLICT")
     void createVehicle_duplicatePlate_returns409() throws Exception {
-        UUID blockId = createBlock("VehBlock-Dup-" + System.nanoTime());
-        UUID apartmentId = createApartment(blockId, "V201");
-        UUID userId = createResidentUser("veh.dup." + System.nanoTime() + "@test.com");
+        String uid2 = UUID.randomUUID().toString().replace("-", "").substring(0, 8);
+        UUID blockId = createBlock("VehBlock-Dup-" + uid2);
+        UUID apartmentId = createApartment(blockId, "V2-" + uid2);
+        UUID userId = createResidentUser("veh.dup." + uid2 + "@test.com");
         UUID residentId = createResident(userId, apartmentId);
 
-        String plate = "51B-DUP" + System.nanoTime() % 10000;
+        String plate = "51B-" + uid2;
         createVehicle(residentId, apartmentId, plate);
 
         // Second vehicle with same plate must conflict.
@@ -231,13 +233,14 @@ class VehicleControllerTest {
     @Test
     @DisplayName("GET /api/vehicles/{id} — RESIDENT reads vehicle in own apartment, returns 200")
     void getVehicle_residentOwnApartment_returns200() throws Exception {
-        UUID blockId = createBlock("VehBlock-Own-" + System.nanoTime());
-        UUID apartmentId = createApartment(blockId, "V301");
-        String email = "veh.own." + System.nanoTime() + "@test.com";
+        String uid3 = UUID.randomUUID().toString().replace("-", "").substring(0, 8);
+        UUID blockId = createBlock("VehBlock-Own-" + uid3);
+        UUID apartmentId = createApartment(blockId, "V3-" + uid3);
+        String email = "veh.own." + uid3 + "@test.com";
         UUID userId = createResidentUser(email);
         UUID residentId = createResident(userId, apartmentId);
 
-        String plate = "51C-" + System.nanoTime() % 100000;
+        String plate = "51C-" + uid3;
         UUID vehicleId = createVehicle(residentId, apartmentId, plate);
 
         String residentToken = loginAs(email);
@@ -251,12 +254,13 @@ class VehicleControllerTest {
     @Test
     @DisplayName("GET /api/vehicles/{id} — RESIDENT accessing vehicle in another apartment returns 403")
     void getVehicle_residentOtherApartment_returns403() throws Exception {
-        UUID blockId = createBlock("VehBlock-Other-" + System.nanoTime());
-        UUID aptA = createApartment(blockId, "V401");
-        UUID aptB = createApartment(blockId, "V402");
+        String uid4 = UUID.randomUUID().toString().replace("-", "").substring(0, 8);
+        UUID blockId = createBlock("VehBlock-Other-" + uid4);
+        UUID aptA = createApartment(blockId, "V4A-" + uid4);
+        UUID aptB = createApartment(blockId, "V4B-" + uid4);
 
-        String emailA = "veh.otherA." + System.nanoTime() + "@test.com";
-        String emailB = "veh.otherB." + System.nanoTime() + "@test.com";
+        String emailA = "veh.otherA." + uid4 + "@test.com";
+        String emailB = "veh.otherB." + uid4 + "@test.com";
         UUID userA = createResidentUser(emailA);
         UUID userB = createResidentUser(emailB);
 
@@ -264,7 +268,7 @@ class VehicleControllerTest {
         createResident(userB, aptB);
 
         // Vehicle registered to apartment A.
-        String plate = "51D-" + System.nanoTime() % 100000;
+        String plate = "51D-" + uid4;
         UUID vehicleId = createVehicle(residentA, aptA, plate);
 
         // Resident B (in apartment B) tries to read vehicle from apartment A.
@@ -283,12 +287,13 @@ class VehicleControllerTest {
     @Test
     @DisplayName("DELETE /api/vehicles/{id} — ADMIN soft-deletes vehicle, returns 204")
     void deleteVehicle_adminRole_returns204() throws Exception {
-        UUID blockId = createBlock("VehBlock-Del-" + System.nanoTime());
-        UUID apartmentId = createApartment(blockId, "V501");
-        UUID userId = createResidentUser("veh.del." + System.nanoTime() + "@test.com");
+        String uid5 = UUID.randomUUID().toString().replace("-", "").substring(0, 8);
+        UUID blockId = createBlock("VehBlock-Del-" + uid5);
+        UUID apartmentId = createApartment(blockId, "V5-" + uid5);
+        UUID userId = createResidentUser("veh.del." + uid5 + "@test.com");
         UUID residentId = createResident(userId, apartmentId);
 
-        String plate = "51E-" + System.nanoTime() % 100000;
+        String plate = "51E-" + uid5;
         UUID vehicleId = createVehicle(residentId, apartmentId, plate);
 
         mockMvc.perform(delete("/api/vehicles/" + vehicleId)

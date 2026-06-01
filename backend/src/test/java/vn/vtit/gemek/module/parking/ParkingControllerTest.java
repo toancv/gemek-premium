@@ -206,13 +206,14 @@ class ParkingControllerTest {
     @Test
     @DisplayName("POST /api/parking/slots/{id}/assign — 201, slot status = OCCUPIED")
     void assignSlot_availableSlot_returns201AndSlotOccupied() throws Exception {
-        UUID blockId = createBlock("ParkBlock-Assign-" + System.nanoTime());
-        UUID apartmentId = createApartment(blockId, "PA" + System.nanoTime() % 10000);
-        UUID userId = createResidentUser("park.assign." + System.nanoTime() + "@test.com");
+        String uid = UUID.randomUUID().toString().replace("-", "").substring(0, 8);
+        UUID blockId = createBlock("ParkBlock-Assign-" + uid);
+        UUID apartmentId = createApartment(blockId, "PA-" + uid);
+        UUID userId = createResidentUser("park.assign." + uid + "@test.com");
         UUID residentId = createResident(userId, apartmentId);
-        String plate = "51A-" + System.nanoTime() % 100000;
+        String plate = "51A-" + uid;
         UUID vehicleId = createVehicle(residentId, apartmentId, plate);
-        UUID slotId = createSlot("S-ASSIGN-" + System.nanoTime() % 10000, ParkingSlotType.CAR);
+        UUID slotId = createSlot("SA-" + uid, ParkingSlotType.CAR);
 
         CreateAssignmentRequest req = new CreateAssignmentRequest(
                 slotId, vehicleId, apartmentId, LocalDate.now(), "PC-001", null);
@@ -234,15 +235,16 @@ class ParkingControllerTest {
     @Test
     @DisplayName("POST /api/parking/slots/{id}/assign on already-assigned slot — 409 CONFLICT")
     void assignSlot_alreadyAssigned_returns409() throws Exception {
-        UUID blockId = createBlock("ParkBlock-Dup-" + System.nanoTime());
-        UUID apartmentId = createApartment(blockId, "PD" + System.nanoTime() % 10000);
-        UUID userId = createResidentUser("park.dup." + System.nanoTime() + "@test.com");
+        String uid2 = UUID.randomUUID().toString().replace("-", "").substring(0, 8);
+        UUID blockId = createBlock("ParkBlock-Dup-" + uid2);
+        UUID apartmentId = createApartment(blockId, "PD-" + uid2);
+        UUID userId = createResidentUser("park.dup." + uid2 + "@test.com");
         UUID residentId = createResident(userId, apartmentId);
-        String plate1 = "52A-" + System.nanoTime() % 100000;
-        String plate2 = "52B-" + (System.nanoTime() + 1) % 100000;
+        String plate1 = "52A-" + uid2;
+        String plate2 = "52B-" + uid2;
         UUID vehicle1 = createVehicle(residentId, apartmentId, plate1);
         UUID vehicle2 = createVehicle(residentId, apartmentId, plate2);
-        UUID slotId = createSlot("S-DUP-" + System.nanoTime() % 10000, ParkingSlotType.CAR);
+        UUID slotId = createSlot("SD-" + uid2, ParkingSlotType.CAR);
 
         // First assignment — must succeed.
         CreateAssignmentRequest req1 = new CreateAssignmentRequest(
@@ -271,13 +273,14 @@ class ParkingControllerTest {
     @Test
     @DisplayName("POST /api/parking/slots/{id}/unassign — 200, slot status = AVAILABLE")
     void unassignSlot_activeAssignment_returns200AndSlotAvailable() throws Exception {
-        UUID blockId = createBlock("ParkBlock-Unassign-" + System.nanoTime());
-        UUID apartmentId = createApartment(blockId, "PU" + System.nanoTime() % 10000);
-        UUID userId = createResidentUser("park.unassign." + System.nanoTime() + "@test.com");
+        String uid3 = UUID.randomUUID().toString().replace("-", "").substring(0, 8);
+        UUID blockId = createBlock("ParkBlock-Unassign-" + uid3);
+        UUID apartmentId = createApartment(blockId, "PU-" + uid3);
+        UUID userId = createResidentUser("park.unassign." + uid3 + "@test.com");
         UUID residentId = createResident(userId, apartmentId);
-        String plate = "53A-" + System.nanoTime() % 100000;
+        String plate = "53A-" + uid3;
         UUID vehicleId = createVehicle(residentId, apartmentId, plate);
-        UUID slotId = createSlot("S-UNASSIGN-" + System.nanoTime() % 10000, ParkingSlotType.CAR);
+        UUID slotId = createSlot("SU-" + uid3, ParkingSlotType.CAR);
 
         // Assign the slot first.
         CreateAssignmentRequest assignReq = new CreateAssignmentRequest(
@@ -304,12 +307,13 @@ class ParkingControllerTest {
     @Test
     @DisplayName("PUT /api/parking/guests/{id}/checkout — 200, exitTime set")
     void checkoutGuest_presentGuest_returns200WithExitTime() throws Exception {
-        UUID blockId = createBlock("ParkBlock-Guest-" + System.nanoTime());
-        UUID apartmentId = createApartment(blockId, "PG" + System.nanoTime() % 10000);
+        String uid4 = UUID.randomUUID().toString().replace("-", "").substring(0, 8);
+        UUID blockId = createBlock("ParkBlock-Guest-" + uid4);
+        UUID apartmentId = createApartment(blockId, "PG-" + uid4);
 
         // Log a guest vehicle entry.
         CreateGuestVehicleRequest logReq = new CreateGuestVehicleRequest(
-                "99Z-" + System.nanoTime() % 100000, "Visitor Name", apartmentId, "Delivery", null);
+                "99Z-" + uid4, "Visitor Name", apartmentId, "Delivery", null);
         MvcResult logResult = mockMvc.perform(post("/api/parking/guests")
                         .header("Authorization", "Bearer " + adminToken)
                         .contentType(MediaType.APPLICATION_JSON)

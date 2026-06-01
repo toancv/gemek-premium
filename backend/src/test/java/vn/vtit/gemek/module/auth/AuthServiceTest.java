@@ -13,6 +13,8 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
+import org.springframework.data.redis.core.Cursor;
+import org.springframework.data.redis.core.ScanOptions;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -188,15 +190,24 @@ class AuthServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    @DisplayName("logout: adds JTI to blocklist and deletes refresh tokens")
+    @DisplayName("logout: adds JTI to blocklist and deletes refresh tokens via SCAN")
+    @SuppressWarnings("unchecked")
     void logout_validToken_blocksJtiAndDeletesRefreshTokens() {
         UserPrincipal principal = new UserPrincipal(testUser);
         String accessToken = "valid.access.token";
 
+        // SECURITY-FIX: SEC-14 — logout now uses SCAN cursor instead of KEYS.
+        // Mock the cursor so forEachRemaining yields one key then stops.
+        Cursor<String> mockCursor = org.mockito.Mockito.mock(Cursor.class);
+        org.mockito.Mockito.doAnswer(inv -> {
+            java.util.function.Consumer<String> consumer = inv.getArgument(0);
+            consumer.accept("refresh:some-key");
+            return null;
+        }).when(mockCursor).forEachRemaining(any());
+
         when(tokenProvider.extractJti(accessToken)).thenReturn("access-jti-uuid");
         when(tokenProvider.getRemainingExpiryMs(accessToken)).thenReturn(300_000L);
-        when(redisTemplate.keys(AuthServiceImpl.REFRESH_KEY_PREFIX + testUser.getId() + ":*"))
-                .thenReturn(java.util.Set.of("refresh:some-key"));
+        when(redisTemplate.scan(any(ScanOptions.class))).thenReturn(mockCursor);
 
         authService.logout(principal, accessToken);
 

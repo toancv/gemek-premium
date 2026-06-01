@@ -85,10 +85,10 @@ public interface ApartmentRepository extends JpaRepository<Apartment, UUID> {
      */
     @Query("""
             SELECT a FROM Apartment a JOIN FETCH a.block b
-            WHERE (:blockId IS NULL OR b.id = :blockId)
-              AND (:floor IS NULL OR a.floor = :floor)
-              AND (:status IS NULL OR a.status = :status)
-              AND (:search IS NULL OR LOWER(a.unitNumber) LIKE LOWER(CONCAT('%', :search, '%')))
+            WHERE b.id = COALESCE(:blockId, b.id)
+              AND a.floor = COALESCE(:floor, a.floor)
+              AND a.status = COALESCE(:status, a.status)
+              AND LOWER(a.unitNumber) LIKE LOWER(CONCAT('%', COALESCE(:search, a.unitNumber), '%'))
             """)
     Page<Apartment> findAllWithFilters(
             @Param("blockId") UUID blockId,

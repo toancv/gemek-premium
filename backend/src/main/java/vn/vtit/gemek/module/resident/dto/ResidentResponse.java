@@ -4,6 +4,7 @@
  */
 package vn.vtit.gemek.module.resident.dto;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -48,6 +49,7 @@ public class ResidentResponse {
     private LocalDate moveOutDate;
 
     /** Whether this resident is the primary contact for the apartment. */
+    @JsonProperty("isPrimaryContact")
     private boolean isPrimaryContact;
 
     /** Optional notes. */

@@ -4,6 +4,7 @@
  */
 package vn.vtit.gemek.module.user.dto;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import vn.vtit.gemek.module.user.entity.UserRole;
 
 import java.time.OffsetDateTime;
@@ -30,7 +31,7 @@ public record UserDetailResponse(
         String phone,
         UserRole role,
         String avatarUrl,
-        boolean isActive,
+        @JsonProperty("isActive") boolean isActive,
         OffsetDateTime lastLoginAt,
         OffsetDateTime createdAt
 ) {}

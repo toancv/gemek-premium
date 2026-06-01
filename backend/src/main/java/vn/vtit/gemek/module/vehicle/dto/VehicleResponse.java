@@ -4,6 +4,7 @@
  */
 package vn.vtit.gemek.module.vehicle.dto;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -50,6 +51,7 @@ public class VehicleResponse {
     private String color;
 
     /** Whether this vehicle registration is active. */
+    @JsonProperty("isActive")
     private boolean isActive;
 
     /** Timestamp when this vehicle record was created. */

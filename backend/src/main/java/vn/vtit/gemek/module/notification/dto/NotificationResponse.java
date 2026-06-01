@@ -4,6 +4,7 @@
  */
 package vn.vtit.gemek.module.notification.dto;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -44,6 +45,7 @@ public class NotificationResponse {
     private String referenceType;
 
     /** Whether the user has marked this notification as read. */
+    @JsonProperty("isRead")
     private boolean isRead;
 
     /** Timestamp when the notification was created. */

@@ -139,7 +139,10 @@ public class ReportServiceImpl implements ReportService {
         log.debug("Ticket report: from={} to={} groupBy={}", effectiveFrom, effectiveTo, effectiveGroupBy);
 
         // Summary row
-        Object[] summaryRow = ticketRepository.getTicketSummary(fromDt, toDt, category, apartmentId);
+        List<Object[]> summaryRows = ticketRepository.getTicketSummary(fromDt, toDt, category, apartmentId);
+        Object[] summaryRow = summaryRows.isEmpty()
+                ? new Object[]{0L, 0L, 0L, 0L, 0L, 0L, 0.0}
+                : summaryRows.get(0);
         TicketReportResponse.Summary summary = buildTicketSummary(summaryRow);
 
         // Breakdown rows
@@ -254,7 +257,10 @@ public class ReportServiceImpl implements ReportService {
         log.debug("Resident report: blockId={}", blockId);
 
         long totalApartments = apartmentRepository.countByOptionalBlock(blockId);
-        Object[] demo = residentRepository.getResidentDemographics(blockId);
+        List<Object[]> demoRows = residentRepository.getResidentDemographics(blockId);
+        Object[] demo = demoRows.isEmpty()
+                ? new Object[]{0L, 0L, 0L, 0L}
+                : demoRows.get(0);
 
         // Row: [totalActive, owners, tenants, occupiedApartments]
         long totalActive = toLong(demo[0]);

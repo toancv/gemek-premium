@@ -79,7 +79,7 @@ public interface TicketRepository extends JpaRepository<Ticket, UUID>, JpaSpecif
      */
     @Query(value = """
             SELECT
-              CASE :groupBy
+              CASE CAST(:groupBy AS TEXT)
                 WHEN 'month'    THEN TO_CHAR(t.created_at AT TIME ZONE 'UTC', 'YYYY-MM')
                 WHEN 'category' THEN t.category::text
                 WHEN 'status'   THEN t.status::text
@@ -93,10 +93,10 @@ public interface TicketRepository extends JpaRepository<Ticket, UUID>, JpaSpecif
               COALESCE(AVG(t.rating), 0)                                                    AS avgRating
             FROM tickets t
             LEFT JOIN users u ON u.id = t.assigned_to_user_id
-            WHERE (:from IS NULL OR t.created_at >= :from)
-              AND (:to   IS NULL OR t.created_at <= :to)
-              AND (:category IS NULL OR t.category = CAST(:category AS ticket_category))
-              AND (:apartmentId IS NULL OR t.apartment_id = :apartmentId)
+            WHERE (CAST(:from AS TIMESTAMPTZ) IS NULL OR t.created_at >= :from)
+              AND (CAST(:to AS TIMESTAMPTZ) IS NULL OR t.created_at <= :to)
+              AND (CAST(:category AS TEXT) IS NULL OR t.category = CAST(:category AS ticket_category))
+              AND (CAST(:apartmentId AS UUID) IS NULL OR t.apartment_id = :apartmentId)
             GROUP BY 1
             ORDER BY 1
             """, nativeQuery = true)
@@ -131,12 +131,12 @@ public interface TicketRepository extends JpaRepository<Ticket, UUID>, JpaSpecif
                               AND t.status NOT IN ('DONE','CANCELLED') THEN 1 END)         AS slaBreached,
               COALESCE(AVG(t.rating), 0)                                                   AS avgRating
             FROM tickets t
-            WHERE (:from IS NULL OR t.created_at >= :from)
-              AND (:to   IS NULL OR t.created_at <= :to)
-              AND (:category IS NULL OR t.category = CAST(:category AS ticket_category))
-              AND (:apartmentId IS NULL OR t.apartment_id = :apartmentId)
+            WHERE (CAST(:from AS TIMESTAMPTZ) IS NULL OR t.created_at >= :from)
+              AND (CAST(:to AS TIMESTAMPTZ) IS NULL OR t.created_at <= :to)
+              AND (CAST(:category AS TEXT) IS NULL OR t.category = CAST(:category AS ticket_category))
+              AND (CAST(:apartmentId AS UUID) IS NULL OR t.apartment_id = :apartmentId)
             """, nativeQuery = true)
-    Object[] getTicketSummary(
+    List<Object[]> getTicketSummary(
             @Param("from") OffsetDateTime from,
             @Param("to") OffsetDateTime to,
             @Param("category") String category,

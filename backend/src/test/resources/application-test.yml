@@ -1,8 +1,8 @@
 spring:
   datasource:
-    url: jdbc:postgresql://localhost:5433/gemek_test
-    username: gemek
-    password: gemek_test_pass
+    url: jdbc:postgresql://localhost:5432/gemek2
+    username: postgres
+    password: 1234
     driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:

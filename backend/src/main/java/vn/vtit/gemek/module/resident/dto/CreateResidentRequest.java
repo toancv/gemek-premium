@@ -4,6 +4,7 @@
  */
 package vn.vtit.gemek.module.resident.dto;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -44,6 +45,7 @@ public class CreateResidentRequest {
      * Whether this resident should be set as the primary contact for the apartment.
      * Defaults to {@code false} when not provided.
      */
+    @JsonProperty("isPrimaryContact")
     private boolean isPrimaryContact;
 
     /** Optional free-text notes. */

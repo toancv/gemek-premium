@@ -95,7 +95,8 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/auth/login").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/auth/refresh").permitAll()
                         // Health check — always public.
-                        .requestMatchers("/actuator/health", "/actuator/info").permitAll()
+                        // SECURITY-FIX: SEC-17 — /actuator/info removed; only health check is public
+                        .requestMatchers("/actuator/health").permitAll()
                         // SECURITY-FIX: Swagger UI blocked on prod profile; permitted on dev/test only
                         .requestMatchers("/api-docs/**", "/swagger-ui/**", "/swagger-ui.html")
                                 .access((authentication, context) -> {

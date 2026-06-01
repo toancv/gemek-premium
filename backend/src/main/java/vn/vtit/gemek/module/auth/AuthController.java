@@ -154,6 +154,7 @@ public class AuthController {
         if (StringUtils.hasText(header) && header.startsWith(BEARER_PREFIX)) {
             return header.substring(BEARER_PREFIX.length());
         }
-        return "";
+        // SECURITY-FIX: SEC-13 — return null so logout() can detect missing token
+        return null;
     }
 }

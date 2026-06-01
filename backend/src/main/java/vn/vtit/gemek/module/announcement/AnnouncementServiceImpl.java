@@ -292,6 +292,11 @@ public class AnnouncementServiceImpl implements AnnouncementService {
 
         Announcement announcement = requireAnnouncement(id);
 
+        // SECURITY-FIX: SEC-07 — prevent marking draft announcements as read
+        if (announcement.getPublishedAt() == null) {
+            throw new AppException(ErrorCode.NOT_FOUND, "Announcement not found.");
+        }
+
         // Check whether the record already exists before attempting an insert.
         java.util.Optional<AnnouncementRead> existing =
                 announcementReadRepository.findByAnnouncementIdAndUserId(id, principalId);

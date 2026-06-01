@@ -195,6 +195,11 @@ public class AuthServiceImpl implements AuthService {
      */
     @Override
     public void logout(UserPrincipal principal, String accessToken) {
+        // SECURITY-FIX: SEC-13 — guard against null/blank token (e.g. called without Bearer header)
+        if (accessToken == null || accessToken.isBlank()) {
+            log.debug("Logout called without access token for user id={}", principal.getId());
+            return;
+        }
         try {
             String jti = tokenProvider.extractJti(accessToken);
             long remainingMs = tokenProvider.getRemainingExpiryMs(accessToken);

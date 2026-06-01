@@ -127,11 +127,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             User user = userOptional.get();
             UserPrincipal principal = new UserPrincipal(user);
 
-            String roleFromToken = (String) claims.get(JwtTokenProvider.CLAIM_ROLE);
+            // SECURITY-FIX: SEC-06 — use DB role instead of stale token claim to prevent privilege escalation
             UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
                     principal,
                     null,
-                    List.of(new SimpleGrantedAuthority("ROLE_" + roleFromToken)));
+                    List.of(new SimpleGrantedAuthority("ROLE_" + user.getRole().name())));
             authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
 
             SecurityContextHolder.getContext().setAuthentication(authentication);

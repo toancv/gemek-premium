@@ -1,0 +1,734 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Improvement — Security Audit Report</title>
+<style>
+  :root {
+    --bg: #0f1117; --surface: #1a1d27; --border: #2a2d3a;
+    --accent: #6366f1; --accent2: #10b981; --warn: #f59e0b;
+    --danger: #ef4444; --text: #e2e8f0; --muted: #64748b;
+    --font: 'SF Mono', 'Fira Code', monospace;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: -apple-system, sans-serif; padding: 2rem; }
+  .header { border-left: 4px solid var(--accent); padding-left: 1.5rem; margin-bottom: 2.5rem; }
+  .gate-badge { display: inline-block; background: var(--accent); color: #fff; font-family: var(--font); font-size: 0.7rem; padding: 0.25rem 0.75rem; border-radius: 100px; margin-bottom: 0.75rem; letter-spacing: 0.1em; font-weight: 700; }
+  h1 { font-size: 1.75rem; font-weight: 700; margin-bottom: 0.25rem; }
+  .meta { color: var(--muted); font-size: 0.85rem; font-family: var(--font); }
+  .stats-row { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
+  .stat { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 1.25rem; text-align: center; }
+  .stat .number { font-size: 2rem; font-weight: 700; font-family: var(--font); }
+  .stat .number.crit  { color: var(--danger); }
+  .stat .number.high  { color: var(--warn); }
+  .stat .number.med   { color: #a78bfa; }
+  .stat .number.low   { color: var(--muted); }
+  .stat .number.clean { color: var(--accent2); }
+  .stat .label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); margin-top: 0.25rem; }
+  .section { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; margin-bottom: 1.5rem; }
+  .section-title { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.15em; color: var(--muted); margin-bottom: 1.25rem; font-family: var(--font); }
+  .finding { border: 1px solid var(--border); border-radius: 8px; margin-bottom: 1rem; overflow: hidden; }
+  .finding:last-child { margin-bottom: 0; }
+  .finding-header { display: flex; align-items: flex-start; gap: 0.75rem; padding: 0.9rem 1.1rem; background: rgba(255,255,255,0.02); border-bottom: 1px solid var(--border); }
+  .finding-header h3 { flex: 1; font-size: 0.9rem; font-weight: 600; line-height: 1.4; }
+  .finding-body { display: grid; grid-template-columns: 1fr 1fr; }
+  .finding-col { padding: 1rem 1.1rem; font-size: 0.85rem; }
+  .finding-col:first-child { border-right: 1px solid var(--border); }
+  .finding-col .col-label { font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.12em; color: var(--muted); font-family: var(--font); margin-bottom: 0.4rem; }
+  .finding-col p { color: var(--muted); line-height: 1.6; }
+  .finding-col code { background: var(--bg); border: 1px solid var(--border); border-radius: 4px; padding: 0.15rem 0.45rem; font-family: var(--font); font-size: 0.78rem; color: var(--accent2); }
+  .finding-evidence { background: var(--bg); border-top: 1px solid var(--border); padding: 0.75rem 1.1rem; }
+  .finding-evidence .col-label { font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.12em; color: var(--muted); font-family: var(--font); margin-bottom: 0.4rem; }
+  pre { font-family: var(--font); font-size: 0.78rem; color: #94a3b8; white-space: pre-wrap; word-break: break-word; line-height: 1.5; }
+  .finding-footer { display: flex; align-items: center; gap: 1rem; padding: 0.65rem 1.1rem; border-top: 1px solid var(--border); flex-wrap: wrap; }
+  .finding-footer .loc { font-family: var(--font); font-size: 0.75rem; color: var(--accent); flex: 1; min-width: 200px; }
+  .badge { display: inline-block; font-size: 0.65rem; padding: 0.2rem 0.6rem; border-radius: 4px; font-family: var(--font); font-weight: 600; white-space: nowrap; flex-shrink: 0; }
+  .badge.crit  { background: rgba(239,68,68,0.18);  color: #fca5a5; }
+  .badge.high  { background: rgba(245,158,11,0.18); color: #fcd34d; }
+  .badge.med   { background: rgba(167,139,250,0.18);color: #c4b5fd; }
+  .badge.low   { background: rgba(100,116,139,0.18);color: #94a3b8; }
+  .badge.info  { background: rgba(99,102,241,0.15); color: #a5b4fc; }
+  .badge.pass  { background: rgba(16,185,129,0.15); color: #6ee7b7; }
+  .badge.cat   { background: rgba(255,255,255,0.06); color: var(--muted); }
+  .verdict-box { border-radius: 12px; padding: 1.25rem 1.5rem; display: flex; align-items: flex-start; gap: 1.25rem; margin-bottom: 1.5rem; }
+  .verdict-box.fail { background: rgba(245,158,11,0.07); border: 1px solid rgba(245,158,11,0.3); }
+  .verdict-icon { font-size: 1.75rem; flex-shrink: 0; }
+  .verdict-text strong { display: block; font-size: 1rem; margin-bottom: 0.25rem; color: var(--text); }
+  .verdict-text p { font-size: 0.875rem; color: var(--muted); line-height: 1.6; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
+  th { text-align: left; padding: 0.6rem 1rem; background: var(--bg); color: var(--muted); font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.1em; font-family: var(--font); }
+  td { padding: 0.75rem 1rem; border-top: 1px solid var(--border); vertical-align: top; font-size: 0.85rem; }
+  .note-box { background: rgba(16,185,129,0.06); border: 1px solid rgba(16,185,129,0.2); border-radius: 8px; padding: 1rem 1.25rem; font-size: 0.875rem; color: #6ee7b7; line-height: 1.7; margin-top: 1rem; }
+  .note-box.warn { background: rgba(245,158,11,0.07); border-color: rgba(245,158,11,0.25); color: var(--warn); }
+  .id-chip { font-family: var(--font); font-size: 0.7rem; color: var(--accent); background: rgba(99,102,241,0.12); border-radius: 4px; padding: 0.15rem 0.45rem; flex-shrink: 0; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="gate-badge">IMPROVEMENT — SECURITY AUDIT</div>
+  <h1>Full Codebase Security Audit</h1>
+  <div class="meta">Generated: 2026-06-01 &nbsp;·&nbsp; Branch: phase/frontend &nbsp;·&nbsp; Scope: Backend + Frontend &nbsp;·&nbsp; Auditor: security-reviewer agent &nbsp;·&nbsp; Awaiting CTO review — no fixes applied</div>
+</div>
+
+<div class="verdict-box fail">
+  <div class="verdict-icon">&#9888;</div>
+  <div class="verdict-text">
+    <strong>Verdict — FAIL (0 Critical, 5 High, 8 Medium)</strong>
+    <p>No Critical findings. 5 High findings require remediation before the next deployment:
+    SEC-01 (file IDOR — no per-user ownership on presign),
+    SEC-03 (TECHNICIAN cross-block PII via NEW-status gate),
+    SEC-04 (unconstrained ADMIN role promotion),
+    SEC-05 (refresh endpoint unrate-limited and permit-all),
+    SEC-06 (JWT filter reads role from token claim, not DB — 15-min stale window).
+    All Critical/High items from the prior SAST cycle confirmed resolved and not re-reported.</p>
+  </div>
+</div>
+
+<div class="stats-row">
+  <div class="stat"><div class="number crit">0</div><div class="label">Critical</div></div>
+  <div class="stat"><div class="number high">5</div><div class="label">High</div></div>
+  <div class="stat"><div class="number med">8</div><div class="label">Medium</div></div>
+  <div class="stat"><div class="number low">5</div><div class="label">Low</div></div>
+  <div class="stat"><div class="number" style="color:var(--accent)">1</div><div class="label">Info</div></div>
+  <div class="stat"><div class="number clean">22</div><div class="label">Total</div></div>
+</div>
+
+<!-- ═══════════════════════════════════════════════ HIGH ═══════ -->
+<div class="section">
+  <div class="section-title">High Severity — 5 Findings</div>
+
+  <div class="finding">
+    <div class="finding-header">
+      <span class="id-chip">SEC-01</span><span class="badge high">HIGH</span><span class="badge cat">AuthZ</span>
+      <h3>FileController presign — key existence checked but no ownership; any authenticated user can download any ticket photo</h3>
+    </div>
+    <div class="finding-body">
+      <div class="finding-col">
+        <div class="col-label">Vulnerability</div>
+        <p>The prior fix confirmed the storage key exists in <code>ticket_photos</code>.
+        It does not verify the requesting user has any relationship to that ticket.
+        Any RESIDENT, TECHNICIAN, or BOARD_MEMBER who obtains or guesses a valid key
+        can download any resident's ticket photo — cross-apartment, cross-block, any role.</p>
+      </div>
+      <div class="finding-col">
+        <div class="col-label">Recommendation</div>
+        <p>Load the <code>TicketPhoto</code> entity by <code>fileUrl</code>. Apply the same
+        read-access gate as <code>TicketServiceImpl.enforceReadAccess</code>: RESIDENT →
+        submitter match; TECHNICIAN → assigned or NEW; ADMIN/BOARD_MEMBER → unrestricted.
+        Inject the security principal into <code>FileController</code>.</p>
+      </div>
+    </div>
+    <div class="finding-evidence">
+      <div class="col-label">Evidence</div>
+      <pre>// FileController — key existence only, no ownership
+if (!ticketPhotoRepository.existsByFileUrl(key)) {
+    throw new AppException(ErrorCode.FORBIDDEN, "Access to this resource is not permitted.");
+}
+String url = fileStorageService.presign(key);  // ← any authenticated user reaches this</pre>
+    </div>
+    <div class="finding-footer">
+      <span class="loc">backend/src/main/java/vn/vtit/gemek/common/storage/FileController.java:59</span>
+    </div>
+  </div>
+
+  <div class="finding">
+    <div class="finding-header">
+      <span class="id-chip">SEC-03</span><span class="badge high">HIGH</span><span class="badge cat">AuthZ</span>
+      <h3>TECHNICIAN sees all NEW-status tickets across every block — cross-tenant PII disclosure</h3>
+    </div>
+    <div class="finding-body">
+      <div class="finding-col">
+        <div class="col-label">Vulnerability</div>
+        <p>The scope query and <code>enforceReadAccess</code> allow a TECHNICIAN to see every
+        ticket with status <code>NEW</code>, regardless of block. In a multi-block building
+        with separate maintenance teams, TECHNICIAN A can read the full detail — including
+        submitter phone number — of Block B residents' tickets.</p>
+      </div>
+      <div class="finding-col">
+        <div class="col-label">Recommendation</div>
+        <p>Either (a) scope NEW-ticket visibility to the TECHNICIAN's assigned block, or (b)
+        remove the blanket NEW grant and require assignment before a TECHNICIAN can access
+        ticket detail. If cross-block is intentional policy, strip PII (<code>phone</code>)
+        from <code>SubmitterRef</code> for non-ADMIN callers.</p>
+      </div>
+    </div>
+    <div class="finding-evidence">
+      <div class="col-label">Evidence</div>
+      <pre>// buildScopeSpec — all NEW tickets visible to all technicians
+if ("TECHNICIAN".equals(role)) {
+    return (root, query, cb) -> cb.or(
+        cb.equal(root.get("assignedToUser").get("id"), principalId),
+        cb.equal(root.get("status"), TicketStatus.NEW)  // no block filter
+    );
+}
+// enforceReadAccess — same logic: isNew always passes
+if (!isAssigned && !isNew) { throw FORBIDDEN; }</pre>
+    </div>
+    <div class="finding-footer">
+      <span class="loc">backend/.../ticket/TicketServiceImpl.java:649-658 (enforceReadAccess) · :675-680 (buildScopeSpec)</span>
+    </div>
+  </div>
+
+  <div class="finding">
+    <div class="finding-header">
+      <span class="id-chip">SEC-04</span><span class="badge high">HIGH</span><span class="badge cat">AuthZ</span>
+      <h3>UpdateUserRequest.role unrestricted — any ADMIN can silently promote any user to ADMIN</h3>
+    </div>
+    <div class="finding-body">
+      <div class="finding-col">
+        <div class="col-label">Vulnerability</div>
+        <p><code>PUT /api/users/{id}</code> accepts any <code>UserRole</code> value in the
+        <code>role</code> field without restriction. A compromised ADMIN account can silently
+        create additional ADMIN accounts. <code>@Auditable</code> is present but best-effort
+        — it cannot be relied upon as a security control for privilege changes.</p>
+      </div>
+      <div class="finding-col">
+        <div class="col-label">Recommendation</div>
+        <p>At minimum: log role changes at <code>WARN</code> level regardless of audit-log
+        outcome (old role, new role, actor ID, timestamp). Consider adding an explicit guard
+        preventing RESIDENT→ADMIN promotion without a secondary approval, or requiring a
+        separate super-admin endpoint for role escalation to ADMIN.</p>
+      </div>
+    </div>
+    <div class="finding-evidence">
+      <div class="col-label">Evidence</div>
+      <pre>// UserServiceImpl — any role value accepted
+user.setRole(request.role());   // UserRole.ADMIN accepted without guard
+userRepository.save(user);      // no secondary approval, audit is fire-and-forget</pre>
+    </div>
+    <div class="finding-footer">
+      <span class="loc">backend/src/main/java/vn/vtit/gemek/module/user/UserServiceImpl.java:121</span>
+    </div>
+  </div>
+
+  <div class="finding">
+    <div class="finding-header">
+      <span class="id-chip">SEC-05</span><span class="badge high">HIGH</span><span class="badge cat">AuthZ</span>
+      <h3>POST /api/auth/refresh — permit-all with no rate limit; unauthenticated DoS / token stuffing</h3>
+    </div>
+    <div class="finding-body">
+      <div class="finding-col">
+        <div class="col-label">Vulnerability</div>
+        <p>The refresh endpoint requires no authentication (<code>permitAll</code>) and has no
+        Redis-backed rate limiter. An attacker can hammer it at any speed: (a) DoS against
+        the Redis token store, (b) enumerate/stuff refresh token JTIs with no lockout,
+        (c) generate load without triggering any login alarm.</p>
+      </div>
+      <div class="finding-col">
+        <div class="col-label">Recommendation</div>
+        <p>Add <code>enforceRateLimit(request)</code> at the top of
+        <code>AuthServiceImpl.refreshToken()</code>, keyed by IP using the existing
+        <code>getClientIp</code> helper. Use a higher threshold than login
+        (e.g., 60/min) since legitimate clients refresh more frequently.</p>
+      </div>
+    </div>
+    <div class="finding-evidence">
+      <div class="col-label">Evidence</div>
+      <pre>// SecurityConfig — no auth required
+.requestMatchers(HttpMethod.POST, "/api/auth/refresh").permitAll()
+
+// AuthServiceImpl.refreshToken — no rate limit
+public RefreshTokenResponse refreshToken(RefreshTokenRequest request) {
+    Claims claims;
+    try {
+        claims = tokenProvider.parseToken(request.refreshToken());
+    // ← enforceRateLimit(request) never called</pre>
+    </div>
+    <div class="finding-footer">
+      <span class="loc">backend/.../config/SecurityConfig.java:97 · backend/.../auth/AuthServiceImpl.java:155</span>
+    </div>
+  </div>
+
+  <div class="finding">
+    <div class="finding-header">
+      <span class="id-chip">SEC-06</span><span class="badge high">HIGH</span><span class="badge cat">AuthZ</span>
+      <h3>JWT filter reads role from token claim, not DB — role change takes up to 15 min to propagate</h3>
+    </div>
+    <div class="finding-body">
+      <div class="finding-col">
+        <div class="col-label">Vulnerability</div>
+        <p>The filter loads the <code>User</code> entity from DB (for <code>isActive</code>)
+        but then uses the <code>role</code> JWT claim to build the security context.
+        After an admin changes a user's role, the old role remains effective for up to 15 min
+        (access token TTL). A downgraded ADMIN keeps ADMIN privilege; a promoted RESIDENT
+        keeps RESIDENT privilege until their next login.</p>
+      </div>
+      <div class="finding-col">
+        <div class="col-label">Recommendation</div>
+        <p>One-line fix: replace <code>roleFromToken</code> with
+        <code>user.getRole().name()</code> on line 134. The DB entity is already loaded on
+        line 119. This makes role changes effective on the next request after the admin
+        update, with zero TTL lag.</p>
+      </div>
+    </div>
+    <div class="finding-evidence">
+      <div class="col-label">Evidence</div>
+      <pre>User user = userOptional.get();                          // line 119 — fresh DB load
+UserPrincipal principal = new UserPrincipal(user);
+String roleFromToken = (String) claims.get(CLAIM_ROLE);  // ← stale claim from token
+... List.of(new SimpleGrantedAuthority("ROLE_" + roleFromToken));  // stale role</pre>
+    </div>
+    <div class="finding-footer">
+      <span class="loc">backend/.../common/security/JwtAuthenticationFilter.java:119-134</span>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════ MEDIUM ════ -->
+<div class="section">
+  <div class="section-title">Medium Severity — 8 Findings</div>
+
+  <div class="finding">
+    <div class="finding-header">
+      <span class="id-chip">SEC-02</span><span class="badge med">MEDIUM</span><span class="badge cat">BizLogic</span>
+      <h3>ADMIN on POST /api/amenity-bookings always gets NOT_FOUND — declared intent broken</h3>
+    </div>
+    <div class="finding-body">
+      <div class="finding-col">
+        <div class="col-label">Vulnerability</div>
+        <p>Endpoint declares <code>hasAnyRole('ADMIN','RESIDENT')</code> but the service
+        looks up an active resident record by principal ID, which always fails for ADMIN
+        (no resident row). ADMINs always receive NOT_FOUND, not a booking. The mismatch
+        between declared access and actual behaviour can mask policy enforcement gaps.</p>
+      </div>
+      <div class="finding-col">
+        <div class="col-label">Recommendation</div>
+        <p>Either (a) remove ADMIN from <code>@PreAuthorize</code> so only RESIDENT can book
+        (simplest), or (b) add an admin-on-behalf-of path with an explicit <code>residentId</code>
+        field, applying the same operating-hours and daily-limit checks. Document in DECISIONS.md.</p>
+      </div>
+    </div>
+    <div class="finding-footer">
+      <span class="loc">backend/.../amenity/AmenityController.java:241 · AmenityServiceImpl.java:288</span>
+    </div>
+  </div>
+
+  <div class="finding">
+    <div class="finding-header">
+      <span class="id-chip">SEC-07</span><span class="badge med">MEDIUM</span><span class="badge cat">AuthZ</span>
+      <h3>markRead accepts any announcement UUID including unpublished drafts — confirms draft existence to residents</h3>
+    </div>
+    <div class="finding-body">
+      <div class="finding-col">
+        <div class="col-label">Vulnerability</div>
+        <p><code>POST /api/announcements/{id}/read</code> does not check <code>publishedAt</code>
+        before recording the read. A RESIDENT who knows or guesses a draft UUID gets a 200
+        success response and increments <code>readByCount</code>, leaking that the draft exists.</p>
+      </div>
+      <div class="finding-col">
+        <div class="col-label">Recommendation</div>
+        <p>In <code>AnnouncementServiceImpl.markRead</code>, after loading the entity add:
+        <code>if (announcement.getPublishedAt() == null &amp;&amp; !callerIsAdmin) throw new AppException(NOT_FOUND, ...)</code>.
+        Same pattern already used in <code>getAnnouncement</code>.</p>
+      </div>
+    </div>
+    <div class="finding-footer">
+      <span class="loc">backend/.../announcement/AnnouncementServiceImpl.java:291-318 · AnnouncementController.java:233</span>
+    </div>
+  </div>
+
+  <div class="finding">
+    <div class="finding-header">
+      <span class="id-chip">SEC-08</span><span class="badge med">MEDIUM</span><span class="badge cat">AuthZ</span>
+      <h3>BOARD_MEMBER has unrestricted access to all ticket PII including submitter phone — no block scoping</h3>
+    </div>
+    <div class="finding-body">
+      <div class="finding-col">
+        <div class="col-label">Vulnerability</div>
+        <p>BOARD_MEMBER falls into the ADMIN (no-restriction) path in both
+        <code>buildScopeSpec</code> and <code>enforceReadAccess</code>. Ticket detail
+        responses include submitter phone in <code>SubmitterRef</code>. BOARD_MEMBER is a
+        governance role that may not warrant full resident PII access across all blocks.</p>
+      </div>
+      <div class="finding-col">
+        <div class="col-label">Recommendation</div>
+        <p>Policy decision: if BOARD_MEMBER is read-only oversight, omit <code>phone</code>
+        from <code>SubmitterRef</code> when <code>callerRole != ADMIN</code>, or scope
+        their ticket access to their own block. If full access is intentional, document in
+        DECISIONS.md to prevent future regression.</p>
+      </div>
+    </div>
+    <div class="finding-footer">
+      <span class="loc">backend/.../ticket/TicketServiceImpl.java:659,694 · TicketController.java:95,174</span>
+    </div>
+  </div>
+
+  <div class="finding">
+    <div class="finding-header">
+      <span class="id-chip">SEC-09</span><span class="badge med">MEDIUM</span><span class="badge cat">Config</span>
+      <h3>Redis password empty default — application starts without auth if REDIS_PASSWORD not set</h3>
+    </div>
+    <div class="finding-body">
+      <div class="finding-col">
+        <div class="col-label">Vulnerability</div>
+        <p><code>password: ${REDIS_PASSWORD:}</code> has an empty-string fallback. If the
+        env var is absent at deployment, the app starts and connects to Redis unauthenticated.
+        Redis holds the JWT blocklist and refresh tokens — an unauthenticated attacker on the
+        network could delete blocklist keys to unrevoke tokens.</p>
+      </div>
+      <div class="finding-col">
+        <div class="col-label">Recommendation</div>
+        <p>Remove the empty fallback: <code>password: ${REDIS_PASSWORD}</code>. Startup fails
+        fast if the variable is absent. Use <code>application-dev.yml</code> with the empty
+        default for local dev convenience without weakening the base config.</p>
+      </div>
+    </div>
+    <div class="finding-evidence">
+      <div class="col-label">Evidence</div>
+      <pre>data:
+  redis:
+    password: ${REDIS_PASSWORD:}   # empty fallback — unauthenticated Redis if var unset</pre>
+    </div>
+    <div class="finding-footer">
+      <span class="loc">backend/src/main/resources/application.yml:48</span>
+    </div>
+  </div>
+
+  <div class="finding">
+    <div class="finding-header">
+      <span class="id-chip">SEC-10</span><span class="badge med">MEDIUM</span><span class="badge cat">Secrets</span>
+      <h3>Admin BCrypt hash committed to version control — offline dictionary attack surface</h3>
+    </div>
+    <div class="finding-body">
+      <div class="finding-col">
+        <div class="col-label">Vulnerability</div>
+        <p>The admin account's BCrypt hash is committed to git in <code>V2__seed_admin.sql</code>.
+        While cost 12 is strong, the committed hash enables targeted offline attack.
+        Anyone with repo access can begin a dictionary attack without DB access. The
+        migration comment instructs a password change on first login but does not enforce it.</p>
+      </div>
+      <div class="finding-col">
+        <div class="col-label">Recommendation</div>
+        <p>Use Flyway placeholder support: replace the hash with <code>${ADMIN_PASSWORD_HASH}</code>
+        in the SQL, injected at migration time from an environment variable.
+        Alternatively, seed with a forced-reset-on-login flag so the default is known-weak
+        but cannot be retained after first login.</p>
+      </div>
+    </div>
+    <div class="finding-footer">
+      <span class="loc">backend/src/main/resources/db/migration/V2__seed_admin.sql:18</span>
+    </div>
+  </div>
+
+  <div class="finding">
+    <div class="finding-header">
+      <span class="id-chip">SEC-11</span><span class="badge med">MEDIUM</span><span class="badge cat">BizLogic</span>
+      <h3>No minimum booking duration — 1-second bookings accepted, slot exhaustion possible</h3>
+    </div>
+    <div class="finding-body">
+      <div class="finding-col">
+        <div class="col-label">Vulnerability</div>
+        <p><code>startTime &lt; endTime</code> is enforced but no floor duration is checked.
+        A resident can book 1-second slots, consuming conflict-detection ranges across
+        every amenity up to the daily limit per day — effectively blocking access for
+        other residents.</p>
+      </div>
+      <div class="finding-col">
+        <div class="col-label">Recommendation</div>
+        <p>Add a minimum duration <code>@AssertTrue</code> on <code>CreateBookingRequest</code>:
+        <code>Duration.between(startTime, endTime).toMinutes() &gt;= 30</code>. The 30-minute
+        floor is a business policy — log the chosen value in DECISIONS.md.</p>
+      </div>
+    </div>
+    <div class="finding-footer">
+      <span class="loc">backend/.../amenity/AmenityServiceImpl.java:300-301</span>
+    </div>
+  </div>
+
+  <div class="finding">
+    <div class="finding-header">
+      <span class="id-chip">SEC-12</span><span class="badge med">MEDIUM</span><span class="badge cat">BizLogic</span>
+      <h3>No advance-booking window — resident can block all slots weeks into the future</h3>
+    </div>
+    <div class="finding-body">
+      <div class="finding-col">
+        <div class="col-label">Vulnerability</div>
+        <p>The per-resident daily limit applies per amenity per day, but there is no cap on
+        how far in the future a booking may be placed. A resident can book the daily maximum
+        on every amenity for the next 365 days in a burst, denying access to all others
+        for weeks with no penalty mechanism.</p>
+      </div>
+      <div class="finding-col">
+        <div class="col-label">Recommendation</div>
+        <p>Add a configurable advance window via <code>@Value("${amenity.max-advance-days:14}")</code>
+        in <code>AmenityServiceImpl</code>, checked as:
+        <code>if (req.getBookingDate().isAfter(LocalDate.now().plusDays(maxAdvanceDays))) throw ...</code>.</p>
+      </div>
+    </div>
+    <div class="finding-footer">
+      <span class="loc">backend/.../amenity/AmenityServiceImpl.java:313-323</span>
+    </div>
+  </div>
+
+  <div class="finding">
+    <div class="finding-header">
+      <span class="id-chip">SEC-13</span><span class="badge med">MEDIUM</span><span class="badge cat">AuthZ</span>
+      <h3>Logout without Authorization header silently skips token blocklisting</h3>
+    </div>
+    <div class="finding-body">
+      <div class="finding-col">
+        <div class="col-label">Vulnerability</div>
+        <p>When the Authorization header is absent, <code>extractBearerToken</code> returns
+        <code>""</code>. The service calls <code>extractJti("")</code>, which throws
+        <code>JwtException</code> caught at DEBUG level — the blocklist write is skipped
+        silently. A client that calls logout without the header while retaining a valid
+        token has an unblocklisted token indefinitely.</p>
+      </div>
+      <div class="finding-col">
+        <div class="col-label">Recommendation</div>
+        <p>Return <code>null</code> (not <code>""</code>) from <code>extractBearerToken</code>
+        when the header is absent. Guard the blocklist path in <code>logout()</code>:
+        <code>if (accessToken == null || accessToken.isBlank()) return;</code> before JTI
+        extraction. Or respond 400 if the header is missing.</p>
+      </div>
+    </div>
+    <div class="finding-footer">
+      <span class="loc">backend/.../auth/AuthController.java:152-157 · AuthServiceImpl.java:220</span>
+    </div>
+  </div>
+
+  <div class="finding">
+    <div class="finding-header">
+      <span class="id-chip">SEC-14</span><span class="badge med">MEDIUM</span><span class="badge cat">Config</span>
+      <h3>Redis KEYS command in logout — O(N) blocking scan; blocks entire Redis server</h3>
+    </div>
+    <div class="finding-body">
+      <div class="finding-col">
+        <div class="col-label">Vulnerability</div>
+        <p><code>redisTemplate.keys(pattern)</code> maps to the Redis <code>KEYS</code> command,
+        which is O(N) over all keys and blocks the entire server for its duration. In
+        production with many JWT and rate-limit keys, every logout stalls Redis — including
+        concurrent token validation calls for all active users.</p>
+      </div>
+      <div class="finding-col">
+        <div class="col-label">Recommendation</div>
+        <p>Replace with cursor-based scan:
+        <code>redisTemplate.scan(ScanOptions.scanOptions().match(pattern).count(100).build())</code>.
+        Collect cursor results into a list, then call <code>redisTemplate.delete(keys)</code>.
+        This is the standard non-blocking replacement for <code>KEYS</code> in production.</p>
+      </div>
+    </div>
+    <div class="finding-evidence">
+      <div class="col-label">Evidence</div>
+      <pre>String pattern = REFRESH_KEY_PREFIX + principal.getId() + ":*";
+var keys = redisTemplate.keys(pattern);  // ← Redis KEYS — O(N) blocking
+if (keys != null && !keys.isEmpty()) {
+    redisTemplate.delete(keys);
+}</pre>
+    </div>
+    <div class="finding-footer">
+      <span class="loc">backend/.../auth/AuthServiceImpl.java:213-216</span>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════ LOW ═══════ -->
+<div class="section">
+  <div class="section-title">Low Severity — 5 Findings</div>
+
+  <div class="finding">
+    <div class="finding-header">
+      <span class="id-chip">SEC-15</span><span class="badge low">LOW</span><span class="badge cat">Dependency</span>
+      <h3>Spring Boot 3.3.5 — patch behind current 3.3.x; CVE-2024-22257 bundled Spring Security</h3>
+    </div>
+    <div class="finding-body">
+      <div class="finding-col">
+        <div class="col-label">Finding</div>
+        <p>Spring Boot 3.3.5 bundles Spring Security 6.3.3, below the 6.3.4 fix for
+        CVE-2024-22257 (ACL bypass). This project does not use Spring Security ACL so
+        exploitability is low. However, 3.3.5 is not the latest 3.3.x (current: 3.3.8)
+        and multiple patch-level fixes are missed.</p>
+      </div>
+      <div class="finding-col">
+        <div class="col-label">Recommendation</div>
+        <p>Upgrade <code>spring-boot-starter-parent</code> from <code>3.3.5</code> to
+        <code>3.3.8</code>. Run <code>mvn dependency-check:check</code> after upgrade.
+        Consider the 3.4.x line for longer support horizon.</p>
+      </div>
+    </div>
+    <div class="finding-footer"><span class="loc">backend/pom.xml:14</span></div>
+  </div>
+
+  <div class="finding">
+    <div class="finding-header">
+      <span class="id-chip">SEC-16</span><span class="badge low">LOW</span><span class="badge cat">Dependency</span>
+      <h3>JJWT 0.12.3 — 3 patch versions behind current 0.12.6</h3>
+    </div>
+    <div class="finding-body">
+      <div class="finding-col">
+        <div class="col-label">Finding</div>
+        <p>No known CVEs against 0.12.3 at audit time. The upgrade is low-risk within the
+        0.12.x series (no API changes expected) and picks up any patch-level fixes.</p>
+      </div>
+      <div class="finding-col">
+        <div class="col-label">Recommendation</div>
+        <p>Update <code>&lt;jjwt.version&gt;</code> from <code>0.12.3</code> to <code>0.12.6</code>.
+        Run full test suite after upgrade to verify no behavioural change.</p>
+      </div>
+    </div>
+    <div class="finding-footer"><span class="loc">backend/pom.xml:29</span></div>
+  </div>
+
+  <div class="finding">
+    <div class="finding-header">
+      <span class="id-chip">SEC-17</span><span class="badge low">LOW</span><span class="badge cat">Config</span>
+      <h3>actuator/info permit-all — will leak git metadata if CI adds git.properties</h3>
+    </div>
+    <div class="finding-body">
+      <div class="finding-col">
+        <div class="col-label">Finding</div>
+        <p><code>GET /actuator/info</code> is unauthenticated. Currently returns empty object.
+        If a CI/CD pipeline adds <code>git.properties</code> (standard practice), commit hash,
+        branch, and build timestamp become publicly readable with no code change required.</p>
+      </div>
+      <div class="finding-col">
+        <div class="col-label">Recommendation</div>
+        <p>Remove <code>info</code> from <code>management.endpoints.web.exposure.include</code>,
+        or remove it from the <code>permitAll</code> list so it requires authentication.
+        Keep only <code>health</code> public if liveness probes are needed.</p>
+      </div>
+    </div>
+    <div class="finding-footer"><span class="loc">backend/src/main/resources/application.yml:98 · SecurityConfig.java:98</span></div>
+  </div>
+
+  <div class="finding">
+    <div class="finding-header">
+      <span class="id-chip">SEC-20</span><span class="badge low">LOW</span><span class="badge cat">Secrets</span>
+      <h3>Refresh token in localStorage — known deferred; admin SPA is higher blast-radius than resident</h3>
+    </div>
+    <div class="finding-body">
+      <div class="finding-col">
+        <div class="col-label">Finding</div>
+        <p>Known deferred (HttpOnly cookie migration). New angle: the <em>admin</em> SPA's
+        refresh token has far higher blast radius than the resident SPA — an exfiltrated
+        admin refresh token enables user management, role changes, and password resets.
+        Prioritise the admin SPA migration first.</p>
+      </div>
+      <div class="finding-col">
+        <div class="col-label">Recommendation</div>
+        <p>Migrate admin SPA first: backend <code>/auth/login</code> and
+        <code>/auth/refresh</code> set <code>Set-Cookie: HttpOnly; Secure; SameSite=Strict</code>;
+        frontend removes <code>localStorage.setItem('gemek_refresh', ...)</code>.</p>
+      </div>
+    </div>
+    <div class="finding-footer"><span class="loc">frontend/apps/admin/src/store/authStore.ts:35 · frontend/apps/resident/src/store/authStore.ts:30</span></div>
+  </div>
+
+  <div class="finding">
+    <div class="finding-header">
+      <span class="id-chip">SEC-21</span><span class="badge low">LOW</span><span class="badge cat">Config</span>
+      <h3>No explicit CORS config — relies on Spring Boot default; breaks silently if origins split</h3>
+    </div>
+    <div class="finding-body">
+      <div class="finding-col">
+        <div class="col-label">Finding</div>
+        <p>No <code>CorsConfigurationSource</code> bean. Spring Security rejects preflight
+        OPTIONS without one. Currently same-origin so it works. If apps are ever hosted on
+        separate subdomains, all API calls fail silently with no useful error.</p>
+      </div>
+      <div class="finding-col">
+        <div class="col-label">Recommendation</div>
+        <p>Add an explicit <code>CorsConfigurationSource</code> bean with specific allowed
+        origins (never <code>*</code> for credentialed requests). Wire via
+        <code>.cors(cors -&gt; cors.configurationSource(corsSource()))</code> in SecurityConfig.</p>
+      </div>
+    </div>
+    <div class="finding-footer"><span class="loc">backend/.../config/SecurityConfig.java (no CORS bean present)</span></div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════ INFO ══════ -->
+<div class="section">
+  <div class="section-title">Info — 1 Item</div>
+  <div class="finding">
+    <div class="finding-header">
+      <span class="id-chip">SEC-22</span><span class="badge info">INFO</span><span class="badge cat">BizLogic</span>
+      <h3>Past-date amenity bookings accepted — creates ghost bookings, no security exploit</h3>
+    </div>
+    <div class="finding-body">
+      <div class="finding-col">
+        <div class="col-label">Finding</div>
+        <p>No check whether <code>bookingDate</code> is in the future. A resident can create
+        a booking for yesterday, immediately entering a non-cancellable state. Data integrity
+        issue, not a security exploit. Cancel logic already requires <code>bookingDate.isAfter(today)</code>.</p>
+      </div>
+      <div class="finding-col">
+        <div class="col-label">Recommendation</div>
+        <p>Add <code>@FutureOrPresent</code> on <code>CreateBookingRequest.bookingDate</code>,
+        or a service guard: <code>if (req.getBookingDate().isBefore(LocalDate.now())) throw ...</code>.
+        Low priority — include in next code-quality pass.</p>
+      </div>
+    </div>
+    <div class="finding-footer"><span class="loc">backend/.../amenity/AmenityServiceImpl.java:288</span></div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════ CLEAN ═════ -->
+<div class="section">
+  <div class="section-title">Confirmed Safe — Audited and Clean</div>
+  <table>
+    <thead><tr><th>Area</th><th>Item checked</th><th>Result</th></tr></thead>
+    <tbody>
+      <tr><td>JWT</td><td>alg=none — <code>parseSignedClaims()</code> in JJWT 0.12 rejects unsigned tokens</td><td><span class="badge pass">&#10003; Safe</span></td></tr>
+      <tr><td>JWT</td><td>Token type confusion — filter checks <code>TOKEN_TYPE_ACCESS</code> claim; refresh tokens rejected</td><td><span class="badge pass">&#10003; Safe</span></td></tr>
+      <tr><td>Injection</td><td>All native SQL uses positional parameters — no string concatenation</td><td><span class="badge pass">&#10003; Safe</span></td></tr>
+      <tr><td>Injection</td><td>All JPQL dynamic filtering via JPA Criteria API — no dynamic string building</td><td><span class="badge pass">&#10003; Safe</span></td></tr>
+      <tr><td>Secrets</td><td>All credentials use <code>${ENV_VAR}</code> placeholders — no hardcoded fallback values</td><td><span class="badge pass">&#10003; Safe</span></td></tr>
+      <tr><td>AuthN</td><td>User enumeration blocked — missing user and wrong password both return INVALID_CREDENTIALS</td><td><span class="badge pass">&#10003; Safe</span></td></tr>
+      <tr><td>BizLogic</td><td>Ticket rating double-submit — <code>rating != null</code> throws CONFLICT</td><td><span class="badge pass">&#10003; Safe</span></td></tr>
+      <tr><td>BizLogic</td><td>Non-submitter rating — submitter ID equality enforced in <code>rateTicket</code></td><td><span class="badge pass">&#10003; Safe</span></td></tr>
+      <tr><td>BizLogic</td><td>Resident role escalation — no endpoint accessible to RESIDENT can change roles</td><td><span class="badge pass">&#10003; Safe</span></td></tr>
+      <tr><td>BizLogic</td><td>Resident publishing announcements — create and publish both require ADMIN</td><td><span class="badge pass">&#10003; Safe</span></td></tr>
+      <tr><td>API</td><td>Password never returned in any API response DTO</td><td><span class="badge pass">&#10003; Safe</span></td></tr>
+      <tr><td>API</td><td>Stack traces not exposed — GlobalExceptionHandler returns generic message</td><td><span class="badge pass">&#10003; Safe</span></td></tr>
+      <tr><td>XSS</td><td>No <code>v-html</code> or equivalent raw HTML injection in frontend</td><td><span class="badge pass">&#10003; Safe</span></td></tr>
+    </tbody>
+  </table>
+  <div class="note-box">
+    <strong>Prior SAST cycle items confirmed resolved:</strong>
+    groupBy/sort allowlists, plaintext migration comment, X-Forwarded-For RFC 1918 scoping,
+    Swagger UI prod block, Apache Tika MIME validation, <code>@Valid</code> on AssignTicketRequest,
+    HTTP security headers (CSP/HSTS/X-Frame/X-Content-Type), multipart size limits,
+    window globals removed, reactive auth guard, Vue DevTools disabled in prod.
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════ INDEX ═════ -->
+<div class="section">
+  <div class="section-title">All Findings — Index</div>
+  <table>
+    <thead><tr><th>ID</th><th>Sev</th><th>Cat</th><th>Title</th></tr></thead>
+    <tbody>
+      <tr><td><strong>SEC-01</strong></td><td><span class="badge high">HIGH</span></td><td>AuthZ</td><td>File presign IDOR — ownership not enforced</td></tr>
+      <tr><td><strong>SEC-02</strong></td><td><span class="badge med">MEDIUM</span></td><td>BizLogic</td><td>ADMIN on amenity booking always fails — logic gap</td></tr>
+      <tr><td><strong>SEC-03</strong></td><td><span class="badge high">HIGH</span></td><td>AuthZ</td><td>TECHNICIAN reads all NEW tickets cross-block</td></tr>
+      <tr><td><strong>SEC-04</strong></td><td><span class="badge high">HIGH</span></td><td>AuthZ</td><td>Unconstrained role promotion to ADMIN</td></tr>
+      <tr><td><strong>SEC-05</strong></td><td><span class="badge high">HIGH</span></td><td>AuthZ</td><td>/auth/refresh permit-all, no rate limit</td></tr>
+      <tr><td><strong>SEC-06</strong></td><td><span class="badge high">HIGH</span></td><td>AuthZ</td><td>JWT role from token claim, not DB — 15-min stale</td></tr>
+      <tr><td><strong>SEC-07</strong></td><td><span class="badge med">MEDIUM</span></td><td>AuthZ</td><td>markRead confirms draft announcement existence</td></tr>
+      <tr><td><strong>SEC-08</strong></td><td><span class="badge med">MEDIUM</span></td><td>AuthZ</td><td>BOARD_MEMBER unrestricted ticket PII access</td></tr>
+      <tr><td><strong>SEC-09</strong></td><td><span class="badge med">MEDIUM</span></td><td>Config</td><td>Redis unauthenticated if env var unset</td></tr>
+      <tr><td><strong>SEC-10</strong></td><td><span class="badge med">MEDIUM</span></td><td>Secrets</td><td>Admin BCrypt hash in version control</td></tr>
+      <tr><td><strong>SEC-11</strong></td><td><span class="badge med">MEDIUM</span></td><td>BizLogic</td><td>No minimum booking duration</td></tr>
+      <tr><td><strong>SEC-12</strong></td><td><span class="badge med">MEDIUM</span></td><td>BizLogic</td><td>No advance-booking window limit</td></tr>
+      <tr><td><strong>SEC-13</strong></td><td><span class="badge med">MEDIUM</span></td><td>AuthZ</td><td>Logout without auth header skips blocklist</td></tr>
+      <tr><td><strong>SEC-14</strong></td><td><span class="badge med">MEDIUM</span></td><td>Config</td><td>Redis KEYS command — O(N) blocking in logout</td></tr>
+      <tr><td><strong>SEC-15</strong></td><td><span class="badge low">LOW</span></td><td>Dependency</td><td>Spring Boot 3.3.5 — patch behind; CVE-2024-22257</td></tr>
+      <tr><td><strong>SEC-16</strong></td><td><span class="badge low">LOW</span></td><td>Dependency</td><td>JJWT 0.12.3 — 3 patch versions behind 0.12.6</td></tr>
+      <tr><td><strong>SEC-17</strong></td><td><span class="badge low">LOW</span></td><td>Config</td><td>actuator/info permit-all</td></tr>
+      <tr><td><strong>SEC-20</strong></td><td><span class="badge low">LOW</span></td><td>Secrets</td><td>Refresh token localStorage — admin higher risk</td></tr>
+      <tr><td><strong>SEC-21</strong></td><td><span class="badge low">LOW</span></td><td>Config</td><td>No explicit CORS configuration</td></tr>
+      <tr><td><strong>SEC-22</strong></td><td><span class="badge info">INFO</span></td><td>BizLogic</td><td>Past-date bookings accepted</td></tr>
+    </tbody>
+  </table>
+  <div class="note-box warn" style="margin-top:1rem;">
+    <strong>No fixes applied.</strong>
+    Awaiting CTO review. Reply with the findings to fix (by ID or severity threshold) before any remediation begins.
+    All 83 existing tests must remain green after any changes.
+  </div>
+</div>
+
+</body>
+</html>

@@ -20,6 +20,8 @@ import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import vn.vtit.gemek.module.user.entity.User;
 
 import java.math.BigDecimal;
@@ -83,6 +85,7 @@ public class Contract {
      * Mapped to the PostgreSQL {@code contract_status} ENUM.
      */
     @Enumerated(EnumType.STRING)
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     @Column(name = "status", nullable = false, columnDefinition = "contract_status")
     private ContractStatus status = ContractStatus.PENDING;
 

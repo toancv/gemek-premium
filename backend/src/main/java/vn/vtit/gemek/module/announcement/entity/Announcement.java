@@ -20,6 +20,8 @@ import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import vn.vtit.gemek.module.apartment.entity.Block;
 import vn.vtit.gemek.module.user.entity.User;
 
@@ -59,6 +61,7 @@ public class Announcement {
      * Mapped to the PostgreSQL {@code announcement_type} ENUM.
      */
     @Enumerated(EnumType.STRING)
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     @Column(name = "type", nullable = false, columnDefinition = "announcement_type")
     private AnnouncementType type;
 
@@ -67,6 +70,7 @@ public class Announcement {
      * Mapped to the PostgreSQL {@code announcement_scope} ENUM.
      */
     @Enumerated(EnumType.STRING)
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     @Column(name = "scope", nullable = false, columnDefinition = "announcement_scope")
     private AnnouncementScope scope;
 

@@ -11,6 +11,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -48,6 +50,7 @@ import static org.mockito.Mockito.when;
  * <p>Uses Mockito to isolate the service from Redis, JPA, and JWT dependencies.
  */
 @ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 class AuthServiceTest {
 
     @Mock
@@ -82,7 +85,7 @@ class AuthServiceTest {
     @BeforeEach
     void setUp() {
         authService = new AuthServiceImpl(
-                userRepository, passwordEncoder, tokenProvider, jwtConfig, redisTemplate, userMapper);
+                userRepository, passwordEncoder, tokenProvider, jwtConfig, redisTemplate, userMapper, 10);
 
         testUser = new User();
         testUser.setId(UUID.randomUUID());

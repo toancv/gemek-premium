@@ -68,17 +68,35 @@ Use sub-agents for execution. You coordinate, they implement.
 ```
 START → [architect] Design system
       → G1 Report (techstack) → ⏸ WAIT APPROVAL
+
+      → phase/backend branch
       → [backend-dev] Implement modules (commit each)
       → [tester] Unit tests per module
       → [code-reviewer] Review each module
-      → G2 Report (BE complete) → ⏸ WAIT APPROVAL
+      → [security-reviewer] SAST scan → fix criticals/highs → re-scan
+      → G2 Report (BE + SAST) → ⏸ WAIT APPROVAL
+
+      → phase/frontend branch
       → [frontend-dev] Implement UI
-      → G3 Report (FE complete) → ⏸ WAIT APPROVAL
+      → [security-reviewer] SAST scan frontend
+      → G3 Report (FE + SAST) → ⏸ WAIT APPROVAL
+
       → [tester] Integration + E2E tests
-      → G4 Report (test results) → ⏸ WAIT APPROVAL
+      → docker-compose up
+      → [security-reviewer] DAST scan → fix criticals/highs → re-scan
+      → docker-compose down
+      → G4 Report (tests + SAST summary + DAST results) → ⏸ WAIT APPROVAL
+
       → Docker + deployment prep
       → DONE
 ```
+
+---
+
+## Context Management
+- Run /compact proactively when context reaches 80%
+- Always update PROGRESS.md and DECISIONS.md before /compact
+- Commit all work before any context management operation
 
 ---
 
@@ -107,3 +125,28 @@ Reports must be self-contained, readable in browser, professional.
 - No hardcoded secrets — `.env` only
 - Input validation on all API endpoints
 - README with setup instructions updated as you go
+
+---
+
+## Security Remediation Loop
+
+When security-reviewer returns FAIL verdict:
+
+1. PM reads reports/security-[phase]-findings.md
+2. PM invokes backend-dev OR frontend-dev with findings:
+   "Fix all Critical and High findings in security-[phase]-findings.md.
+    Do not change any other code. Commit when done."
+3. Dev agent fixes and commits
+4. PM invokes security-reviewer to re-scan same scope
+5. If PASS or PASS WITH NOTES → continue workflow
+6. If FAIL again → repeat loop (max 3 iterations)
+7. If still FAIL after 3 iterations → create BLOCKER report, wait for CTO
+
+DO NOT create gate report until security verdict is PASS or PASS WITH NOTES.
+
+---
+
+## Security Remediation Tracking
+After each fix cycle, security-reviewer must append findings 
+to reports/security-remediation.md before re-scanning.
+PM includes this file content in G4 report.

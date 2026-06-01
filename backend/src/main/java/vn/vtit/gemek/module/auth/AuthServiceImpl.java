@@ -9,6 +9,7 @@ import io.jsonwebtoken.JwtException;
 import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -58,11 +59,11 @@ public class AuthServiceImpl implements AuthService {
     /** Redis key prefix for login rate limiting counters. */
     private static final String RATE_LIMIT_KEY_PREFIX = "rate:login:";
 
-    /** Maximum login attempts per IP per 60-second window. */
-    private static final int LOGIN_RATE_LIMIT = 10;
-
     /** Rate limit window in seconds. */
     private static final long RATE_LIMIT_WINDOW_SECONDS = 60L;
+
+    /** Maximum login attempts per IP per 60-second window. Configurable to allow higher limits in tests. */
+    private final int loginRateLimit;
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
@@ -86,13 +87,15 @@ public class AuthServiceImpl implements AuthService {
                            JwtTokenProvider tokenProvider,
                            JwtConfig jwtConfig,
                            StringRedisTemplate redisTemplate,
-                           UserMapper userMapper) {
+                           UserMapper userMapper,
+                           @Value("${auth.rate-limit.max-attempts:10}") int loginRateLimit) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.tokenProvider = tokenProvider;
         this.jwtConfig = jwtConfig;
         this.redisTemplate = redisTemplate;
         this.userMapper = userMapper;
+        this.loginRateLimit = loginRateLimit;
     }
 
     /**
@@ -279,7 +282,7 @@ public class AuthServiceImpl implements AuthService {
             redisTemplate.expire(key, RATE_LIMIT_WINDOW_SECONDS, TimeUnit.SECONDS);
         }
 
-        if (count != null && count > LOGIN_RATE_LIMIT) {
+        if (count != null && count > loginRateLimit) {
             log.warn("Login rate limit exceeded for IP={}", clientIp);
             throw new AppException(ErrorCode.RATE_LIMITED,
                     "Too many login attempts. Please wait 60 seconds before retrying.");

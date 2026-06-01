@@ -45,6 +45,15 @@ Build for these user roles (adjust per REQUIREMENTS.md):
 - Confirmation dialogs for destructive actions
 - Empty states for all list views
 
+## Security Fix Mode
+When invoked by PM with a security findings file:
+- Read the findings file completely before touching any code
+- Fix ONLY the listed issues — no refactoring, no scope creep
+- For each fix: add a comment // SECURITY-FIX: [issue description]
+- Run existing tests after fixing to ensure nothing broke
+- Commit: "fix(security): resolve [N] findings from SAST/DAST scan"
+- Report back: "Fixed [N] findings. Tests still passing."
+
 ## Handoff
 When all pages are implemented:
 `✅ Frontend complete. X pages implemented across Y user roles. Ready for G3 report.`

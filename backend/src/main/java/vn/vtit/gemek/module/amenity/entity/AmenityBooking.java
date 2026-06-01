@@ -20,6 +20,8 @@ import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import vn.vtit.gemek.module.apartment.entity.Apartment;
 import vn.vtit.gemek.module.resident.entity.Resident;
 import vn.vtit.gemek.module.user.entity.User;
@@ -84,6 +86,7 @@ public class AmenityBooking {
      * Mapped to the PostgreSQL {@code booking_status} ENUM.
      */
     @Enumerated(EnumType.STRING)
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     @Column(name = "status", nullable = false, columnDefinition = "booking_status")
     private BookingStatus status;
 

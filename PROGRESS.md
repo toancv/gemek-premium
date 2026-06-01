@@ -1,10 +1,10 @@
 # PROGRESS — Apartment Management System
 
 ## Current State
-- **Phase:** frontend — COMPLETE
-- **Gate:** G2 approved, G3 ready — all frontend modules done, awaiting CTO approval
-- **Last completed:** Frontend — Admin (12 pages) + Resident (9 pages) — 2026-05-29
-- **Blocked:** No
+- **Phase:** G4 testing — running module + integration tests
+- **Gate:** G2 approved, G3 approved — tests in progress
+- **Last completed:** G4 integration test suite written (15 tests, 4 files, commit 193ac23) — 2026-05-29
+- **Blocked:** Testcontainers cannot connect to Docker Desktop named pipe (HTTP 400). Root cause: `docker_engine` / `dockerDesktopLinuxEngine` pipes return 400 with redirect label `npipe://\\.\pipe\docker_cli`. Next action: update ~/.testcontainers.properties to use `docker_cli` pipe and re-run tests.
 
 ---
 
@@ -34,8 +34,8 @@
 |------|---------|-----------|
 | G1 — Techstack | ✅ 2026-05-29 | |
 | G2 — Backend | ✅ 2026-05-29 | |
-| G3 — Frontend | ☐ | |
-| G4 — Testing | ☐ | |
+| G3 — Frontend | ✅ 2026-05-29 | SAST backend+frontend both PASS WITH NOTES before approval |
+| G4 — Testing | ☐ | Awaiting test run completion |
 
 ---
 

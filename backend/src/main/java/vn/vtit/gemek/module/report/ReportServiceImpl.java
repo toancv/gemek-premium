@@ -16,6 +16,7 @@ import vn.vtit.gemek.module.amenity.repository.AmenityBookingRepository;
 import vn.vtit.gemek.module.amenity.repository.AmenityRepository;
 import vn.vtit.gemek.module.apartment.repository.ApartmentRepository;
 import vn.vtit.gemek.module.contractor.entity.Contract;
+import vn.vtit.gemek.module.contractor.entity.ContractStatus;
 import vn.vtit.gemek.module.contractor.repository.ContractRepository;
 import vn.vtit.gemek.module.report.dto.AmenityUsageReportResponse;
 import vn.vtit.gemek.module.report.dto.ContractsExpiringResponse;
@@ -223,7 +224,7 @@ public class ReportServiceImpl implements ReportService {
 
         log.debug("Contracts expiring within {} days (by {})", withinDays, maxDate);
 
-        List<Contract> contracts = contractRepository.findActiveExpiringWithContractor(today, maxDate);
+        List<Contract> contracts = contractRepository.findActiveExpiringWithContractor(today, maxDate, ContractStatus.ACTIVE);
         List<ContractsExpiringResponse.ContractRow> rows = new ArrayList<>(contracts.size());
 
         for (Contract contract : contracts) {
@@ -315,7 +316,8 @@ public class ReportServiceImpl implements ReportService {
      */
     private DashboardResponse.TicketStats buildTicketStats() {
         OffsetDateTime since30Days = OffsetDateTime.now(ZoneOffset.UTC).minusDays(30);
-        Object[] kpiRow = ticketRepository.getDashboardTicketKpis(since30Days);
+        List<Object[]> kpiRows = ticketRepository.getDashboardTicketKpis(since30Days);
+        Object[] kpiRow = kpiRows.isEmpty() ? new Object[]{0L, 0L, 0L, 0.0} : kpiRows.get(0);
 
         long open = toLong(kpiRow[0]);
         long inProgress = toLong(kpiRow[1]);

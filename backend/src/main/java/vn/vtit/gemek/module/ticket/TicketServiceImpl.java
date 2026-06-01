@@ -41,6 +41,8 @@ import vn.vtit.gemek.module.ticket.entity.TicketStatusHistory;
 import vn.vtit.gemek.module.ticket.repository.TicketPhotoRepository;
 import vn.vtit.gemek.module.ticket.repository.TicketRepository;
 import vn.vtit.gemek.module.ticket.repository.TicketStatusHistoryRepository;
+import vn.vtit.gemek.module.notification.NotificationService;
+import vn.vtit.gemek.module.notification.entity.NotificationType;
 import vn.vtit.gemek.module.user.entity.User;
 import vn.vtit.gemek.module.user.repository.UserRepository;
 
@@ -115,6 +117,7 @@ public class TicketServiceImpl implements TicketService {
     private final ResidentRepository residentRepository;
     private final ContractorRepository contractorRepository;
     private final FileStorageService fileStorageService;
+    private final NotificationService notificationService;
 
     /**
      * Constructs the service with all required dependencies via explicit constructor injection.
@@ -127,6 +130,7 @@ public class TicketServiceImpl implements TicketService {
      * @param residentRepository   the resident JPA repository.
      * @param contractorRepository the contractor JPA repository.
      * @param fileStorageService   the MinIO file storage service.
+     * @param notificationService  the notification service for in-app alerts.
      */
     public TicketServiceImpl(TicketRepository ticketRepository,
                              TicketPhotoRepository photoRepository,
@@ -135,7 +139,8 @@ public class TicketServiceImpl implements TicketService {
                              UserRepository userRepository,
                              ResidentRepository residentRepository,
                              ContractorRepository contractorRepository,
-                             FileStorageService fileStorageService) {
+                             FileStorageService fileStorageService,
+                             NotificationService notificationService) {
         this.ticketRepository = ticketRepository;
         this.photoRepository = photoRepository;
         this.historyRepository = historyRepository;
@@ -144,6 +149,7 @@ public class TicketServiceImpl implements TicketService {
         this.residentRepository = residentRepository;
         this.contractorRepository = contractorRepository;
         this.fileStorageService = fileStorageService;
+        this.notificationService = notificationService;
     }
 
     // =========================================================================
@@ -378,6 +384,18 @@ public class TicketServiceImpl implements TicketService {
 
         Ticket saved = ticketRepository.save(ticket);
         log.info("Ticket assigned — id={}, status={}", saved.getId(), saved.getStatus());
+
+        // Notify the assigned technician.
+        if (saved.getAssignedToUser() != null) {
+            notificationService.createNotification(
+                    saved.getAssignedToUser().getId(),
+                    "Ticket Assigned",
+                    "Ticket #" + saved.getId() + " has been assigned to you.",
+                    NotificationType.TICKET_ASSIGNED,
+                    saved.getId(),
+                    "Ticket");
+        }
+
         return toDetail(saved);
     }
 

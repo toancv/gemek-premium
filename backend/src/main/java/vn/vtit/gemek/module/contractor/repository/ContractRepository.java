@@ -10,6 +10,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import vn.vtit.gemek.module.contractor.entity.Contract;
+import vn.vtit.gemek.module.contractor.entity.ContractStatus;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -58,14 +59,15 @@ public interface ContractRepository extends JpaRepository<Contract, UUID>, JpaSp
     @Query("""
             SELECT c FROM Contract c
             JOIN FETCH c.contractor
-            WHERE c.status = vn.vtit.gemek.module.contractor.entity.ContractStatus.ACTIVE
+            WHERE c.status = :status
               AND c.endDate >= :today
               AND c.endDate <= :maxDate
             ORDER BY c.endDate ASC
             """)
     List<Contract> findActiveExpiringWithContractor(
             @Param("today") LocalDate today,
-            @Param("maxDate") LocalDate maxDate);
+            @Param("maxDate") LocalDate maxDate,
+            @Param("status") ContractStatus status);
 
     /**
      * Counts ACTIVE contracts whose end date falls within the given window.
@@ -76,12 +78,12 @@ public interface ContractRepository extends JpaRepository<Contract, UUID>, JpaSp
      * @param maxDate the upper-bound date.
      * @return count of matching ACTIVE contracts.
      */
-    @Query("""
-            SELECT COUNT(c) FROM Contract c
-            WHERE c.status = vn.vtit.gemek.module.contractor.entity.ContractStatus.ACTIVE
-              AND c.endDate >= :today
-              AND c.endDate <= :maxDate
-            """)
+    @Query(value = """
+            SELECT COUNT(*) FROM contracts
+            WHERE status = 'ACTIVE'
+              AND end_date >= :today
+              AND end_date <= :maxDate
+            """, nativeQuery = true)
     long countActiveExpiring(
             @Param("today") LocalDate today,
             @Param("maxDate") LocalDate maxDate);
@@ -93,6 +95,6 @@ public interface ContractRepository extends JpaRepository<Contract, UUID>, JpaSp
      *
      * @return total count of ACTIVE contracts.
      */
-    @Query("SELECT COUNT(c) FROM Contract c WHERE c.status = vn.vtit.gemek.module.contractor.entity.ContractStatus.ACTIVE")
+    @Query(value = "SELECT COUNT(*) FROM contracts WHERE status = 'ACTIVE'", nativeQuery = true)
     long countActive();
 }

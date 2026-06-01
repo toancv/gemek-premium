@@ -17,6 +17,8 @@ import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import vn.vtit.gemek.module.user.entity.User;
 
 import java.time.OffsetDateTime;
@@ -70,6 +72,7 @@ public class AuditLog {
      * JSON snapshot of the entity state before the operation.
      * Stored in the PostgreSQL {@code jsonb} column type.
      */
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "old_value", columnDefinition = "jsonb")
     private String oldValue;
 
@@ -77,6 +80,7 @@ public class AuditLog {
      * JSON snapshot of the entity state after the operation.
      * Stored in the PostgreSQL {@code jsonb} column type.
      */
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "new_value", columnDefinition = "jsonb")
     private String newValue;
 

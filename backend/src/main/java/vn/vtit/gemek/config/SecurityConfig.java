@@ -104,6 +104,10 @@ public class SecurityConfig {
                                 })
                         // All other endpoints require authentication.
                         .anyRequest().authenticated())
+                // Return 401 (not 403) for unauthenticated REST API requests.
+                .exceptionHandling(ex -> ex.authenticationEntryPoint(
+                        (req, res, e) -> res.sendError(
+                                jakarta.servlet.http.HttpServletResponse.SC_UNAUTHORIZED, "Unauthorized")))
                 // Insert JWT filter before the standard username/password filter.
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 

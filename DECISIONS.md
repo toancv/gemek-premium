@@ -141,7 +141,32 @@ Format: Date | Decision | Reasoning | Alternatives
 **Alternatives:** Return assignee UUID and resolve name client-side. Rejected — adds round-trips and complicates the frontend.
 
 ## Frontend Decisions
-_(frontend-dev agent fills this)_
+
+### 2026-05-29 | Access token in Zustand memory, refresh token in localStorage
+**Decision:** Access token stored in Zustand (in-memory only). Refresh token persisted to `localStorage` key `gemek_refresh`.
+**Reasoning:** Access token in memory is more secure (not accessible to XSS via document.cookie). Refresh token in localStorage survives page reload. Full HttpOnly cookie migration deferred — requires backend Set-Cookie change on /auth/refresh.
+**Alternatives:** Both in HttpOnly cookies (most secure, tracked as post-G4 hardening item).
+
+### 2026-05-29 | window.__gemekAuthState bridge removed — Zustand imported directly
+**Decision:** Removed `window.__gemekAuthState` and `window.__gemekSetToken` globals. Axios client imports Zustand store directly.
+**Reasoning:** Security scanner flagged globals as token exposure surface. Direct import works cleanly — no circular import issue in practice.
+**Alternatives:** Keep window bridge for circular import safety. Rejected after confirming no circular import exists.
+
+---
+
+## Testing / Infrastructure Decisions
+
+### 2026-05-29 | Testcontainers docker.host uses docker_cli named pipe
+**Decision:** `~/.testcontainers.properties` sets `docker.host=npipe:////./pipe/docker_cli`.
+**Reasoning:** Docker Desktop on Windows returns HTTP 400 from `docker_engine` and `dockerDesktopLinuxEngine` pipes. The 400 response body contains label `com.docker.desktop.address=npipe://\\.\pipe\docker_cli` — this is Docker Desktop's redirect hint to the actual API socket.
+**Alternatives:** TCP on localhost:2375 (requires Docker Desktop setting to expose daemon — security risk); WSL2 socket (requires additional config).
+
+### 2026-05-29 | AuthServiceTest uses LENIENT Mockito strictness
+**Decision:** `@MockitoSettings(strictness = Strictness.LENIENT)` added to `AuthServiceTest`.
+**Reasoning:** `@BeforeEach` stubs `httpRequest.getRemoteAddr()` and `httpRequest.getHeader("X-Forwarded-For")` which are needed by login tests but not by logout/refreshToken tests. Strict mode throws `UnnecessaryStubbingException`. LENIENT is correct here — the stubs are shared setup, not test-specific noise.
+**Alternatives:** Remove stubs from `@BeforeEach`, add per-test. Rejected — too much duplication across 4 login tests.
+
+---
 
 ## CTO Overrides
 _(record when CTO overrides agent decision)_

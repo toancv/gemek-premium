@@ -1,4 +1,9 @@
 spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5433/gemek_test
+    username: gemek
+    password: gemek_test_pass
+    driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:
       ddl-auto: validate
@@ -7,8 +12,8 @@ spring:
     enabled: true
   data:
     redis:
-      host: ${REDIS_HOST:localhost}
-      port: ${REDIS_PORT:6379}
+      host: localhost
+      port: 6379
       password: ""
 
 minio:
@@ -16,6 +21,15 @@ minio:
   access-key: minioadmin
   secret-key: minioadmin
   bucket: gemek-test
+
+jwt:
+  secret: dGVzdFNlY3JldEtleUZvckdlbWVrUHJlbWl1bVRlc3RpbmdPbmx5MjAyNg==
+  access-token-expiry-ms: 900000
+  refresh-token-expiry-ms: 604800000
+
+auth:
+  rate-limit:
+    max-attempts: 10000
 
 firebase:
   enabled: false

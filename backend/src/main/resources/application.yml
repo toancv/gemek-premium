@@ -31,8 +31,8 @@ spring:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
         format_sql: false
-        jdbc:
-          time_zone: UTC
+        type:
+          preferred_enum_jdbc_type: NAMED_ENUM
     show-sql: false
 
   flyway:

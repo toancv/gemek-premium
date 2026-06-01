@@ -19,6 +19,8 @@ import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import vn.vtit.gemek.module.user.entity.User;
 
 import java.time.OffsetDateTime;
@@ -54,6 +56,7 @@ public class TicketStatusHistory {
      * Mapped to the PostgreSQL {@code ticket_status} ENUM.
      */
     @Enumerated(EnumType.STRING)
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     @Column(name = "old_status", columnDefinition = "ticket_status")
     private TicketStatus oldStatus;
 
@@ -62,6 +65,7 @@ public class TicketStatusHistory {
      * Mapped to the PostgreSQL {@code ticket_status} ENUM.
      */
     @Enumerated(EnumType.STRING)
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     @Column(name = "new_status", nullable = false, columnDefinition = "ticket_status")
     private TicketStatus newStatus;
 

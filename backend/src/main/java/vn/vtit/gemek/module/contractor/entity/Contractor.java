@@ -17,6 +17,8 @@ import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
@@ -66,6 +68,7 @@ public class Contractor {
      * Mapped to the PostgreSQL {@code contractor_specialty} ENUM via string comparison.
      */
     @Enumerated(EnumType.STRING)
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     @Column(name = "specialty", nullable = false, columnDefinition = "contractor_specialty")
     private ContractorSpecialty specialty = ContractorSpecialty.OTHER;
 

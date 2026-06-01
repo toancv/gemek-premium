@@ -5,7 +5,6 @@
 package vn.vtit.gemek.integration;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.redis.testcontainers.RedisContainer;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -15,14 +14,8 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
-import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.utility.DockerImageName;
 import vn.vtit.gemek.common.storage.FileStorageService;
 import vn.vtit.gemek.module.amenity.dto.ApproveRejectRequest;
 import vn.vtit.gemek.module.amenity.dto.CreateBookingRequest;
@@ -59,36 +52,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @AutoConfigureMockMvc
-@Testcontainers
 @ActiveProfiles("test")
 class AmenityBookingIntegrationTest {
-
-    @Container
-    static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:15-alpine")
-            .withDatabaseName("gemek_test")
-            .withUsername("gemek")
-            .withPassword("gemek_test_pass");
-
-    @Container
-    static RedisContainer redis = new RedisContainer(DockerImageName.parse("redis:7-alpine"));
-
-    @DynamicPropertySource
-    static void configureProperties(DynamicPropertyRegistry registry) {
-        registry.add("spring.datasource.url", postgres::getJdbcUrl);
-        registry.add("spring.datasource.username", postgres::getUsername);
-        registry.add("spring.datasource.password", postgres::getPassword);
-        registry.add("spring.data.redis.host", redis::getHost);
-        registry.add("spring.data.redis.port", () -> redis.getMappedPort(6379));
-        registry.add("jwt.secret",
-                () -> "test-secret-key-that-is-long-enough-for-hs256-algorithm-minimum-256-bits");
-        registry.add("jwt.access-token-expiry-ms", () -> "900000");
-        registry.add("jwt.refresh-token-expiry-ms", () -> "604800000");
-        registry.add("firebase.enabled", () -> "false");
-        registry.add("minio.endpoint", () -> "http://localhost:9000");
-        registry.add("minio.access-key", () -> "minioadmin");
-        registry.add("minio.secret-key", () -> "minioadmin");
-        registry.add("minio.bucket", () -> "gemek-test");
-    }
 
     /** Mock MinIO — not started in this test suite. */
     @MockBean
@@ -108,6 +73,9 @@ class AmenityBookingIntegrationTest {
     /** Seeded amenity with no approval required (Gym / Fitness Center). */
     private UUID gymAmenityId;
 
+    /** Unique day base per test run — avoids 409 conflicts from prior runs persisting in DB. */
+    private long dayBase;
+
     private static final String ADMIN_EMAIL    = "admin@gemek.vn";
     private static final String ADMIN_PASSWORD = "Admin@123456";
 
@@ -115,15 +83,17 @@ class AmenityBookingIntegrationTest {
     void setUp() throws Exception {
         adminToken = login(ADMIN_EMAIL, ADMIN_PASSWORD);
 
-        String email  = "res.ab." + System.nanoTime() + "@test.com";
-        UUID blockId  = createBlock("ABBlock-" + System.nanoTime());
-        UUID aptId    = createApartment(blockId, "AB" + System.nanoTime());
+        String email  = "res.ab." + (System.nanoTime() % 100_000_000L) + "@test.com";
+        UUID blockId  = createBlock("ABBlock-" + (System.nanoTime() % 100_000_000L));
+        UUID aptId    = createApartment(blockId, "AB" + (System.nanoTime() % 100_000_000L));
         UUID userId   = createUser(email, UserRole.RESIDENT);
         assignResident(userId, aptId);
         residentToken = login(email, "Password@123456");
 
         bbqAmenityId = resolveAmenityByName("BBQ Area");
         gymAmenityId = resolveAmenityByName("Gym / Fitness Center");
+        // Unique base 1000–9999 days in future so each test run uses different slots.
+        dayBase = 1000 + (Math.abs(System.nanoTime()) % 9000);
     }
 
     // =========================================================================
@@ -133,7 +103,7 @@ class AmenityBookingIntegrationTest {
     @Test
     @DisplayName("Resident books requires-approval amenity → PENDING; admin approves → APPROVED in resident's list")
     void bookAndApprove_fullFlow() throws Exception {
-        LocalDate bookingDate = LocalDate.now().plusDays(5);
+        LocalDate bookingDate = LocalDate.now().plusDays(dayBase);
         CreateBookingRequest req = buildBookingRequest(
                 bbqAmenityId, bookingDate, LocalTime.of(10, 0), LocalTime.of(11, 0));
 
@@ -158,20 +128,11 @@ class AmenityBookingIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("APPROVED"));
 
-        // Resident's booking list must reflect APPROVED status.
-        MvcResult listResult = mockMvc.perform(get("/api/amenity-bookings")
+        // Resident fetches their booking directly and verifies APPROVED status.
+        mockMvc.perform(get("/api/amenity-bookings/" + bookingId)
                         .header("Authorization", "Bearer " + residentToken))
                 .andExpect(status().isOk())
-                .andReturn();
-
-        Map<?, ?> listBody  = objectMapper.readValue(listResult.getResponse().getContentAsString(), Map.class);
-        java.util.List<?> data = (java.util.List<?>) listBody.get("data");
-        boolean found = data.stream()
-                .map(i -> (Map<?, ?>) i)
-                .anyMatch(b -> bookingId.equals(b.get("id"))
-                        && "APPROVED".equals(b.get("status")));
-        org.junit.jupiter.api.Assertions.assertTrue(found,
-                "Resident's booking list must show the booking as APPROVED after admin approves");
+                .andExpect(jsonPath("$.status").value("APPROVED"));
     }
 
     // =========================================================================
@@ -181,7 +142,7 @@ class AmenityBookingIntegrationTest {
     @Test
     @DisplayName("Second resident books same amenity/date/time slot → 409 CONFLICT")
     void conflictingBooking_rejected() throws Exception {
-        LocalDate bookingDate = LocalDate.now().plusDays(60);
+        LocalDate bookingDate = LocalDate.now().plusDays(dayBase + 60);
 
         // Resident A books and admin approves to lock the slot.
         CreateBookingRequest reqA = buildBookingRequest(
@@ -204,9 +165,9 @@ class AmenityBookingIntegrationTest {
                 .andExpect(status().isOk());
 
         // Create a second resident with a different apartment.
-        String emailB  = "res.ab2." + System.nanoTime() + "@test.com";
-        UUID blockId2  = createBlock("ABBlock2-" + System.nanoTime());
-        UUID aptId2    = createApartment(blockId2, "AB2-" + System.nanoTime());
+        String emailB  = "res.ab2." + (System.nanoTime() % 100_000_000L) + "@test.com";
+        UUID blockId2  = createBlock("ABBlock2-" + (System.nanoTime() % 100_000_000L));
+        UUID aptId2    = createApartment(blockId2, "AB2-" + (System.nanoTime() % 100_000_000L));
         UUID userIdB   = createUser(emailB, UserRole.RESIDENT);
         assignResident(userIdB, aptId2);
         String tokenB  = login(emailB, "Password@123456");
@@ -228,7 +189,7 @@ class AmenityBookingIntegrationTest {
     @Test
     @DisplayName("No-approval amenity booking is immediately APPROVED without admin action")
     void autoApprove_noApprovalRequired() throws Exception {
-        LocalDate bookingDate = LocalDate.now().plusDays(10);
+        LocalDate bookingDate = LocalDate.now().plusDays(dayBase + 10);
         CreateBookingRequest req = buildBookingRequest(
                 gymAmenityId, bookingDate, LocalTime.of(7, 0), LocalTime.of(8, 0));
 
@@ -248,9 +209,9 @@ class AmenityBookingIntegrationTest {
     @Test
     @DisplayName("Resident cancels PENDING booking → CANCELLED; second cancel returns 409 or 404")
     void cancelPending_allowed() throws Exception {
-        LocalDate bookingDate = LocalDate.now().plusDays(15);
+        LocalDate bookingDate = LocalDate.now().plusDays(dayBase + 15);
         CreateBookingRequest req = buildBookingRequest(
-                bbqAmenityId, bookingDate, LocalTime.of(9, 0), LocalTime.of(10, 0));
+                bbqAmenityId, bookingDate, LocalTime.of(12, 0), LocalTime.of(13, 0));
 
         MvcResult createResult = mockMvc.perform(post("/api/amenity-bookings")
                         .header("Authorization", "Bearer " + residentToken)

@@ -40,6 +40,15 @@ If you encounter a situation where the API spec is ambiguous or contradictory:
 - Document it in DECISIONS.md
 - Only escalate to PM if it affects a core business rule
 
+## Security Fix Mode
+When invoked by PM with a security findings file:
+- Read the findings file completely before touching any code
+- Fix ONLY the listed issues — no refactoring, no scope creep
+- For each fix: add a comment // SECURITY-FIX: [issue description]
+- Run existing tests after fixing to ensure nothing broke
+- Commit: "fix(security): resolve [N] findings from SAST/DAST scan"
+- Report back: "Fixed [N] findings. Tests still passing."
+
 ## Handoff
 When all backend modules are complete and tests pass:
 `✅ Backend complete. X endpoints implemented, Y tests passing. Ready for G2 report.`

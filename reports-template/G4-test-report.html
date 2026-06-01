@@ -48,6 +48,17 @@
   .approval-box { background: linear-gradient(135deg, rgba(245,158,11,0.1), rgba(99,102,241,0.05)); border: 1px solid var(--warn); border-radius: 12px; padding: 1.5rem; text-align: center; }
   .approval-box .instruction { font-size: 1rem; margin-bottom: 0.75rem; }
   code { background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 0.4rem 0.8rem; font-family: var(--font); font-size: 0.9rem; color: var(--accent2); display: inline-block; margin: 0.25rem; }
+  .sec-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 1.25rem; }
+  .sec-card { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 1rem; }
+  .sec-card .sc-label { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); font-family: var(--font); margin-bottom: 0.4rem; }
+  .sec-card .sc-verdict { font-size: 1rem; font-weight: 700; margin-bottom: 0.35rem; }
+  .sec-card .sc-verdict.pass { color: var(--accent2); }
+  .sec-card .sc-verdict.warn { color: var(--warn); }
+  .sec-card .sc-verdict.fail { color: var(--danger); }
+  .sec-card .sc-detail { font-size: 0.78rem; color: var(--muted); line-height: 1.5; }
+  .sec-card .sc-iterations { font-size: 0.7rem; font-family: var(--font); color: var(--muted); margin-top: 0.4rem; opacity: 0.7; }
+  .sec-findings table { margin-top: 0; }
+  .badge.critical { background: rgba(239,68,68,0.2); color: #f87171; border: 1px solid rgba(239,68,68,0.3); }
 </style>
 </head>
 <body>
@@ -125,6 +136,48 @@
         <td>{{FLOW_NAME}}</td>
         <td><span class="badge {{RESULT_CLASS}}">{{RESULT}}</span></td>
         <td>{{FLOW_NOTES}}</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- SECURITY SUMMARY -->
+<div class="section sec-findings">
+  <div class="section-title">Security Testing Summary</div>
+
+  <div class="sec-grid">
+    <div class="sec-card">
+      <div class="sc-label">SAST — Backend</div>
+      <div class="sc-verdict {{SAST_BE_CLASS}}">{{SAST_BE_VERDICT}}</div>
+      <div class="sc-detail">{{SAST_BE_SUMMARY}}</div>
+      <div class="sc-iterations">{{SAST_BE_ITERATIONS}} scan iteration(s)</div>
+    </div>
+    <div class="sec-card">
+      <div class="sc-label">SAST — Frontend</div>
+      <div class="sc-verdict {{SAST_FE_CLASS}}">{{SAST_FE_VERDICT}}</div>
+      <div class="sc-detail">{{SAST_FE_SUMMARY}}</div>
+      <div class="sc-iterations">{{SAST_FE_ITERATIONS}} scan iteration(s)</div>
+    </div>
+    <div class="sec-card">
+      <div class="sc-label">DAST — Live API</div>
+      <div class="sc-verdict {{DAST_CLASS}}">{{DAST_VERDICT}}</div>
+      <div class="sc-detail">{{DAST_SUMMARY}}</div>
+      <div class="sc-iterations">{{DAST_ITERATIONS}} scan iteration(s)</div>
+    </div>
+  </div>
+
+  <table>
+    <thead>
+      <tr><th>Scan</th><th>Finding</th><th>Severity</th><th>Status</th><th>Fix Commit</th></tr>
+    </thead>
+    <tbody>
+      <!-- One row per finding. Fixed issues show commit hash. Remaining medium/low show as known issues. -->
+      <tr>
+        <td>{{SCAN_TYPE}}</td>
+        <td>{{FINDING_DESCRIPTION}}</td>
+        <td><span class="badge {{FINDING_SEVERITY}}">{{FINDING_SEVERITY}}</span></td>
+        <td><span class="badge {{FINDING_STATUS_CLASS}}">{{FINDING_STATUS}}</span></td>
+        <td style="font-family:var(--font); font-size:0.75rem; color:var(--muted)">{{FIX_COMMIT}}</td>
       </tr>
     </tbody>
   </table>

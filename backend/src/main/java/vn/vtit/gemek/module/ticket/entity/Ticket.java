@@ -20,6 +20,8 @@ import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import vn.vtit.gemek.module.apartment.entity.Apartment;
 import vn.vtit.gemek.module.contractor.entity.Contractor;
 import vn.vtit.gemek.module.user.entity.User;
@@ -69,6 +71,7 @@ public class Ticket {
      * Mapped to the PostgreSQL {@code ticket_category} ENUM.
      */
     @Enumerated(EnumType.STRING)
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     @Column(name = "category", nullable = false, columnDefinition = "ticket_category")
     private TicketCategory category;
 
@@ -85,6 +88,7 @@ public class Ticket {
      * Mapped to the PostgreSQL {@code ticket_status} ENUM.
      */
     @Enumerated(EnumType.STRING)
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     @Column(name = "status", nullable = false, columnDefinition = "ticket_status")
     private TicketStatus status = TicketStatus.NEW;
 
@@ -93,6 +97,7 @@ public class Ticket {
      * Mapped to the PostgreSQL {@code ticket_priority} ENUM.
      */
     @Enumerated(EnumType.STRING)
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     @Column(name = "priority", nullable = false, columnDefinition = "ticket_priority")
     private TicketPriority priority = TicketPriority.MEDIUM;
 

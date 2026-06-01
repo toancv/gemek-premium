@@ -14,10 +14,13 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import vn.vtit.gemek.module.apartment.entity.Apartment;
 import vn.vtit.gemek.module.user.entity.User;
 
@@ -61,6 +64,7 @@ public class Resident {
      * Mapped to the PostgreSQL {@code resident_type} ENUM.
      */
     @Enumerated(EnumType.STRING)
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     @Column(name = "type", nullable = false, columnDefinition = "resident_type")
     private ResidentType type;
 
@@ -93,4 +97,13 @@ public class Resident {
     /** Record last-modified timestamp. Updated by the service layer on every write. */
     @Column(name = "updated_at", nullable = false)
     private OffsetDateTime updatedAt;
+
+    /**
+     * Sets {@code created_at} and {@code updated_at} on initial persist.
+     */
+    @PrePersist
+    public void onCreate() {
+        this.createdAt = OffsetDateTime.now();
+        this.updatedAt = OffsetDateTime.now();
+    }
 }

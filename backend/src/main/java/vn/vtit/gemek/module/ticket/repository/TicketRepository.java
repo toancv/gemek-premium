@@ -164,7 +164,7 @@ public interface TicketRepository extends JpaRepository<Ticket, UUID>, JpaSpecif
                            END), 0)                                                                  AS avgResHours
             FROM tickets t
             """, nativeQuery = true)
-    Object[] getDashboardTicketKpis(@Param("since30Days") OffsetDateTime since30Days);
+    List<Object[]> getDashboardTicketKpis(@Param("since30Days") OffsetDateTime since30Days);
 
     /**
      * Returns counts of open+in-progress tickets grouped by category for the dashboard.

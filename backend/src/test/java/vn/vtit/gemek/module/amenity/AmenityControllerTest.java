@@ -5,7 +5,6 @@
 package vn.vtit.gemek.module.amenity;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.redis.testcontainers.RedisContainer;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -15,14 +14,8 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
-import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.utility.DockerImageName;
 import vn.vtit.gemek.common.storage.FileStorageService;
 import vn.vtit.gemek.module.amenity.dto.ApproveRejectRequest;
 import vn.vtit.gemek.module.amenity.dto.CreateBookingRequest;
@@ -62,36 +55,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @AutoConfigureMockMvc
-@Testcontainers
 @ActiveProfiles("test")
 class AmenityControllerTest {
-
-    @Container
-    static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:15-alpine")
-            .withDatabaseName("gemek_test")
-            .withUsername("gemek")
-            .withPassword("gemek_test_pass");
-
-    @Container
-    static RedisContainer redis = new RedisContainer(DockerImageName.parse("redis:7-alpine"));
-
-    @DynamicPropertySource
-    static void configureProperties(DynamicPropertyRegistry registry) {
-        registry.add("spring.datasource.url", postgres::getJdbcUrl);
-        registry.add("spring.datasource.username", postgres::getUsername);
-        registry.add("spring.datasource.password", postgres::getPassword);
-        registry.add("spring.data.redis.host", redis::getHost);
-        registry.add("spring.data.redis.port", () -> redis.getMappedPort(6379));
-        registry.add("jwt.secret",
-                () -> "test-secret-key-that-is-long-enough-for-hs256-algorithm-minimum-256-bits");
-        registry.add("jwt.access-token-expiry-ms", () -> "900000");
-        registry.add("jwt.refresh-token-expiry-ms", () -> "604800000");
-        registry.add("firebase.enabled", () -> "false");
-        registry.add("minio.endpoint", () -> "http://localhost:9000");
-        registry.add("minio.access-key", () -> "minioadmin");
-        registry.add("minio.secret-key", () -> "minioadmin");
-        registry.add("minio.bucket", () -> "gemek-test");
-    }
 
     /** Mock MinIO — not started in this test suite. */
     @MockBean
@@ -146,9 +111,10 @@ class AmenityControllerTest {
     @Test
     @DisplayName("POST /api/amenity-bookings — no-approval amenity → 201, status=APPROVED")
     void createBooking_noApprovalAmenity_returns201StatusApproved() throws Exception {
+        LocalDate bookingDate = LocalDate.now().plusDays(1000 + (Math.abs(System.nanoTime()) % 9000));
         CreateBookingRequest req = buildBookingRequest(
                 gymAmenityId,
-                LocalDate.now().plusDays(3),
+                bookingDate,
                 LocalTime.of(8, 0),
                 LocalTime.of(9, 0));
 
@@ -173,7 +139,7 @@ class AmenityControllerTest {
     @DisplayName("POST /api/amenity-bookings — overlapping slot → 409 CONFLICT")
     void createBooking_overlappingSlot_returns409() throws Exception {
         // Use a date far in the future to avoid interference from other tests.
-        LocalDate bookingDate = LocalDate.now().plusDays(30);
+        LocalDate bookingDate = LocalDate.now().plusDays(1000 + (Math.abs(System.nanoTime()) % 9000));
         CreateBookingRequest first = buildBookingRequest(
                 gymAmenityId, bookingDate, LocalTime.of(10, 0), LocalTime.of(11, 0));
 
@@ -216,7 +182,7 @@ class AmenityControllerTest {
     @Test
     @DisplayName("POST /api/amenity-bookings — daily limit exceeded → 409 CONFLICT")
     void createBooking_dailyLimitExceeded_returns409() throws Exception {
-        LocalDate bookingDate = LocalDate.now().plusDays(7);
+        LocalDate bookingDate = LocalDate.now().plusDays(1000 + (Math.abs(System.nanoTime()) % 9000));
 
         // First booking uses 08:00 – 09:00.
         CreateBookingRequest first = buildBookingRequest(
@@ -248,7 +214,7 @@ class AmenityControllerTest {
     @DisplayName("PUT /api/amenity-bookings/{id}/approve — ADMIN approves PENDING → 200, APPROVED")
     void approveBooking_admin_returns200StatusApproved() throws Exception {
         // Create a booking on a requires-approval amenity — status will be PENDING.
-        LocalDate bookingDate = LocalDate.now().plusDays(5);
+        LocalDate bookingDate = LocalDate.now().plusDays(1000 + (Math.abs(System.nanoTime()) % 9000));
         CreateBookingRequest req = buildBookingRequest(
                 bbqAmenityId, bookingDate, LocalTime.of(11, 0), LocalTime.of(12, 0));
 
@@ -289,7 +255,7 @@ class AmenityControllerTest {
     @DisplayName("PUT /api/amenity-bookings/{id}/cancel — RESIDENT cancels own booking → 200, CANCELLED")
     void cancelBooking_resident_returns200StatusCancelled() throws Exception {
         // Create a PENDING booking (requires-approval amenity).
-        LocalDate bookingDate = LocalDate.now().plusDays(10);
+        LocalDate bookingDate = LocalDate.now().plusDays(1000 + (Math.abs(System.nanoTime()) % 9000));
         CreateBookingRequest req = buildBookingRequest(
                 bbqAmenityId, bookingDate, LocalTime.of(13, 0), LocalTime.of(14, 0));
 

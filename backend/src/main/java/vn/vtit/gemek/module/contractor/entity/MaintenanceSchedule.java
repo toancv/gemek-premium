@@ -20,6 +20,8 @@ import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
@@ -61,6 +63,7 @@ public class MaintenanceSchedule {
      * Mapped to the PostgreSQL {@code schedule_frequency} ENUM.
      */
     @Enumerated(EnumType.STRING)
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     @Column(name = "frequency", nullable = false, columnDefinition = "schedule_frequency")
     private ScheduleFrequency frequency;
 

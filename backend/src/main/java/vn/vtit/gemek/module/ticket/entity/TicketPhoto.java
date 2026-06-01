@@ -19,6 +19,8 @@ import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import vn.vtit.gemek.module.user.entity.User;
 
 import java.time.OffsetDateTime;
@@ -70,6 +72,7 @@ public class TicketPhoto {
      * Mapped to the PostgreSQL {@code photo_phase} ENUM.
      */
     @Enumerated(EnumType.STRING)
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     @Column(name = "phase", nullable = false, columnDefinition = "photo_phase")
     private PhotoPhase phase = PhotoPhase.BEFORE;
 

@@ -19,6 +19,8 @@ import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import vn.vtit.gemek.module.user.entity.User;
 
 import java.time.OffsetDateTime;
@@ -65,6 +67,7 @@ public class Notification {
      * Maps to the PostgreSQL {@code notification_type} ENUM.
      */
     @Enumerated(EnumType.STRING)
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     @Column(name = "type", nullable = false, columnDefinition = "notification_type")
     private NotificationType type;
 

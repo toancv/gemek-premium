@@ -5,7 +5,6 @@
 package vn.vtit.gemek.module.apartment;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.redis.testcontainers.RedisContainer;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -14,14 +13,8 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
-import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.utility.DockerImageName;
 import vn.vtit.gemek.module.apartment.dto.CreateApartmentRequest;
 import vn.vtit.gemek.module.apartment.dto.CreateBlockRequest;
 import vn.vtit.gemek.module.auth.dto.LoginRequest;
@@ -42,34 +35,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @AutoConfigureMockMvc
-@Testcontainers
 @ActiveProfiles("test")
 class BlockControllerTest {
-
-    @Container
-    static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:15-alpine")
-            .withDatabaseName("gemek_test")
-            .withUsername("gemek")
-            .withPassword("gemek_test_pass");
-
-    @Container
-    static RedisContainer redis = new RedisContainer(DockerImageName.parse("redis:7-alpine"));
-
-    @DynamicPropertySource
-    static void configureProperties(DynamicPropertyRegistry registry) {
-        registry.add("spring.datasource.url", postgres::getJdbcUrl);
-        registry.add("spring.datasource.username", postgres::getUsername);
-        registry.add("spring.datasource.password", postgres::getPassword);
-        registry.add("spring.data.redis.host", redis::getHost);
-        registry.add("spring.data.redis.port", () -> redis.getMappedPort(6379));
-        registry.add("jwt.secret",
-                () -> "test-secret-key-that-is-long-enough-for-hs256-algorithm-minimum-256-bits");
-        registry.add("jwt.access-token-expiry-ms", () -> "900000");
-        registry.add("jwt.refresh-token-expiry-ms", () -> "604800000");
-        registry.add("firebase.enabled", () -> "false");
-        registry.add("minio.access-key", () -> "minioadmin");
-        registry.add("minio.secret-key", () -> "minioadmin");
-    }
 
     @Autowired
     private MockMvc mockMvc;
@@ -115,7 +82,8 @@ class BlockControllerTest {
     @Test
     @DisplayName("POST /api/blocks — ADMIN creates block, returns 201 with id and name")
     void createBlock_adminRole_returns201() throws Exception {
-        CreateBlockRequest request = new CreateBlockRequest("Block-Test-A", "Integration test block");
+        String uniqueName = "Block-" + System.nanoTime();
+        CreateBlockRequest request = new CreateBlockRequest(uniqueName, "Integration test block");
 
         mockMvc.perform(post("/api/blocks")
                         .header("Authorization", "Bearer " + adminToken)
@@ -123,13 +91,14 @@ class BlockControllerTest {
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.id").isNotEmpty())
-                .andExpect(jsonPath("$.name").value("Block-Test-A"));
+                .andExpect(jsonPath("$.name").value(uniqueName));
     }
 
     @Test
     @DisplayName("POST /api/blocks — duplicate name returns 409 CONFLICT")
     void createBlock_duplicateName_returns409() throws Exception {
-        CreateBlockRequest request = new CreateBlockRequest("Block-Dup-X", null);
+        String uniqueName = "Block-" + System.nanoTime();
+        CreateBlockRequest request = new CreateBlockRequest(uniqueName, null);
 
         // First create succeeds.
         mockMvc.perform(post("/api/blocks")
@@ -168,7 +137,7 @@ class BlockControllerTest {
     @DisplayName("DELETE /api/blocks/{id} — returns 409 when block has apartments")
     void deleteBlock_withApartments_returns409() throws Exception {
         // Create a block.
-        CreateBlockRequest blockRequest = new CreateBlockRequest("Block-With-Apt", null);
+        CreateBlockRequest blockRequest = new CreateBlockRequest("Block-" + System.nanoTime(), null);
         MvcResult blockResult = mockMvc.perform(post("/api/blocks")
                         .header("Authorization", "Bearer " + adminToken)
                         .contentType(MediaType.APPLICATION_JSON)

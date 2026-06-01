@@ -14,11 +14,14 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
@@ -73,6 +76,7 @@ public class Apartment {
      * Mapped to the PostgreSQL {@code apartment_status} ENUM via string comparison.
      */
     @Enumerated(EnumType.STRING)
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     @Column(name = "status", nullable = false, columnDefinition = "apartment_status")
     private ApartmentStatus status = ApartmentStatus.AVAILABLE;
 
@@ -87,6 +91,15 @@ public class Apartment {
     /** Record last-modified timestamp. Updated by {@link #onUpdate()}. */
     @Column(name = "updated_at", nullable = false)
     private OffsetDateTime updatedAt;
+
+    /**
+     * Sets {@code created_at} and {@code updated_at} on initial persist.
+     */
+    @PrePersist
+    public void onCreate() {
+        this.createdAt = OffsetDateTime.now();
+        this.updatedAt = OffsetDateTime.now();
+    }
 
     /**
      * Sets {@code updated_at} to the current time before any JPA update.

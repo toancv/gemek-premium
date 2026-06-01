@@ -44,9 +44,6 @@
   .approval-box .instruction { font-size: 1rem; margin-bottom: 0.75rem; }
   code { background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 0.4rem 0.8rem; font-family: var(--font); font-size: 0.9rem; color: var(--accent2); display: inline-block; margin: 0.25rem; }
   .commit { font-family: var(--font); font-size: 0.75rem; color: var(--accent); }
-  .pass-rate-bar { background: var(--border); border-radius: 100px; height: 8px; margin-top: 0.5rem; overflow: hidden; }
-  .pass-rate-fill { background: var(--accent2); height: 100%; border-radius: 100px; }
-  .tag { display: inline-block; font-size: 0.6rem; padding: 0.1rem 0.45rem; border-radius: 3px; font-family: var(--font); font-weight: 600; margin-left: 0.35rem; vertical-align: middle; background: rgba(99,102,241,0.15); color: #a5b4fc; }
   .fix-num { display: inline-block; width: 1.4rem; height: 1.4rem; border-radius: 50%; background: rgba(16,185,129,0.2); color: var(--accent2); font-size: 0.7rem; font-weight: 700; text-align: center; line-height: 1.4rem; font-family: var(--font); margin-right: 0.5rem; flex-shrink: 0; }
   .fix-row { display: flex; align-items: flex-start; gap: 0.1rem; padding: 0.6rem 0; border-bottom: 1px solid var(--border); font-size: 0.875rem; }
   .fix-row:last-child { border-bottom: none; }
@@ -60,7 +57,7 @@
 <div class="header">
   <div class="gate-badge">GATE G4 · TEST REPORT — FINAL</div>
   <h1>Integration &amp; Unit Test Report</h1>
-  <div class="meta">Generated: 2026-06-01 &nbsp;·&nbsp; Branch: phase/frontend &nbsp;·&nbsp; Infrastructure: Docker TCP localhost:2375 / PostgreSQL localhost:5433 / Redis localhost:6379 &nbsp;·&nbsp; Awaiting CTO Approval</div>
+  <div class="meta">Updated: 2026-06-01 &nbsp;·&nbsp; Branch: phase/frontend &nbsp;·&nbsp; Infrastructure: PostgreSQL localhost:5432/gemek2 / Redis localhost:6379 / Java 21 &nbsp;·&nbsp; Awaiting CTO Approval</div>
 </div>
 
 <!-- ── Summary stats ─────────────────────────────────────────────────────── -->
@@ -70,15 +67,15 @@
     <div class="label">Total Tests</div>
   </div>
   <div class="stat">
-    <div class="number">77</div>
+    <div class="number">83</div>
     <div class="label">Passing</div>
   </div>
   <div class="stat">
-    <div class="number warn">6</div>
-    <div class="label">Failing (pre-existing)</div>
+    <div class="number">0</div>
+    <div class="label">Failing</div>
   </div>
   <div class="stat">
-    <div class="number">92.8%</div>
+    <div class="number">100%</div>
     <div class="label">Pass Rate</div>
   </div>
   <div class="stat">
@@ -86,17 +83,19 @@
     <div class="label">G4 Integration (15/15)</div>
   </div>
   <div class="stat">
-    <div class="number">10</div>
-    <div class="label">Bugs Fixed</div>
+    <div class="number">16</div>
+    <div class="label">Total Bugs Fixed</div>
   </div>
 </div>
 
 <div class="note-box green">
-  &#10003; <strong>Overall Verdict — PASS:</strong>
-  All 15 G4 cross-module integration tests pass (100%). The 6 failing unit tests are pre-existing defects
-  not introduced during this fix cycle (lower(bytea) H2/PostgreSQL dialect mismatch, native SQL column
-  aliasing, DTO field-naming edge cases). These are documented below and tracked for a follow-up sprint.
-  No regression was introduced.
+  &#10003; <strong>Overall Verdict — PASS (100%):</strong>
+  All 83 tests pass. 15/15 G4 cross-module integration tests pass. The 6 previously pre-existing unit test
+  failures have been fully resolved in commit <span class="commit">c98c99c</span>:
+  Jackson <code>@JsonProperty</code> on all <code>isXxx</code> boolean DTO and request fields,
+  native SQL column name corrections, PostgreSQL JDBC type-inference fixes via COALESCE and CAST patterns,
+  and <code>List&lt;Object[]&gt;</code> return-type corrections for aggregate native queries.
+  No regression introduced.
 </div>
 
 <!-- ── G4 Integration Tests ──────────────────────────────────────────────── -->
@@ -192,185 +191,135 @@
 
 <!-- ── Unit / Controller Tests ───────────────────────────────────────────── -->
 <div class="section">
-  <div class="section-title">Unit &amp; Controller Tests — 77 / 83 Pass</div>
+  <div class="section-title">Unit &amp; Controller Tests — 68 / 68 Pass</div>
   <table>
     <thead>
       <tr><th>Test Class</th><th>Pass / Total</th><th>Result</th><th>Notes</th></tr>
     </thead>
     <tbody>
+      <tr><td><strong>AmenityControllerTest</strong></td><td>5 / 5</td><td><span class="badge pass">&#10003; PASS</span></td><td>—</td></tr>
+      <tr><td><strong>AnnouncementControllerTest</strong></td><td>4 / 4</td><td><span class="badge pass">&#10003; PASS</span></td><td>—</td></tr>
       <tr>
-        <td><strong>AmenityControllerTest</strong></td>
-        <td>5 / 5</td>
+        <td><strong>ApartmentControllerTest</strong></td><td>5 / 5</td>
         <td><span class="badge pass">&#10003; PASS</span></td>
-        <td>—</td>
+        <td>Fixed: JPQL null-param filter rewritten to <code>col = COALESCE(:p, col)</code> — eliminates PostgreSQL untyped-parameter error on enum/UUID IS NULL checks</td>
       </tr>
+      <tr><td><strong>BlockControllerTest</strong></td><td>5 / 5</td><td><span class="badge pass">&#10003; PASS</span></td><td>—</td></tr>
       <tr>
-        <td><strong>AnnouncementControllerTest</strong></td>
-        <td>4 / 4</td>
+        <td><strong>AuthControllerTest</strong></td><td>6 / 6</td>
         <td><span class="badge pass">&#10003; PASS</span></td>
-        <td>—</td>
+        <td>Fixed: <code>@JsonProperty("isActive")</code> on <code>UserResponse</code> / <code>UserDetailResponse</code> record components</td>
       </tr>
+      <tr><td><strong>AuthServiceTest</strong></td><td>7 / 7</td><td><span class="badge pass">&#10003; PASS</span></td><td>—</td></tr>
+      <tr><td><strong>ContractorControllerTest</strong></td><td>5 / 5</td><td><span class="badge pass">&#10003; PASS</span></td><td>—</td></tr>
+      <tr><td><strong>NotificationControllerTest</strong></td><td>3 / 3</td><td><span class="badge pass">&#10003; PASS</span></td><td>—</td></tr>
+      <tr><td><strong>ParkingControllerTest</strong></td><td>4 / 4</td><td><span class="badge pass">&#10003; PASS</span></td><td>—</td></tr>
       <tr>
-        <td><strong>ApartmentControllerTest</strong></td>
-        <td>4 / 5</td>
-        <td><span class="badge warn">&#9888; 1 FAIL</span></td>
-        <td><span class="tag">pre-existing</span> H2 dialect rejects <code>lower(bytea) LIKE ?</code> with null param — not reproducible on PostgreSQL</td>
-      </tr>
-      <tr>
-        <td><strong>BlockControllerTest</strong></td>
-        <td>5 / 5</td>
+        <td><strong>ReportControllerTest</strong></td><td>6 / 6</td>
         <td><span class="badge pass">&#10003; PASS</span></td>
-        <td>—</td>
+        <td>Fixed: <code>r.resident_type</code>→<code>r.type</code>; CAST for JDBC type inference on nullable native params; <code>List&lt;Object[]&gt;</code> return type on aggregate queries</td>
       </tr>
       <tr>
-        <td><strong>AuthControllerTest</strong></td>
-        <td>6 / 6</td>
+        <td><strong>ResidentControllerTest</strong></td><td>5 / 5</td>
         <td><span class="badge pass">&#10003; PASS</span></td>
-        <td>—</td>
+        <td>Fixed: <code>@JsonProperty("isPrimaryContact")</code> on both <code>ResidentResponse</code> and <code>CreateResidentRequest</code></td>
       </tr>
+      <tr><td><strong>TicketControllerTest</strong></td><td>8 / 8</td><td><span class="badge pass">&#10003; PASS</span></td><td>—</td></tr>
       <tr>
-        <td><strong>AuthServiceTest</strong></td>
-        <td>7 / 7</td>
+        <td><strong>VehicleControllerTest</strong></td><td>5 / 5</td>
         <td><span class="badge pass">&#10003; PASS</span></td>
-        <td>—</td>
-      </tr>
-      <tr>
-        <td><strong>ContractorControllerTest</strong></td>
-        <td>5 / 5</td>
-        <td><span class="badge pass">&#10003; PASS</span></td>
-        <td>—</td>
-      </tr>
-      <tr>
-        <td><strong>NotificationControllerTest</strong></td>
-        <td>3 / 3</td>
-        <td><span class="badge pass">&#10003; PASS</span></td>
-        <td>—</td>
-      </tr>
-      <tr>
-        <td><strong>ParkingControllerTest</strong></td>
-        <td>4 / 4</td>
-        <td><span class="badge pass">&#10003; PASS</span></td>
-        <td>—</td>
-      </tr>
-      <tr>
-        <td><strong>ReportControllerTest</strong></td>
-        <td>4 / 6</td>
-        <td><span class="badge warn">&#9888; 2 FAIL</span></td>
-        <td><span class="tag">pre-existing</span> Native SQL column alias mismatch — projection interface fields do not match aliases in H2 test queries</td>
-      </tr>
-      <tr>
-        <td><strong>ResidentControllerTest</strong></td>
-        <td>4 / 5</td>
-        <td><span class="badge warn">&#9888; 1 FAIL</span></td>
-        <td><span class="tag">pre-existing</span> DTO field naming: <code>isPrimaryContact</code> serialises as <code>primaryContact</code> under Jackson boolean convention</td>
-      </tr>
-      <tr>
-        <td><strong>TicketControllerTest</strong></td>
-        <td>8 / 8</td>
-        <td><span class="badge pass">&#10003; PASS</span></td>
-        <td>—</td>
-      </tr>
-      <tr>
-        <td><strong>VehicleControllerTest</strong></td>
-        <td>3 / 5</td>
-        <td><span class="badge warn">&#9888; 2 FAIL</span></td>
-        <td><span class="tag">pre-existing</span> <code>isActive</code> DTO naming (same Jackson issue) + test relies on static seed data that may not be present in H2 test context</td>
+        <td>Fixed: <code>@JsonProperty("isActive")</code> on <code>VehicleResponse</code></td>
       </tr>
     </tbody>
   </table>
-
-  <div class="note-box" style="margin-top:1rem;">
-    <strong>Pre-existing failures — root cause summary:</strong>
-    The 6 failing unit tests share two categories:
-    (1) H2 in-memory dialect incompatibilities with PostgreSQL-specific SQL constructs
-    (<code>lower(bytea)</code>, native SQL aliases, <code>VARCHAR</code> vs <code>BYTEA</code> comparison) — these pass cleanly against a real PostgreSQL instance as confirmed by all 15 G4 integration tests.
-    (2) Jackson boolean field serialisation: fields named <code>isXxx</code> in a Java record/DTO serialize as <code>xxx</code> (strip the "is" prefix). Tests assert the full name. Fix: rename fields or add <code>@JsonProperty</code>. Neither failure was introduced in this session.
-  </div>
 </div>
 
 <!-- ── Bugs Fixed ────────────────────────────────────────────────────────── -->
 <div class="section">
-  <div class="section-title">Bugs Fixed This Session — 10 Defects Resolved</div>
+  <div class="section-title">All Bugs Fixed — 16 Defects (2 Commits)</div>
+  <p style="font-size:0.75rem; color:var(--muted); margin-bottom:1rem; font-family:var(--font);">
+    Commit <span class="commit">8d10d2b</span> — G4 integration fixes &nbsp;|&nbsp; Commit <span class="commit">c98c99c</span> — pre-existing unit test fixes
+  </p>
 
-  <div class="fix-row">
-    <div class="fix-num">1</div>
-    <div class="fix-body">
-      <strong>@PrePersist missing on 6 entities (Block, Apartment, User, Resident, ResidentHistory, Vehicle)</strong>
-      <span><code>created_at</code> / <code>updated_at</code> columns were NULL on INSERT — Hibernate never called the lifecycle callback. Added <code>@PrePersist</code> and <code>@PreUpdate</code> hooks to all affected entities.</span>
-    </div>
-  </div>
+  <div class="fix-row"><div class="fix-num">1</div><div class="fix-body">
+    <strong>@PrePersist missing on 6 entities (Block, Apartment, User, Resident, ResidentHistory, Vehicle)</strong>
+    <span><code>created_at</code> / <code>updated_at</code> NULL on INSERT. Added <code>@PrePersist</code> / <code>@PreUpdate</code> to all 6 entities. <span class="commit">8d10d2b</span></span>
+  </div></div>
 
-  <div class="fix-row">
-    <div class="fix-num">2</div>
-    <div class="fix-body">
-      <strong>AuditLog JSONB columns missing @JdbcTypeCode(SqlTypes.JSON)</strong>
-      <span>Without the annotation Hibernate mapped <code>Map&lt;String,Object&gt;</code> columns to <code>TEXT</code>, causing a type mismatch on INSERT into PostgreSQL <code>JSONB</code> columns. Added <code>@JdbcTypeCode(SqlTypes.JSON)</code> to all JSONB fields.</span>
-    </div>
-  </div>
+  <div class="fix-row"><div class="fix-num">2</div><div class="fix-body">
+    <strong>AuditLog JSONB columns missing @JdbcTypeCode(SqlTypes.JSON)</strong>
+    <span>Hibernate sent <code>Map</code> as TEXT; PostgreSQL rejected INSERT into <code>JSONB</code>. Added annotation to <code>oldValue</code> and <code>newValue</code>. <span class="commit">8d10d2b</span></span>
+  </div></div>
 
-  <div class="fix-row">
-    <div class="fix-num">3</div>
-    <div class="fix-body">
-      <strong>hibernate.jdbc.time_zone=UTC caused LocalTime +8h shift on PostgreSQL TIME columns</strong>
-      <span>PostgreSQL <code>TIME WITHOUT TIME ZONE</code> stored values verbatim but Hibernate applied a UTC offset on read, shifting amenity booking times by +8 h in UTC+8 environments. Removed <code>hibernate.jdbc.time_zone</code> from <code>application.yml</code>.</span>
-    </div>
-  </div>
+  <div class="fix-row"><div class="fix-num">3</div><div class="fix-body">
+    <strong>hibernate.jdbc.time_zone=UTC shifted LocalTime by +8h on PostgreSQL TIME columns</strong>
+    <span>Amenity operating hours read with +8h offset in UTC+8 environment. Removed <code>jdbc.time_zone</code> from <code>application.yml</code>. <span class="commit">8d10d2b</span></span>
+  </div></div>
 
-  <div class="fix-row">
-    <div class="fix-num">4</div>
-    <div class="fix-body">
-      <strong>AuthServiceImpl.LOGIN_RATE_LIMIT hardcoded to 10 — tests rate-limited after 10 logins</strong>
-      <span>Integration test suites share a Redis instance; after 10 login calls the limiter triggered for all subsequent test users. Made <code>loginRateLimit</code> a configurable <code>@Value</code> property; test profile sets it to 1000.</span>
-    </div>
-  </div>
+  <div class="fix-row"><div class="fix-num">4</div><div class="fix-body">
+    <strong>Login rate limit hardcoded at 10 — test suite rate-limited</strong>
+    <span>Made configurable via <code>@Value</code>; test profile sets 10000. <span class="commit">8d10d2b</span></span>
+  </div></div>
 
-  <div class="fix-row">
-    <div class="fix-num">5</div>
-    <div class="fix-body">
-      <strong>TicketRepository.getDashboardTicketKpis declared Object[] but Spring Data returns List&lt;Object[]&gt;</strong>
-      <span>Mismatched return type caused a <code>NumberFormatException</code> when the service tried to iterate the result. Fixed the repository method signature to <code>List&lt;Object[]&gt;</code>.</span>
-    </div>
-  </div>
+  <div class="fix-row"><div class="fix-num">5</div><div class="fix-body">
+    <strong>getDashboardTicketKpis declared Object[] — Spring Data returns List&lt;Object[]&gt;</strong>
+    <span>Changed return type; unwrapped with null-safe fallback in service. <span class="commit">8d10d2b</span></span>
+  </div></div>
 
-  <div class="fix-row">
-    <div class="fix-num">6</div>
-    <div class="fix-body">
-      <strong>ContractRepository JPQL used fully-qualified enum literal — PostgreSQL rejected the cast</strong>
-      <span>JPQL literal <code>'ACTIVE'::ContractStatus</code> is invalid; PostgreSQL cast syntax is not valid in JPQL and generated <code>'ACTIVE'::ContractStatus</code> SQL which failed. Converted the affected queries to native SQL with plain <code>'ACTIVE'</code> string comparison.</span>
-    </div>
-  </div>
+  <div class="fix-row"><div class="fix-num">6</div><div class="fix-body">
+    <strong>ContractRepository JPQL enum literal generated invalid PostgreSQL cast</strong>
+    <span><code>'ACTIVE'::ContractStatus</code> rejected; PostgreSQL type is <code>contract_status</code>. Converted to native queries. <span class="commit">8d10d2b</span></span>
+  </div></div>
 
-  <div class="fix-row">
-    <div class="fix-num">7</div>
-    <div class="fix-body">
-      <strong>TicketServiceImpl missing NotificationService injection — TICKET_ASSIGNED notification never sent</strong>
-      <span>The <code>NotificationIntegrationTest.ticketAssignment_createsNotification</code> test revealed that the assignment handler never called <code>NotificationService.createNotification</code>. Added the missing <code>@Autowired</code> injection and notification dispatch on ticket assignment.</span>
-    </div>
-  </div>
+  <div class="fix-row"><div class="fix-num">7</div><div class="fix-body">
+    <strong>TicketServiceImpl missing NotificationService — TICKET_ASSIGNED never sent</strong>
+    <span>Injected dependency; added <code>createNotification()</code> call after ticket assignment. <span class="commit">8d10d2b</span></span>
+  </div></div>
 
-  <div class="fix-row">
-    <div class="fix-num">8</div>
-    <div class="fix-body">
-      <strong>Integration test unit numbers exceeded VARCHAR(20) — insert rejected</strong>
-      <span>Test data used a prefix + nanosecond timestamp that exceeded 20 characters. Truncated generated unit numbers to stay within the column constraint.</span>
-    </div>
-  </div>
+  <div class="fix-row"><div class="fix-num">8</div><div class="fix-body">
+    <strong>Integration test unit numbers exceeded VARCHAR(20)</strong>
+    <span>Truncated <code>nanoTime()</code> suffix to <code>% 100_000_000L</code> (max 8 digits). <span class="commit">8d10d2b</span></span>
+  </div></div>
 
-  <div class="fix-row">
-    <div class="fix-num">9</div>
-    <div class="fix-body">
-      <strong>Integration test booking dates static — 409 CONFLICT across test runs</strong>
-      <span>AmenityBookingIntegrationTest used hard-coded future dates; back-to-back runs conflicted on the same slot. Switched to a <code>dayBase</code> value computed from a per-run random offset so each run uses unique booking windows.</span>
-    </div>
-  </div>
+  <div class="fix-row"><div class="fix-num">9</div><div class="fix-body">
+    <strong>Static booking dates / block names — 409 CONFLICT across repeated runs</strong>
+    <span>Per-run <code>dayBase</code> offset for dates; <code>nanoTime()</code> suffix for names. <span class="commit">8d10d2b</span></span>
+  </div></div>
 
-  <div class="fix-row">
-    <div class="fix-num">10</div>
-    <div class="fix-body">
-      <strong>Unit test block names static — 409 CONFLICT across test runs</strong>
-      <span>BlockControllerTest and dependent controller tests used a fixed block name. Multiple test runs against the same DB triggered a unique-constraint violation. Appended <code>System.nanoTime()</code> suffix to all generated block names in test setup.</span>
-    </div>
-  </div>
+  <div class="fix-row"><div class="fix-num">10</div><div class="fix-body">
+    <strong>TicketLifecycleIntegrationTest used wrong token for rating — 403</strong>
+    <span>Changed ticket creation to <code>residentToken</code> so submitter equals rater. <span class="commit">8d10d2b</span></span>
+  </div></div>
+
+  <div class="fix-row"><div class="fix-num">11</div><div class="fix-body">
+    <strong>Jackson strips "is" prefix on 5 response DTOs — isXxx serialised as xxx</strong>
+    <span>Added <code>@JsonProperty</code> to <code>isActive</code> / <code>isRead</code> / <code>isPrimaryContact</code> fields in <code>VehicleResponse</code>, <code>ResidentResponse</code>, <code>NotificationResponse</code>, <code>UserDetailResponse</code>, <code>UserResponse</code>. <span class="commit">c98c99c</span></span>
+  </div></div>
+
+  <div class="fix-row"><div class="fix-num">12</div><div class="fix-body">
+    <strong>Jackson strips "is" prefix on CreateResidentRequest deserialization — value always false</strong>
+    <span>Jackson resolves setter by stripping "is": <code>setPrimaryContact()</code> not found (Lombok generates <code>setIsPrimaryContact()</code>) → field stays false. Added <code>@JsonProperty("isPrimaryContact")</code>. <span class="commit">c98c99c</span></span>
+  </div></div>
+
+  <div class="fix-row"><div class="fix-num">13</div><div class="fix-body">
+    <strong>ResidentRepository native query used r.resident_type — actual column is r.type</strong>
+    <span>Entity maps field as <code>@Column(name = "type")</code>. Fixed column reference; added <code>CAST(:blockId AS UUID)</code> for PostgreSQL JDBC type inference. <span class="commit">c98c99c</span></span>
+  </div></div>
+
+  <div class="fix-row"><div class="fix-num">14</div><div class="fix-body">
+    <strong>ApartmentRepository JPQL: PostgreSQL cannot type enum/UUID parameters in IS NULL check</strong>
+    <span>Named param appearing twice generates two separate JDBC <code>?</code>; first occurrence in IS NULL has no type context. Rewrote all optional filters from <code>(:p IS NULL OR col = :p)</code> to <code>col = COALESCE(:p, col)</code> — single occurrence, typed from column. <span class="commit">c98c99c</span></span>
+  </div></div>
+
+  <div class="fix-row"><div class="fix-num">15</div><div class="fix-body">
+    <strong>TicketRepository native queries: could not determine data type of parameter $1</strong>
+    <span>Same JDBC double-placeholder issue for TIMESTAMPTZ/TEXT/UUID/enum params. Added <code>CAST(:from AS TIMESTAMPTZ)</code>, <code>CAST(:to AS TIMESTAMPTZ)</code>, <code>CAST(:category AS TEXT)</code>, <code>CAST(:apartmentId AS UUID)</code>, <code>CAST(:groupBy AS TEXT)</code> on IS NULL sides. <span class="commit">c98c99c</span></span>
+  </div></div>
+
+  <div class="fix-row"><div class="fix-num">16</div><div class="fix-body">
+    <strong>getTicketSummary / getResidentDemographics declared Object[] — returns List&lt;Object[]&gt;</strong>
+    <span>Aggregate native queries always return a list. Changed repository signatures; unwrapped with null-safe fallback in <code>ReportServiceImpl</code>. <span class="commit">c98c99c</span></span>
+  </div></div>
 </div>
 
 <!-- ── Infrastructure ────────────────────────────────────────────────────── -->
@@ -380,13 +329,8 @@
     <thead><tr><th>Component</th><th>Connection</th><th>Status</th></tr></thead>
     <tbody>
       <tr>
-        <td><strong>Docker Engine</strong></td>
-        <td>TCP <code>localhost:2375</code> via <code>TcpDockerClientProviderStrategy</code></td>
-        <td><span class="badge pass">&#10003; Connected</span></td>
-      </tr>
-      <tr>
         <td><strong>PostgreSQL (test DB)</strong></td>
-        <td><code>localhost:5433 / gemek_test</code> — Testcontainers managed</td>
+        <td><code>localhost:5432 / gemek2</code> — local instance, Flyway-migrated on startup</td>
         <td><span class="badge pass">&#10003; Running</span></td>
       </tr>
       <tr>
@@ -396,12 +340,12 @@
       </tr>
       <tr>
         <td><strong>JDK</strong></td>
-        <td>Java 21 — Eclipse Adoptium</td>
+        <td>Java 21 — Eclipse Adoptium <code>jdk-21.0.10.7-hotspot</code></td>
         <td><span class="badge pass">&#10003; OK</span></td>
       </tr>
       <tr>
-        <td><strong>Build tool</strong></td>
-        <td>Maven — <code>cd backend &amp;&amp; mvn test</code></td>
+        <td><strong>Build</strong></td>
+        <td><code>./mvnw test -Dspring.profiles.active=test</code></td>
         <td><span class="badge pass">&#10003; OK</span></td>
       </tr>
     </tbody>
@@ -410,28 +354,28 @@
 
 <!-- ── Security SAST Summary ─────────────────────────────────────────────── -->
 <div class="section">
-  <div class="section-title">Security SAST — Summary (Full Detail in G3 Report)</div>
+  <div class="section-title">Security SAST — Summary (Full Detail: reports/security-remediation.html)</div>
   <table>
     <thead><tr><th>Scope</th><th>Initial Scan</th><th>Fixes Applied</th><th>Final Verdict</th></tr></thead>
     <tbody>
       <tr>
         <td><strong>Backend</strong></td>
-        <td><span class="badge fail">FAIL — 3C 6H</span></td>
-        <td>3 Critical + 7 High fixed (incl. RFC 1918 172.x follow-up, commits 6e43ebf &amp; 6519fa7)</td>
+        <td><span class="badge fail">FAIL — 3C 6H 1L</span></td>
+        <td>3 Critical + 7 High + 1 Low fixed — <span class="commit">6e43ebf</span> + <span class="commit">6519fa7</span></td>
         <td><span class="badge pass">PASS WITH NOTES</span></td>
       </tr>
       <tr>
         <td><strong>Frontend</strong></td>
-        <td><span class="badge warn">NOTES — 0C 2H</span></td>
-        <td>2 High + 3 Medium fixed (window globals, reactive auth guard, devtools gated)</td>
+        <td><span class="badge warn">NOTES — 2H 3M</span></td>
+        <td>2 High + 3 Medium fixed — <span class="commit">ba1c634</span></td>
         <td><span class="badge pass">PASS WITH NOTES</span></td>
       </tr>
     </tbody>
   </table>
   <div class="note-box">
-    <strong>Tracked / deferred:</strong>
-    Refresh token in localStorage — requires HttpOnly cookie on <code>/auth/refresh</code> backend endpoint; tracked for hardening sprint.
-    MinIO presign endpoint validates key existence but not per-user ownership — MEDIUM, tracked post-G4.
+    <strong>Deferred (tracked):</strong>
+    Refresh token in localStorage — requires <code>Set-Cookie: HttpOnly</code> on <code>/auth/login</code> + <code>/auth/refresh</code>; hardening sprint backlog.
+    MinIO presign endpoint does not verify per-user file ownership — MEDIUM, post-G4 backlog.
   </div>
 </div>
 
@@ -440,24 +384,24 @@
   <div class="section-title">Open Items Before Production</div>
   <ul class="decisions">
     <li>
-      <strong>6 pre-existing unit test failures</strong>
-      Two categories: H2 dialect incompatibilities (lower(bytea), native SQL aliases) and Jackson boolean field naming. Fix plan: switch unit test DB to Testcontainers PostgreSQL, and add <code>@JsonProperty</code> annotations to isXxx DTO fields.
+      <strong>Refresh token HttpOnly cookie migration</strong>
+      Currently stored in localStorage. Full fix: <code>Set-Cookie: HttpOnly; Secure; SameSite=Strict</code> on <code>/auth/login</code> + <code>/auth/refresh</code>; frontend removes localStorage read/write.
     </li>
     <li>
-      <strong>Refresh token HttpOnly cookie migration</strong>
-      Currently stored in localStorage. Full remediation: backend <code>Set-Cookie</code> on <code>/auth/login</code> + <code>/auth/refresh</code>, frontend removes localStorage read/write of refresh token.
+      <strong>MinIO per-user ownership check on presign</strong>
+      Key validated against <code>ticket_photos</code> table but not scoped to calling user's tickets. Tracked for hardening sprint.
     </li>
     <li>
       <strong>Frontend build not wired into Docker Compose</strong>
-      Run <code>pnpm --filter admin build</code> + <code>pnpm --filter resident build</code>, copy dist to <code>nginx/html/</code>. Recommend adding a multi-stage Dockerfile or Makefile target.
+      Run <code>pnpm --filter admin build</code> + <code>pnpm --filter resident build</code>, copy dist to nginx. Recommend multi-stage Dockerfile.
     </li>
     <li>
       <strong>FCM web push not wired</strong>
-      Notification bell polls unread-count API. Service worker implementation deferred.
+      Notification bell polls unread-count API only. Service worker deferred.
     </li>
     <li>
       <strong>Playwright / Cypress E2E deferred</strong>
-      Browser automation requires a running full stack. Critical flows are fully covered by the 15 backend integration tests. Recommended for next sprint.
+      Critical user flows covered by 15 backend integration tests. Browser E2E recommended for next sprint.
     </li>
   </ul>
 </div>

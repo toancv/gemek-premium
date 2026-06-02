@@ -97,6 +97,7 @@ START → [architect] Design system
 - Run /compact proactively when context reaches 80%
 - Always update PROGRESS.md and DECISIONS.md before /compact
 - Commit all work before any context management operation
+- Never start a large scan (security, full codebase) when context > 60%
 
 ---
 

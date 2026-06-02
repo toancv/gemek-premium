@@ -18,6 +18,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import vn.vtit.gemek.common.storage.FileStorageService;
 import vn.vtit.gemek.module.amenity.dto.ApproveRejectRequest;
+import vn.vtit.gemek.module.amenity.dto.CreateAmenityRequest;
 import vn.vtit.gemek.module.amenity.dto.CreateBookingRequest;
 import vn.vtit.gemek.module.amenity.entity.BookingStatus;
 import vn.vtit.gemek.module.apartment.dto.CreateApartmentRequest;
@@ -72,23 +73,13 @@ class AmenityControllerTest {
     private String residentToken;
     private UUID residentUserId;
 
-    /** Amenity seeded by V3: "Gym / Fitness Center" — requiresApproval=false. */
+    /** Fresh no-approval amenity created per test to eliminate cross-run slot conflicts. */
     private UUID gymAmenityId;
-    /** Amenity seeded by V3: "BBQ Area" — requiresApproval=true. */
+    /** Fresh requires-approval amenity created per test. */
     private UUID bbqAmenityId;
 
-    /**
-     * Unique booking base date for this test instance, within the 14-day advance window (SEC-12).
-     */
-    private LocalDate baseBookingDate;
-
-    /**
-     * Base hour for Gym slots in this test instance (7-19, leaving room for a 1h slot within 7-22).
-     * Combined with baseBookingDate to guarantee no two test instances book the same date+time.
-     */
-    private int baseHour;
-
-    // Slot uniqueness is managed by the JVM-wide TestSlotCounter shared with AmenityBookingIntegrationTest.
+    /** Fixed booking date: today + 7 days, always within the 14-day advance window. */
+    private static final LocalDate BOOKING_DATE = LocalDate.now().plusDays(7);
 
     private static final String ADMIN_EMAIL    = "admin@gemek.vn";
     private static final String ADMIN_PASSWORD = "Admin@123456";
@@ -101,25 +92,18 @@ class AmenityControllerTest {
     void setUp() throws Exception {
         adminToken = login(ADMIN_EMAIL, ADMIN_PASSWORD);
 
-        // Each invocation gets a unique (day, hour) slot to avoid cross-test conflicts on shared amenities.
-        // 15 valid start hours (7-21); 13 valid day offsets (1-13) → 195 unique combinations.
-        int counter = vn.vtit.gemek.TestSlotCounter.next();
-        int dayOffset = (counter % 13) + 1;
-        // hours 10-20: fits both BBQ (opens 10:00) and Gym (opens 05:30); max used is baseHour+2 <= 22.
-        baseHour = 10 + (counter % 11);
-        baseBookingDate = LocalDate.now().plusDays(dayOffset);
-
-        // Create a unique resident user per test instance (nanoTime suffix avoids constraint violations).
-        String residentEmail = "amenity.resident." + System.nanoTime() + "@test.com";
+        // Create unique resident per test (UUID suffix guarantees uniqueness across runs).
+        String uid = UUID.randomUUID().toString().replace("-", "").substring(0, 8);
+        String residentEmail = "amenity.res." + uid + "@test.com";
         residentUserId = createUser(residentEmail, UserRole.RESIDENT);
-        UUID blockId = createBlock("AmenityBlock-" + System.nanoTime());
-        UUID apartmentId = createApartment(blockId, "AM" + System.nanoTime());
+        UUID blockId = createBlock("AmBlock-" + uid);
+        UUID apartmentId = createApartment(blockId, "AM-" + uid);
         assignResident(residentUserId, apartmentId);
         residentToken = login(residentEmail, "Password@123456");
 
-        // Resolve amenity IDs from the seeded data.
-        gymAmenityId = resolveAmenityByName("Gym / Fitness Center");
-        bbqAmenityId = resolveAmenityByName("BBQ Area");
+        // Create fresh amenities per test — unique names eliminate all cross-run slot conflicts.
+        gymAmenityId = createAmenity("Gym-" + uid, false, (short) 1);
+        bbqAmenityId = createAmenity("BBQ-" + uid, true, (short) 2);
     }
 
     // =========================================================================
@@ -135,9 +119,9 @@ class AmenityControllerTest {
         // baseHour gives a slot unique to this test instance; 1h duration satisfies SEC-11 min 30 min.
         CreateBookingRequest req = buildBookingRequest(
                 gymAmenityId,
-                baseBookingDate,
-                LocalTime.of(baseHour, 0),
-                LocalTime.of(baseHour + 1, 0));
+                BOOKING_DATE,
+                LocalTime.of(10, 0),
+                LocalTime.of(11, 0));
 
         mockMvc.perform(post("/api/amenity-bookings")
                         .header("Authorization", "Bearer " + residentToken)
@@ -160,9 +144,9 @@ class AmenityControllerTest {
     @DisplayName("POST /api/amenity-bookings — overlapping slot → 409 CONFLICT")
     void createBooking_overlappingSlot_returns409() throws Exception {
         // baseHour gives a slot unique to this test instance; two residents book the SAME slot to test conflict.
-        LocalDate bookingDate = baseBookingDate;
+        LocalDate bookingDate = BOOKING_DATE;
         CreateBookingRequest first = buildBookingRequest(
-                gymAmenityId, bookingDate, LocalTime.of(baseHour, 0), LocalTime.of(baseHour + 1, 0));
+                gymAmenityId, bookingDate, LocalTime.of(14, 0), LocalTime.of(15, 0));
 
         // Create a second resident to book the same slot — should conflict.
         String ovUid = UUID.randomUUID().toString().replace("-", "").substring(0, 8);
@@ -182,7 +166,7 @@ class AmenityControllerTest {
 
         // Second booking on the SAME slot by a different resident must conflict.
         CreateBookingRequest second = buildBookingRequest(
-                gymAmenityId, bookingDate, LocalTime.of(baseHour, 0), LocalTime.of(baseHour + 1, 0));
+                gymAmenityId, bookingDate, LocalTime.of(14, 0), LocalTime.of(15, 0));
 
         mockMvc.perform(post("/api/amenity-bookings")
                         .header("Authorization", "Bearer " + secondToken)
@@ -204,12 +188,12 @@ class AmenityControllerTest {
     @Test
     @DisplayName("POST /api/amenity-bookings — daily limit exceeded → 409 CONFLICT")
     void createBooking_dailyLimitExceeded_returns409() throws Exception {
-        // Use baseBookingDate; slots 14:00-15:00 and 15:00-16:00 are unique to this test.
-        LocalDate bookingDate = baseBookingDate;
+        // Slots 14:00-15:00 and 15:00-16:00; each test has a unique gym amenity so no cross-test conflict.
+        LocalDate bookingDate = BOOKING_DATE;
 
-        // First booking uses baseHour slot (unique to this instance).
+        // First booking at 14:00 (unique amenity per test instance).
         CreateBookingRequest first = buildBookingRequest(
-                gymAmenityId, bookingDate, LocalTime.of(baseHour, 0), LocalTime.of(baseHour + 1, 0));
+                gymAmenityId, bookingDate, LocalTime.of(14, 0), LocalTime.of(15, 0));
         mockMvc.perform(post("/api/amenity-bookings")
                         .header("Authorization", "Bearer " + residentToken)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -217,9 +201,8 @@ class AmenityControllerTest {
                 .andExpect(status().isCreated());
 
         // Second booking same date, non-overlapping time — per-resident daily limit is 1 so must fail.
-        // Use baseHour+1 to avoid slot collision while still being on the same date.
         CreateBookingRequest second = buildBookingRequest(
-                gymAmenityId, bookingDate, LocalTime.of(baseHour + 1, 0), LocalTime.of(baseHour + 2, 0));
+                gymAmenityId, bookingDate, LocalTime.of(11, 0), LocalTime.of(12, 0));
         mockMvc.perform(post("/api/amenity-bookings")
                         .header("Authorization", "Bearer " + residentToken)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -237,10 +220,10 @@ class AmenityControllerTest {
     @Test
     @DisplayName("PUT /api/amenity-bookings/{id}/approve — ADMIN approves PENDING → 200, APPROVED")
     void approveBooking_admin_returns200StatusApproved() throws Exception {
-        // BBQ uses baseHour slot — different amenity so no conflict with Gym bookings.
-        LocalDate bookingDate = baseBookingDate;
+        // BBQ uses 14:00 slot — different amenity so no conflict with Gym bookings.
+        LocalDate bookingDate = BOOKING_DATE;
         CreateBookingRequest req = buildBookingRequest(
-                bbqAmenityId, bookingDate, LocalTime.of(baseHour, 0), LocalTime.of(baseHour + 1, 0));
+                bbqAmenityId, bookingDate, LocalTime.of(14, 0), LocalTime.of(15, 0));
 
         MvcResult createResult = mockMvc.perform(post("/api/amenity-bookings")
                         .header("Authorization", "Bearer " + residentToken)
@@ -278,10 +261,10 @@ class AmenityControllerTest {
     @Test
     @DisplayName("PUT /api/amenity-bookings/{id}/cancel — RESIDENT cancels own booking → 200, CANCELLED")
     void cancelBooking_resident_returns200StatusCancelled() throws Exception {
-        // BBQ uses baseHour slot — different amenity so no conflict with Gym bookings.
-        LocalDate bookingDate = baseBookingDate;
+        // BBQ uses 14:00 slot — different amenity so no conflict with Gym bookings.
+        LocalDate bookingDate = BOOKING_DATE;
         CreateBookingRequest req = buildBookingRequest(
-                bbqAmenityId, bookingDate, LocalTime.of(baseHour, 0), LocalTime.of(baseHour + 1, 0));
+                bbqAmenityId, bookingDate, LocalTime.of(14, 0), LocalTime.of(15, 0));
 
         MvcResult createResult = mockMvc.perform(post("/api/amenity-bookings")
                         .header("Authorization", "Bearer " + residentToken)
@@ -429,6 +412,107 @@ class AmenityControllerTest {
         throw new AssertionError("Seeded amenity not found: " + name
                 + ". Check V3 seed data or V8 migration.");
     }
+
+    /**
+     * Creates a new amenity via the API and returns its UUID.
+     *
+     * @param name                      unique amenity name.
+     * @param requiresApproval          whether bookings need admin approval.
+     * @param maxDailyBookingsPerResident per-resident daily booking cap.
+     * @return the created amenity UUID.
+     */
+    private UUID createAmenity(String name, boolean requiresApproval,
+                                short maxDailyBookingsPerResident) throws Exception {
+        CreateAmenityRequest req = new CreateAmenityRequest();
+        req.setName(name);
+        req.setDescription("Test amenity");
+        req.setLocation("Floor 1");
+        req.setOpeningTime(LocalTime.of(8, 0));
+        req.setClosingTime(LocalTime.of(22, 0));
+        req.setMaxDailyBookingsPerResident(maxDailyBookingsPerResident);
+        req.setRequiresApproval(requiresApproval);
+        MvcResult result = mockMvc.perform(post("/api/amenities")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(req)))
+                .andExpect(status().isCreated())
+                .andReturn();
+        Map<?, ?> body = objectMapper.readValue(result.getResponse().getContentAsString(), Map.class);
+        return UUID.fromString((String) body.get("id"));
+    }
+
+    // =========================================================================
+    // Test 6 — POST /api/amenity-bookings past date → 400
+    // =========================================================================
+
+    /**
+     * SEC-22 regression: booking date in the past must be rejected.
+     */
+    @Test
+    @DisplayName("POST /api/amenity-bookings — past booking date → 400 BAD_REQUEST (SEC-22)")
+    void createBooking_pastDate_returns400() throws Exception {
+        CreateBookingRequest req = buildBookingRequest(
+                gymAmenityId,
+                LocalDate.now().minusDays(1),
+                LocalTime.of(10, 0),
+                LocalTime.of(11, 0));
+
+        mockMvc.perform(post("/api/amenity-bookings")
+                        .header("Authorization", "Bearer " + residentToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(req)))
+                .andExpect(status().isBadRequest());
+    }
+
+    // =========================================================================
+    // Test 7 — POST /api/amenity-bookings too far in advance → 400
+    // =========================================================================
+
+    /**
+     * SEC-12 regression: booking more than 14 days in advance must be rejected.
+     */
+    @Test
+    @DisplayName("POST /api/amenity-bookings — date > 14 days ahead → 400 BAD_REQUEST (SEC-12)")
+    void createBooking_tooFarInAdvance_returns400() throws Exception {
+        CreateBookingRequest req = buildBookingRequest(
+                gymAmenityId,
+                LocalDate.now().plusDays(15),
+                LocalTime.of(10, 0),
+                LocalTime.of(11, 0));
+
+        mockMvc.perform(post("/api/amenity-bookings")
+                        .header("Authorization", "Bearer " + residentToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(req)))
+                .andExpect(status().isBadRequest());
+    }
+
+    // =========================================================================
+    // Test 8 — POST /api/amenity-bookings duration < 30 min → 400
+    // =========================================================================
+
+    /**
+     * SEC-11 regression: booking duration less than 30 minutes must be rejected.
+     */
+    @Test
+    @DisplayName("POST /api/amenity-bookings — duration < 30 min → 400 BAD_REQUEST (SEC-11)")
+    void createBooking_durationTooShort_returns400() throws Exception {
+        CreateBookingRequest req = buildBookingRequest(
+                gymAmenityId,
+                BOOKING_DATE,
+                LocalTime.of(10, 0),
+                LocalTime.of(10, 20));  // only 20 minutes
+
+        mockMvc.perform(post("/api/amenity-bookings")
+                        .header("Authorization", "Bearer " + residentToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(req)))
+                .andExpect(status().isBadRequest());
+    }
+
+    // =========================================================================
+    // Helper methods
+    // =========================================================================
 
     /**
      * Builds a {@link CreateBookingRequest} for the given amenity and time slot.

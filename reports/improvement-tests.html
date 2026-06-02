@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Test Coverage Report — Gemek Premium</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f7fa; color: #1a202c; font-size: 14px; }
+  .header { background: linear-gradient(135deg, #1a365d 0%, #2d3748 100%); color: white; padding: 32px 40px; }
+  .header h1 { font-size: 24px; font-weight: 700; margin-bottom: 4px; }
+  .header .meta { opacity: 0.75; font-size: 13px; }
+  .container { max-width: 1100px; margin: 0 auto; padding: 32px 24px; }
+  .verdict-box { border-radius: 10px; padding: 20px 28px; margin-bottom: 28px; display: flex; align-items: center; gap: 18px; }
+  .verdict-fail { background: #fff5f5; border: 2px solid #fc8181; }
+  .verdict-icon { font-size: 36px; }
+  .verdict-text h2 { font-size: 20px; font-weight: 700; }
+  .verdict-text p { margin-top: 4px; color: #4a5568; }
+  .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 28px; }
+  .stat-card { background: white; border-radius: 8px; padding: 18px; box-shadow: 0 1px 3px rgba(0,0,0,.08); text-align: center; }
+  .stat-card .value { font-size: 28px; font-weight: 700; }
+  .stat-card .label { font-size: 12px; color: #718096; margin-top: 4px; text-transform: uppercase; letter-spacing: .5px; }
+  .stat-card.red .value { color: #e53e3e; }
+  .stat-card.orange .value { color: #dd6b20; }
+  .stat-card.green .value { color: #38a169; }
+  .section { background: white; border-radius: 8px; padding: 24px; box-shadow: 0 1px 3px rgba(0,0,0,.08); margin-bottom: 24px; }
+  .section h2 { font-size: 16px; font-weight: 700; margin-bottom: 16px; padding-bottom: 10px; border-bottom: 1px solid #e2e8f0; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { background: #f7fafc; text-align: left; padding: 8px 12px; font-weight: 600; color: #4a5568; border-bottom: 2px solid #e2e8f0; }
+  td { padding: 8px 12px; border-bottom: 1px solid #f0f4f8; vertical-align: top; }
+  tr:last-child td { border-bottom: none; }
+  .bar-wrap { background: #e2e8f0; border-radius: 4px; height: 8px; width: 100px; display: inline-block; vertical-align: middle; margin-right: 6px; }
+  .bar { height: 8px; border-radius: 4px; }
+  .bar.green { background: #48bb78; }
+  .bar.orange { background: #ed8936; }
+  .bar.red { background: #fc8181; }
+  .pct { font-weight: 600; font-size: 13px; }
+  .pct.green { color: #276749; }
+  .pct.orange { color: #c05621; }
+  .pct.red { color: #c53030; }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 700; }
+  .badge-crit { background: #fed7d7; color: #9b2c2c; }
+  .badge-high { background: #feebc8; color: #7b341e; }
+  .badge-med { background: #fefcbf; color: #744210; }
+  .badge-low { background: #e2e8f0; color: #4a5568; }
+  .badge-pass { background: #c6f6d5; color: #276749; }
+  .gap-item { padding: 14px 16px; border-radius: 6px; margin-bottom: 10px; }
+  .gap-item.risk-crit { border-left: 4px solid #e53e3e; background: #fff5f5; }
+  .gap-item.risk-high { border-left: 4px solid #dd6b20; background: #fffaf0; }
+  .gap-item.risk-med  { border-left: 4px solid #d69e2e; background: #fffff0; }
+  .gap-item.risk-low  { border-left: 4px solid #718096; background: #f7fafc; }
+  .gap-title  { font-weight: 700; margin-bottom: 4px; }
+  .gap-detail { color: #4a5568; font-size: 13px; line-height: 1.5; }
+  .code { font-family: 'SFMono-Regular', Consolas, monospace; background: #edf2f7; padding: 1px 5px; border-radius: 3px; font-size: 12px; }
+  .threshold-line { display: inline-block; background: #3182ce; color: white; padding: 2px 8px; border-radius: 3px; font-size: 11px; font-weight: 700; }
+  .footer { text-align: center; color: #a0aec0; font-size: 12px; padding: 24px; }
+  tr.above { background: #f0fff4; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>Test Coverage Report — Gemek Premium Backend</h1>
+  <div class="meta">Branch: improvement/security &nbsp;|&nbsp; Date: 2026-06-02 &nbsp;|&nbsp; Tool: JaCoCo 0.8.12 &nbsp;|&nbsp; Tests: 83 passed / 0 failed</div>
+</div>
+
+<div class="container">
+
+  <div class="verdict-box verdict-fail">
+    <div class="verdict-icon">&#10060;</div>
+    <div class="verdict-text">
+      <h2>FAIL — Below ECC 80% Line Coverage Threshold</h2>
+      <p>Overall line coverage is <strong>65.1%</strong>; branch coverage is <strong>33.7%</strong>. Both are below the ECC minimum of 80%. 28 of 42 packages are below the threshold. Security-sensitive paths have critically low branch coverage — regression of the fixes applied this cycle would not be caught by the current test suite.</p>
+    </div>
+  </div>
+
+  <div class="stats-grid">
+    <div class="stat-card red">
+      <div class="value">65.1%</div>
+      <div class="label">Line Coverage (2106/3234)</div>
+    </div>
+    <div class="stat-card red">
+      <div class="value">33.7%</div>
+      <div class="label">Branch Coverage (251/744)</div>
+    </div>
+    <div class="stat-card red">
+      <div class="value">62.9%</div>
+      <div class="label">Method Coverage (381/606)</div>
+    </div>
+    <div class="stat-card red">
+      <div class="value">14</div>
+      <div class="label">Gaps (security-critical)</div>
+    </div>
+  </div>
+
+  <!-- Per-package table -->
+  <div class="section">
+    <h2>Per-Package Coverage &nbsp;<span class="threshold-line">ECC threshold: 80% line</span></h2>
+    <table>
+      <thead>
+        <tr><th>Package</th><th>Line %</th><th>(covered/total)</th><th>Branch %</th><th>Security tags</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><span class="code">common.storage</span></td><td><span class="pct red">20.0%</span></td><td>9/45</td><td>—</td><td><span class="badge badge-crit">SEC-01 presign</span></td></tr>
+        <tr><td><span class="code">scheduler</span></td><td><span class="pct red">22.7%</span></td><td>10/44</td><td><span class="pct red">0.0%</span> (0/10)</td><td></td></tr>
+        <tr><td><span class="code">module.user</span></td><td><span class="pct red">31.1%</span></td><td>23/74</td><td><span class="pct red">8.3%</span> (1/12)</td><td><span class="badge badge-high">SEC-04 role promo</span></td></tr>
+        <tr><td><span class="code">vn.vtit.gemek</span> (main)</td><td><span class="pct red">33.3%</span></td><td>1/3</td><td>—</td><td></td></tr>
+        <tr><td><span class="code">module.contractor</span></td><td><span class="pct red">49.2%</span></td><td>90/183</td><td><span class="pct red">11.9%</span> (5/42)</td><td></td></tr>
+        <tr><td><span class="code">module.apartment.dto</span></td><td><span class="pct red">53.8%</span></td><td>7/13</td><td>—</td><td></td></tr>
+        <tr><td><span class="code">module.apartment.mapper</span></td><td><span class="pct red">55.0%</span></td><td>60/109</td><td><span class="pct red">31.2%</span> (5/16)</td><td></td></tr>
+        <tr><td><span class="code">module.resident.mapper</span></td><td><span class="pct red">55.6%</span></td><td>25/45</td><td><span class="pct red">30.0%</span> (3/10)</td><td></td></tr>
+        <tr><td><span class="code">module.amenity</span></td><td><span class="pct red">57.9%</span></td><td>162/280</td><td><span class="pct red">31.7%</span> (26/82)</td><td><span class="badge badge-high">SEC-11/12/22 guards</span></td></tr>
+        <tr><td><span class="code">module.ticket</span></td><td><span class="pct red">58.4%</span></td><td>271/464</td><td><span class="pct red">34.8%</span> (55/158)</td><td><span class="badge badge-crit">SEC-01/03/08</span></td></tr>
+        <tr><td><span class="code">module.parking</span></td><td><span class="pct red">58.8%</span></td><td>147/250</td><td><span class="pct red">17.2%</span> (10/58)</td><td></td></tr>
+        <tr><td><span class="code">module.user.dto</span></td><td><span class="pct red">60.0%</span></td><td>3/5</td><td>—</td><td></td></tr>
+        <tr><td><span class="code">module.vehicle</span></td><td><span class="pct red">60.2%</span></td><td>68/113</td><td><span class="pct red">26.7%</span> (8/30)</td><td></td></tr>
+        <tr><td><span class="code">common.model</span></td><td><span class="pct red">61.5%</span></td><td>8/13</td><td>—</td><td></td></tr>
+        <tr><td><span class="code">module.announcement</span></td><td><span class="pct red">66.5%</span></td><td>125/188</td><td><span class="pct red">27.9%</span> (19/68)</td><td></td></tr>
+        <tr><td><span class="code">module.contractor.dto</span></td><td><span class="pct red">66.7%</span></td><td>10/15</td><td>—</td><td></td></tr>
+        <tr><td><span class="code">module.auth.dto</span></td><td><span class="pct red">71.4%</span></td><td>5/7</td><td>—</td><td></td></tr>
+        <tr><td><span class="code">module.apartment</span></td><td><span class="pct red">70.2%</span></td><td>113/161</td><td><span class="pct orange">50.0%</span> (8/16)</td><td></td></tr>
+        <tr><td><span class="code">module.apartment.entity</span></td><td><span class="pct red">71.4%</span></td><td>10/14</td><td>—</td><td></td></tr>
+        <tr><td><span class="code">module.auth</span></td><td><span class="pct red">72.4%</span></td><td>97/134</td><td><span class="pct red">40.7%</span> (22/54)</td><td><span class="badge badge-high">SEC-05/13/14</span></td></tr>
+        <tr><td><span class="code">module.contractor.mapper</span></td><td><span class="pct red">74.1%</span></td><td>106/143</td><td><span class="pct red">38.9%</span> (7/18)</td><td></td></tr>
+        <tr><td><span class="code">common.audit</span></td><td><span class="pct red">75.0%</span></td><td>30/40</td><td><span class="pct red">41.7%</span> (5/12)</td><td></td></tr>
+        <tr><td><span class="code">common.exception</span></td><td><span class="pct red">76.8%</span></td><td>43/56</td><td><span class="pct green">75.0%</span> (3/4)</td><td></td></tr>
+        <!-- at/above threshold -->
+        <tr class="above"><td><span class="code">config</span></td><td><span class="pct green">80.7%</span></td><td>71/88</td><td><span class="pct red">12.5%</span> (1/8)</td><td><span class="badge badge-med">SEC-17/21</span></td></tr>
+        <tr class="above"><td><span class="code">common.security</span></td><td><span class="pct green">82.1%</span></td><td>87/106</td><td><span class="pct green">71.4%</span> (10/14)</td><td><span class="badge badge-high">SEC-06 JWT/DB role</span></td></tr>
+        <tr class="above"><td><span class="code">module.report</span></td><td><span class="pct green">85.9%</span></td><td>146/170</td><td><span class="pct green">56.5%</span> (35/62)</td><td></td></tr>
+        <tr class="above"><td><span class="code">module.vehicle.mapper</span></td><td><span class="pct green">87.5%</span></td><td>28/32</td><td><span class="pct orange">50.0%</span></td><td></td></tr>
+        <tr class="above"><td><span class="code">module.user.mapper</span></td><td><span class="pct green">95.1%</span></td><td>39/41</td><td><span class="pct orange">50.0%</span></td><td></td></tr>
+        <tr class="above"><td><span class="code">module.notification</span></td><td><span class="pct green">98.0%</span></td><td>50/51</td><td><span class="pct orange">50.0%</span></td><td><span class="badge badge-med">SEC-07 markRead</span></td></tr>
+        <tr class="above"><td><span class="code">entities / enums (parking, resident, vehicle, ticket, apartment, announcement)</span></td><td><span class="pct green">93–100%</span></td><td>—</td><td><span class="pct orange">0–50%</span></td><td></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Security-critical class detail -->
+  <div class="section">
+    <h2>Security-Critical Class Detail</h2>
+    <table>
+      <thead>
+        <tr><th>Class</th><th>Line</th><th>Branch</th><th>Note</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><span class="code">FileController</span></td><td><span class="pct red">36.4%</span> (4/11)</td><td>—</td><td>SEC-01 presign ownership — rejection path not tested</td></tr>
+        <tr><td><span class="code">FileStorageService</span></td><td><span class="pct red">14.7%</span> (5/34)</td><td>—</td><td>MIME detection (tika-core) almost entirely uncovered</td></tr>
+        <tr><td><span class="code">UserController</span></td><td><span class="pct red">29.4%</span> (5/17)</td><td><span class="pct red">0.0%</span> (0/4)</td><td>SEC-04 role promotion endpoint — no test at all</td></tr>
+        <tr><td><span class="code">UserServiceImpl</span></td><td><span class="pct red">31.6%</span> (18/57)</td><td><span class="pct red">12.5%</span> (1/8)</td><td>SEC-04 audit log path not exercised</td></tr>
+        <tr><td><span class="code">ParkingController</span></td><td><span class="pct red">38.7%</span> (12/31)</td><td><span class="pct red">33.3%</span> (2/6)</td><td>Guest vehicle flow untested</td></tr>
+        <tr><td><span class="code">ContractorServiceImpl</span></td><td><span class="pct red">47.5%</span> (75/158)</td><td><span class="pct red">11.9%</span> (5/42)</td><td>Approval/rejection/archive lifecycle paths largely untested</td></tr>
+        <tr><td><span class="code">ResidentServiceImpl</span></td><td><span class="pct red">54.0%</span> (68/126)</td><td><span class="pct red">31.0%</span> (13/42)</td><td>Apartment assignment guard branches untested</td></tr>
+        <tr><td><span class="code">AmenityServiceImpl</span></td><td><span class="pct red">58.3%</span> (147/252)</td><td><span class="pct red">31.7%</span> (26/82)</td><td>SEC-11/12/22 guard rejection branches not tested</td></tr>
+        <tr><td><span class="code">TicketServiceImpl</span></td><td><span class="pct red">57.6%</span> (251/436)</td><td><span class="pct red">34.8%</span> (55/158)</td><td>SEC-01 presign 403 path, SEC-03/08 phone-strip branch not asserted</td></tr>
+        <tr><td><span class="code">ParkingServiceImpl</span></td><td><span class="pct red">61.6%</span> (135/219)</td><td><span class="pct red">15.4%</span> (8/52)</td><td>Slot allocation/deallocation branch logic largely untested</td></tr>
+        <tr><td><span class="code">AuthServiceImpl</span></td><td><span class="pct red">72.6%</span> (85/117)</td><td><span class="pct red">40.0%</span> (20/50)</td><td>SEC-05 rate-limit exceeded path, SEC-13 null-logout not tested</td></tr>
+        <tr><td><span class="code">AuthController</span></td><td><span class="pct red">70.6%</span> (12/17)</td><td><span class="pct orange">50.0%</span> (2/4)</td><td>Error response paths untested</td></tr>
+        <tr><td><span class="code">MaintenanceScheduleRunner / ContractExpiryScheduler</span></td><td><span class="pct red">22.7%</span> each</td><td><span class="pct red">0.0%</span></td><td>Scheduled jobs not exercised in any test</td></tr>
+        <tr class="above"><td><span class="code">JwtAuthenticationFilter</span></td><td><span class="pct green">81.4%</span> (35/43)</td><td><span class="pct green">71.4%</span> (10/14)</td><td>SEC-06 DB-role path tested; some invalid-token branches remain</td></tr>
+        <tr class="above"><td><span class="code">JwtTokenProvider</span></td><td><span class="pct green">87.2%</span> (41/47)</td><td>—</td><td>Good coverage</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Risk-prioritized gap list -->
+  <div class="section">
+    <h2>Risk-Prioritized Gap List</h2>
+    <p style="margin-bottom:16px;color:#4a5568;">Security-sensitive paths ranked highest. Regression of audit-cycle fixes (SEC-01–SEC-22) is highest-impact.</p>
+
+    <div class="gap-item risk-crit">
+      <div class="gap-title">&#128308; [GAP-01] FileController / FileStorageService — presign ownership + MIME detection untested &nbsp;<span class="badge badge-crit">CRITICAL</span></div>
+      <div class="gap-detail">
+        FileController 36.4% line, FileStorageService 14.7% line. SEC-01 fix (<span class="code">assertPresignAccess</span>) is in code but no test exercises the <em>rejection path</em> — a resident requesting another resident's presign URL. If the ownership check is removed or bypassed, no test catches it. MIME detection via tika-core is almost entirely uncovered; a magic-byte bypass (e.g. polyglot file) would go undetected.
+      </div>
+    </div>
+
+    <div class="gap-item risk-crit">
+      <div class="gap-title">&#128308; [GAP-02] TicketServiceImpl — phone strip and presign forbidden branches missing &nbsp;<span class="badge badge-crit">CRITICAL</span></div>
+      <div class="gap-detail">
+        57.6% line / 34.8% branch. SEC-03/08 strip phone for TECHNICIAN/BOARD_MEMBER: no test asserts that the response omits <span class="code">phone</span> when caller role is TECHNICIAN. SEC-01 <span class="code">assertPresignAccess</span> 403 path: no test verifies a non-owner receives 403 when requesting a presign URL on another user's ticket attachment.
+      </div>
+    </div>
+
+    <div class="gap-item risk-high">
+      <div class="gap-title">&#128992; [GAP-03] UserController / UserServiceImpl — role promotion to ADMIN entirely untested &nbsp;<span class="badge badge-high">HIGH</span></div>
+      <div class="gap-detail">
+        UserController 29.4% line / 0% branch; UserServiceImpl 31.6% / 12.5%. SEC-04 audit-log on role change not exercised. No test verifies that (a) a non-ADMIN cannot call the role-change endpoint, (b) promoting to ADMIN is logged with <span class="code">actorId</span>, or (c) demoting from ADMIN is refused. Privilege escalation regression would be silent.
+      </div>
+    </div>
+
+    <div class="gap-item risk-high">
+      <div class="gap-title">&#128992; [GAP-04] AmenityServiceImpl — guard rejection branches not tested &nbsp;<span class="badge badge-high">HIGH</span></div>
+      <div class="gap-detail">
+        58.3% line / 31.7% branch. SEC-11 (30-min minimum), SEC-12 (14-day advance window), SEC-22 (past-date) guards exist in code but no test sends a booking that <em>violates</em> each rule and asserts 4xx. Removing any guard would not be caught.
+      </div>
+    </div>
+
+    <div class="gap-item risk-high">
+      <div class="gap-title">&#128992; [GAP-05] AuthServiceImpl — rate-limit exceeded path + null-logout not tested &nbsp;<span class="badge badge-high">HIGH</span></div>
+      <div class="gap-detail">
+        72.6% line / 40% branch. SEC-05: no test drives an IP over the attempt threshold and asserts lockout response. SEC-13: no test sends a logout with missing/null Authorization header and asserts graceful rejection (not NPE). 60% of auth branch paths go untested.
+      </div>
+    </div>
+
+    <div class="gap-item risk-high">
+      <div class="gap-title">&#128992; [GAP-06] ParkingServiceImpl — slot allocation branches largely untested &nbsp;<span class="badge badge-high">HIGH</span></div>
+      <div class="gap-detail">
+        61.6% line / 15.4% branch. Slot assignment, deallocation, conflict detection (double-assignment, over-capacity) not exercised. Guest vehicle approval/rejection paths missing.
+      </div>
+    </div>
+
+    <div class="gap-item risk-med">
+      <div class="gap-title">&#128993; [GAP-07] ContractorServiceImpl — lifecycle transitions untested &nbsp;<span class="badge badge-med">MEDIUM</span></div>
+      <div class="gap-detail">
+        47.5% line / 11.9% branch. PENDING&#8594;APPROVED&#8594;EXPIRED state transitions not tested. ADMIN-only approval gate not verified by any test.
+      </div>
+    </div>
+
+    <div class="gap-item risk-med">
+      <div class="gap-title">&#128993; [GAP-08] ResidentServiceImpl — apartment assignment guards &nbsp;<span class="badge badge-med">MEDIUM</span></div>
+      <div class="gap-detail">
+        54.0% line / 31.0% branch. Assigning a resident to an already-occupied apartment, or unassigning from a wrong apartment, not tested.
+      </div>
+    </div>
+
+    <div class="gap-item risk-med">
+      <div class="gap-title">&#128993; [GAP-09] Schedulers — 0% branch coverage &nbsp;<span class="badge badge-med">MEDIUM</span></div>
+      <div class="gap-detail">
+        MaintenanceScheduleRunner and ContractExpiryScheduler at 22.7% line / 0% branch. Scheduled jobs that send notifications and mutate statuses are never exercised. Silent cron failures go undetected.
+      </div>
+    </div>
+
+    <div class="gap-item risk-med">
+      <div class="gap-title">&#128993; [GAP-10] AnnouncementServiceImpl — 66.5% line / 27.9% branch &nbsp;<span class="badge badge-med">MEDIUM</span></div>
+      <div class="gap-detail">
+        ADMIN-only publish gate, pagination edge cases, target-audience filtering branches not tested.
+      </div>
+    </div>
+
+    <div class="gap-item risk-med">
+      <div class="gap-title">&#128993; [GAP-11] ApartmentServiceImpl — status transition edges &nbsp;<span class="badge badge-med">MEDIUM</span></div>
+      <div class="gap-detail">
+        70.2% line / 50% branch. AVAILABLE&#8594;OCCUPIED&#8594;MAINTENANCE transitions partially untested.
+      </div>
+    </div>
+
+    <div class="gap-item risk-low">
+      <div class="gap-title">&#9898; [GAP-12] Mapper classes below 80% (apartment.mapper 55%, resident.mapper 55.6%, contractor.mapper 74.1%) &nbsp;<span class="badge badge-low">LOW</span></div>
+      <div class="gap-detail">MapStruct-generated code — partial coverage because not all DTO field combinations are exercised. Low functional risk.</div>
+    </div>
+
+    <div class="gap-item risk-low">
+      <div class="gap-title">&#9898; [GAP-13] SecurityConfig — CORS rejection path untested (branch 12.5%) &nbsp;<span class="badge badge-low">LOW</span></div>
+      <div class="gap-detail">SEC-21 CORS bean present. No test sends a request from a non-allowlisted origin and asserts rejection.</div>
+    </div>
+
+    <div class="gap-item risk-low">
+      <div class="gap-title">&#9898; [GAP-14] Systemic: overall branch coverage 33.7% &nbsp;<span class="badge badge-low">LOW (systemic)</span></div>
+      <div class="gap-detail">The test suite covers happy paths but rarely asserts error/rejection branches. Raising line coverage alone will not close the gap — negative-path tests are needed throughout.</div>
+    </div>
+
+  </div>
+
+  <!-- Summary -->
+  <div class="section">
+    <h2>Summary</h2>
+    <table>
+      <tr><th>Metric</th><th>Actual</th><th>ECC Min</th><th>Status</th></tr>
+      <tr><td>Overall line coverage</td><td><strong>65.1%</strong> (2106/3234)</td><td>80%</td><td><span class="badge badge-crit">FAIL &#8722;14.9pp</span></td></tr>
+      <tr><td>Overall branch coverage</td><td><strong>33.7%</strong> (251/744)</td><td>80%</td><td><span class="badge badge-crit">FAIL &#8722;46.3pp</span></td></tr>
+      <tr><td>Method coverage</td><td><strong>62.9%</strong> (381/606)</td><td>80%</td><td><span class="badge badge-high">FAIL &#8722;17.1pp</span></td></tr>
+      <tr><td>Tests passing</td><td><strong>83 / 83</strong></td><td>100%</td><td><span class="badge badge-pass">PASS</span></td></tr>
+      <tr><td>Packages below 80% line</td><td><strong>28 of 42</strong></td><td>0</td><td><span class="badge badge-crit">FAIL</span></td></tr>
+      <tr><td>Security gaps (GAP-01..05) — fixes this cycle not regression-tested</td><td><strong>5</strong></td><td>0</td><td><span class="badge badge-crit">ACTION REQUIRED</span></td></tr>
+    </table>
+  </div>
+
+  <div class="section">
+    <h2>Raw Data</h2>
+    <p>JaCoCo XML: <span class="code">reports/coverage-raw/jacoco.xml</span></p>
+    <p>JaCoCo CSV: <span class="code">reports/coverage-raw/jacoco.csv</span></p>
+    <p>Maven verify log: <span class="code">reports/coverage-raw/mvn-verify.log</span></p>
+    <p style="margin-top:8px;color:#718096;">Backend only — no frontend coverage configured.</p>
+  </div>
+
+</div>
+<div class="footer">Gemek Premium &middot; improvement/security branch &middot; 2026-06-02 &middot; JaCoCo 0.8.12 &middot; Java 21 &middot; ECC threshold 80%</div>
+</body>
+</html>

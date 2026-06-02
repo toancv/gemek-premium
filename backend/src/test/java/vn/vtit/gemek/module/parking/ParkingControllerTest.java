@@ -34,6 +34,7 @@ import java.time.LocalDate;
 import java.util.Map;
 import java.util.UUID;
 
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -330,5 +331,82 @@ class ParkingControllerTest {
                         .content("{}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.exitTime").isNotEmpty());
+    }
+
+    // =========================================================================
+    // Test 5 — GET /api/parking/slots → 200, page (GAP-06)
+    // =========================================================================
+
+    @Test
+    @DisplayName("GET /api/parking/slots — ADMIN returns 200 with page")
+    void listSlots_admin_returns200() throws Exception {
+        mockMvc.perform(get("/api/parking/slots")
+                        .header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data").isArray());
+    }
+
+    // =========================================================================
+    // Test 6 — GET /api/parking/assignments → 200, page (GAP-06)
+    // =========================================================================
+
+    @Test
+    @DisplayName("GET /api/parking/assignments — ADMIN returns 200 with page")
+    void listAssignments_admin_returns200() throws Exception {
+        mockMvc.perform(get("/api/parking/assignments")
+                        .header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data").isArray());
+    }
+
+    // =========================================================================
+    // Test 7 — GET /api/parking/guests → 200, page (GAP-06)
+    // =========================================================================
+
+    @Test
+    @DisplayName("GET /api/parking/guests — ADMIN returns 200 with page")
+    void listGuestVehicles_admin_returns200() throws Exception {
+        mockMvc.perform(get("/api/parking/guests")
+                        .header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data").isArray());
+    }
+
+    // =========================================================================
+    // Test 8 — POST /api/parking/slots by non-ADMIN → 403 (GAP-06)
+    // =========================================================================
+
+    @Test
+    @DisplayName("POST /api/parking/slots — non-ADMIN returns 403")
+    void createSlot_nonAdmin_returns403() throws Exception {
+        // Create and authenticate a RESIDENT user
+        String uid = UUID.randomUUID().toString().replace("-", "").substring(0, 8);
+        CreateUserRequest userReq = new CreateUserRequest(
+                "parking.res." + uid + "@test.com", "Resident", "0900000001",
+                UserRole.RESIDENT, "Password@123456");
+        mockMvc.perform(post("/api/users")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(userReq)))
+                .andExpect(status().isCreated());
+
+        vn.vtit.gemek.module.auth.dto.LoginRequest loginReq =
+                new vn.vtit.gemek.module.auth.dto.LoginRequest(
+                        "parking.res." + uid + "@test.com", "Password@123456");
+        MvcResult r = mockMvc.perform(post("/api/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(loginReq)))
+                .andExpect(status().isOk())
+                .andReturn();
+        java.util.Map<?, ?> loginBody =
+                objectMapper.readValue(r.getResponse().getContentAsString(), java.util.Map.class);
+        String residentToken = (String) loginBody.get("accessToken");
+
+        CreateParkingSlotRequest req = new CreateParkingSlotRequest("SLOT-403-" + uid, "Z1", ParkingSlotType.CAR, null);
+        mockMvc.perform(post("/api/parking/slots")
+                        .header("Authorization", "Bearer " + residentToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(req)))
+                .andExpect(status().isForbidden());
     }
 }

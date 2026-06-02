@@ -238,8 +238,10 @@ class AuthServiceTest {
         when(tokenProvider.generateAccessToken(any(UserPrincipal.class))).thenReturn("new.access.token");
         when(jwtConfig.getAccessTokenExpiryMs()).thenReturn(900_000L);
 
+        // Pass httpRequest mock (already stubs getRemoteAddr → "127.0.0.1" in setUp)
+        when(valueOps.increment(anyString())).thenReturn(1L);
         RefreshTokenRequest request = new RefreshTokenRequest("valid.refresh.token");
-        var response = authService.refreshToken(request);
+        var response = authService.refreshToken(request, httpRequest);
 
         assertThat(response.accessToken()).isEqualTo("new.access.token");
         assertThat(response.expiresIn()).isEqualTo(900L);
@@ -256,11 +258,38 @@ class AuthServiceTest {
         when(tokenProvider.parseToken("revoked.refresh.token")).thenReturn(mockClaims);
         when(redisTemplate.hasKey(anyString())).thenReturn(false);
 
+        when(valueOps.increment(anyString())).thenReturn(1L);
         RefreshTokenRequest request = new RefreshTokenRequest("revoked.refresh.token");
 
-        assertThatThrownBy(() -> authService.refreshToken(request))
+        assertThatThrownBy(() -> authService.refreshToken(request, httpRequest))
                 .isInstanceOf(AppException.class)
                 .satisfies(ex -> assertThat(((AppException) ex).getErrorCode())
                         .isEqualTo(ErrorCode.INVALID_TOKEN));
+    }
+
+    // -------------------------------------------------------------------------
+    // logout() — SEC-13: null/blank token guard
+    // -------------------------------------------------------------------------
+
+    @Test
+    @DisplayName("logout: null access token — returns gracefully without throwing (SEC-13)")
+    void logout_nullToken_returnsGracefullyWithoutException() {
+        UserPrincipal principal = new UserPrincipal(testUser);
+
+        // Must not throw — null guard in logout() short-circuits before any Redis call.
+        authService.logout(principal, null);
+
+        // No interactions with redisTemplate expected.
+        verify(redisTemplate, never()).opsForValue();
+    }
+
+    @Test
+    @DisplayName("logout: blank access token — returns gracefully without throwing (SEC-13)")
+    void logout_blankToken_returnsGracefullyWithoutException() {
+        UserPrincipal principal = new UserPrincipal(testUser);
+
+        authService.logout(principal, "   ");
+
+        verify(redisTemplate, never()).opsForValue();
     }
 }

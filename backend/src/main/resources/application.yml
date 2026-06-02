@@ -40,13 +40,14 @@ spring:
     locations: classpath:db/migration
     baseline-on-migrate: false
     validate-on-migrate: true
+    placeholders:
+      ADMIN_PASSWORD_HASH: ${ADMIN_PASSWORD_HASH}
 
   data:
     redis:
       host: ${REDIS_HOST:localhost}
       port: ${REDIS_PORT:6379}
-      # SECURITY-FIX: SEC-09 — Set REDIS_PASSWORD env var in production; empty default is for local dev only
-      password: ${REDIS_PASSWORD:}
+      password: ${REDIS_PASSWORD}
       timeout: 5000ms
       lettuce:
         pool:

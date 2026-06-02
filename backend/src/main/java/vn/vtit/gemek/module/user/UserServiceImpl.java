@@ -8,6 +8,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -115,6 +117,13 @@ public class UserServiceImpl implements UserService {
     public UserResponse updateUser(UUID id, UpdateUserRequest request) {
         log.debug("Updating user id={}", id);
         User user = findOrThrow(id);
+        // SEC-04: log role changes at WARN so they are visible in any log aggregator.
+        if (!user.getRole().equals(request.role())) {
+            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+            String actorId = auth != null ? auth.getName() : "unknown";
+            log.warn("Role change — userId={} oldRole={} newRole={} actorId={}",
+                    id, user.getRole(), request.role(), actorId);
+        }
         user.setFullName(request.fullName());
         user.setPhone(request.phone());
         user.setRole(request.role());

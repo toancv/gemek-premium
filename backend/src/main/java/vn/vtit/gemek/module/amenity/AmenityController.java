@@ -238,7 +238,7 @@ public class AmenityController {
      * @return 201 Created with the booking response.
      */
     @PostMapping("/api/amenity-bookings")
-    @PreAuthorize("hasAnyRole('ADMIN','RESIDENT')")
+    @PreAuthorize("hasRole('RESIDENT')")
     @Operation(summary = "Create amenity booking")
     public ResponseEntity<AmenityBookingResponse> createBooking(
             @Valid @RequestBody CreateBookingRequest req,

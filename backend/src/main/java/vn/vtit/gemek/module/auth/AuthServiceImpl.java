@@ -154,7 +154,11 @@ public class AuthServiceImpl implements AuthService {
      * {@inheritDoc}
      */
     @Override
-    public RefreshTokenResponse refreshToken(RefreshTokenRequest request) {
+    public RefreshTokenResponse refreshToken(RefreshTokenRequest request, HttpServletRequest httpRequest) {
+        // SECURITY-FIX: SEC-05 — rate limit by IP to prevent token stuffing and DoS
+        String clientIp = resolveClientIp(httpRequest);
+        enforceRateLimit(clientIp);
+
         Claims claims;
         try {
             claims = tokenProvider.parseToken(request.refreshToken());

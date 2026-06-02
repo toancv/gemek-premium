@@ -139,4 +139,21 @@ public interface TicketService {
      * @return the SLA report response.
      */
     SlaReportResponse getSlaReport(LocalDate from, LocalDate to, TicketCategory category);
+
+    /**
+     * Asserts that the caller has read access to the ticket that owns the given photo key.
+     *
+     * <p>Applies the same gate as {@code getTicketDetail}: RESIDENT may only access photos
+     * belonging to their own apartment's tickets; TECHNICIAN must be assigned or the ticket
+     * must be NEW; ADMIN and BOARD_MEMBER are unrestricted.
+     *
+     * <p>Throws {@link vn.vtit.gemek.common.exception.AppException} with
+     * {@link vn.vtit.gemek.common.exception.ErrorCode#FORBIDDEN} if access is denied,
+     * or {@code NOT_FOUND} if the key does not correspond to any recorded photo.
+     *
+     * @param fileUrl     the MinIO object key being presigned.
+     * @param principalId UUID of the authenticated caller.
+     * @param role        role string of the caller.
+     */
+    void assertPresignAccess(String fileUrl, UUID principalId, String role);
 }

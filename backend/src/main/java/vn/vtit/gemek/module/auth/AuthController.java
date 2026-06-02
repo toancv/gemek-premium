@@ -78,8 +78,10 @@ public class AuthController {
     @PostMapping("/refresh")
     @Operation(summary = "Refresh token", description = "Exchange a valid refresh token for a new access token.")
     public ResponseEntity<RefreshTokenResponse> refreshToken(
-            @Valid @RequestBody RefreshTokenRequest request) {
-        return ResponseEntity.ok(authService.refreshToken(request));
+            @Valid @RequestBody RefreshTokenRequest request,
+            HttpServletRequest httpRequest) {
+        // SECURITY-FIX: SEC-05 — pass httpRequest for IP-based rate limiting
+        return ResponseEntity.ok(authService.refreshToken(request, httpRequest));
     }
 
     /**

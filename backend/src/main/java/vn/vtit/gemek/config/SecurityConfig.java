@@ -24,8 +24,14 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import vn.vtit.gemek.common.security.JwtAuthenticationFilter;
 import vn.vtit.gemek.module.user.repository.UserRepository;
+
+import java.util.Arrays;
+import java.util.List;
 
 /**
  * Spring Security 6 configuration.
@@ -44,6 +50,9 @@ public class SecurityConfig {
     // SECURITY-FIX: read active profile to conditionally block Swagger on prod
     @Value("${spring.profiles.active:dev}")
     private String activeProfile;
+
+    @Value("${cors.allowed-origins:http://localhost:5173,http://localhost:5174}")
+    private String corsAllowedOrigins;
 
     /**
      * Constructs the security configuration with required dependencies.
@@ -74,6 +83,8 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
+                // Explicit CORS config — never rely on Spring's default pass-through.
+                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 // CSRF not needed for stateless JWT APIs.
                 .csrf(AbstractHttpConfigurer::disable)
                 // Stateless session — JWT is the sole auth mechanism.
@@ -151,6 +162,27 @@ public class SecurityConfig {
         provider.setUserDetailsService(userDetailsService());
         provider.setPasswordEncoder(passwordEncoder());
         return provider;
+    }
+
+    /**
+     * Provides the CORS policy applied by the security filter chain.
+     *
+     * <p>Allowed origins are read from {@code cors.allowed-origins} (comma-separated list).
+     * Credentials are supported; wildcard {@code "*"} is never used for credentialed requests.
+     *
+     * @return the {@link CorsConfigurationSource} bean.
+     */
+    @Bean
+    public CorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration config = new CorsConfiguration();
+        config.setAllowedOrigins(Arrays.asList(corsAllowedOrigins.split(",")));
+        config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
+        config.setAllowedHeaders(List.of("Authorization", "Content-Type", "Accept"));
+        config.setAllowCredentials(true);
+        config.setMaxAge(3600L);
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/api/**", config);
+        return source;
     }
 
     /**

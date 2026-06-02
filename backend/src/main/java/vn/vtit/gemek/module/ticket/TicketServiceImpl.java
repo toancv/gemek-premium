@@ -186,7 +186,9 @@ public class TicketServiceImpl implements TicketService {
         Ticket ticket = requireTicket(id);
         enforceReadAccess(ticket, principalId, role);
 
-        return toDetail(ticket);
+        // SEC-03/SEC-08: strip submitter phone for roles without PII entitlement.
+        boolean includePhone = !"TECHNICIAN".equals(role) && !"BOARD_MEMBER".equals(role);
+        return toDetail(ticket, includePhone);
     }
 
     /**
@@ -610,6 +612,17 @@ public class TicketServiceImpl implements TicketService {
         return toDetail(saved);
     }
 
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void assertPresignAccess(String fileUrl, UUID principalId, String role) {
+        TicketPhoto photo = photoRepository.findByFileUrl(fileUrl)
+                .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND,
+                        "No photo record found for the requested key."));
+        enforceReadAccess(photo.getTicket(), principalId, role);
+    }
+
     // =========================================================================
     // Private helpers
     // =========================================================================
@@ -781,6 +794,18 @@ public class TicketServiceImpl implements TicketService {
      * @return the detail DTO.
      */
     private TicketDetailResponse toDetail(Ticket ticket) {
+        return toDetail(ticket, true);
+    }
+
+    /**
+     * Maps a {@link Ticket} entity to a {@link TicketDetailResponse}.
+     *
+     * @param ticket       the ticket entity.
+     * @param includePhone whether to include the submitter's phone number in {@code submittedBy}.
+     *                     Pass {@code false} for TECHNICIAN and BOARD_MEMBER callers (SEC-03, SEC-08).
+     * @return the detail DTO.
+     */
+    private TicketDetailResponse toDetail(Ticket ticket, boolean includePhone) {
         List<TicketDetailResponse.PhotoResponse> photos = photoRepository
                 .findByTicketId(ticket.getId())
                 .stream()
@@ -817,7 +842,7 @@ public class TicketServiceImpl implements TicketService {
                 .submittedBy(TicketDetailResponse.SubmitterRef.builder()
                         .id(submitter.getId())
                         .fullName(submitter.getFullName())
-                        .phone(submitter.getPhone())
+                        .phone(includePhone ? submitter.getPhone() : null)
                         .build())
                 .category(ticket.getCategory())
                 .title(ticket.getTitle())

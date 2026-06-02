@@ -9,6 +9,7 @@ import org.springframework.stereotype.Repository;
 import vn.vtit.gemek.module.ticket.entity.TicketPhoto;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 /**
@@ -46,4 +47,14 @@ public interface TicketPhotoRepository extends JpaRepository<TicketPhoto, UUID> 
      */
     // SECURITY-FIX: added to support ownership check in FileController presign endpoint
     boolean existsByFileUrl(String fileUrl);
+
+    /**
+     * Loads the photo record matching the given storage key.
+     *
+     * <p>Used to resolve the parent ticket for ownership validation before issuing a presigned URL.
+     *
+     * @param fileUrl the MinIO object key.
+     * @return the matching photo, or empty if none.
+     */
+    Optional<TicketPhoto> findByFileUrl(String fileUrl);
 }

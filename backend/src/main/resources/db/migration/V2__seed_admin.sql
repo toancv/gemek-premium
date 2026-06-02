@@ -5,9 +5,8 @@
 -- =============================================================================
 -- Default admin credentials:
 --   Email:    admin@gemek.vn
---   BCrypt hash generated with strength 12.
--- IMPORTANT: Change this password immediately after first login.
--- SECURITY-FIX: removed plaintext password comment to avoid credential exposure in VCS
+--   Password hash: supplied at deploy time via ADMIN_PASSWORD_HASH environment variable.
+-- IMPORTANT: Set ADMIN_PASSWORD_HASH to a BCrypt-12 hash of a strong, unique password.
 -- =============================================================================
 
 INSERT INTO users (email, phone, full_name, password_hash, role, is_active)
@@ -15,7 +14,7 @@ VALUES (
     'admin@gemek.vn',
     '0900000000',
     'Quan tri vien',
-    '$2b$12$OokcUmqW.XBylH0VZtcnVunwOoQdJHou2Kr3JvlkqpHDXZovtTWFy',
+    '${ADMIN_PASSWORD_HASH}',
     'ADMIN',
     TRUE
 );

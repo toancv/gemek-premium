@@ -32,6 +32,7 @@ import vn.vtit.gemek.module.resident.repository.ResidentRepository;
 import vn.vtit.gemek.module.user.entity.User;
 import vn.vtit.gemek.module.user.repository.UserRepository;
 
+import java.time.Duration;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -54,6 +55,12 @@ import java.util.stream.Collectors;
 public class AmenityServiceImpl implements AmenityService {
 
     private static final Logger log = LoggerFactory.getLogger(AmenityServiceImpl.class);
+
+    /** Minimum allowed booking duration in minutes (SEC-11). */
+    private static final int MIN_BOOKING_DURATION_MINUTES = 30;
+
+    /** Maximum number of days in advance a booking may be placed (SEC-12). */
+    private static final int MAX_ADVANCE_DAYS = 14;
 
     private final AmenityRepository amenityRepository;
     private final AmenityBookingRepository bookingRepository;
@@ -296,7 +303,17 @@ public class AmenityServiceImpl implements AmenityService {
         Amenity amenity = requireAmenity(req.getAmenityId());
         Apartment apartment = resident.getApartment();
 
-        // 2. Validate the requested time slot is within the amenity's operating hours.
+        // 2. Validate booking date is present or future (SEC-22) and within the advance window (SEC-12).
+        LocalDate today = LocalDate.now();
+        if (req.getBookingDate().isBefore(today)) {
+            throw new AppException(ErrorCode.VALIDATION_ERROR, "Booking date must not be in the past.");
+        }
+        if (req.getBookingDate().isAfter(today.plusDays(MAX_ADVANCE_DAYS))) {
+            throw new AppException(ErrorCode.VALIDATION_ERROR,
+                    "Bookings may not be placed more than " + MAX_ADVANCE_DAYS + " days in advance.");
+        }
+
+        // 3. Validate the requested time slot is within the amenity's operating hours.
         if (req.getStartTime().isBefore(amenity.getOpeningTime())
                 || req.getEndTime().isAfter(amenity.getClosingTime())) {
             throw new AppException(ErrorCode.VALIDATION_ERROR,
@@ -307,6 +324,13 @@ public class AmenityServiceImpl implements AmenityService {
         if (!req.getStartTime().isBefore(req.getEndTime())) {
             throw new AppException(ErrorCode.VALIDATION_ERROR,
                     "startTime must be before endTime.");
+        }
+
+        // SEC-11: enforce minimum booking duration to prevent slot exhaustion.
+        long durationMinutes = Duration.between(req.getStartTime(), req.getEndTime()).toMinutes();
+        if (durationMinutes < MIN_BOOKING_DURATION_MINUTES) {
+            throw new AppException(ErrorCode.VALIDATION_ERROR,
+                    "Minimum booking duration is " + MIN_BOOKING_DURATION_MINUTES + " minutes.");
         }
 
         // 3. Enforce per-resident daily booking limit for this amenity.

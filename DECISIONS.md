@@ -140,6 +140,20 @@ Format: Date | Decision | Reasoning | Alternatives
 **Reasoning:** Assignee name is more readable in a report than a UUID. Unassigned tickets are grouped under a single "Unassigned" label rather than excluded.
 **Alternatives:** Return assignee UUID and resolve name client-side. Rejected — adds round-trips and complicates the frontend.
 
+## Deployment Decisions
+
+### 2026-06-03 | Admin portal port 80, resident portal port 81 (single nginx container)
+**Decision:** One nginx container builds both React apps (multi-stage Dockerfile) and serves them on separate ports: admin on 80, resident on 81.
+**Reasoning:** Both apps share the same API backend and nginx config; running one container avoids duplication. Different ports cleanly separate the two audiences without requiring different domains or subdirectory base URLs (no Vite `base` change needed).
+**Alternatives:** Two separate nginx containers; nginx subdirectory routing (requires `base: '/admin/'` in vite configs). Both rejected to minimise config changes.
+
+### 2026-06-03 | MinIO console port 9001 exposed on host for first-run bucket setup
+**Decision:** `ports: ["9001:9001"]` in docker-compose.yml so operators can create the `gemek` bucket via the web console on first deploy.
+**Reasoning:** No `minio/mc` init container to avoid pulling an extra image. Console access is sufficient for a single-instance local/staging deployment.
+**Alternatives:** `minio-init` sidecar running `mc mb`. Deferred — adds image pull requirement.
+
+---
+
 ## Frontend Decisions
 
 ### 2026-05-29 | Access token in Zustand memory, refresh token in localStorage

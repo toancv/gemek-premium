@@ -1,9 +1,9 @@
 # PROGRESS — Apartment Management System
 
 ## Current State
-- **Phase:** G4 — integration tests complete, awaiting CTO approval
-- **Gate:** G2 approved, G3 approved — G4 test run complete 2026-06-01
-- **Last completed:** G4 integration test suite — 15/15 PASS (commit 8d10d2b)
+- **Phase:** DONE — all gates approved, deployment prep complete
+- **Gate:** G1 ✅ G2 ✅ G3 ✅ G4 ✅ (2026-06-03)
+- **Last completed:** Docker + deployment prep (nginx Dockerfile, nginx.conf two-port, docker-compose.yml updated, README.md)
 - **Blocked:** None
 
 ---
@@ -35,7 +35,7 @@
 | G1 — Techstack | ✅ 2026-05-29 | |
 | G2 — Backend | ✅ 2026-05-29 | |
 | G3 — Frontend | ✅ 2026-05-29 | SAST backend+frontend both PASS WITH NOTES before approval |
-| G4 — Testing | ☐ | Awaiting test run completion |
+| G4 — Testing | ✅ 2026-06-03 | 149/149 tests pass, security audit 19/20 fixed, SEC-20 deferred, app boots fresh DB |
 
 ---
 

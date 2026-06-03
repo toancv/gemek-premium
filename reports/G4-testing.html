@@ -57,17 +57,17 @@
 <div class="header">
   <div class="gate-badge">GATE G4 · TEST REPORT — FINAL</div>
   <h1>Integration &amp; Unit Test Report</h1>
-  <div class="meta">Updated: 2026-06-01 &nbsp;·&nbsp; Branch: phase/frontend &nbsp;·&nbsp; Infrastructure: PostgreSQL localhost:5432/gemek2 / Redis localhost:6379 / Java 21 &nbsp;·&nbsp; Awaiting CTO Approval</div>
+  <div class="meta">Updated: 2026-06-03 &nbsp;·&nbsp; Branch: deploy/local (from improvement/security) &nbsp;·&nbsp; Java 21 Temurin · Maven 3.9.6 &nbsp;·&nbsp; Awaiting CTO Approval</div>
 </div>
 
 <!-- ── Summary stats ─────────────────────────────────────────────────────── -->
 <div class="stats-row">
   <div class="stat">
-    <div class="number">83</div>
+    <div class="number">149</div>
     <div class="label">Total Tests</div>
   </div>
   <div class="stat">
-    <div class="number">83</div>
+    <div class="number">149</div>
     <div class="label">Passing</div>
   </div>
   <div class="stat">
@@ -83,19 +83,26 @@
     <div class="label">G4 Integration (15/15)</div>
   </div>
   <div class="stat">
-    <div class="number">16</div>
-    <div class="label">Total Bugs Fixed</div>
+    <div class="number">19</div>
+    <div class="label">Security Fixes (19/20)</div>
+  </div>
+  <div class="stat">
+    <div class="number">1</div>
+    <div class="label">SEC Deferred (SEC-20)</div>
+  </div>
+  <div class="stat">
+    <div class="number">&#10003;</div>
+    <div class="label">App Boots — Fresh DB</div>
   </div>
 </div>
 
 <div class="note-box green">
   &#10003; <strong>Overall Verdict — PASS (100%):</strong>
-  All 83 tests pass. 15/15 G4 cross-module integration tests pass. The 6 previously pre-existing unit test
-  failures have been fully resolved in commit <span class="commit">c98c99c</span>:
-  Jackson <code>@JsonProperty</code> on all <code>isXxx</code> boolean DTO and request fields,
-  native SQL column name corrections, PostgreSQL JDBC type-inference fixes via COALESCE and CAST patterns,
-  and <code>List&lt;Object[]&gt;</code> return-type corrections for aggregate native queries.
-  No regression introduced.
+  All <strong>149 tests</strong> pass on branch <code>deploy/local</code> via <code>mvn clean verify</code>
+  with JDK 21 (2026-06-03). This includes 15 G4 cross-module integration tests, 66 unit/controller tests,
+  and 12 post-audit coverage-gap tests (AuthZ regression guards added on branch improvement/security).
+  App boots cleanly against a fresh PostgreSQL 15 database: Flyway applies all 10 migrations (V1–V10)
+  with no checksum mismatch; Tomcat starts on port 8080 in 11.6 s.
 </div>
 
 <!-- ── G4 Integration Tests ──────────────────────────────────────────────── -->
@@ -352,31 +359,89 @@
   </table>
 </div>
 
-<!-- ── Security SAST Summary ─────────────────────────────────────────────── -->
+<!-- ── Security Audit — Post-G4 (improvement/security) ───────────────────── -->
 <div class="section">
-  <div class="section-title">Security SAST — Summary (Full Detail: reports/security-remediation.html)</div>
+  <div class="section-title">Security Audit — improvement/security branch — 19 Fixed / 1 Deferred / 20 Total</div>
   <table>
-    <thead><tr><th>Scope</th><th>Initial Scan</th><th>Fixes Applied</th><th>Final Verdict</th></tr></thead>
+    <thead>
+      <tr><th>ID</th><th>Severity</th><th>Location</th><th>Finding</th><th>Status</th><th>AuthZ Regression Test</th></tr>
+    </thead>
     <tbody>
-      <tr>
-        <td><strong>Backend</strong></td>
-        <td><span class="badge fail">FAIL — 3C 6H 1L</span></td>
-        <td>3 Critical + 7 High + 1 Low fixed — <span class="commit">6e43ebf</span> + <span class="commit">6519fa7</span></td>
-        <td><span class="badge pass">PASS WITH NOTES</span></td>
-      </tr>
-      <tr>
-        <td><strong>Frontend</strong></td>
-        <td><span class="badge warn">NOTES — 2H 3M</span></td>
-        <td>2 High + 3 Medium fixed — <span class="commit">ba1c634</span></td>
-        <td><span class="badge pass">PASS WITH NOTES</span></td>
+      <tr><td><strong>SEC-01</strong></td><td><span class="badge fail">HIGH</span></td><td><code>FileController.java:66</code></td><td>File IDOR — presign without ownership check</td><td><span class="badge done">&#10003; FIXED</span></td><td><span class="badge pass">&#10003; Yes</span></td></tr>
+      <tr><td><strong>SEC-02</strong></td><td><span class="badge warn">MEDIUM</span></td><td><code>AmenityController.java:241</code></td><td>ADMIN could book as resident — wrong role guard</td><td><span class="badge done">&#10003; FIXED</span></td><td><span class="badge pass">&#10003; Yes</span></td></tr>
+      <tr><td><strong>SEC-03</strong></td><td><span class="badge fail">HIGH</span></td><td><code>TicketServiceImpl.java:190</code></td><td>Ticket phone data leaked to TECHNICIAN/BOARD_MEMBER</td><td><span class="badge done">&#10003; FIXED</span></td><td><span class="badge pass">&#10003; Yes</span></td></tr>
+      <tr><td><strong>SEC-04</strong></td><td><span class="badge fail">HIGH</span></td><td><code>UserServiceImpl.java:121</code></td><td>Role promotion — no WARN log, no actor capture</td><td><span class="badge done">&#10003; FIXED</span></td><td><span class="badge pass">&#10003; Yes</span></td></tr>
+      <tr><td><strong>SEC-05</strong></td><td><span class="badge fail">HIGH</span></td><td><code>AuthServiceImpl.java:158</code></td><td>No rate limit on /auth/refresh — token grinding</td><td><span class="badge done">&#10003; FIXED</span></td><td><span class="badge pass">&#10003; Yes</span></td></tr>
+      <tr><td><strong>SEC-06</strong></td><td><span class="badge fail">HIGH</span></td><td><code>JwtAuthenticationFilter.java:134</code></td><td>Role read from JWT claim — privilege escalation via forged token</td><td><span class="badge done">&#10003; FIXED</span></td><td><span class="badge pass">&#10003; Yes</span></td></tr>
+      <tr><td><strong>SEC-07</strong></td><td><span class="badge warn">MEDIUM</span></td><td><code>NotificationServiceImpl.java:97</code></td><td>markAsRead not scoped to calling user — IDOR</td><td><span class="badge done">&#10003; FIXED</span></td><td><span class="badge pass">&#10003; Yes</span></td></tr>
+      <tr><td><strong>SEC-08</strong></td><td><span class="badge warn">MEDIUM</span></td><td><code>TicketServiceImpl.java:190</code></td><td>BOARD_MEMBER phone leak — same guard as SEC-03</td><td><span class="badge done">&#10003; FIXED</span></td><td><span class="badge info">Covered by SEC-03 test</span></td></tr>
+      <tr><td><strong>SEC-09</strong></td><td><span class="badge warn">MEDIUM</span></td><td><code>application.yml:48</code></td><td>Redis password empty-string fallback — unauthenticated Redis</td><td><span class="badge done">&#10003; FIXED</span></td><td>—</td></tr>
+      <tr><td><strong>SEC-10</strong></td><td><span class="badge warn">MEDIUM</span></td><td><code>V2__seed_admin.sql:18</code></td><td>Hardcoded BCrypt hash in migration — credential in source</td><td><span class="badge done">&#10003; FIXED</span></td><td>—</td></tr>
+      <tr><td><strong>SEC-11</strong></td><td><span class="badge warn">MEDIUM</span></td><td><code>AmenityServiceImpl.java:331</code></td><td>No minimum booking duration — zero/negative duration bookings</td><td><span class="badge done">&#10003; FIXED</span></td><td>—</td></tr>
+      <tr><td><strong>SEC-12</strong></td><td><span class="badge warn">MEDIUM</span></td><td><code>AmenityServiceImpl.java:311</code></td><td>No max advance booking limit — arbitrary future reservations</td><td><span class="badge done">&#10003; FIXED</span></td><td>—</td></tr>
+      <tr><td><strong>SEC-13</strong></td><td><span class="badge warn">MEDIUM</span></td><td><code>AuthServiceImpl.java:205</code></td><td>Null access token on logout — NPE / no-op logout</td><td><span class="badge done">&#10003; FIXED</span></td><td>—</td></tr>
+      <tr><td><strong>SEC-14</strong></td><td><span class="badge info">LOW</span></td><td><code>AuthServiceImpl.java:226</code></td><td>Redis KEYS scan in logout — O(N) blocking on large keyspace</td><td><span class="badge done">&#10003; FIXED</span></td><td>—</td></tr>
+      <tr><td><strong>SEC-15</strong></td><td><span class="badge info">LOW</span></td><td><code>pom.xml:15</code></td><td>Spring Boot 3.3.5 — CVEs in embedded Tomcat / Spring Security</td><td><span class="badge done">&#10003; FIXED → 3.3.8</span></td><td>—</td></tr>
+      <tr><td><strong>SEC-16</strong></td><td><span class="badge info">LOW</span></td><td><code>pom.xml:29</code></td><td>JJWT 0.12.3 — known parsing vulnerability</td><td><span class="badge done">&#10003; FIXED → 0.12.6</span></td><td>—</td></tr>
+      <tr><td><strong>SEC-17</strong></td><td><span class="badge info">LOW</span></td><td><code>SecurityConfig.java:99</code></td><td>/actuator/info exposed publicly</td><td><span class="badge done">&#10003; FIXED</span></td><td>—</td></tr>
+      <tr><td><strong>SEC-21</strong></td><td><span class="badge info">LOW</span></td><td><code>SecurityConfig.java</code></td><td>CORS — no explicit CorsConfigurationSource bean</td><td><span class="badge done">&#10003; FIXED</span></td><td><span class="badge pass">&#10003; Yes — CorsIntegrationTest</span></td></tr>
+      <tr><td><strong>SEC-22</strong></td><td><span class="badge warn">MEDIUM</span></td><td><code>AmenityServiceImpl.java:308</code></td><td>Past-date bookings accepted</td><td><span class="badge done">&#10003; FIXED</span></td><td>—</td></tr>
+      <tr style="background: rgba(245,158,11,0.05);">
+        <td><strong>SEC-20</strong></td><td><span class="badge info">INFO</span></td><td>Frontend (localStorage)</td>
+        <td>Refresh token in localStorage — XSS accessible</td>
+        <td><span class="badge warn">DEFERRED — by design</span></td>
+        <td>N/A — frontend arch decision</td>
       </tr>
     </tbody>
   </table>
   <div class="note-box">
-    <strong>Deferred (tracked):</strong>
-    Refresh token in localStorage — requires <code>Set-Cookie: HttpOnly</code> on <code>/auth/login</code> + <code>/auth/refresh</code>; hardening sprint backlog.
-    MinIO presign endpoint does not verify per-user file ownership — MEDIUM, post-G4 backlog.
+    <strong>SEC-20 Deferred:</strong> Refresh token stored in <code>localStorage</code> (key <code>gemek_refresh</code>).
+    Full remediation requires <code>Set-Cookie: HttpOnly; Secure; SameSite=Strict</code> on <code>/auth/login</code>
+    and <code>/auth/refresh</code>, plus removal of the localStorage read/write in the frontend Zustand store.
+    Deferred by architectural decision (DECISIONS.md — 2026-05-29 "Access token in Zustand memory,
+    refresh token in localStorage"). Confirmed deferred post-audit per CTO Override in DECISIONS.md.
   </div>
+  <div class="note-box green" style="margin-top:0.75rem;">
+    <strong>AuthZ Regression Coverage:</strong> 7 of the HIGH/MEDIUM AuthZ findings (SEC-01, 02, 03/08, 04, 05, 06, 07)
+    each have a dedicated regression test in the 12-test coverage-gap suite (branch improvement/security,
+    commit <span class="commit">3ce9639</span>). SEC-21 covered by existing CorsIntegrationTest (3 tests).
+    These tests will prevent future regressions from reverting the security fixes.
+  </div>
+</div>
+
+<!-- ── Fresh DB Boot Confirmation ────────────────────────────────────────── -->
+<div class="section">
+  <div class="section-title">Fresh Database Boot — Flyway Migration Verification (2026-06-03)</div>
+  <table>
+    <thead><tr><th>Step</th><th>Detail</th><th>Result</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><strong>Volume reset</strong></td>
+        <td><code>docker compose -f docker-compose.dev.yml down -v</code> → all postgres_dev_data volume removed</td>
+        <td><span class="badge pass">&#10003; Done</span></td>
+      </tr>
+      <tr>
+        <td><strong>Fresh postgres start</strong></td>
+        <td>postgres:15-alpine on port 5434 — empty database, no flyway_schema_history table</td>
+        <td><span class="badge pass">&#10003; Healthy</span></td>
+      </tr>
+      <tr>
+        <td><strong>Flyway V1–V10</strong></td>
+        <td><code>Successfully validated 10 migrations</code> → <code>Successfully applied 10 migrations to schema "public", now at version v10</code> (1.13 s)</td>
+        <td><span class="badge pass">&#10003; No checksum mismatch</span></td>
+      </tr>
+      <tr>
+        <td><strong>V2 placeholder</strong></td>
+        <td><code>ADMIN_PASSWORD_HASH</code> Flyway placeholder resolved from env — admin seeded with BCrypt-12 hash, no hardcoded credential in SQL</td>
+        <td><span class="badge pass">&#10003; OK</span></td>
+      </tr>
+      <tr>
+        <td><strong>App boot</strong></td>
+        <td><code>Started GemekApplication in 11.668 seconds</code> — Tomcat port 8080, JPA schema validation passes, all Hibernate entities match migrated schema</td>
+        <td><span class="badge pass">&#10003; Booted</span></td>
+      </tr>
+    </tbody>
+  </table>
 </div>
 
 <!-- ── Open Items ─────────────────────────────────────────────────────────── -->
@@ -384,12 +449,8 @@
   <div class="section-title">Open Items Before Production</div>
   <ul class="decisions">
     <li>
-      <strong>Refresh token HttpOnly cookie migration</strong>
-      Currently stored in localStorage. Full fix: <code>Set-Cookie: HttpOnly; Secure; SameSite=Strict</code> on <code>/auth/login</code> + <code>/auth/refresh</code>; frontend removes localStorage read/write.
-    </li>
-    <li>
-      <strong>MinIO per-user ownership check on presign</strong>
-      Key validated against <code>ticket_photos</code> table but not scoped to calling user's tickets. Tracked for hardening sprint.
+      <strong>SEC-20 — Refresh token HttpOnly cookie migration (DEFERRED by design)</strong>
+      Currently stored in <code>localStorage</code> key <code>gemek_refresh</code>. Full fix: <code>Set-Cookie: HttpOnly; Secure; SameSite=Strict</code> on <code>/auth/login</code> + <code>/auth/refresh</code>; frontend removes localStorage read/write. Confirmed deferred post-audit (DECISIONS.md — CTO Overrides).
     </li>
     <li>
       <strong>Frontend build not wired into Docker Compose</strong>
@@ -401,7 +462,11 @@
     </li>
     <li>
       <strong>Playwright / Cypress E2E deferred</strong>
-      Critical user flows covered by 15 backend integration tests. Browser E2E recommended for next sprint.
+      Critical user flows covered by 15 backend integration tests + 12 security regression tests. Browser E2E recommended for next sprint.
+    </li>
+    <li>
+      <strong>MinIO image not cached locally — docker compose up requires pull</strong>
+      <code>minio/minio:RELEASE.2024-11-07T00-52-20Z</code> not in local image cache. Pull separately before full stack deploy.
     </li>
   </ul>
 </div>

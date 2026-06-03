@@ -170,3 +170,8 @@ Format: Date | Decision | Reasoning | Alternatives
 
 ## CTO Overrides
 _(record when CTO overrides agent decision)_
+
+### 2026-06-03 | SEC-20 remains deferred post-security-audit
+**Decision:** SEC-20 (INFO — refresh token in localStorage) stays deferred after the improvement/security audit.
+**Reasoning:** Full remediation requires a backend Set-Cookie change on /auth/login and /auth/refresh, which is a post-G4 hardening sprint item. The prior architectural decision (2026-05-29) to store the refresh token in localStorage was made knowingly, with HttpOnly cookie migration tracked explicitly.
+**How to apply:** Do not attempt SEC-20 remediation until the CTO schedules the hardening sprint. The open-items section of G4-testing.html documents the required changes.

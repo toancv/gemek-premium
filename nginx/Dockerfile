@@ -7,7 +7,7 @@
 # Stage 4: nginx runtime with both builds
 # =============================================================================
 
-FROM node:20-alpine AS base
+FROM node:24-alpine AS base
 RUN corepack enable
 
 # --- Dependency install --------------------------------------------------
@@ -32,7 +32,7 @@ COPY frontend/ .
 RUN pnpm --filter resident build
 
 # --- nginx runtime --------------------------------------------------------
-FROM nginx:1.25-alpine AS runtime
+FROM nginx:1.28.3-alpine AS runtime
 COPY nginx/nginx.conf /etc/nginx/nginx.conf
 COPY --from=admin-builder    /app/apps/admin/dist    /usr/share/nginx/html/admin
 COPY --from=resident-builder /app/apps/resident/dist /usr/share/nginx/html/resident

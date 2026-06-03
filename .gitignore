@@ -1,3 +1,4 @@
 backend/target/
 backend/.idea/
 reports/coverage-raw/
+.env

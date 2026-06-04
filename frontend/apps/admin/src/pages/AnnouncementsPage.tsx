@@ -24,22 +24,30 @@ export function AnnouncementsPage() {
     const fd = new FormData(e.target as HTMLFormElement);
     const title = (fd.get('title') as string).trim();
     const content = (fd.get('content') as string).trim();
+    const shouldPublish = fd.get('publishNow') === 'true';
     if (!title || !content) { setFormError('Tiêu đề và nội dung là bắt buộc'); return; }
     if (scope !== 'ALL' && !blockId) { setFormError('Vui lòng chọn block'); return; }
     if (scope === 'FLOOR' && !floor.trim()) { setFormError('Vui lòng nhập số tầng'); return; }
     try {
-      await create.mutateAsync({
+      const created: any = await create.mutateAsync({
         title,
         content,
         type: fd.get('type'),
         targetScope: scope,
         targetBlockId: scope !== 'ALL' ? blockId : null,
         targetFloor: scope === 'FLOOR' ? parseInt(floor, 10) : null,
-        publishNow: fd.get('publishNow') === 'true',
         sendPush: true,
         sendEmail: false,
         sendSms: false,
       });
+      if (shouldPublish) {
+        try {
+          await publish.mutateAsync(created.id);
+        } catch {
+          setFormError('Thông báo đã được tạo nhưng xuất bản thất bại. Vui lòng xuất bản thủ công.');
+          return;
+        }
+      }
       setShowCreate(false);
       resetForm();
     } catch (err: any) { setFormError(err?.response?.data?.message ?? 'Tạo thông báo thất bại'); }
@@ -136,8 +144,8 @@ export function AnnouncementsPage() {
               {formError && <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded">{formError}</p>}
               <div className="flex gap-2 justify-end pt-2">
                 <button type="button" onClick={() => { setShowCreate(false); resetForm(); }} className="px-4 py-2 text-sm border border-gray-300 rounded-md hover:bg-gray-50">Hủy</button>
-                <button type="submit" disabled={create.isPending} className="px-4 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50">
-                  {create.isPending ? 'Đang tạo...' : 'Tạo'}
+                <button type="submit" disabled={create.isPending || publish.isPending} className="px-4 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50">
+                  {publish.isPending ? 'Đang xuất bản...' : create.isPending ? 'Đang tạo...' : 'Tạo'}
                 </button>
               </div>
             </form>

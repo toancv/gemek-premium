@@ -3,7 +3,7 @@
 ## Current State
 - **Phase:** DONE — all gates approved, deployment prep complete
 - **Gate:** G1 ✅ G2 ✅ G3 ✅ G4 ✅ (2026-06-03)
-- **Last completed:** 2026-06-04 — Fixed admin create-announcement: added targetFloor field (missing for FLOOR scope), replaced raw UUID block input with useBlocks dropdown, added client-side validation per scope rules.
+- **Last completed:** 2026-06-04 — Wired publishNow on admin create-announcement: after successful create, if user selected "Xuất bản ngay", FE calls POST /announcements/{id}/publish; draft path skips publish call. publishNow removed from create payload (BE ignored it).
 - **Blocked:** None
 
 ---

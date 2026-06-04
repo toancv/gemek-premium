@@ -6,7 +6,7 @@ import { useMyTickets, useMyBookings, useAnnouncements, useMe } from '../api/hoo
 export function HomePage() {
   const user = useAuthStore((s) => s.user);
   const { data: me } = useMe();
-  const { data: ticketsData } = useMyTickets({ size: 5, status: 'NEW,ASSIGNED,IN_PROGRESS' });
+  const { data: ticketsData } = useMyTickets({ size: 5, status: ['NEW', 'ASSIGNED', 'IN_PROGRESS'] });
   const { data: bookingsData } = useMyBookings({ size: 5 });
   const { data: announcements } = useAnnouncements({ size: 3, isPublished: true });
 

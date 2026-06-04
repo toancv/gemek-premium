@@ -3,7 +3,7 @@
 ## Current State
 - **Phase:** DONE — all gates approved, deployment prep complete
 - **Gate:** G1 ✅ G2 ✅ G3 ✅ G4 ✅ (2026-06-03)
-- **Last completed:** 2026-06-04 — Fixed 403 on GET /api/amenity-bookings for RESIDENT (added role + server-side IDOR scoping); curl-verified: 200, own-only, IDOR guard, ADMIN sees all
+- **Last completed:** 2026-06-04 — Fixed resident portal home screen tickets 500: status was comma-joined string → now repeated params via axios paramsSerializer:{indexes:null} + array value; curl-verified 200
 - **Blocked:** None
 
 ---

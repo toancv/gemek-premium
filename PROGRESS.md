@@ -3,7 +3,7 @@
 ## Current State
 - **Phase:** DONE — all gates approved, deployment prep complete
 - **Gate:** G1 ✅ G2 ✅ G3 ✅ G4 ✅ (2026-06-03)
-- **Last completed:** 2026-06-04 — application-level admin seeding (AdminSeeder replaces broken Flyway hash placeholder; tests pass)
+- **Last completed:** 2026-06-04 — demo data seeded on local (26 users, 3 blocks, 30 apts, 25 residents, 15 tickets, 5 bookings, 2 announcements); resident01 login HTTP 200
 - **Blocked:** None
 
 ---

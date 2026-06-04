@@ -3,7 +3,7 @@
 ## Current State
 - **Phase:** DONE — all gates approved, deployment prep complete
 - **Gate:** G1 ✅ G2 ✅ G3 ✅ G4 ✅ (2026-06-03)
-- **Last completed:** 2026-06-04 — demo data seeded on local (26 users, 3 blocks, 30 apts, 25 residents, 15 tickets, 5 bookings, 2 announcements); resident01 login HTTP 200
+- **Last completed:** 2026-06-04 — CORS origins fixed for nginx-served portals (80/81); resident preflight 200 + ACAO, login 200
 - **Blocked:** None
 
 ---

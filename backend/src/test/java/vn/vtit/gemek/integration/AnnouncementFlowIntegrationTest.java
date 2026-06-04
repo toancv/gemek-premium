@@ -302,7 +302,7 @@ class AnnouncementFlowIntegrationTest {
         req.setTitle(title);
         req.setContent("Content for: " + title);
         req.setType(AnnouncementType.GENERAL);
-        req.setScope(scope);
+        req.setTargetScope(scope);
         if (targetBlockId != null) {
             req.setTargetBlockId(targetBlockId);
         }

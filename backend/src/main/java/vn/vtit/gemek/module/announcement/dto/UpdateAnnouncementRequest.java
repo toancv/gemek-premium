@@ -33,7 +33,7 @@ public class UpdateAnnouncementRequest {
     private AnnouncementType type;
 
     /** New delivery scope. {@code null} means no change. */
-    private AnnouncementScope scope;
+    private AnnouncementScope targetScope;
 
     /**
      * New target block UUID.

@@ -42,7 +42,7 @@ public class CreateAnnouncementRequest {
 
     /** Delivery scope. Required. */
     @NotNull
-    private AnnouncementScope scope;
+    private AnnouncementScope targetScope;
 
     /**
      * Target block UUID for BLOCK or FLOOR scoped announcements.

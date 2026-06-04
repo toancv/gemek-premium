@@ -180,7 +180,7 @@ class AnnouncementControllerTest {
         req.setTitle(title);
         req.setContent("Content for: " + title);
         req.setType(AnnouncementType.GENERAL);
-        req.setScope(AnnouncementScope.ALL);
+        req.setTargetScope(AnnouncementScope.ALL);
 
         MvcResult result = mockMvc.perform(post("/api/announcements")
                         .header("Authorization", "Bearer " + token)
@@ -203,7 +203,7 @@ class AnnouncementControllerTest {
         req.setTitle("Water shutdown notice " + System.nanoTime());
         req.setContent("Water will be shut off from 08:00 to 12:00 on Monday.");
         req.setType(AnnouncementType.MAINTENANCE);
-        req.setScope(AnnouncementScope.ALL);
+        req.setTargetScope(AnnouncementScope.ALL);
 
         MvcResult result = mockMvc.perform(post("/api/announcements")
                         .header("Authorization", "Bearer " + adminToken)
@@ -212,7 +212,7 @@ class AnnouncementControllerTest {
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.id").isNotEmpty())
                 .andExpect(jsonPath("$.type").value("MAINTENANCE"))
-                .andExpect(jsonPath("$.scope").value("ALL"))
+                .andExpect(jsonPath("$.targetScope").value("ALL"))
                 .andReturn();
 
         Map<?, ?> body = objectMapper.readValue(result.getResponse().getContentAsString(), Map.class);

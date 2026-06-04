@@ -174,7 +174,7 @@ class AnnouncementServiceImplTest {
         request.setTitle("Block Announcement");
         request.setContent("Content");
         request.setType(AnnouncementType.GENERAL);
-        request.setScope(AnnouncementScope.BLOCK);
+        request.setTargetScope(AnnouncementScope.BLOCK);
         // targetBlockId intentionally null
 
         assertThatThrownBy(() -> service.createAnnouncement(request, principalId))
@@ -194,7 +194,7 @@ class AnnouncementServiceImplTest {
         request.setTitle("Floor Announcement");
         request.setContent("Content");
         request.setType(AnnouncementType.GENERAL);
-        request.setScope(AnnouncementScope.FLOOR);
+        request.setTargetScope(AnnouncementScope.FLOOR);
         request.setTargetFloor((short) 3);
         // targetBlockId intentionally null
 
@@ -215,7 +215,7 @@ class AnnouncementServiceImplTest {
         request.setTitle("Floor Announcement");
         request.setContent("Content");
         request.setType(AnnouncementType.GENERAL);
-        request.setScope(AnnouncementScope.FLOOR);
+        request.setTargetScope(AnnouncementScope.FLOOR);
         request.setTargetBlockId(UUID.randomUUID());
         // targetFloor intentionally null
 

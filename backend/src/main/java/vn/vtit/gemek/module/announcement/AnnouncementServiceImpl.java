@@ -146,9 +146,9 @@ public class AnnouncementServiceImpl implements AnnouncementService {
     @Override
     @Transactional
     public AnnouncementResponse createAnnouncement(CreateAnnouncementRequest req, UUID principalId) {
-        log.debug("createAnnouncement — type={}, scope={}", req.getType(), req.getScope());
+        log.debug("createAnnouncement — type={}, scope={}", req.getType(), req.getTargetScope());
 
-        validateScopeConstraints(req.getScope(), req.getTargetBlockId(), req.getTargetFloor());
+        validateScopeConstraints(req.getTargetScope(), req.getTargetBlockId(), req.getTargetFloor());
 
         User creator = userRepository.findById(principalId)
                 .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND,
@@ -158,7 +158,7 @@ public class AnnouncementServiceImpl implements AnnouncementService {
         announcement.setTitle(req.getTitle());
         announcement.setContent(req.getContent());
         announcement.setType(req.getType());
-        announcement.setScope(req.getScope());
+        announcement.setScope(req.getTargetScope());
         announcement.setSendPush(req.getSendPush() != null ? req.getSendPush() : true);
         announcement.setSendEmail(req.getSendEmail() != null ? req.getSendEmail() : false);
         announcement.setSendSms(req.getSendSms() != null ? req.getSendSms() : false);
@@ -210,7 +210,7 @@ public class AnnouncementServiceImpl implements AnnouncementService {
         }
 
         // If scope or targeting fields change, re-validate the combination.
-        AnnouncementScope newScope = req.getScope() != null ? req.getScope() : announcement.getScope();
+        AnnouncementScope newScope = req.getTargetScope() != null ? req.getTargetScope() : announcement.getScope();
         UUID newBlockId = req.getTargetBlockId() != null
                 ? req.getTargetBlockId()
                 : (announcement.getTargetBlock() != null ? announcement.getTargetBlock().getId() : null);
@@ -218,8 +218,8 @@ public class AnnouncementServiceImpl implements AnnouncementService {
 
         validateScopeConstraints(newScope, newBlockId, newFloor);
 
-        if (req.getScope() != null) {
-            announcement.setScope(req.getScope());
+        if (req.getTargetScope() != null) {
+            announcement.setScope(req.getTargetScope());
         }
 
         if (req.getTargetBlockId() != null) {
@@ -416,7 +416,7 @@ public class AnnouncementServiceImpl implements AnnouncementService {
                 .title(announcement.getTitle())
                 .content(announcement.getContent())
                 .type(announcement.getType())
-                .scope(announcement.getScope())
+                .targetScope(announcement.getScope())
                 .targetBlock(blockRef)
                 .targetFloor(announcement.getTargetFloor())
                 .sendPush(announcement.isSendPush())

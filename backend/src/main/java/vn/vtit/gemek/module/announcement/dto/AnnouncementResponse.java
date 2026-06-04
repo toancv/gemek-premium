@@ -35,7 +35,7 @@ public class AnnouncementResponse {
     private final AnnouncementType type;
 
     /** Delivery scope. */
-    private final AnnouncementScope scope;
+    private final AnnouncementScope targetScope;
 
     /**
      * Target block reference.

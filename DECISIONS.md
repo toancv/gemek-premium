@@ -5,6 +5,10 @@ Format: Date | Decision | Reasoning | Alternatives
 
 ---
 
+## 2026-06-04 | Announcement DTO field rename: `scope`→`targetScope` in CreateAnnouncementRequest, UpdateAnnouncementRequest, AnnouncementResponse — to match API-SPEC.md contract. UpdateAnnouncementRequest renamed in the same pass for consistency (spec uses `targetScope` for both create and update endpoints). Entity field `Announcement.scope` and DB column `target_scope` unchanged.
+
+---
+
 ## Architecture Decisions
 
 ### 2026-05-29 | Modular Monolith over Microservices

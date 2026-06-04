@@ -3,7 +3,7 @@
 ## Current State
 - **Phase:** DONE — all gates approved, deployment prep complete
 - **Gate:** G1 ✅ G2 ✅ G3 ✅ G4 ✅ (2026-06-03)
-- **Last completed:** 2026-06-04 — Fixed resident portal home screen tickets 500: status was comma-joined string → now repeated params via axios paramsSerializer:{indexes:null} + array value; curl-verified 200
+- **Last completed:** 2026-06-04 — Fixed F5 auto-logout: added authStatus+bootstrap() to both portal auth stores; RequireAuth holds on 'loading' (no race); refresh→/auth/me restores session silently; invalid RT → 401 → unauthenticated
 - **Blocked:** None
 
 ---

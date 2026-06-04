@@ -3,7 +3,7 @@
 ## Current State
 - **Phase:** DONE — all gates approved, deployment prep complete
 - **Gate:** G1 ✅ G2 ✅ G3 ✅ G4 ✅ (2026-06-03)
-- **Last completed:** Docker + deployment prep (nginx Dockerfile, nginx.conf two-port, docker-compose.yml updated, README.md)
+- **Last completed:** 2026-06-04 — application-level admin seeding (AdminSeeder replaces broken Flyway hash placeholder; tests pass)
 - **Blocked:** None
 
 ---

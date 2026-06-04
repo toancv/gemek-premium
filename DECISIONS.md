@@ -182,6 +182,12 @@ Format: Date | Decision | Reasoning | Alternatives
 
 ---
 
+### 2026-06-04 | Application-level admin seeding replaces Flyway hash placeholder
+**Decision:** `AdminSeeder` (ApplicationRunner) creates the admin user on first boot by hashing a plaintext `ADMIN_PASSWORD` env var with BCrypt-12. V2 migration no longer contains an admin INSERT. `spring.flyway.placeholders.ADMIN_PASSWORD_HASH` removed from application.yml.
+**Why:** Docker Compose interpolates `$` characters in env_file values. A BCrypt hash (`$2b$12$<salt>...`) contains `$` followed by valid variable-name characters; compose substitutes them with blank, truncating the hash to 27 chars. Flyway seeds the corrupted hash; login always fails. Plaintext env var has no `$` corruption risk.
+**How to apply:** Set `ADMIN_EMAIL` and `ADMIN_PASSWORD` in `.env`. On first boot with an empty DB, AdminSeeder hashes the plaintext and inserts the admin. Idempotent — skips if any ADMIN role user exists. Fail-loud — throws `IllegalStateException` if no admin exists and `ADMIN_PASSWORD` is blank.
+**Migration checksum note:** V2 was rewritten (INSERT removed). This is safe ONLY for environments that wipe and re-migrate from scratch (`docker compose down -v`). Any environment that has already applied the original V2 will fail Flyway checksum validation and must use a new migration (V11+) to correct the admin hash instead.
+
 ## CTO Overrides
 _(record when CTO overrides agent decision)_
 

@@ -43,8 +43,6 @@ spring:
     locations: classpath:db/migration
     baseline-on-migrate: false
     validate-on-migrate: true
-    placeholders:
-      ADMIN_PASSWORD_HASH: ${ADMIN_PASSWORD_HASH}
 
   data:
     redis:
@@ -68,6 +66,11 @@ minio:
   access-key: ${MINIO_ACCESS_KEY}
   secret-key: ${MINIO_SECRET_KEY}
   bucket: ${MINIO_BUCKET:gemek}
+
+app:
+  admin:
+    email: ${ADMIN_EMAIL:admin@gemek.vn}
+    password: ${ADMIN_PASSWORD:}
 
 firebase:
   credentials-path: ${FIREBASE_CREDENTIALS_PATH:}

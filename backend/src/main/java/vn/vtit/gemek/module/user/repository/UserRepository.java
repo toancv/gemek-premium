@@ -40,6 +40,14 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     boolean existsByEmail(String email);
 
     /**
+     * Returns whether any user with the given role exists.
+     *
+     * @param role the role to check.
+     * @return {@code true} if at least one user with that role exists.
+     */
+    boolean existsByRole(UserRole role);
+
+    /**
      * Lists users with optional filters for the admin user-management page.
      *
      * <p>All filter parameters are nullable — passing {@code null} disables that filter.

@@ -18,6 +18,7 @@ import vn.vtit.gemek.module.apartment.entity.Apartment;
 import vn.vtit.gemek.module.apartment.repository.ApartmentRepository;
 import vn.vtit.gemek.module.resident.dto.CreateResidentRequest;
 import vn.vtit.gemek.module.resident.dto.MoveOutRequest;
+import vn.vtit.gemek.module.resident.dto.ResidentResponse;
 import vn.vtit.gemek.module.resident.entity.Resident;
 import vn.vtit.gemek.module.resident.entity.ResidentType;
 import vn.vtit.gemek.module.resident.mapper.ResidentMapper;
@@ -211,6 +212,37 @@ class ResidentServiceImplTest {
         MoveOutRequest request = new MoveOutRequest(LocalDate.of(2026, 4, 1), null);
 
         assertThatThrownBy(() -> service.moveOut(unknownId, request, UUID.randomUUID()))
+                .isInstanceOf(AppException.class)
+                .satisfies(ex -> assertThat(((AppException) ex).getErrorCode())
+                        .isEqualTo(ErrorCode.NOT_FOUND));
+    }
+
+    // =========================================================================
+    // getMyResident — active residency found → returns response
+    // =========================================================================
+
+    @Test
+    @DisplayName("getMyResident — active residency found returns mapped response")
+    void getMyResident_activeResident_returnsResponse() {
+        when(residentRepository.findActiveByUserId(userId)).thenReturn(Optional.of(resident));
+        ResidentResponse expected = ResidentResponse.builder().id(residentId).build();
+        when(residentMapper.toResponse(resident)).thenReturn(expected);
+
+        ResidentResponse result = service.getMyResident(userId);
+
+        assertThat(result.getId()).isEqualTo(residentId);
+    }
+
+    // =========================================================================
+    // getMyResident — no active residency → NOT_FOUND
+    // =========================================================================
+
+    @Test
+    @DisplayName("getMyResident — no active residency throws NOT_FOUND")
+    void getMyResident_noActiveResidency_throwsNotFound() {
+        when(residentRepository.findActiveByUserId(userId)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.getMyResident(userId))
                 .isInstanceOf(AppException.class)
                 .satisfies(ex -> assertThat(((AppException) ex).getErrorCode())
                         .isEqualTo(ErrorCode.NOT_FOUND));

@@ -250,6 +250,46 @@ class ResidentControllerTest {
     // POST /api/residents/{id}/move-out
     // -------------------------------------------------------------------------
 
+    // -------------------------------------------------------------------------
+    // GET /api/residents/me
+    // -------------------------------------------------------------------------
+
+    @Test
+    @DisplayName("GET /api/residents/me — active residency returns 200 with apartment")
+    void getMyResident_activeResidency_returns200() throws Exception {
+        UUID blockId = createBlock("ResBlock-Me-" + System.nanoTime());
+        UUID apartmentId = createApartment(blockId, "ME101");
+        String email = "res.me." + System.nanoTime() + "@test.com";
+        UUID userId = createResidentUser(email);
+        createResident(userId, apartmentId);
+
+        String residentToken = loginAs(email);
+
+        mockMvc.perform(get("/api/residents/me")
+                        .header("Authorization", "Bearer " + residentToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.apartment.id").value(apartmentId.toString()))
+                .andExpect(jsonPath("$.user.id").value(userId.toString()));
+    }
+
+    @Test
+    @DisplayName("GET /api/residents/me — no active residency returns 404")
+    void getMyResident_noActiveResidency_returns404() throws Exception {
+        String email = "res.noactive." + System.nanoTime() + "@test.com";
+        createResidentUser(email);
+
+        String residentToken = loginAs(email);
+
+        mockMvc.perform(get("/api/residents/me")
+                        .header("Authorization", "Bearer " + residentToken))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.error").value("NOT_FOUND"));
+    }
+
+    // -------------------------------------------------------------------------
+    // POST /api/residents/{id}/move-out
+    // -------------------------------------------------------------------------
+
     @Test
     @DisplayName("POST /api/residents/{id}/move-out — ADMIN records move-out, returns 200")
     void moveOut_adminRole_returns200() throws Exception {

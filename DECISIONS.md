@@ -198,6 +198,11 @@ Format: Date | Decision | Reasoning | Alternatives
 **Why:** Trusting the client residentId would be an IDOR — a resident could pass another resident's UUID and see their bookings. Server-side derivation from the JWT principal is the only safe approach.
 **How to apply:** Any future endpoint that lists user-owned resources must follow the same pattern: derive identity from the principal, never from a client-supplied ID.
 
+### 2026-06-04 | GET /api/tickets `status` filter widened to multi-value repeated param
+**Decision:** Changed `@RequestParam TicketStatus status` (single enum) to `@RequestParam List<TicketStatus> status` (repeated param). Query uses `IN` when list non-empty, no restriction otherwise. Added `MethodArgumentTypeMismatchException` handler in `GlobalExceptionHandler` returning 400 VALIDATION_ERROR.
+**Why:** Resident home screen needs to show "open" tickets (NEW + ASSIGNED + IN_PROGRESS) in a single call. Sending a comma-joined string to a single-enum param caused `IllegalArgumentException` → 500. Repeated params (`?status=NEW&status=ASSIGNED`) bind natively via Spring's `List<Enum>` binding with clean 400 on bad input.
+**Alternatives considered:** Comma-separated list with a custom `ConversionService` converter — rejected because repeated params are standard HTTP, require no custom code, and Spring's binding already handles them correctly.
+
 ## CTO Overrides
 _(record when CTO overrides agent decision)_
 

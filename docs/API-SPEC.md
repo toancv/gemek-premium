@@ -681,7 +681,7 @@ The ticket module handles ALL resident request types. The `category` field deter
 
 Query params:
 - `category` — `MAINTENANCE_REPAIR` | `COMPLAINT` | `ADMINISTRATIVE` | `SUGGESTION_FEEDBACK` | `OTHER`
-- `status` — `NEW` | `ASSIGNED` | `IN_PROGRESS` | `DONE` | `CANCELLED`
+- `status` — `NEW` | `ASSIGNED` | `IN_PROGRESS` | `DONE` | `CANCELLED` — **may be repeated** for multi-value IN filtering (e.g. `?status=NEW&status=ASSIGNED`). Omit for no status restriction. An unrecognised value yields `400 VALIDATION_ERROR`.
 - `priority` — `LOW` | `MEDIUM` | `HIGH` | `URGENT`
 - `apartmentId` — UUID
 - `assignedToUserId` — UUID

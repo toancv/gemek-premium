@@ -375,12 +375,27 @@ public class AmenityServiceImpl implements AmenityService {
     /**
      * {@inheritDoc}
      *
-     * <p>Applies optional amenityId, residentId, and status filters via JPA Specification.
+     * <p>When role is RESIDENT, ignores any client-supplied {@code residentId} and scopes results
+     * to the caller's own active resident record (IDOR prevention). ADMIN and staff roles receive
+     * the full unscoped list, optionally filtered by the supplied {@code residentId}.
      */
     @Override
     public PageResponse<AmenityBookingResponse> listBookings(UUID amenityId, UUID residentId,
-                                                              BookingStatus status, Pageable pageable) {
-        log.debug("listBookings — amenityId={}, residentId={}, status={}", amenityId, residentId, status);
+                                                              BookingStatus status, Pageable pageable,
+                                                              UUID principalId, String role) {
+        log.debug("listBookings — amenityId={}, residentId={}, status={}, role={}", amenityId, residentId, status, role);
+
+        // For RESIDENT callers, override residentId with their own resident record regardless of
+        // what was supplied in the request — prevents IDOR by ensuring server-side scoping.
+        final UUID effectiveResidentId;
+        if ("RESIDENT".equals(role)) {
+            Resident resident = residentRepository.findActiveByUserId(principalId)
+                    .orElseThrow(() -> new AppException(ErrorCode.FORBIDDEN,
+                            "No active resident record found for authenticated user."));
+            effectiveResidentId = resident.getId();
+        } else {
+            effectiveResidentId = residentId;
+        }
 
         Specification<AmenityBooking> spec = Specification.where(null);
 
@@ -388,9 +403,9 @@ public class AmenityServiceImpl implements AmenityService {
             spec = spec.and((root, query, cb) ->
                     cb.equal(root.get("amenity").get("id"), amenityId));
         }
-        if (residentId != null) {
+        if (effectiveResidentId != null) {
             spec = spec.and((root, query, cb) ->
-                    cb.equal(root.get("resident").get("id"), residentId));
+                    cb.equal(root.get("resident").get("id"), effectiveResidentId));
         }
         if (status != null) {
             spec = spec.and((root, query, cb) ->

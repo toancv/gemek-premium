@@ -188,6 +188,16 @@ Format: Date | Decision | Reasoning | Alternatives
 **How to apply:** Set `ADMIN_EMAIL` and `ADMIN_PASSWORD` in `.env`. On first boot with an empty DB, AdminSeeder hashes the plaintext and inserts the admin. Idempotent — skips if any ADMIN role user exists. Fail-loud — throws `IllegalStateException` if no admin exists and `ADMIN_PASSWORD` is blank.
 **Migration checksum note:** V2 was rewritten (INSERT removed). This is safe ONLY for environments that wipe and re-migrate from scratch (`docker compose down -v`). Any environment that has already applied the original V2 will fail Flyway checksum validation and must use a new migration (V11+) to correct the admin hash instead.
 
+### 2026-06-04 | GET /api/amenity-bookings allows TECHNICIAN and BOARD_MEMBER (spec says ADMIN+RESIDENT only)
+**Decision:** Kept TECHNICIAN and BOARD_MEMBER in the @PreAuthorize allowlist for GET /api/amenity-bookings even though API-SPEC.md lists only ADMIN and RESIDENT.
+**Why:** These staff roles have an operational need to view bookings (approvals, facility scheduling). Narrowing them would be a breaking change with no security benefit — they already have ADMIN-level read access on other booking endpoints.
+**How to apply:** Do not remove TECHNICIAN/BOARD_MEMBER without a deliberate product decision. The spec discrepancy is a documentation gap, not a security issue.
+
+### 2026-06-04 | RESIDENT scoping for GET /api/amenity-bookings is server-side only (IDOR prevention)
+**Decision:** When role=RESIDENT, the service ignores the client-supplied `residentId` param and forces-scopes results to the caller's own active resident record (looked up via `residentRepository.findActiveByUserId`).
+**Why:** Trusting the client residentId would be an IDOR — a resident could pass another resident's UUID and see their bookings. Server-side derivation from the JWT principal is the only safe approach.
+**How to apply:** Any future endpoint that lists user-owned resources must follow the same pattern: derive identity from the principal, never from a client-supplied ID.
+
 ## CTO Overrides
 _(record when CTO overrides agent decision)_
 

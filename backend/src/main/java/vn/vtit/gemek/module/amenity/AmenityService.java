@@ -107,14 +107,18 @@ public interface AmenityService {
      *
      * <p>Intended for ADMIN, TECHNICIAN, and BOARD_MEMBER roles.
      *
-     * @param amenityId  optional amenity UUID filter.
-     * @param residentId optional resident UUID filter.
-     * @param status     optional status filter.
-     * @param pageable   pagination and sort parameters.
+     * @param amenityId   optional amenity UUID filter.
+     * @param residentId  optional resident UUID filter (ignored when role is RESIDENT — server
+     *                    scopes to the caller's own resident record).
+     * @param status      optional status filter.
+     * @param pageable    pagination and sort parameters.
+     * @param principalId UUID of the authenticated user.
+     * @param role        role of the authenticated user.
      * @return paginated list of booking responses.
      */
     PageResponse<AmenityBookingResponse> listBookings(UUID amenityId, UUID residentId,
-                                                       BookingStatus status, Pageable pageable);
+                                                       BookingStatus status, Pageable pageable,
+                                                       UUID principalId, String role);
 
     /**
      * Returns a single booking by ID.

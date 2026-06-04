@@ -54,7 +54,7 @@ import java.util.UUID;
  *   <li>PUT  /api/amenities/{id}                  — ADMIN</li>
  *   <li>DELETE /api/amenities/{id}                — ADMIN</li>
  *   <li>GET  /api/amenities/{id}/availability     — all authenticated</li>
- *   <li>GET  /api/amenity-bookings                — ADMIN, TECHNICIAN, BOARD_MEMBER</li>
+ *   <li>GET  /api/amenity-bookings                — ADMIN, TECHNICIAN, BOARD_MEMBER (all); RESIDENT (own)</li>
  *   <li>POST /api/amenity-bookings                — ADMIN, RESIDENT</li>
  *   <li>GET  /api/amenity-bookings/{id}           — ADMIN, RESIDENT (own)</li>
  *   <li>PUT  /api/amenity-bookings/{id}/approve   — ADMIN</li>
@@ -200,7 +200,8 @@ public class AmenityController {
     /**
      * Lists bookings with optional filters.
      *
-     * <p>Available to ADMIN, TECHNICIAN, and BOARD_MEMBER. Use query params to narrow results.
+     * <p>Available to ADMIN, TECHNICIAN, and BOARD_MEMBER (all bookings) and RESIDENT (own bookings
+     * only — the {@code residentId} param is ignored and server-side scoping is applied).
      *
      * @param amenityId  optional amenity UUID filter.
      * @param residentId optional resident UUID filter.
@@ -211,8 +212,8 @@ public class AmenityController {
      * @return 200 OK with paginated booking list.
      */
     @GetMapping("/api/amenity-bookings")
-    @PreAuthorize("hasAnyRole('ADMIN','TECHNICIAN','BOARD_MEMBER')")
-    @Operation(summary = "List amenity bookings (staff)")
+    @PreAuthorize("hasAnyRole('ADMIN','TECHNICIAN','BOARD_MEMBER','RESIDENT')")
+    @Operation(summary = "List amenity bookings — ADMIN/staff see all; RESIDENT sees own only")
     public ResponseEntity<PageResponse<AmenityBookingResponse>> listBookings(
             @RequestParam(required = false) UUID amenityId,
             @RequestParam(required = false) UUID residentId,
@@ -224,8 +225,10 @@ public class AmenityController {
         int cappedSize = Math.min(size, 100);
         Pageable pageable = PageRequest.of(page, cappedSize,
                 Sort.by(Sort.Order.desc("bookingDate")));
+        String role = extractRole(principal);
         return ResponseEntity.ok(
-                amenityService.listBookings(amenityId, residentId, status, pageable));
+                amenityService.listBookings(amenityId, residentId, status, pageable,
+                        principal.getId(), role));
     }
 
     /**

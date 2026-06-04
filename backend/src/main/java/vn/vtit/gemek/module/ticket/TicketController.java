@@ -82,7 +82,10 @@ public class TicketController {
     /**
      * Returns a paginated, role-scoped list of tickets with optional filters.
      *
-     * @param status      optional status filter.
+     * <p>The {@code status} parameter may be repeated to filter multiple statuses
+     * (e.g. {@code ?status=NEW&status=ASSIGNED}). An invalid value yields 400 VALIDATION_ERROR.
+     *
+     * @param status      optional status filter; may be repeated for multi-value IN filtering.
      * @param category    optional category filter.
      * @param priority    optional priority filter.
      * @param apartmentId optional apartment UUID filter (ADMIN/BOARD_MEMBER).
@@ -95,7 +98,7 @@ public class TicketController {
     @PreAuthorize("hasAnyRole('ADMIN','TECHNICIAN','RESIDENT','BOARD_MEMBER')")
     @Operation(summary = "List tickets (role-scoped)")
     public ResponseEntity<PageResponse<TicketSummaryResponse>> listTickets(
-            @RequestParam(required = false) TicketStatus status,
+            @RequestParam(required = false) List<TicketStatus> status,
             @RequestParam(required = false) TicketCategory category,
             @RequestParam(required = false) TicketPriority priority,
             @RequestParam(required = false) UUID apartmentId,

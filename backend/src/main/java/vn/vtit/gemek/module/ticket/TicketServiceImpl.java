@@ -161,15 +161,15 @@ public class TicketServiceImpl implements TicketService {
      */
     @Override
     public PageResponse<TicketSummaryResponse> listTickets(UUID principalId, String role,
-                                                           TicketStatus status,
+                                                           List<TicketStatus> statuses,
                                                            TicketCategory category,
                                                            TicketPriority priority,
                                                            UUID apartmentId,
                                                            Pageable pageable) {
-        log.debug("listTickets — role={}, status={}, category={}", role, status, category);
+        log.debug("listTickets — role={}, statuses={}, category={}", role, statuses, category);
 
         Specification<Ticket> spec = buildScopeSpec(principalId, role)
-                .and(buildFilterSpec(status, category, priority, apartmentId));
+                .and(buildFilterSpec(statuses, category, priority, apartmentId));
 
         Page<TicketSummaryResponse> page = ticketRepository.findAll(spec, pageable)
                 .map(this::toSummary);
@@ -711,19 +711,19 @@ public class TicketServiceImpl implements TicketService {
     /**
      * Builds a filter {@link Specification} from optional request parameters.
      *
-     * @param status      optional status filter.
+     * @param statuses    optional status filter; null or empty list matches all statuses.
      * @param category    optional category filter.
      * @param priority    optional priority filter.
      * @param apartmentId optional apartment filter.
      * @return the composed filter specification.
      */
-    private Specification<Ticket> buildFilterSpec(TicketStatus status, TicketCategory category,
+    private Specification<Ticket> buildFilterSpec(List<TicketStatus> statuses, TicketCategory category,
                                                    TicketPriority priority, UUID apartmentId) {
         return (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
 
-            if (status != null) {
-                predicates.add(cb.equal(root.get("status"), status));
+            if (statuses != null && !statuses.isEmpty()) {
+                predicates.add(root.get("status").in(statuses));
             }
             if (category != null) {
                 predicates.add(cb.equal(root.get("category"), category));

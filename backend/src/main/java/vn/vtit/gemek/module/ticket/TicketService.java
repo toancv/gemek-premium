@@ -35,7 +35,7 @@ public interface TicketService {
      *
      * @param principalId UUID of the authenticated caller.
      * @param role        role string of the caller (e.g. {@code "ADMIN"}, {@code "RESIDENT"}).
-     * @param status      optional status filter.
+     * @param statuses    optional status filter; {@code null} or empty list matches all statuses.
      * @param category    optional category filter.
      * @param priority    optional priority filter.
      * @param apartmentId optional apartment filter (ADMIN/BOARD_MEMBER only).
@@ -43,7 +43,7 @@ public interface TicketService {
      * @return paginated summary responses.
      */
     PageResponse<TicketSummaryResponse> listTickets(UUID principalId, String role,
-                                                    TicketStatus status,
+                                                    List<TicketStatus> statuses,
                                                     TicketCategory category,
                                                     TicketPriority priority,
                                                     UUID apartmentId,

@@ -81,6 +81,20 @@ public class ResidentServiceImpl implements ResidentService {
      * {@inheritDoc}
      */
     @Override
+    public ResidentResponse getMyResident(UUID userId) {
+        log.debug("Getting own resident record — userId={}", userId);
+
+        Resident resident = residentRepository.findActiveByUserId(userId)
+                .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND,
+                        "No active residency found for the current user."));
+
+        return residentMapper.toResponse(resident);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
     public PageResponse<ResidentResponse> listResidents(UUID apartmentId, ResidentType type,
                                                          Boolean isActive, Pageable pageable) {
         log.debug("Listing residents — apartmentId={}, type={}, isActive={}", apartmentId, type, isActive);

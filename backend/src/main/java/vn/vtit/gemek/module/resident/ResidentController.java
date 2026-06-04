@@ -56,6 +56,23 @@ public class ResidentController {
     }
 
     /**
+     * Returns the active resident record for the authenticated user.
+     *
+     * <p>The user identity is derived exclusively from the JWT principal.
+     * No user identifier is accepted as a request parameter.
+     *
+     * @param principal the authenticated resident principal.
+     * @return 200 OK with the resident response DTO, or 404 if no active residency exists.
+     */
+    @GetMapping("/residents/me")
+    @PreAuthorize("hasRole('RESIDENT')")
+    @Operation(summary = "Get the authenticated resident's own record")
+    public ResponseEntity<ResidentResponse> getMyResident(
+            @AuthenticationPrincipal UserPrincipal principal) {
+        return ResponseEntity.ok(residentService.getMyResident(principal.getId()));
+    }
+
+    /**
      * Returns a paginated list of residents with optional filters.
      *
      * @param apartmentId optional apartment UUID filter.

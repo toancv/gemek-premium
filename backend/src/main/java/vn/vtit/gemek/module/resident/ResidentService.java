@@ -21,6 +21,17 @@ import java.util.UUID;
 public interface ResidentService {
 
     /**
+     * Returns the active resident record for the authenticated user.
+     *
+     * <p>The caller's identity is derived from the JWT principal; no client-supplied
+     * identifier is accepted to prevent IDOR attacks.
+     *
+     * @param userId UUID of the authenticated user derived from the JWT principal.
+     * @return the active resident response DTO.
+     */
+    ResidentResponse getMyResident(UUID userId);
+
+    /**
      * Returns a paginated list of residents filtered by optional criteria.
      *
      * @param apartmentId optional apartment UUID filter.

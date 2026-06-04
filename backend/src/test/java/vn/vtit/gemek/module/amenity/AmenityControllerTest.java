@@ -442,6 +442,173 @@ class AmenityControllerTest {
     }
 
     // =========================================================================
+    // Test 9 — GET /api/amenity-bookings (RESIDENT) → 200, own bookings only
+    // =========================================================================
+
+    /**
+     * Verifies that a RESIDENT can list amenity bookings and receives only their own.
+     *
+     * <p>Bug regression: was returning 403 because RESIDENT was excluded from @PreAuthorize.
+     */
+    @Test
+    @DisplayName("GET /api/amenity-bookings — RESIDENT sees own bookings → 200")
+    void listBookings_residentSeesOwnBookings_returns200() throws Exception {
+        // Create a booking for the setUp resident.
+        CreateBookingRequest req = buildBookingRequest(
+                gymAmenityId, BOOKING_DATE, LocalTime.of(8, 0), LocalTime.of(9, 0));
+        MvcResult createResult = mockMvc.perform(post("/api/amenity-bookings")
+                        .header("Authorization", "Bearer " + residentToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(req)))
+                .andExpect(status().isCreated())
+                .andReturn();
+        Map<?, ?> created = objectMapper.readValue(
+                createResult.getResponse().getContentAsString(), Map.class);
+        String ownBookingId = (String) created.get("id");
+
+        // RESIDENT lists bookings — must return 200 with that booking.
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .get("/api/amenity-bookings")
+                        .header("Authorization", "Bearer " + residentToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data").isArray())
+                .andExpect(jsonPath("$.data[?(@.id == '" + ownBookingId + "')]").exists());
+    }
+
+    // =========================================================================
+    // Test 10 — GET /api/amenity-bookings (RESIDENT) cannot see another resident's bookings
+    // =========================================================================
+
+    /**
+     * Verifies resident A cannot see resident B's bookings (server-side scoping / IDOR prevention).
+     */
+    @Test
+    @DisplayName("GET /api/amenity-bookings — RESIDENT cannot see another resident's bookings")
+    void listBookings_residentCannotSeeOtherResidentBookings() throws Exception {
+        // Create resident B with their own apartment and booking.
+        String bUid = UUID.randomUUID().toString().replace("-", "").substring(0, 8);
+        UUID bUserId = createUser("res.b." + bUid + "@test.com", UserRole.RESIDENT);
+        UUID bBlockId = createBlock("BBlock-" + bUid);
+        UUID bAptId = createApartment(bBlockId, "B-" + bUid);
+        assignResident(bUserId, bAptId);
+        String bToken = login("res.b." + bUid + "@test.com", "Password@123456");
+
+        // Resident B creates a booking on a different amenity (bbq — unique per setUp).
+        CreateBookingRequest bReq = buildBookingRequest(
+                bbqAmenityId, BOOKING_DATE, LocalTime.of(9, 0), LocalTime.of(10, 0));
+        MvcResult bResult = mockMvc.perform(post("/api/amenity-bookings")
+                        .header("Authorization", "Bearer " + bToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(bReq)))
+                .andExpect(status().isCreated())
+                .andReturn();
+        String bBookingId = (String) objectMapper.readValue(
+                bResult.getResponse().getContentAsString(), Map.class).get("id");
+
+        // Resident A lists their own bookings — must NOT contain resident B's booking.
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .get("/api/amenity-bookings")
+                        .header("Authorization", "Bearer " + residentToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[?(@.id == '" + bBookingId + "')]").doesNotExist());
+    }
+
+    // =========================================================================
+    // Test 11 — GET /api/amenity-bookings (RESIDENT + residentId param) → own only (IDOR guard)
+    // =========================================================================
+
+    /**
+     * Verifies that a RESIDENT passing another resident's residentId query param
+     * still receives only their own bookings (server-side override, IDOR prevention).
+     */
+    @Test
+    @DisplayName("GET /api/amenity-bookings — RESIDENT passing other residentId → still sees own only")
+    void listBookings_residentPassingOtherResidentId_seesOnlyOwn() throws Exception {
+        // Create resident B.
+        String bUid = UUID.randomUUID().toString().replace("-", "").substring(0, 8);
+        UUID bUserId = createUser("res.b2." + bUid + "@test.com", UserRole.RESIDENT);
+        UUID bBlockId = createBlock("BBlock2-" + bUid);
+        UUID bAptId = createApartment(bBlockId, "B2-" + bUid);
+        assignResident(bUserId, bAptId);
+        String bToken = login("res.b2." + bUid + "@test.com", "Password@123456");
+
+        // Resident B creates a booking.
+        CreateBookingRequest bReq = buildBookingRequest(
+                bbqAmenityId, BOOKING_DATE, LocalTime.of(10, 0), LocalTime.of(11, 0));
+        MvcResult bResult = mockMvc.perform(post("/api/amenity-bookings")
+                        .header("Authorization", "Bearer " + bToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(bReq)))
+                .andExpect(status().isCreated())
+                .andReturn();
+        Map<?, ?> bBooking = objectMapper.readValue(
+                bResult.getResponse().getContentAsString(), Map.class);
+        String bBookingId = (String) bBooking.get("id");
+        // Extract B's residentId from the booking response.
+        Map<?, ?> bResident = (Map<?, ?>) bBooking.get("resident");
+        String bResidentId = (String) bResident.get("id");
+
+        // Resident A passes B's residentId — server must ignore it and scope to A's own bookings.
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .get("/api/amenity-bookings")
+                        .param("residentId", bResidentId)
+                        .header("Authorization", "Bearer " + residentToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[?(@.id == '" + bBookingId + "')]").doesNotExist());
+    }
+
+    // =========================================================================
+    // Test 12 — GET /api/amenity-bookings (ADMIN) → sees all bookings
+    // =========================================================================
+
+    /**
+     * Verifies that an ADMIN can list all amenity bookings across all residents.
+     */
+    @Test
+    @DisplayName("GET /api/amenity-bookings — ADMIN sees all bookings")
+    void listBookings_adminSeesAllBookings() throws Exception {
+        // Resident A booking.
+        CreateBookingRequest aReq = buildBookingRequest(
+                gymAmenityId, BOOKING_DATE, LocalTime.of(8, 0), LocalTime.of(9, 0));
+        MvcResult aResult = mockMvc.perform(post("/api/amenity-bookings")
+                        .header("Authorization", "Bearer " + residentToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(aReq)))
+                .andExpect(status().isCreated())
+                .andReturn();
+        String aBookingId = (String) objectMapper.readValue(
+                aResult.getResponse().getContentAsString(), Map.class).get("id");
+
+        // Resident B booking.
+        String bUid = UUID.randomUUID().toString().replace("-", "").substring(0, 8);
+        UUID bUserId = createUser("res.b3." + bUid + "@test.com", UserRole.RESIDENT);
+        UUID bBlockId = createBlock("BBlock3-" + bUid);
+        UUID bAptId = createApartment(bBlockId, "B3-" + bUid);
+        assignResident(bUserId, bAptId);
+        String bToken = login("res.b3." + bUid + "@test.com", "Password@123456");
+
+        CreateBookingRequest bReq = buildBookingRequest(
+                bbqAmenityId, BOOKING_DATE, LocalTime.of(11, 0), LocalTime.of(12, 0));
+        MvcResult bResult = mockMvc.perform(post("/api/amenity-bookings")
+                        .header("Authorization", "Bearer " + bToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(bReq)))
+                .andExpect(status().isCreated())
+                .andReturn();
+        String bBookingId = (String) objectMapper.readValue(
+                bResult.getResponse().getContentAsString(), Map.class).get("id");
+
+        // ADMIN lists bookings — must see both.
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .get("/api/amenity-bookings")
+                        .param("size", "100")
+                        .header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[?(@.id == '" + aBookingId + "')]").exists())
+                .andExpect(jsonPath("$.data[?(@.id == '" + bBookingId + "')]").exists());
+    }
+
+    // =========================================================================
     // Test 6 — POST /api/amenity-bookings past date → 400
     // =========================================================================
 

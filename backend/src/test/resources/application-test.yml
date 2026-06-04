@@ -2,3 +2,18 @@ app:
   admin:
     email: admin@gemek.vn
     password: TestAdmin@2026
+
+# Test-only JWT secret — NOT a production value. Must be >= 512 bits for HS512.
+jwt:
+  secret: "TEST-ONLY-DO-NOT-USE-IN-PROD-gemek-integration-test-jwt-secret-512bits-padding-aabbcc"
+
+# Point at the docker-compose services reachable from the Windows host via WSL2 port proxy.
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/gemek
+    username: gemek
+    password: "GemekLocal@2026"
+  redis:
+    host: localhost
+    port: 6379
+    password: GemekRedis@2026

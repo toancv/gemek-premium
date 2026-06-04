@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useTickets } from '../api/hooks';
+import { SearchableSelect } from '@gemek/ui';
+import { useTickets, useApartments, useCreateTicket } from '../api/hooks';
 
 const STATUS_COLORS: Record<string, string> = {
   NEW: 'bg-blue-100 text-blue-700', ASSIGNED: 'bg-purple-100 text-purple-700',
@@ -18,15 +19,55 @@ export function TicketsPage() {
   const [category, setCategory] = useState('');
   const [status, setStatus] = useState('');
   const [page, setPage] = useState(0);
+  const [showCreate, setShowCreate] = useState(false);
+  const [apartmentId, setApartmentId] = useState('');
+  const [formError, setFormError] = useState('');
 
   const params = { page, size: 20, ...(category && { category }), ...(status && { status }) };
   const { data, isLoading, isError } = useTickets(params);
+  const { data: aptsData, isLoading: aptsLoading } = useApartments({ size: 200, sort: 'unitNumber' });
+  const createTicket = useCreateTicket();
+
+  const apartmentOptions = (aptsData?.data ?? []).map((a: any) => ({
+    value: a.id,
+    label: `${a.block?.name ?? ''} - ${a.unitNumber}`,
+  }));
+
+  const handleCreate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setFormError('');
+    const fd = new FormData(e.target as HTMLFormElement);
+    const title = (fd.get('title') as string).trim();
+    if (!apartmentId) { setFormError('Vui lòng chọn căn hộ'); return; }
+    if (!title) { setFormError('Tiêu đề không được để trống'); return; }
+    try {
+      const created: any = await createTicket.mutateAsync({
+        apartmentId,
+        category: fd.get('category'),
+        title,
+        description: fd.get('description') || null,
+        priority: fd.get('priority') || 'MEDIUM',
+      });
+      setShowCreate(false);
+      setApartmentId('');
+      navigate(`/tickets/${created.id}`);
+    } catch (err: any) {
+      setFormError(err?.response?.data?.message ?? 'Tạo ticket thất bại');
+    }
+  };
 
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Tickets</h1>
+        <button
+          onClick={() => { setShowCreate(true); setApartmentId(''); setFormError(''); }}
+          className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700"
+        >
+          + New Ticket
+        </button>
       </div>
+
       <div className="bg-white rounded-lg border border-gray-200 p-4 mb-4 flex gap-3">
         <select value={category} onChange={(e) => { setCategory(e.target.value); setPage(0); }}
           className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
@@ -91,6 +132,61 @@ export function TicketsPage() {
           </div>
         </div>
       </div>
+
+      {showCreate && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/50" onClick={() => setShowCreate(false)} />
+          <div className="relative bg-white rounded-lg shadow-xl w-full max-w-md p-6">
+            <h2 className="text-lg font-semibold mb-4">New Ticket</h2>
+            <form onSubmit={handleCreate} className="space-y-3">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Căn hộ <span className="text-red-500">*</span></label>
+                <SearchableSelect
+                  options={apartmentOptions}
+                  value={apartmentId}
+                  onChange={setApartmentId}
+                  loading={aptsLoading}
+                  placeholder="Chọn căn hộ..."
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
+                <select name="category" className="block w-full border border-gray-300 rounded-md px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                  <option value="MAINTENANCE_REPAIR">Maintenance & Repair</option>
+                  <option value="COMPLAINT">Complaint</option>
+                  <option value="ADMINISTRATIVE">Administrative</option>
+                  <option value="SUGGESTION_FEEDBACK">Suggestion / Feedback</option>
+                  <option value="OTHER">Other</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Priority</label>
+                <select name="priority" className="block w-full border border-gray-300 rounded-md px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                  <option value="LOW">Low</option>
+                  <option value="MEDIUM">Medium</option>
+                  <option value="HIGH">High</option>
+                  <option value="URGENT">Urgent</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Title <span className="text-red-500">*</span></label>
+                <input name="title" maxLength={255} className="block w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                <textarea name="description" rows={3} className="block w-full border border-gray-300 rounded-md px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              </div>
+              {formError && <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded">{formError}</p>}
+              <div className="flex gap-2 justify-end pt-2">
+                <button type="button" onClick={() => setShowCreate(false)} className="px-4 py-2 text-sm border border-gray-300 rounded-md hover:bg-gray-50">Cancel</button>
+                <button type="submit" disabled={createTicket.isPending} className="px-4 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50">
+                  {createTicket.isPending ? 'Creating...' : 'Create'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -1136,28 +1136,24 @@ Response `200 OK` — full booking detail.
 ### PUT /api/amenity-bookings/{id}/approve
 
 **Auth:** ADMIN
+**Description:** Approve OR reject a pending booking via a unified endpoint. Use `status` to discriminate.
 
 Request:
 ```json
-{ "notes": "string|null" }
+{
+  "status": "APPROVED | REJECTED",
+  "rejectionReason": "string|null"
+}
 ```
+
+`status` is required (`@NotNull`). `rejectionReason` should be provided when `status = REJECTED`.
 
 Response `200 OK`
 Errors: `409 CONFLICT` (booking is not in PENDING status)
 
----
-
-### PUT /api/amenity-bookings/{id}/reject
-
-**Auth:** ADMIN
-
-Request:
-```json
-{ "reason": "string (required)" }
-```
-
-Response `200 OK`
-Errors: `409 CONFLICT` (booking is not in PENDING status)
+> **Note:** A separate `/reject` endpoint was specified in the original design but was not implemented.
+> Rejection is performed via this same `/approve` endpoint with `status: "REJECTED"`.
+> API-SPEC updated 2026-06-04 to match as-built backend.
 
 ---
 
@@ -1561,10 +1557,10 @@ Response `200 OK`
 
 ---
 
-### POST /api/parking/assignments
+### POST /api/parking/slots/{id}/assign
 
 **Auth:** ADMIN
-**Description:** Assign a parking slot to a vehicle.
+**Description:** Assign a parking slot to a vehicle. `{id}` is the parking slot UUID (also required in body).
 
 Request:
 ```json
@@ -1573,13 +1569,18 @@ Request:
   "vehicleId": "uuid",
   "apartmentId": "uuid",
   "startDate": "2026-01-01",
-  "endDate": "2026-12-31",
-  "parkingCardNumber": "string|null"
+  "parkingCardNumber": "string|null",
+  "notes": "string|null"
 }
 ```
 
+`endDate` is not supported on create — assignments are open-ended; use the unassign endpoint to close them.
+
 Response `201 Created` — assignment object.
 Errors: `409 CONFLICT` (slot already has an active assignment)
+
+> **Note:** Original spec used `POST /parking/assignments`. As-built backend uses `POST /parking/slots/{id}/assign`.
+> API-SPEC updated 2026-06-04 to match as-built backend.
 
 ---
 
@@ -1593,17 +1594,22 @@ Response `200 OK` — paginated list of assignment objects.
 
 ---
 
-### PUT /api/parking/assignments/{id}/end
+### POST /api/parking/slots/{id}/unassign
 
 **Auth:** ADMIN
-**Description:** End a parking assignment.
+**Description:** End the active assignment for a slot. `{id}` is the **slot** UUID (not the assignment UUID).
 
 Request:
 ```json
-{ "endDate": "2026-06-01", "notes": "string|null" }
+{ "endDate": "2026-06-01" }
 ```
 
+`endDate` is optional; defaults to today if omitted.
+
 Response `200 OK`
+
+> **Note:** Original spec used `PUT /parking/assignments/{id}/end`. As-built backend uses `POST /parking/slots/{id}/unassign`.
+> API-SPEC updated 2026-06-04 to match as-built backend.
 
 ---
 

@@ -5,6 +5,12 @@ Format: Date | Decision | Reasoning | Alternatives
 
 ---
 
+## 2026-06-04 | API-SPEC corrected to match as-built backend — amenity approve/reject and parking routes
+
+Amenity: original spec defined two separate endpoints (`PUT /amenity-bookings/{id}/approve` with `{ notes }` and `PUT /amenity-bookings/{id}/reject` with `{ reason }`). The backend was implemented with a single unified endpoint (`PUT /amenity-bookings/{id}/approve`) accepting `{ status: BookingStatus, rejectionReason }`. The `/reject` endpoint was never built. API-SPEC updated to document the as-built contract. FE aligned to BE.
+
+Parking: original spec defined `POST /parking/assignments` (create) and `PUT /parking/assignments/{id}/end` (unassign). The backend was implemented as `POST /parking/slots/{id}/assign` and `POST /parking/slots/{id}/unassign` (slot-centric routing; `id` in path is slot UUID in both cases). `endDate` on create not supported — assignments are open-ended. API-SPEC updated; FE hooks fixed to call real routes.
+
 ## 2026-06-04 | Announcement DTO field rename: `scope`→`targetScope` in CreateAnnouncementRequest, UpdateAnnouncementRequest, AnnouncementResponse — to match API-SPEC.md contract. UpdateAnnouncementRequest renamed in the same pass for consistency (spec uses `targetScope` for both create and update endpoints). Entity field `Announcement.scope` and DB column `target_scope` unchanged.
 
 ---

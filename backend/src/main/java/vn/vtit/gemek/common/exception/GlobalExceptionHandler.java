@@ -15,6 +15,7 @@ import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 import java.time.Instant;
 import java.util.LinkedHashMap;
@@ -76,6 +77,25 @@ public class GlobalExceptionHandler {
         }
         log.warn("Validation error on {}: {}", request.getRequestURI(), messageBuilder);
         return buildErrorResponse(ErrorCode.VALIDATION_ERROR.name(), messageBuilder.toString(),
+                HttpStatus.BAD_REQUEST, request.getRequestURI());
+    }
+
+    /**
+     * Handles type conversion failures for {@code @RequestParam} values (e.g. invalid enum input).
+     *
+     * <p>Without this handler, Spring's default behaviour propagates an {@link IllegalArgumentException}
+     * that hits the catch-all and returns 500. This handler returns 400 VALIDATION_ERROR instead.
+     *
+     * @param ex      the type mismatch exception.
+     * @param request the current HTTP request.
+     * @return 400 VALIDATION_ERROR response with the offending parameter and value.
+     */
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<Map<String, Object>> handleTypeMismatch(
+            MethodArgumentTypeMismatchException ex, HttpServletRequest request) {
+        String message = "Invalid value '" + ex.getValue() + "' for parameter '" + ex.getName() + "'.";
+        log.warn("Type mismatch on {}: {}", request.getRequestURI(), message);
+        return buildErrorResponse(ErrorCode.VALIDATION_ERROR.name(), message,
                 HttpStatus.BAD_REQUEST, request.getRequestURI());
     }
 

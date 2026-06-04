@@ -12,11 +12,8 @@ export const useMe = () =>
 export const useMyTickets = (params?: Record<string, unknown>) =>
   useQuery({ queryKey: ['tickets', params], queryFn: () => get('/tickets', params) });
 
-export const useMyApartment = () => {
-  const { data, isLoading } = useMyTickets({ size: 1 });
-  const apartment = data?.data?.[0]?.apartment ?? null;
-  return { apartment, isLoading };
-};
+export const useMyResident = () =>
+  useQuery({ queryKey: ['my-resident'], queryFn: () => get('/residents/me') });
 
 export const useTicket = (id: string) =>
   useQuery({ queryKey: ['tickets', id], queryFn: () => get(`/tickets/${id}`), enabled: !!id });

@@ -208,7 +208,12 @@ Parking: original spec defined `POST /parking/assignments` (create) and `PUT /pa
 **Why:** Trusting the client residentId would be an IDOR — a resident could pass another resident's UUID and see their bookings. Server-side derivation from the JWT principal is the only safe approach.
 **How to apply:** Any future endpoint that lists user-owned resources must follow the same pattern: derive identity from the principal, never from a client-supplied ID.
 
-### 2026-06-04 | GET /api/tickets `status` filter widened to multi-value repeated param
+### 2026-06-04 | GET /api/residents/me — identity from JWT principal only
+**Decision:** Added self-scoped endpoint returning the caller's active resident record. No userId in path or query — the principal UUID is derived from the JWT via `@AuthenticationPrincipal UserPrincipal`. Returns 404 (NOT_FOUND) if user has no active residency.
+**Why:** Resident apartment derivation via ticket[0].apartment broke for residents with zero tickets. A dedicated identity endpoint is reliable and eliminates the IDOR surface.
+**How to apply:** Any endpoint returning user-owned resources must derive identity from the principal, never from a client-supplied ID.
+
+## 2026-06-04 | GET /api/tickets `status` filter widened to multi-value repeated param
 **Decision:** Changed `@RequestParam TicketStatus status` (single enum) to `@RequestParam List<TicketStatus> status` (repeated param). Query uses `IN` when list non-empty, no restriction otherwise. Added `MethodArgumentTypeMismatchException` handler in `GlobalExceptionHandler` returning 400 VALIDATION_ERROR.
 **Why:** Resident home screen needs to show "open" tickets (NEW + ASSIGNED + IN_PROGRESS) in a single call. Sending a comma-joined string to a single-enum param caused `IllegalArgumentException` → 500. Repeated params (`?status=NEW&status=ASSIGNED`) bind natively via Spring's `List<Enum>` binding with clean 400 on bad input.
 **Alternatives considered:** Comma-separated list with a custom `ConversionService` converter — rejected because repeated params are standard HTTP, require no custom code, and Spring's binding already handles them correctly.

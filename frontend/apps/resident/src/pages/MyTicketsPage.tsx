@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { useMyTickets, useCreateTicket, useMyApartment } from '../api/hooks';
+import { useMyTickets, useCreateTicket, useMyResident } from '../api/hooks';
 
 const STATUS_BG: Record<string, string> = {
   NEW: 'bg-blue-100 text-blue-700', ASSIGNED: 'bg-purple-100 text-purple-700',
@@ -10,14 +10,13 @@ const STATUS_BG: Record<string, string> = {
 
 export function MyTicketsPage() {
   const { data, isLoading } = useMyTickets({ size: 20 });
-  const { apartment, isLoading: aptLoading } = useMyApartment();
+  const { data: resident, isLoading: aptLoading } = useMyResident();
+  const apartment = resident?.apartment ?? null;
   const create = useCreateTicket();
   const [showForm, setShowForm] = useState(false);
   const [formError, setFormError] = useState('');
 
-  const aptLabel = apartment
-    ? `${apartment.block?.name ?? ''} - ${apartment.unitNumber}`
-    : null;
+  const aptLabel = apartment?.unitNumber ?? null;
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();

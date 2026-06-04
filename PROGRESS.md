@@ -3,7 +3,7 @@
 ## Current State
 - **Phase:** DONE — all gates approved, deployment prep complete
 - **Gate:** G1 ✅ G2 ✅ G3 ✅ G4 ✅ (2026-06-03)
-- **Last completed:** 2026-06-04 — SearchableSelect component (packages/ui); admin TicketsPage has create-ticket modal with apartment SearchableSelect (GET /api/apartments → dropdown); resident MyTicketsPage derives own apartment from GET /api/tickets?size=1 (read-only, no dropdown, NO /api/apartments call). Added useCreateTicket (admin hooks) and useMyApartment (resident hooks). Fixed pre-existing TS7016 on packages/ui (added @types/react devDep).
+- **Last completed:** 2026-06-04 — Added GET /api/residents/me (RESIDENT only, principal-derived identity, 200+ResidentResponse or 404); 164/164 tests pass. Resident portal now calls /residents/me to derive own apartment (useMyResident replaces fragile useMyApartment that broke for residents with zero tickets).
 - **Blocked:** None
 
 ---

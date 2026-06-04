@@ -1,13 +1,14 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
-import { useMyTickets, useMyBookings, useAnnouncements, useMe } from '../api/hooks';
+// TEMP_HIDDEN_DEFERRED: useMyBookings removed from import — bookings feature deferred, see PROGRESS.md
+import { useMyTickets, useAnnouncements, useMe } from '../api/hooks';
 
 export function HomePage() {
   const user = useAuthStore((s) => s.user);
   const { data: me } = useMe();
   const { data: ticketsData } = useMyTickets({ size: 5, status: ['NEW', 'ASSIGNED', 'IN_PROGRESS'] });
-  const { data: bookingsData } = useMyBookings({ size: 5 });
+  // TEMP_HIDDEN_DEFERRED: bookings hook removed — feature deferred, see PROGRESS.md
   const { data: announcements } = useAnnouncements({ size: 3, isPublished: true });
 
   return (
@@ -20,15 +21,16 @@ export function HomePage() {
       </div>
 
       {/* Quick stats */}
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 gap-3">
         <Link to="/tickets" className="bg-white rounded-xl border border-gray-200 p-4 hover:border-blue-300 transition-colors">
           <p className="text-2xl font-bold text-blue-600">{ticketsData?.total ?? 0}</p>
           <p className="text-sm text-gray-500 mt-0.5">Active Tickets</p>
         </Link>
-        <Link to="/bookings" className="bg-white rounded-xl border border-gray-200 p-4 hover:border-blue-300 transition-colors">
+        {/* TEMP_HIDDEN_DEFERRED: bookings stat card — feature deferred, see PROGRESS.md */}
+        {/* <Link to="/bookings" className="bg-white rounded-xl border border-gray-200 p-4 hover:border-blue-300 transition-colors">
           <p className="text-2xl font-bold text-green-600">{bookingsData?.total ?? 0}</p>
           <p className="text-sm text-gray-500 mt-0.5">Bookings</p>
-        </Link>
+        </Link> */}
       </div>
 
       {/* Announcements */}

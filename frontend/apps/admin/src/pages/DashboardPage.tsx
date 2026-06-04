@@ -37,10 +37,11 @@ export function DashboardPage() {
   return (
     <div>
       <h1 className="text-2xl font-bold text-gray-900 mb-6">Dashboard</h1>
-      <div className="grid grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-3 gap-4 mb-8">
         <StatCard title="Open Tickets" value={t.openRequests ?? 0} sub={`${t.inProgressRequests ?? 0} in progress`} color="text-blue-600" />
         <StatCard title="SLA Breached" value={t.overdueRequests ?? 0} sub="Requires immediate action" color="text-red-600" />
-        <StatCard title="Bookings This Month" value={am.bookingsThisMonth ?? 0} sub={`${am.pendingApproval ?? 0} pending approval`} color="text-green-600" />
+        {/* TEMP_HIDDEN_DEFERRED: amenity bookings dashboard card — feature deferred, see PROGRESS.md */}
+        {/* <StatCard title="Bookings This Month" value={am.bookingsThisMonth ?? 0} sub={`${am.pendingApproval ?? 0} pending approval`} color="text-green-600" /> */}
         <StatCard title="Expiring Contracts" value={c.expiringIn30Days ?? 0} sub={`${c.expiringIn90Days ?? 0} in 90 days`} color="text-yellow-600" />
       </div>
       <div className="grid grid-cols-2 gap-4">

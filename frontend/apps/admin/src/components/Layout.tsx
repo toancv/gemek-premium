@@ -10,8 +10,10 @@ const NAV = [
   { to: '/tickets', label: 'Tickets', roles: ['ADMIN','BOARD_MEMBER','TECHNICIAN'] },
   { to: '/contractors', label: 'Contractors', roles: ['ADMIN','BOARD_MEMBER'] },
   { to: '/announcements', label: 'Announcements', roles: ['ADMIN'] },
-  { to: '/amenities', label: 'Amenities', roles: ['ADMIN'] },
-  { to: '/parking', label: 'Parking', roles: ['ADMIN'] },
+  // TEMP_HIDDEN_DEFERRED: amenities nav — feature deferred, see PROGRESS.md
+  // { to: '/amenities', label: 'Amenities', roles: ['ADMIN'] },
+  // TEMP_HIDDEN_DEFERRED: parking nav — feature deferred, see PROGRESS.md
+  // { to: '/parking', label: 'Parking', roles: ['ADMIN'] },
   { to: '/reports', label: 'Reports', roles: ['ADMIN','BOARD_MEMBER'] },
 ];
 

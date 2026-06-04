@@ -10,8 +10,10 @@ import { TicketsPage } from './pages/TicketsPage';
 import { TicketDetailPage } from './pages/TicketDetailPage';
 import { ContractorsPage } from './pages/ContractorsPage';
 import { AnnouncementsPage } from './pages/AnnouncementsPage';
-import { AmenitiesPage } from './pages/AmenitiesPage';
-import { ParkingPage } from './pages/ParkingPage';
+// TEMP_HIDDEN_DEFERRED: amenities import — feature deferred, see PROGRESS.md
+// import { AmenitiesPage } from './pages/AmenitiesPage';
+// TEMP_HIDDEN_DEFERRED: parking import — feature deferred, see PROGRESS.md
+// import { ParkingPage } from './pages/ParkingPage';
 import { ReportsPage } from './pages/ReportsPage';
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
@@ -52,8 +54,10 @@ export default function App() {
           <Route path="tickets/:id" element={<TicketDetailPage />} />
           <Route path="contractors" element={<RequireRole roles={['ADMIN','BOARD_MEMBER']}><ContractorsPage /></RequireRole>} />
           <Route path="announcements" element={<RequireRole roles={['ADMIN']}><AnnouncementsPage /></RequireRole>} />
-          <Route path="amenities" element={<RequireRole roles={['ADMIN']}><AmenitiesPage /></RequireRole>} />
-          <Route path="parking" element={<RequireRole roles={['ADMIN']}><ParkingPage /></RequireRole>} />
+          {/* TEMP_HIDDEN_DEFERRED: amenities route — feature deferred, see PROGRESS.md */}
+          <Route path="amenities" element={<Navigate to="/dashboard" replace />} />
+          {/* TEMP_HIDDEN_DEFERRED: parking route — feature deferred, see PROGRESS.md */}
+          <Route path="parking" element={<Navigate to="/dashboard" replace />} />
           <Route path="reports" element={<RequireRole roles={['ADMIN','BOARD_MEMBER']}><ReportsPage /></RequireRole>} />
         </Route>
         <Route path="*" element={<Navigate to="/dashboard" replace />} />

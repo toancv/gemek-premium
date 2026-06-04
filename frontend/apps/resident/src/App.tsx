@@ -6,9 +6,12 @@ import { LoginPage } from './pages/LoginPage';
 import { HomePage } from './pages/HomePage';
 import { MyTicketsPage } from './pages/MyTicketsPage';
 import { TicketDetailPage } from './pages/TicketDetailPage';
-import { AmenitiesPage } from './pages/AmenitiesPage';
-import { MyBookingsPage } from './pages/MyBookingsPage';
-import { ParkingPage } from './pages/ParkingPage';
+// TEMP_HIDDEN_DEFERRED: amenities import — feature deferred, see PROGRESS.md
+// import { AmenitiesPage } from './pages/AmenitiesPage';
+// TEMP_HIDDEN_DEFERRED: bookings import — feature deferred, see PROGRESS.md
+// import { MyBookingsPage } from './pages/MyBookingsPage';
+// TEMP_HIDDEN_DEFERRED: parking import — feature deferred, see PROGRESS.md
+// import { ParkingPage } from './pages/ParkingPage';
 import { AnnouncementsPage } from './pages/AnnouncementsPage';
 import { ProfilePage } from './pages/ProfilePage';
 
@@ -39,9 +42,12 @@ export default function App() {
           <Route index element={<HomePage />} />
           <Route path="tickets" element={<MyTicketsPage />} />
           <Route path="tickets/:id" element={<TicketDetailPage />} />
-          <Route path="amenities" element={<AmenitiesPage />} />
-          <Route path="bookings" element={<MyBookingsPage />} />
-          <Route path="parking" element={<ParkingPage />} />
+          {/* TEMP_HIDDEN_DEFERRED: amenities route — feature deferred, see PROGRESS.md */}
+          <Route path="amenities" element={<Navigate to="/" replace />} />
+          {/* TEMP_HIDDEN_DEFERRED: bookings route — feature deferred, see PROGRESS.md */}
+          <Route path="bookings" element={<Navigate to="/" replace />} />
+          {/* TEMP_HIDDEN_DEFERRED: parking route — feature deferred, see PROGRESS.md */}
+          <Route path="parking" element={<Navigate to="/" replace />} />
           <Route path="announcements" element={<AnnouncementsPage />} />
           <Route path="profile" element={<ProfilePage />} />
         </Route>

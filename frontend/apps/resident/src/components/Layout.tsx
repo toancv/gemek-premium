@@ -16,9 +16,12 @@ export function Layout() {
   const navLinks = [
     { to: '/', label: 'Home', icon: 'H', end: true },
     { to: '/tickets', label: 'Tickets', icon: 'T' },
-    { to: '/amenities', label: 'Amenities', icon: 'A' },
-    { to: '/bookings', label: 'Bookings', icon: 'B' },
-    { to: '/parking', label: 'Parking', icon: 'P' },
+    // TEMP_HIDDEN_DEFERRED: amenities nav — feature deferred, see PROGRESS.md
+    // { to: '/amenities', label: 'Amenities', icon: 'A' },
+    // TEMP_HIDDEN_DEFERRED: bookings nav — feature deferred, see PROGRESS.md
+    // { to: '/bookings', label: 'Bookings', icon: 'B' },
+    // TEMP_HIDDEN_DEFERRED: parking nav — feature deferred, see PROGRESS.md
+    // { to: '/parking', label: 'Parking', icon: 'P' },
     { to: '/announcements', label: 'News', icon: 'N' },
     { to: '/profile', label: 'Profile', icon: 'Me' },
   ];

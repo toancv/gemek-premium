@@ -3,7 +3,7 @@
 ## Current State
 - **Phase:** DONE — all gates approved, deployment prep complete
 - **Gate:** G1 ✅ G2 ✅ G3 ✅ G4 ✅ (2026-06-03)
-- **Last completed:** 2026-06-04 — Fixed F5 auto-logout: added authStatus+bootstrap() to both portal auth stores; RequireAuth holds on 'loading' (no race); refresh→/auth/me restores session silently; invalid RT → 401 → unauthenticated
+- **Last completed:** 2026-06-04 — Temporarily hidden Amenities, Bookings (amenity), Parking from both portal UIs (TEMP_HIDDEN_DEFERRED marker). Backend + all page/component code intact. Nav entries commented, routes redirect to home/dashboard, dashboard cards commented. Grep `TEMP_HIDDEN_DEFERRED` to re-enable.
 - **Blocked:** None
 
 ---

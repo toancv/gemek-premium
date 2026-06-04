@@ -33,8 +33,11 @@ import vn.vtit.gemek.module.user.dto.CreateUserRequest;
 import vn.vtit.gemek.module.user.entity.UserRole;
 
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
@@ -493,5 +496,130 @@ class TicketControllerTest {
                 .map(i -> (Map<?, ?>) i)
                 .anyMatch(t -> ticketA.toString().equals(t.get("id")));
         org.junit.jupiter.api.Assertions.assertTrue(found, "ticketA should appear in resident A's list");
+    }
+
+    // =========================================================================
+    // Test 9 — GET /api/tickets?status=NEW&status=ASSIGNED — multi-status filter
+    // =========================================================================
+
+    @Test
+    @DisplayName("GET /api/tickets — multi-status ?status=NEW&status=ASSIGNED returns 200, only matching statuses")
+    void listTickets_multiStatusFilter_returns200OnlyMatchingStatuses() throws Exception {
+        UUID blockId = createBlock("TBlock9-" + System.nanoTime());
+        UUID aptId = createApartment(blockId, "T901");
+
+        UUID ticketNew = createTicket(adminToken, aptId, TicketCategory.COMPLAINT);
+        UUID ticketAssigned = createTicket(adminToken, aptId, TicketCategory.MAINTENANCE_REPAIR);
+
+        String techEmail = "tech.ms9." + System.nanoTime() + "@test.com";
+        UUID techId = createUser(techEmail, UserRole.TECHNICIAN);
+
+        // Move ticketAssigned → ASSIGNED via assign endpoint.
+        mockMvc.perform(put("/api/tickets/" + ticketAssigned + "/assign")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(
+                                AssignTicketRequest.builder().assignedToUserId(techId).build())))
+                .andExpect(status().isOk());
+
+        MvcResult result = mockMvc.perform(get("/api/tickets")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .param("status", "NEW", "ASSIGNED")
+                        .param("apartmentId", aptId.toString()))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        Map<?, ?> body = objectMapper.readValue(result.getResponse().getContentAsString(), Map.class);
+        List<?> data = (List<?>) body.get("data");
+
+        Set<String> allowed = Set.of("NEW", "ASSIGNED");
+        for (Object item : data) {
+            String st = (String) ((Map<?, ?>) item).get("status");
+            org.junit.jupiter.api.Assertions.assertTrue(allowed.contains(st),
+                    "Expected status in [NEW, ASSIGNED] but got: " + st);
+        }
+
+        Set<String> ids = data.stream()
+                .map(i -> (String) ((Map<?, ?>) i).get("id"))
+                .collect(Collectors.toSet());
+        org.junit.jupiter.api.Assertions.assertTrue(ids.contains(ticketNew.toString()),
+                "NEW ticket must appear");
+        org.junit.jupiter.api.Assertions.assertTrue(ids.contains(ticketAssigned.toString()),
+                "ASSIGNED ticket must appear");
+    }
+
+    // =========================================================================
+    // Test 10 — GET /api/tickets (no status) returns all role-scoped tickets
+    // =========================================================================
+
+    @Test
+    @DisplayName("GET /api/tickets — no status filter returns 200 with all scoped tickets")
+    void listTickets_noStatusFilter_returns200All() throws Exception {
+        UUID blockId = createBlock("TBlock10-" + System.nanoTime());
+        UUID aptId = createApartment(blockId, "T1001");
+
+        UUID ticket1 = createTicket(adminToken, aptId, TicketCategory.COMPLAINT);
+        UUID ticket2 = createTicket(adminToken, aptId, TicketCategory.ADMINISTRATIVE);
+
+        MvcResult result = mockMvc.perform(get("/api/tickets")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .param("apartmentId", aptId.toString()))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        Map<?, ?> body = objectMapper.readValue(result.getResponse().getContentAsString(), Map.class);
+        Set<String> ids = ((List<?>) body.get("data")).stream()
+                .map(i -> (String) ((Map<?, ?>) i).get("id"))
+                .collect(Collectors.toSet());
+
+        org.junit.jupiter.api.Assertions.assertTrue(ids.contains(ticket1.toString()));
+        org.junit.jupiter.api.Assertions.assertTrue(ids.contains(ticket2.toString()));
+    }
+
+    // =========================================================================
+    // Test 11 — GET /api/tickets?status=NEW single value — backward compat
+    // =========================================================================
+
+    @Test
+    @DisplayName("GET /api/tickets — single ?status=NEW still returns 200 (backward compatibility)")
+    void listTickets_singleStatus_backwardCompat() throws Exception {
+        UUID blockId = createBlock("TBlock11-" + System.nanoTime());
+        UUID aptId = createApartment(blockId, "T1101");
+
+        UUID newTicket = createTicket(adminToken, aptId, TicketCategory.COMPLAINT);
+
+        MvcResult result = mockMvc.perform(get("/api/tickets")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .param("status", "NEW")
+                        .param("apartmentId", aptId.toString()))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        Map<?, ?> body = objectMapper.readValue(result.getResponse().getContentAsString(), Map.class);
+        List<?> data = (List<?>) body.get("data");
+
+        for (Object item : data) {
+            org.junit.jupiter.api.Assertions.assertEquals("NEW",
+                    ((Map<?, ?>) item).get("status"), "All returned items must have status=NEW");
+        }
+
+        Set<String> ids = data.stream()
+                .map(i -> (String) ((Map<?, ?>) i).get("id"))
+                .collect(Collectors.toSet());
+        org.junit.jupiter.api.Assertions.assertTrue(ids.contains(newTicket.toString()));
+    }
+
+    // =========================================================================
+    // Test 12 — GET /api/tickets?status=BOGUS → 400 VALIDATION_ERROR
+    // =========================================================================
+
+    @Test
+    @DisplayName("GET /api/tickets — invalid ?status=BOGUS returns 400 VALIDATION_ERROR")
+    void listTickets_invalidStatus_returns400ValidationError() throws Exception {
+        mockMvc.perform(get("/api/tickets")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .param("status", "BOGUS"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("VALIDATION_ERROR"));
     }
 }

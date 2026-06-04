@@ -28,7 +28,7 @@ export function ParkingPage() {
     const startDate = fd.get('startDate') as string;
     if (!vehicleId || !apartmentId || !startDate) { setFormError('Vehicle ID, Apartment ID and Start Date are required'); return; }
     try {
-      await createAssignment.mutateAsync({ parkingSlotId: showAssign.id, vehicleId, apartmentId, startDate, endDate: fd.get('endDate') || null, parkingCardNumber: fd.get('parkingCardNumber') || null });
+      await createAssignment.mutateAsync({ parkingSlotId: showAssign.id, vehicleId, apartmentId, startDate, parkingCardNumber: fd.get('parkingCardNumber') || null });
       setShowAssign(null);
     } catch (err: any) { setFormError(err?.response?.data?.message ?? 'Failed'); }
   };
@@ -83,7 +83,7 @@ export function ParkingPage() {
                     <td className="px-4 py-3 text-gray-500">{s.currentAssignment ? `${s.currentAssignment.vehicle?.licensePlate} (${s.currentAssignment.apartment?.unitNumber})` : '—'}</td>
                     <td className="px-4 py-3 flex gap-2">
                       {s.status === 'AVAILABLE' && <button onClick={() => { setShowAssign(s); setFormError(''); }} className="text-blue-600 hover:underline text-xs">Assign</button>}
-                      {s.currentAssignment && <button onClick={() => { if (window.confirm('End this assignment?')) endAssignment.mutate({ id: s.currentAssignment.id, data: { endDate: new Date().toISOString().split('T')[0] } }); }} className="text-red-600 hover:underline text-xs">Unassign</button>}
+                      {s.currentAssignment && <button onClick={() => { if (window.confirm('End this assignment?')) endAssignment.mutate({ id: s.id, data: { endDate: new Date().toISOString().split('T')[0] } }); }} className="text-red-600 hover:underline text-xs">Unassign</button>}
                     </td>
                   </tr>
                 ))}
@@ -134,11 +134,9 @@ export function ParkingPage() {
                 <input name="vehicleId" className="block w-full border border-gray-300 rounded-md px-3 py-2 text-sm" placeholder="Vehicle UUID" /></div>
               <div><label className="block text-sm font-medium text-gray-700 mb-1">Apartment ID <span className="text-red-500">*</span></label>
                 <input name="apartmentId" className="block w-full border border-gray-300 rounded-md px-3 py-2 text-sm" placeholder="Apartment UUID" /></div>
-              <div className="grid grid-cols-2 gap-3">
-                <div><label className="block text-sm font-medium text-gray-700 mb-1">Start Date <span className="text-red-500">*</span></label>
-                  <input name="startDate" type="date" className="block w-full border border-gray-300 rounded-md px-3 py-2 text-sm" /></div>
-                <div><label className="block text-sm font-medium text-gray-700 mb-1">End Date</label>
-                  <input name="endDate" type="date" className="block w-full border border-gray-300 rounded-md px-3 py-2 text-sm" /></div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Start Date <span className="text-red-500">*</span></label>
+                <input name="startDate" type="date" className="block w-full border border-gray-300 rounded-md px-3 py-2 text-sm" />
               </div>
               <div><label className="block text-sm font-medium text-gray-700 mb-1">Parking Card Number</label>
                 <input name="parkingCardNumber" className="block w-full border border-gray-300 rounded-md px-3 py-2 text-sm" /></div>

@@ -153,7 +153,7 @@ export const useGuestVehicles = (params?: Record<string, unknown>) =>
 export const useCreateParkingAssignment = () => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (data: unknown) => post('/parking/assignments', data),
+    mutationFn: (data: any) => post(`/parking/slots/${data.parkingSlotId}/assign`, data),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['parking-slots'] }),
   });
 };
@@ -161,7 +161,8 @@ export const useCreateParkingAssignment = () => {
 export const useEndParkingAssignment = () => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, data }: { id: string; data: unknown }) => put(`/parking/assignments/${id}/end`, data),
+    // id must be the SLOT UUID (not assignment UUID); BE: POST /parking/slots/{id}/unassign
+    mutationFn: ({ id, data }: { id: string; data: unknown }) => post(`/parking/slots/${id}/unassign`, data),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['parking-slots'] }),
   });
 };

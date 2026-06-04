@@ -129,7 +129,7 @@ export const useAmenityBookings = (params?: Record<string, unknown>) =>
 export const useApproveBooking = () => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (id: string) => put(`/amenity-bookings/${id}/approve`, {}),
+    mutationFn: (id: string) => put(`/amenity-bookings/${id}/approve`, { status: 'APPROVED' }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['amenity-bookings'] }),
   });
 };
@@ -138,7 +138,7 @@ export const useRejectBooking = () => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ id, reason }: { id: string; reason: string }) =>
-      put(`/amenity-bookings/${id}/reject`, { reason }),
+      put(`/amenity-bookings/${id}/approve`, { status: 'REJECTED', rejectionReason: reason }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['amenity-bookings'] }),
   });
 };

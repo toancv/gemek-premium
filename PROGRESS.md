@@ -3,7 +3,7 @@
 ## Current State
 - **Phase:** DONE — all gates approved, deployment prep complete
 - **Gate:** G1 ✅ G2 ✅ G3 ✅ G4 ✅ (2026-06-03)
-- **Last completed:** 2026-06-04 — Wired publishNow on admin create-announcement: after successful create, if user selected "Xuất bản ngay", FE calls POST /announcements/{id}/publish; draft path skips publish call. publishNow removed from create payload (BE ignored it).
+- **Last completed:** 2026-06-04 — Fixed amenity approve/reject hooks: approve now sends `{ status: 'APPROVED' }`, reject now calls same `/approve` endpoint with `{ status: 'REJECTED', rejectionReason }` (was calling nonexistent `/reject` with wrong field `reason`). Feature remains TEMP_HIDDEN_DEFERRED.
 - **Blocked:** None
 
 ---

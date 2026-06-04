@@ -34,7 +34,6 @@ EXPOSE 8080
 
 # Enable virtual threads and set reasonable JVM memory defaults.
 ENTRYPOINT ["java", \
-    "-XX:+UseVirtualThreads", \
     "-XX:MaxRAMPercentage=75.0", \
     "-Djava.security.egd=file:/dev/./urandom", \
     "-jar", "app.jar"]

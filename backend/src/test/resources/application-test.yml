@@ -1,41 +1,4 @@
-spring:
-  datasource:
-    url: jdbc:postgresql://localhost:5432/gemek2
-    username: postgres
-    password: 1234
-    driver-class-name: org.postgresql.Driver
-  jpa:
-    hibernate:
-      ddl-auto: validate
-    show-sql: false
-  flyway:
-    enabled: true
-    validate-on-migrate: false
-  data:
-    redis:
-      host: localhost
-      port: 6379
-      password: ""
-
-minio:
-  endpoint: http://localhost:9000
-  access-key: minioadmin
-  secret-key: minioadmin
-  bucket: gemek-test
-
-jwt:
-  secret: dGVzdFNlY3JldEtleUZvckdlbWVrUHJlbWl1bVRlc3RpbmdPbmx5MjAyNg==
-  access-token-expiry-ms: 900000
-  refresh-token-expiry-ms: 604800000
-
-auth:
-  rate-limit:
-    max-attempts: 10000
-
-firebase:
-  enabled: false
-
-logging:
-  level:
-    root: WARN
-    vn.vtit.gemek: INFO
+app:
+  admin:
+    email: admin@gemek.vn
+    password: TestAdmin@2026

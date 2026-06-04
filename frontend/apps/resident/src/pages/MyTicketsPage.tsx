@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { useMyTickets, useCreateTicket } from '../api/hooks';
-import { useMe } from '../api/hooks';
+import { useMyTickets, useCreateTicket, useMyApartment } from '../api/hooks';
 
 const STATUS_BG: Record<string, string> = {
   NEW: 'bg-blue-100 text-blue-700', ASSIGNED: 'bg-purple-100 text-purple-700',
@@ -10,23 +9,33 @@ const STATUS_BG: Record<string, string> = {
 };
 
 export function MyTicketsPage() {
-  const { data: me } = useMe();
   const { data, isLoading } = useMyTickets({ size: 20 });
+  const { apartment, isLoading: aptLoading } = useMyApartment();
   const create = useCreateTicket();
   const [showForm, setShowForm] = useState(false);
   const [formError, setFormError] = useState('');
 
+  const aptLabel = apartment
+    ? `${apartment.block?.name ?? ''} - ${apartment.unitNumber}`
+    : null;
+
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormError('');
+    if (!apartment?.id) { setFormError('Không thể xác định căn hộ của bạn'); return; }
     const fd = new FormData(e.target as HTMLFormElement);
     const title = (fd.get('title') as string).trim();
-    if (!title) { setFormError('Title is required'); return; }
-    if (!me?.id) { setFormError('Could not determine your apartment'); return; }
+    if (!title) { setFormError('Tiêu đề không được để trống'); return; }
     try {
-      await create.mutateAsync({ apartmentId: fd.get('apartmentId'), category: fd.get('category'), title, description: fd.get('description'), priority: 'MEDIUM' });
+      await create.mutateAsync({
+        apartmentId: apartment.id,
+        category: fd.get('category'),
+        title,
+        description: fd.get('description') || null,
+        priority: 'MEDIUM',
+      });
       setShowForm(false);
-    } catch (err: any) { setFormError(err?.response?.data?.message ?? 'Failed to create ticket'); }
+    } catch (err: any) { setFormError(err?.response?.data?.message ?? 'Tạo yêu cầu thất bại'); }
   };
 
   return (
@@ -62,25 +71,45 @@ export function MyTicketsPage() {
           <div className="relative bg-white rounded-t-2xl w-full max-w-md p-6 pb-8">
             <h2 className="text-lg font-semibold mb-4">New Ticket</h2>
             <form onSubmit={handleCreate} className="space-y-3">
-              <div><label className="block text-sm font-medium text-gray-700 mb-1">Apartment ID <span className="text-red-500">*</span></label>
-                <input name="apartmentId" className="block w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm" placeholder="Your apartment UUID" /></div>
-              <div><label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Căn hộ</label>
+                {aptLoading ? (
+                  <div className="block w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm bg-gray-50 text-gray-400">Đang tải...</div>
+                ) : aptLabel ? (
+                  <div className="block w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm bg-gray-50 text-gray-700 font-medium">{aptLabel}</div>
+                ) : (
+                  <div className="block w-full border border-red-200 rounded-lg px-3 py-2.5 text-sm bg-red-50 text-red-600">
+                    Không thể xác định căn hộ. Vui lòng liên hệ quản trị viên.
+                  </div>
+                )}
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Loại yêu cầu</label>
                 <select name="category" className="block w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm bg-white">
-                  <option value="MAINTENANCE_REPAIR">Maintenance & Repair</option>
-                  <option value="COMPLAINT">Complaint</option>
-                  <option value="ADMINISTRATIVE">Administrative</option>
-                  <option value="SUGGESTION_FEEDBACK">Suggestion / Feedback</option>
-                  <option value="OTHER">Other</option>
-                </select></div>
-              <div><label className="block text-sm font-medium text-gray-700 mb-1">Title <span className="text-red-500">*</span></label>
-                <input name="title" maxLength={255} className="block w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm" /></div>
-              <div><label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-                <textarea name="description" rows={3} className="block w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm resize-none" /></div>
+                  <option value="MAINTENANCE_REPAIR">Sửa chữa & Bảo trì</option>
+                  <option value="COMPLAINT">Khiếu nại</option>
+                  <option value="ADMINISTRATIVE">Hành chính</option>
+                  <option value="SUGGESTION_FEEDBACK">Góp ý & Phản hồi</option>
+                  <option value="OTHER">Khác</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Tiêu đề <span className="text-red-500">*</span></label>
+                <input name="title" maxLength={255} className="block w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Mô tả chi tiết</label>
+                <textarea name="description" rows={3} className="block w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm resize-none" />
+              </div>
               {formError && <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg">{formError}</p>}
               <div className="flex gap-2 pt-1">
-                <button type="button" onClick={() => setShowForm(false)} className="flex-1 py-2.5 text-sm border border-gray-300 rounded-lg hover:bg-gray-50">Cancel</button>
-                <button type="submit" disabled={create.isPending} className="flex-1 py-2.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50">
-                  {create.isPending ? 'Submitting...' : 'Submit'}
+                <button type="button" onClick={() => setShowForm(false)} className="flex-1 py-2.5 text-sm border border-gray-300 rounded-lg hover:bg-gray-50">Hủy</button>
+                <button
+                  type="submit"
+                  disabled={create.isPending || !apartment?.id || aptLoading}
+                  className="flex-1 py-2.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                >
+                  {create.isPending ? 'Đang gửi...' : 'Gửi yêu cầu'}
                 </button>
               </div>
             </form>

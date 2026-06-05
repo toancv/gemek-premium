@@ -101,9 +101,9 @@ class BlockControllerTest {
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isCreated());
 
-        // Search by a portion of the unique name — must appear in results.
+        // Search by the full unique name — exactly 1 match regardless of prior test runs.
         mockMvc.perform(get("/api/blocks")
-                        .param("search", "SRCHTEST")
+                        .param("search", uniqueMarker)
                         .header("Authorization", "Bearer " + adminToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data").isArray())

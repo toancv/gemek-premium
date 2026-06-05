@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { SearchableSelect } from '@gemek/ui';
-import { useTickets, useApartments, useCreateTicket } from '../api/hooks';
+import type { SearchableOption } from '@gemek/ui';
+import { useTickets, useCreateTicket } from '../api/hooks';
+import { apiClient } from '../api/client';
 
 const STATUS_COLORS: Record<string, string> = {
   NEW: 'bg-blue-100 text-blue-700', ASSIGNED: 'bg-purple-100 text-purple-700',
@@ -25,13 +27,17 @@ export function TicketsPage() {
 
   const params = { page, size: 20, ...(category && { category }), ...(status && { status }) };
   const { data, isLoading, isError } = useTickets(params);
-  const { data: aptsData, isLoading: aptsLoading } = useApartments({ size: 200, sort: 'unitNumber' });
   const createTicket = useCreateTicket();
 
-  const apartmentOptions = (aptsData?.data ?? []).map((a: any) => ({
-    value: a.id,
-    label: `${a.block?.name ?? ''} - ${a.unitNumber}`,
-  }));
+  const loadApartmentOptions = useCallback(async (query: string): Promise<SearchableOption[]> => {
+    const params: Record<string, unknown> = { size: 10, sort: 'unitNumber', direction: 'asc' };
+    if (query) params.search = query;
+    const res = await apiClient.get('/apartments', { params });
+    return (res.data?.data ?? []).map((a: any) => ({
+      value: a.id,
+      label: `${a.block?.name ?? ''} - ${a.unitNumber}`,
+    }));
+  }, []);
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -142,10 +148,9 @@ export function TicketsPage() {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Căn hộ <span className="text-red-500">*</span></label>
                 <SearchableSelect
-                  options={apartmentOptions}
+                  loadOptions={loadApartmentOptions}
                   value={apartmentId}
                   onChange={setApartmentId}
-                  loading={aptsLoading}
                   placeholder="Chọn căn hộ..."
                 />
               </div>

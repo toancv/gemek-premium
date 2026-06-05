@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import { SearchableSelect } from '@gemek/ui';
 import type { SearchableOption } from '@gemek/ui';
-import { useResidents, useCreateResident, useApartments } from '../api/hooks';
+import { useResidents, useCreateResident } from '../api/hooks';
 import { apiClient } from '../api/client';
 
 export function ResidentsPage() {
@@ -16,7 +16,6 @@ export function ResidentsPage() {
 
   const { data, isLoading, isError } = useResidents({ page, size: 20, ...(search && { search }) });
   const createResident = useCreateResident();
-  const { data: aptsData, isLoading: aptsLoading } = useApartments({ size: 200, sort: 'unitNumber' });
 
   const loadUserOptions = useCallback(async (query: string): Promise<SearchableOption[]> => {
     const params: Record<string, unknown> = { size: 20 };
@@ -28,10 +27,15 @@ export function ResidentsPage() {
     }));
   }, []);
 
-  const apartmentOptions = (aptsData?.data ?? []).map((a: any) => ({
-    value: a.id,
-    label: `${a.block?.name ?? ''} - ${a.unitNumber}`,
-  }));
+  const loadApartmentOptions = useCallback(async (query: string): Promise<SearchableOption[]> => {
+    const params: Record<string, unknown> = { size: 10, sort: 'unitNumber', direction: 'asc' };
+    if (query) params.search = query;
+    const res = await apiClient.get('/apartments', { params });
+    return (res.data?.data ?? []).map((a: any) => ({
+      value: a.id,
+      label: `${a.block?.name ?? ''} - ${a.unitNumber}`,
+    }));
+  }, []);
 
   function openCreate() {
     setSelectedUserId('');
@@ -142,10 +146,9 @@ export function ResidentsPage() {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Căn hộ <span className="text-red-500">*</span></label>
                 <SearchableSelect
-                  options={apartmentOptions}
+                  loadOptions={loadApartmentOptions}
                   value={selectedApartmentId}
                   onChange={(v) => { setSelectedApartmentId(v); setAptError(''); }}
-                  loading={aptsLoading}
                   placeholder="Chọn căn hộ..."
                   error={aptError}
                 />

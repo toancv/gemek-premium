@@ -30,8 +30,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 /**
  * Integration tests for {@link BlockController} using Testcontainers PostgreSQL and Redis.
  *
- * <p>Covers: create block (201), duplicate name (409), delete with apartments (409),
- * and list blocks (200).
+ * <p>Covers: list blocks (PageResponse shape, default sort, search, pagination),
+ * create block (201), duplicate name (409), delete with apartments (409).
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @AutoConfigureMockMvc
@@ -63,13 +63,71 @@ class BlockControllerTest {
     }
 
     // -------------------------------------------------------------------------
-    // GET /api/blocks
+    // GET /api/blocks — PageResponse shape
     // -------------------------------------------------------------------------
 
     @Test
-    @DisplayName("GET /api/blocks — returns 200 with data array")
-    void listBlocks_returns200() throws Exception {
+    @DisplayName("GET /api/blocks — returns 200 with PageResponse shape")
+    void listBlocks_returns200WithPageResponseShape() throws Exception {
         mockMvc.perform(get("/api/blocks")
+                        .header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data").isArray())
+                .andExpect(jsonPath("$.page").isNumber())
+                .andExpect(jsonPath("$.size").isNumber())
+                .andExpect(jsonPath("$.total").isNumber())
+                .andExpect(jsonPath("$.totalPages").isNumber());
+    }
+
+    @Test
+    @DisplayName("GET /api/blocks — default size=10 and sorted by name asc")
+    void listBlocks_defaultSizeAndSort() throws Exception {
+        mockMvc.perform(get("/api/blocks")
+                        .header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.size").value(10))
+                .andExpect(jsonPath("$.page").value(0));
+    }
+
+    @Test
+    @DisplayName("GET /api/blocks?search=<substr> — filters results by name substring")
+    void listBlocks_searchFilters() throws Exception {
+        // Create a block with a distinctive name to search for.
+        String uniqueMarker = "SRCHTEST-" + System.nanoTime();
+        CreateBlockRequest request = new CreateBlockRequest(uniqueMarker, null);
+        mockMvc.perform(post("/api/blocks")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isCreated());
+
+        // Search by a portion of the unique name — must appear in results.
+        mockMvc.perform(get("/api/blocks")
+                        .param("search", "SRCHTEST")
+                        .header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data").isArray())
+                .andExpect(jsonPath("$.data[0].name").value(uniqueMarker));
+    }
+
+    @Test
+    @DisplayName("GET /api/blocks?page=0&size=2 — paginates results")
+    void listBlocks_pagination() throws Exception {
+        mockMvc.perform(get("/api/blocks")
+                        .param("page", "0")
+                        .param("size", "2")
+                        .header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.size").value(2))
+                .andExpect(jsonPath("$.page").value(0))
+                .andExpect(jsonPath("$.data").isArray());
+    }
+
+    @Test
+    @DisplayName("GET /api/blocks?search= — blank search returns all results, no 500")
+    void listBlocks_blankSearch_noError() throws Exception {
+        mockMvc.perform(get("/api/blocks")
+                        .param("search", "")
                         .header("Authorization", "Bearer " + adminToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data").isArray());

@@ -253,3 +253,4 @@ _(record when CTO overrides agent decision)_
 **Decision:** SEC-20 (INFO — refresh token in localStorage) stays deferred after the improvement/security audit.
 **Reasoning:** Full remediation requires a backend Set-Cookie change on /auth/login and /auth/refresh, which is a post-G4 hardening sprint item. The prior architectural decision (2026-05-29) to store the refresh token in localStorage was made knowingly, with HttpOnly cookie migration tracked explicitly.
 **How to apply:** Do not attempt SEC-20 remediation until the CTO schedules the hardening sprint. The open-items section of G4-testing.html documents the required changes.
+- GET /api/blocks now returns PageResponse (data/page/size/total/totalPages); search via Criteria API (case-insensitive name substring); default size=10, sort=name asc; max size=200. FE callers already read .data — no FE changes.

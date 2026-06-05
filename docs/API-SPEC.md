@@ -311,12 +311,18 @@ Response `204 No Content`
 
 **Auth:** ADMIN, BOARD_MEMBER, TECHNICIAN
 
-Response `200 OK`:
+**Query params:** `search` (name substring, case-insensitive, optional), `page` (default 0), `size` (default 10, max 200), `sort` (name|createdAt, default name), `direction` (asc|desc, default asc)
+
+Response `200 OK` — `PageResponse`:
 ```json
 {
   "data": [
     { "id": "uuid", "name": "Block A", "description": "string|null" }
-  ]
+  ],
+  "page": 0,
+  "size": 10,
+  "total": 42,
+  "totalPages": 5
 }
 ```
 

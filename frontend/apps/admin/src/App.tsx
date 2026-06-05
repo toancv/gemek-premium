@@ -15,6 +15,7 @@ import { AnnouncementsPage } from './pages/AnnouncementsPage';
 // TEMP_HIDDEN_DEFERRED: parking import — feature deferred, see PROGRESS.md
 // import { ParkingPage } from './pages/ParkingPage';
 import { ReportsPage } from './pages/ReportsPage';
+import { VehiclesPage } from './pages/VehiclesPage';
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const authStatus = useAuthStore((s) => s.authStatus);
@@ -58,6 +59,7 @@ export default function App() {
           <Route path="amenities" element={<Navigate to="/dashboard" replace />} />
           {/* TEMP_HIDDEN_DEFERRED: parking route — feature deferred, see PROGRESS.md */}
           <Route path="parking" element={<Navigate to="/dashboard" replace />} />
+          <Route path="vehicles" element={<RequireRole roles={['ADMIN']}><VehiclesPage /></RequireRole>} />
           <Route path="reports" element={<RequireRole roles={['ADMIN','BOARD_MEMBER']}><ReportsPage /></RequireRole>} />
         </Route>
         <Route path="*" element={<Navigate to="/dashboard" replace />} />

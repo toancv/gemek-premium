@@ -187,6 +187,18 @@ export const useEndParkingAssignment = () => {
   });
 };
 
+// Vehicles
+export const useVehicles = (params?: Record<string, unknown>) =>
+  useQuery({ queryKey: ['vehicles', params], queryFn: () => get('/vehicles', params) });
+
+export const useCreateVehicle = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: unknown) => post('/vehicles', data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['vehicles'] }),
+  });
+};
+
 // Reports
 export const useTicketReport = (params?: Record<string, unknown>) =>
   useQuery({ queryKey: ['report-tickets', params], queryFn: () => get('/reports/tickets', params) });

@@ -2,3 +2,4 @@ backend/target/
 backend/.idea/
 reports/coverage-raw/
 .env
+docker-compose.override.yml

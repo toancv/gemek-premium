@@ -3,10 +3,13 @@
 # Single-command startup: docker compose up -d --build
 # All secrets loaded from .env (never committed to source control).
 #
-# Ports exposed on host:
+# Ports exposed on host (§4.11 — only nginx exposed):
 #   80   → Admin portal  (nginx → React admin app)
 #   81   → Resident portal (nginx → React resident app)
 #   9001 → MinIO console (first-run bucket setup only)
+#
+# For local DB/Redis access (DBeaver, RedisInsight, Maven tests):
+#   Use docker-compose.override.yml (gitignored, loopback-only bindings).
 # =============================================================================
 
 services:
@@ -19,8 +22,6 @@ services:
       POSTGRES_DB: gemek
       POSTGRES_USER: ${DB_USER}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
-    ports:
-      - "5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
@@ -36,8 +37,6 @@ services:
     container_name: gemek-redis
     restart: unless-stopped
     command: ["redis-server", "--requirepass", "${REDIS_PASSWORD}"]
-    ports:
-      - "6380:6379"
     volumes:
       - redis_data:/data
     networks:

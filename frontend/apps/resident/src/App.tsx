@@ -14,6 +14,7 @@ import { TicketDetailPage } from './pages/TicketDetailPage';
 // import { ParkingPage } from './pages/ParkingPage';
 import { AnnouncementsPage } from './pages/AnnouncementsPage';
 import { ProfilePage } from './pages/ProfilePage';
+import { MyVehiclesPage } from './pages/MyVehiclesPage';
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const authStatus = useAuthStore((s) => s.authStatus);
@@ -48,6 +49,7 @@ export default function App() {
           <Route path="bookings" element={<Navigate to="/" replace />} />
           {/* TEMP_HIDDEN_DEFERRED: parking route — feature deferred, see PROGRESS.md */}
           <Route path="parking" element={<Navigate to="/" replace />} />
+          <Route path="vehicles" element={<MyVehiclesPage />} />
           <Route path="announcements" element={<AnnouncementsPage />} />
           <Route path="profile" element={<ProfilePage />} />
         </Route>

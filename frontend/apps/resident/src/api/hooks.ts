@@ -71,6 +71,14 @@ export const useMarkAnnouncementRead = () => {
   });
 };
 
+export const useCreateVehicle = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: unknown) => post('/vehicles', data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['my-vehicles'] }),
+  });
+};
+
 export const useChangePassword = () =>
   useMutation({ mutationFn: (data: unknown) => put('/auth/me/password', data) });
 

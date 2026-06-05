@@ -22,6 +22,7 @@ export function Layout() {
     // { to: '/bookings', label: 'Bookings', icon: 'B' },
     // TEMP_HIDDEN_DEFERRED: parking nav — feature deferred, see PROGRESS.md
     // { to: '/parking', label: 'Parking', icon: 'P' },
+    { to: '/vehicles', label: 'Vehicles', icon: 'V' },
     { to: '/announcements', label: 'News', icon: 'N' },
     { to: '/profile', label: 'Profile', icon: 'Me' },
   ];

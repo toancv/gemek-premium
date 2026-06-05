@@ -1,6 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { SearchableSelect } from '@gemek/ui';
-import { useResidents, useCreateResident, useUsers, useApartments } from '../api/hooks';
+import type { SearchableOption } from '@gemek/ui';
+import { useResidents, useCreateResident, useApartments } from '../api/hooks';
+import { apiClient } from '../api/client';
 
 export function ResidentsPage() {
   const [search, setSearch] = useState('');
@@ -14,13 +16,17 @@ export function ResidentsPage() {
 
   const { data, isLoading, isError } = useResidents({ page, size: 20, ...(search && { search }) });
   const createResident = useCreateResident();
-  const { data: usersData, isLoading: usersLoading } = useUsers({ size: 200 });
   const { data: aptsData, isLoading: aptsLoading } = useApartments({ size: 200, sort: 'unitNumber' });
 
-  const userOptions = (usersData?.data ?? []).map((u: any) => ({
-    value: u.id,
-    label: `${u.fullName} — ${u.email}`,
-  }));
+  const loadUserOptions = useCallback(async (query: string): Promise<SearchableOption[]> => {
+    const params: Record<string, unknown> = { size: 20 };
+    if (query) params.search = query;
+    const res = await apiClient.get('/users', { params });
+    return (res.data?.data ?? []).map((u: any) => ({
+      value: u.id,
+      label: `${u.fullName} — ${u.email}`,
+    }));
+  }, []);
 
   const apartmentOptions = (aptsData?.data ?? []).map((a: any) => ({
     value: a.id,
@@ -126,10 +132,9 @@ export function ResidentsPage() {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Người dùng <span className="text-red-500">*</span></label>
                 <SearchableSelect
-                  options={userOptions}
                   value={selectedUserId}
                   onChange={(v) => { setSelectedUserId(v); setUserError(''); }}
-                  loading={usersLoading}
+                  loadOptions={loadUserOptions}
                   placeholder="Chọn người dùng..."
                   error={userError}
                 />

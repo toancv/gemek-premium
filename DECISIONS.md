@@ -5,6 +5,16 @@ Format: Date | Decision | Reasoning | Alternatives
 
 ---
 
+## 2026-06-05 | SearchableSelect async server-search mode | loadOptions opt-in prop
+
+**Decision:** Added optional `loadOptions?: (query: string) => Promise<SearchableOption[]>` to SearchableSelect. When provided, debounces 300ms calls to the function instead of filtering client-side. Selected label stored in state, persists when not in current search results. Static mode (no prop) unchanged; user dropdown on create-resident uses it.
+
+**Why:** User list has 202 entries; backend max-page-size cap of 100 means client-side filtering can't surface 101–202. Server-search via `GET /api/users?search=<q>&size=20` reaches any user. Apartment and block dropdowns remain client-side (lists small enough).
+
+**Alternatives considered:** Raise backend maxPageSize to 500 (risky, large payloads); `async` boolean flag (forces caller to wire fetch externally). Chosen approach keeps component self-contained.
+
+---
+
 ## 2026-06-05 | UserRepository — replace @Query findAllWithFilters with JpaSpecificationExecutor
 
 **Decision:** Removed the `@Query`-based `findAllWithFilters` from `UserRepository`; `UserRepository` now extends `JpaSpecificationExecutor<User>`. `UserServiceImpl.listUsers()` builds a `Specification<User>` programmatically using Criteria API, only adding the LIKE predicate when `search` is non-null.

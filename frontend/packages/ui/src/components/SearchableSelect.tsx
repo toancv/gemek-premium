@@ -6,9 +6,10 @@ export interface SearchableOption {
 }
 
 interface SearchableSelectProps {
-  options: SearchableOption[];
+  options?: SearchableOption[];
   value: string;
   onChange: (value: string) => void;
+  loadOptions?: (query: string) => Promise<SearchableOption[]>;
   loading?: boolean;
   placeholder?: string;
   error?: string;
@@ -16,9 +17,10 @@ interface SearchableSelectProps {
 }
 
 export function SearchableSelect({
-  options,
+  options = [],
   value,
   onChange,
+  loadOptions,
   loading,
   placeholder = 'Chọn...',
   error,
@@ -27,13 +29,38 @@ export function SearchableSelect({
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [highlighted, setHighlighted] = useState(0);
+  const [asyncOptions, setAsyncOptions] = useState<SearchableOption[]>([]);
+  const [asyncLoading, setAsyncLoading] = useState(false);
+  const [selectedLabel, setSelectedLabel] = useState('');
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const selected = options.find((o) => o.value === value);
+  const isAsync = !!loadOptions;
+
+  // Static mode: find selected from provided options array
+  const selected = !isAsync ? options.find((o) => o.value === value) : null;
+
+  // Static mode: client-side filter
   const filtered = query
     ? options.filter((o) => o.label.toLowerCase().includes(query.toLowerCase()))
     : options;
+
+  const displayOptions = isAsync ? asyncOptions : filtered;
+  const isLoading = isAsync ? asyncLoading : !!loading;
+
+  // Async mode: debounce search; 0ms delay on initial open (empty query)
+  useEffect(() => {
+    if (!loadOptions || !open) return;
+    const delay = query ? 300 : 0;
+    const timer = setTimeout(() => {
+      setAsyncLoading(true);
+      loadOptions(query)
+        .then(setAsyncOptions)
+        .catch(() => setAsyncOptions([]))
+        .finally(() => setAsyncLoading(false));
+    }, delay);
+    return () => clearTimeout(timer);
+  }, [query, open, loadOptions]);
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -51,11 +78,15 @@ export function SearchableSelect({
     setOpen(true);
     setQuery('');
     setHighlighted(0);
+    // Prevent empty-state flash before the async load resolves
+    if (loadOptions) setAsyncLoading(true);
     setTimeout(() => inputRef.current?.focus(), 0);
   };
 
   const selectOption = (opt: SearchableOption) => {
     onChange(opt.value);
+    // Persist the label so it shows in the trigger even when not in current search results
+    if (isAsync) setSelectedLabel(opt.label);
     setOpen(false);
     setQuery('');
   };
@@ -64,18 +95,22 @@ export function SearchableSelect({
     if (!open) return;
     if (e.key === 'ArrowDown') {
       e.preventDefault();
-      setHighlighted((h: number) => Math.min(h + 1, filtered.length - 1));
+      setHighlighted((h) => Math.min(h + 1, displayOptions.length - 1));
     } else if (e.key === 'ArrowUp') {
       e.preventDefault();
-      setHighlighted((h: number) => Math.max(h - 1, 0));
+      setHighlighted((h) => Math.max(h - 1, 0));
     } else if (e.key === 'Enter') {
       e.preventDefault();
-      if (filtered[highlighted]) selectOption(filtered[highlighted]);
+      if (displayOptions[highlighted]) selectOption(displayOptions[highlighted]);
     } else if (e.key === 'Escape') {
       setOpen(false);
       setQuery('');
     }
   };
+
+  const triggerLabel = isAsync
+    ? (value && selectedLabel ? selectedLabel : null)
+    : (selected ? selected.label : null);
 
   return (
     <div ref={containerRef} className="relative">
@@ -87,8 +122,8 @@ export function SearchableSelect({
       >
         {loading ? (
           <span className="text-gray-400">Đang tải...</span>
-        ) : selected ? (
-          selected.label
+        ) : triggerLabel ? (
+          triggerLabel
         ) : (
           <span className="text-gray-400">{placeholder}</span>
         )}
@@ -108,19 +143,22 @@ export function SearchableSelect({
             />
           </div>
           <ul className="max-h-48 overflow-auto py-1">
-            {filtered.length === 0 && (
+            {isLoading ? (
+              <li className="px-3 py-2 text-sm text-gray-400">Đang tìm kiếm...</li>
+            ) : displayOptions.length === 0 ? (
               <li className="px-3 py-2 text-sm text-gray-400">Không tìm thấy kết quả</li>
+            ) : (
+              displayOptions.map((opt, idx) => (
+                <li
+                  key={opt.value}
+                  onMouseDown={() => selectOption(opt)}
+                  onMouseEnter={() => setHighlighted(idx)}
+                  className={`px-3 py-2 text-sm cursor-pointer ${idx === highlighted ? 'bg-blue-50 text-blue-700' : 'text-gray-900 hover:bg-gray-50'}`}
+                >
+                  {opt.label}
+                </li>
+              ))
             )}
-            {filtered.map((opt, idx) => (
-              <li
-                key={opt.value}
-                onMouseDown={() => selectOption(opt)}
-                onMouseEnter={() => setHighlighted(idx)}
-                className={`px-3 py-2 text-sm cursor-pointer ${idx === highlighted ? 'bg-blue-50 text-blue-700' : 'text-gray-900 hover:bg-gray-50'}`}
-              >
-                {opt.label}
-              </li>
-            ))}
           </ul>
         </div>
       )}

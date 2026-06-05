@@ -3,7 +3,7 @@
 ## Current State
 - **Phase:** DONE — all gates approved, deployment prep complete
 - **Gate:** G1 ✅ G2 ✅ G3 ✅ G4 ✅ (2026-06-03)
-- **Last completed:** 2026-06-05 — Fixed GET /api/users 500 (Hibernate 6 bytea bug). UserRepository now uses JpaSpecificationExecutor + Criteria API for optional search filters. 168/168 tests pass. Only 1 repo affected (ApartmentRepository already used COALESCE pattern that worked via Docker JAR).
+- **Last completed:** 2026-06-05 — SearchableSelect gained optional async server-search mode (loadOptions prop). User dropdown on create-resident form now uses server-side search (GET /api/users?search=&size=20), enabling admins to find any of 202 users beyond the 100-row page cap. Static mode unchanged; 8/8 component tests pass; admin build clean.
 - **Blocked:** None
 
 ---

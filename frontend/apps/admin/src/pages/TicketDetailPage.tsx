@@ -1,11 +1,19 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTicket, useAssignTicket, useUpdateTicketStatus } from '../api/hooks';
+import { SearchableSelect } from '@gemek/ui';
+import { apiClient } from '../api/client';
 
 const STATUS_COLORS: Record<string, string> = {
   NEW: 'bg-blue-100 text-blue-700', ASSIGNED: 'bg-purple-100 text-purple-700',
   IN_PROGRESS: 'bg-yellow-100 text-yellow-700', DONE: 'bg-green-100 text-green-700',
   CANCELLED: 'bg-gray-100 text-gray-700',
+};
+
+const ROLE_LABEL: Record<string, string> = {
+  ADMIN: 'Quản trị viên',
+  BOARD_MEMBER: 'Ban quản lý',
+  TECHNICIAN: 'Kỹ thuật viên',
 };
 
 export function TicketDetailPage() {
@@ -14,22 +22,82 @@ export function TicketDetailPage() {
   const { data: ticket, isLoading, isError } = useTicket(id!);
   const assignTicket = useAssignTicket();
   const updateStatus = useUpdateTicketStatus();
-  const [assignUserId, setAssignUserId] = useState('');
-  const [newStatus, setNewStatus] = useState('');
-  const [statusNotes, setStatusNotes] = useState('');
+
+  const [assignedUserId, setAssignedUserId] = useState('');
+  const [assignedContractorId, setAssignedContractorId] = useState('');
+  const [userMap, setUserMap] = useState<Record<string, any>>({});
+  const [contractorMap, setContractorMap] = useState<Record<string, any>>({});
+  const [scheduledDate, setScheduledDate] = useState('');
+  const [assignNotes, setAssignNotes] = useState('');
   const [actionError, setActionError] = useState('');
 
-  if (isLoading) return <div className="flex items-center justify-center h-64"><svg className="animate-spin h-8 w-8 text-blue-600" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg></div>;
-  if (isError) return <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-700">Failed to load ticket.</div>;
+  const [newStatus, setNewStatus] = useState('');
+  const [statusNotes, setStatusNotes] = useState('');
+
+  // 3 parallel calls (ADMIN, BOARD_MEMBER, TECHNICIAN) merged + deduped — single role param only on BE
+  const loadStaffOptions = useCallback(async (query: string) => {
+    const params: Record<string, unknown> = { size: 20, isActive: true };
+    if (query) params.search = query;
+    const [admins, boards, techs] = await Promise.all([
+      apiClient.get('/users', { params: { ...params, role: 'ADMIN' } }).then((r) => r.data?.data ?? []),
+      apiClient.get('/users', { params: { ...params, role: 'BOARD_MEMBER' } }).then((r) => r.data?.data ?? []),
+      apiClient.get('/users', { params: { ...params, role: 'TECHNICIAN' } }).then((r) => r.data?.data ?? []),
+    ]);
+    const seen = new Set<string>();
+    const merged: any[] = [];
+    for (const u of [...admins, ...boards, ...techs]) {
+      if (!seen.has(u.id)) { seen.add(u.id); merged.push(u); }
+    }
+    setUserMap((prev) => {
+      const next = { ...prev };
+      merged.forEach((u) => { next[u.id] = u; });
+      return next;
+    });
+    return merged.map((u) => ({
+      value: u.id,
+      label: `${u.fullName} — ${ROLE_LABEL[u.role] ?? u.role}`,
+    }));
+  }, []);
+
+  const loadContractorOptions = useCallback(async (query: string) => {
+    const params: Record<string, unknown> = { size: 20, isActive: true };
+    if (query) params.search = query;
+    const res = await apiClient.get('/contractors', { params });
+    const contractors: any[] = res.data?.data ?? [];
+    setContractorMap((prev) => {
+      const next = { ...prev };
+      contractors.forEach((c) => { next[c.id] = c; });
+      return next;
+    });
+    return contractors.map((c) => ({ value: c.id, label: c.companyName }));
+  }, []);
+
+  const handleUserChange = (uid: string) => {
+    setAssignedUserId(uid);
+    if (uid) setAssignedContractorId('');
+    setActionError('');
+  };
+
+  const handleContractorChange = (cid: string) => {
+    setAssignedContractorId(cid);
+    if (cid) setAssignedUserId('');
+    setActionError('');
+  };
 
   const handleAssign = async (e: React.FormEvent) => {
     e.preventDefault();
     setActionError('');
-    if (!assignUserId.trim()) { setActionError('User ID is required'); return; }
+    if (!assignedUserId && !assignedContractorId) { setActionError('Chọn nhân viên hoặc nhà thầu'); return; }
+    const payload: Record<string, unknown> = {
+      assignedToUserId: assignedUserId || null,
+      assignedToContractorId: assignedContractorId || null,
+      scheduledDate: scheduledDate || null,
+      notes: assignNotes || null,
+    };
     try {
-      await assignTicket.mutateAsync({ id: id!, data: { assignedToUserId: assignUserId, scheduledDate: null, notes: null } });
-      setAssignUserId('');
-    } catch (err: any) { setActionError(err?.response?.data?.message ?? 'Failed to assign'); }
+      await assignTicket.mutateAsync({ id: id!, data: payload });
+      setAssignedUserId(''); setAssignedContractorId(''); setScheduledDate(''); setAssignNotes('');
+    } catch (err: any) { setActionError(err?.response?.data?.message ?? 'Không thể phân công'); }
   };
 
   const handleStatusUpdate = async (e: React.FormEvent) => {
@@ -41,6 +109,11 @@ export function TicketDetailPage() {
       setNewStatus(''); setStatusNotes('');
     } catch (err: any) { setActionError(err?.response?.data?.message ?? 'Failed to update status'); }
   };
+
+  if (isLoading) return <div className="flex items-center justify-center h-64"><svg className="animate-spin h-8 w-8 text-blue-600" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg></div>;
+  if (isError) return <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-700">Failed to load ticket.</div>;
+
+  const isMaintenanceRepair = ticket.category === 'MAINTENANCE_REPAIR';
 
   return (
     <div className="max-w-4xl">
@@ -103,13 +176,39 @@ export function TicketDetailPage() {
       {/* Admin Actions */}
       <div className="grid grid-cols-2 gap-4">
         <div className="bg-white rounded-lg border border-gray-200 p-6">
-          <h2 className="text-base font-semibold mb-3">Assign Ticket</h2>
+          <h2 className="text-base font-semibold mb-3">Phân công</h2>
           <form onSubmit={handleAssign} className="space-y-3">
-            <div><label className="block text-sm font-medium text-gray-700 mb-1">User ID</label>
-              <input value={assignUserId} onChange={(e) => setAssignUserId(e.target.value)} placeholder="Staff user UUID" className="block w-full border border-gray-300 rounded-md px-3 py-2 text-sm" /></div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Nhân viên</label>
+              <SearchableSelect
+                value={assignedUserId}
+                onChange={handleUserChange}
+                loadOptions={loadStaffOptions}
+                placeholder="Tìm theo tên..."
+              />
+            </div>
+            {isMaintenanceRepair && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Nhà thầu <span className="text-xs text-gray-400">(chỉ MAINTENANCE_REPAIR)</span></label>
+                <SearchableSelect
+                  value={assignedContractorId}
+                  onChange={handleContractorChange}
+                  loadOptions={loadContractorOptions}
+                  placeholder="Tìm theo tên công ty..."
+                />
+              </div>
+            )}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Ngày hẹn</label>
+              <input type="datetime-local" value={scheduledDate} onChange={(e) => setScheduledDate(e.target.value)} className="block w-full border border-gray-300 rounded-md px-3 py-2 text-sm" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Ghi chú</label>
+              <textarea value={assignNotes} onChange={(e) => setAssignNotes(e.target.value)} rows={2} className="block w-full border border-gray-300 rounded-md px-3 py-2 text-sm resize-none" />
+            </div>
             {actionError && <p className="text-xs text-red-600">{actionError}</p>}
             <button type="submit" disabled={assignTicket.isPending} className="w-full bg-blue-600 text-white rounded-md py-2 text-sm hover:bg-blue-700 disabled:opacity-50">
-              {assignTicket.isPending ? 'Assigning...' : 'Assign'}
+              {assignTicket.isPending ? 'Đang phân công...' : 'Phân công'}
             </button>
           </form>
         </div>

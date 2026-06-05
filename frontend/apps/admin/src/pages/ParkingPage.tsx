@@ -1,5 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { useParkingSlots, useGuestVehicles, useCreateParkingAssignment, useEndParkingAssignment } from '../api/hooks';
+import { SearchableSelect } from '@gemek/ui';
+import type { SearchableOption } from '@gemek/ui';
+import { apiClient } from '../api/client';
 
 const SLOT_COLORS: Record<string, string> = {
   AVAILABLE: 'bg-green-100 text-green-700',
@@ -13,23 +16,64 @@ export function ParkingPage() {
   const [status, setStatus] = useState('');
   const [showAssign, setShowAssign] = useState<any>(null);
   const [formError, setFormError] = useState('');
+  const [assignApartmentId, setAssignApartmentId] = useState('');
+  const [assignVehicleId, setAssignVehicleId] = useState('');
 
   const { data: slotsData, isLoading } = useParkingSlots({ size: 50, ...(type && { type }), ...(status && { status }) });
   const { data: guestsData, isLoading: gLoading } = useGuestVehicles({ size: 50 });
   const createAssignment = useCreateParkingAssignment();
   const endAssignment = useEndParkingAssignment();
 
+  const closeAssign = () => {
+    setShowAssign(null);
+    setAssignApartmentId('');
+    setAssignVehicleId('');
+    setFormError('');
+  };
+
+  const loadApartmentOptions = useCallback(async (query: string): Promise<SearchableOption[]> => {
+    const params: Record<string, unknown> = { size: 10, sort: 'unitNumber', direction: 'asc' };
+    if (query) params.search = query;
+    const res = await apiClient.get('/apartments', { params });
+    return (res.data?.data ?? []).map((a: any) => ({
+      value: a.id,
+      label: `${a.block?.name ?? ''} - ${a.unitNumber}`,
+    }));
+  }, []);
+
+  // Filters vehicles by selected apartment — guarantees no vehicle/apartment mismatch on submit.
+  const loadVehicleOptions = useCallback(async (query: string): Promise<SearchableOption[]> => {
+    const params: Record<string, unknown> = { size: 10, isActive: true };
+    if (assignApartmentId) params.apartmentId = assignApartmentId;
+    if (query) params.search = query;
+    const res = await apiClient.get('/vehicles', { params });
+    return (res.data?.data ?? []).map((v: any) => {
+      const suffix = [v.brand, v.model].filter(Boolean).join(' ');
+      return {
+        value: v.id,
+        label: suffix ? `${v.licensePlate} · ${suffix}` : v.licensePlate,
+      };
+    });
+  }, [assignApartmentId]);
+
   const handleAssign = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormError('');
     const fd = new FormData(e.target as HTMLFormElement);
-    const vehicleId = (fd.get('vehicleId') as string).trim();
-    const apartmentId = (fd.get('apartmentId') as string).trim();
     const startDate = fd.get('startDate') as string;
-    if (!vehicleId || !apartmentId || !startDate) { setFormError('Vehicle ID, Apartment ID and Start Date are required'); return; }
+    if (!assignVehicleId || !assignApartmentId || !startDate) {
+      setFormError('Vehicle, Apartment and Start Date are required');
+      return;
+    }
     try {
-      await createAssignment.mutateAsync({ parkingSlotId: showAssign.id, vehicleId, apartmentId, startDate, parkingCardNumber: fd.get('parkingCardNumber') || null });
-      setShowAssign(null);
+      await createAssignment.mutateAsync({
+        parkingSlotId: showAssign.id,
+        vehicleId: assignVehicleId,
+        apartmentId: assignApartmentId,
+        startDate,
+        parkingCardNumber: fd.get('parkingCardNumber') || null,
+      });
+      closeAssign();
     } catch (err: any) { setFormError(err?.response?.data?.message ?? 'Failed'); }
   };
 
@@ -126,23 +170,39 @@ export function ParkingPage() {
 
       {showAssign && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/50" onClick={() => setShowAssign(null)} />
+          <div className="absolute inset-0 bg-black/50" onClick={closeAssign} />
           <div className="relative bg-white rounded-lg shadow-xl w-full max-w-md p-6">
             <h2 className="text-lg font-semibold mb-4">Assign Slot {showAssign.slotNumber}</h2>
             <form onSubmit={handleAssign} className="space-y-3">
-              <div><label className="block text-sm font-medium text-gray-700 mb-1">Vehicle ID <span className="text-red-500">*</span></label>
-                <input name="vehicleId" className="block w-full border border-gray-300 rounded-md px-3 py-2 text-sm" placeholder="Vehicle UUID" /></div>
-              <div><label className="block text-sm font-medium text-gray-700 mb-1">Apartment ID <span className="text-red-500">*</span></label>
-                <input name="apartmentId" className="block w-full border border-gray-300 rounded-md px-3 py-2 text-sm" placeholder="Apartment UUID" /></div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Apartment <span className="text-red-500">*</span></label>
+                <SearchableSelect
+                  value={assignApartmentId}
+                  onChange={(val) => { setAssignApartmentId(val); setAssignVehicleId(''); }}
+                  loadOptions={loadApartmentOptions}
+                  placeholder="Search apartment..."
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Vehicle <span className="text-red-500">*</span></label>
+                <SearchableSelect
+                  value={assignVehicleId}
+                  onChange={setAssignVehicleId}
+                  loadOptions={loadVehicleOptions}
+                  placeholder={assignApartmentId ? 'Search vehicle...' : 'Select apartment first'}
+                />
+              </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Start Date <span className="text-red-500">*</span></label>
                 <input name="startDate" type="date" className="block w-full border border-gray-300 rounded-md px-3 py-2 text-sm" />
               </div>
-              <div><label className="block text-sm font-medium text-gray-700 mb-1">Parking Card Number</label>
-                <input name="parkingCardNumber" className="block w-full border border-gray-300 rounded-md px-3 py-2 text-sm" /></div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Parking Card Number</label>
+                <input name="parkingCardNumber" className="block w-full border border-gray-300 rounded-md px-3 py-2 text-sm" />
+              </div>
               {formError && <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded">{formError}</p>}
               <div className="flex gap-2 justify-end pt-2">
-                <button type="button" onClick={() => setShowAssign(null)} className="px-4 py-2 text-sm border border-gray-300 rounded-md hover:bg-gray-50">Cancel</button>
+                <button type="button" onClick={closeAssign} className="px-4 py-2 text-sm border border-gray-300 rounded-md hover:bg-gray-50">Cancel</button>
                 <button type="submit" disabled={createAssignment.isPending} className="px-4 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50">
                   {createAssignment.isPending ? 'Assigning...' : 'Assign'}
                 </button>

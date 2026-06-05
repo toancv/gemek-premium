@@ -34,7 +34,7 @@ export const useUpdateApartment = () => {
 };
 
 export const useBlocks = () =>
-  useQuery({ queryKey: ['blocks'], queryFn: () => get('/blocks') });
+  useQuery({ queryKey: ['blocks'], queryFn: () => get('/blocks', { size: 200 }) });
 
 // Users
 export const useUsers = (params?: Record<string, unknown>) =>

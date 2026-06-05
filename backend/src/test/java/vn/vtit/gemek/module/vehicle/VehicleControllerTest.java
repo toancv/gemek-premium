@@ -18,14 +18,10 @@ import org.springframework.test.web.servlet.MvcResult;
 import vn.vtit.gemek.module.apartment.dto.CreateApartmentRequest;
 import vn.vtit.gemek.module.apartment.dto.CreateBlockRequest;
 import vn.vtit.gemek.module.auth.dto.LoginRequest;
-import vn.vtit.gemek.module.resident.dto.CreateResidentRequest;
-import vn.vtit.gemek.module.resident.entity.ResidentType;
-import vn.vtit.gemek.module.user.dto.CreateUserRequest;
-import vn.vtit.gemek.module.user.entity.UserRole;
+import java.util.HashMap;
 import vn.vtit.gemek.module.vehicle.dto.CreateVehicleRequest;
 import vn.vtit.gemek.module.vehicle.entity.VehicleType;
 
-import java.time.LocalDate;
 import java.util.Map;
 import java.util.UUID;
 
@@ -99,25 +95,6 @@ class VehicleControllerTest {
     }
 
     /**
-     * Creates a RESIDENT user, returns their UUID.
-     *
-     * @param email the user's email address.
-     * @return the created user's UUID.
-     */
-    private UUID createResidentUser(String email) throws Exception {
-        CreateUserRequest req = new CreateUserRequest(
-                email, "Vehicle Resident", "0911111111", UserRole.RESIDENT, "Resident@123456");
-        MvcResult result = mockMvc.perform(post("/api/users")
-                        .header("Authorization", "Bearer " + adminToken)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(req)))
-                .andExpect(status().isCreated())
-                .andReturn();
-        Map<?, ?> body = objectMapper.readValue(result.getResponse().getContentAsString(), Map.class);
-        return UUID.fromString((String) body.get("id"));
-    }
-
-    /**
      * Logs in with the given email and standard resident password, returns the access token.
      *
      * @param email the user's email address.
@@ -135,16 +112,20 @@ class VehicleControllerTest {
     }
 
     /**
-     * Creates a resident record and returns its UUID.
+     * Creates a new user+resident atomically via the new transactional endpoint.
      *
-     * @param userId      the user UUID.
-     * @param apartmentId the apartment UUID.
+     * @param email       the new user's email.
+     * @param apartmentId the apartment UUID to assign.
      * @return the created resident UUID.
      */
-    private UUID createResident(UUID userId, UUID apartmentId) throws Exception {
-        CreateResidentRequest req = new CreateResidentRequest(
-                userId, apartmentId, ResidentType.TENANT,
-                LocalDate.of(2026, 1, 1), false, null);
+    private UUID createResident(String email, UUID apartmentId) throws Exception {
+        Map<String, Object> req = new HashMap<>();
+        req.put("fullName", "Vehicle Resident");
+        req.put("email", email);
+        req.put("password", "Resident@123456");
+        req.put("apartmentId", apartmentId.toString());
+        req.put("type", "TENANT");
+        req.put("moveInDate", "2026-01-01");
         MvcResult result = mockMvc.perform(post("/api/residents")
                         .header("Authorization", "Bearer " + adminToken)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -186,8 +167,7 @@ class VehicleControllerTest {
         String uid = UUID.randomUUID().toString().replace("-", "").substring(0, 8);
         UUID blockId = createBlock("VehBlock-Create-" + uid);
         UUID apartmentId = createApartment(blockId, "V1-" + uid);
-        UUID userId = createResidentUser("veh.create." + uid + "@test.com");
-        UUID residentId = createResident(userId, apartmentId);
+        UUID residentId = createResident("veh.create." + uid + "@test.com", apartmentId);
 
         String plate = "51A-" + uid;
         CreateVehicleRequest req = new CreateVehicleRequest(
@@ -209,8 +189,7 @@ class VehicleControllerTest {
         String uid2 = UUID.randomUUID().toString().replace("-", "").substring(0, 8);
         UUID blockId = createBlock("VehBlock-Dup-" + uid2);
         UUID apartmentId = createApartment(blockId, "V2-" + uid2);
-        UUID userId = createResidentUser("veh.dup." + uid2 + "@test.com");
-        UUID residentId = createResident(userId, apartmentId);
+        UUID residentId = createResident("veh.dup." + uid2 + "@test.com", apartmentId);
 
         String plate = "51B-" + uid2;
         createVehicle(residentId, apartmentId, plate);
@@ -237,8 +216,7 @@ class VehicleControllerTest {
         UUID blockId = createBlock("VehBlock-Own-" + uid3);
         UUID apartmentId = createApartment(blockId, "V3-" + uid3);
         String email = "veh.own." + uid3 + "@test.com";
-        UUID userId = createResidentUser(email);
-        UUID residentId = createResident(userId, apartmentId);
+        UUID residentId = createResident(email, apartmentId);
 
         String plate = "51C-" + uid3;
         UUID vehicleId = createVehicle(residentId, apartmentId, plate);
@@ -261,11 +239,8 @@ class VehicleControllerTest {
 
         String emailA = "veh.otherA." + uid4 + "@test.com";
         String emailB = "veh.otherB." + uid4 + "@test.com";
-        UUID userA = createResidentUser(emailA);
-        UUID userB = createResidentUser(emailB);
-
-        UUID residentA = createResident(userA, aptA);
-        createResident(userB, aptB);
+        UUID residentA = createResident(emailA, aptA);
+        createResident(emailB, aptB);
 
         // Vehicle registered to apartment A.
         String plate = "51D-" + uid4;
@@ -308,8 +283,7 @@ class VehicleControllerTest {
         String uid = UUID.randomUUID().toString().replace("-", "").substring(0, 8);
         UUID blockId    = createBlock("VehBlock-Srch-" + uid);
         UUID apartmentId = createApartment(blockId, "VS1-" + uid);
-        UUID userId     = createResidentUser("veh.srch." + uid + "@test.com");
-        UUID residentId = createResident(userId, apartmentId);
+        UUID residentId = createResident("veh.srch." + uid + "@test.com", apartmentId);
 
         // Plate chosen to be unique enough for substring match.
         String plate = "SRCH" + uid;
@@ -337,10 +311,8 @@ class VehicleControllerTest {
         UUID aptA    = createApartment(blockId, "VFA-" + uid);
         UUID aptB    = createApartment(blockId, "VFB-" + uid);
 
-        UUID userA = createResidentUser("veh.fltA." + uid + "@test.com");
-        UUID userB = createResidentUser("veh.fltB." + uid + "@test.com");
-        UUID resA  = createResident(userA, aptA);
-        UUID resB  = createResident(userB, aptB);
+        UUID resA  = createResident("veh.fltA." + uid + "@test.com", aptA);
+        UUID resB  = createResident("veh.fltB." + uid + "@test.com", aptB);
 
         // Both plates share the same uid substring so both match the search term.
         String plateA = "FLT" + uid + "A";
@@ -368,8 +340,7 @@ class VehicleControllerTest {
         String uid5 = UUID.randomUUID().toString().replace("-", "").substring(0, 8);
         UUID blockId = createBlock("VehBlock-Del-" + uid5);
         UUID apartmentId = createApartment(blockId, "V5-" + uid5);
-        UUID userId = createResidentUser("veh.del." + uid5 + "@test.com");
-        UUID residentId = createResident(userId, apartmentId);
+        UUID residentId = createResident("veh.del." + uid5 + "@test.com", apartmentId);
 
         String plate = "51E-" + uid5;
         UUID vehicleId = createVehicle(residentId, apartmentId, plate);

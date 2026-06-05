@@ -24,8 +24,7 @@ import vn.vtit.gemek.module.amenity.entity.BookingStatus;
 import vn.vtit.gemek.module.apartment.dto.CreateApartmentRequest;
 import vn.vtit.gemek.module.apartment.dto.CreateBlockRequest;
 import vn.vtit.gemek.module.auth.dto.LoginRequest;
-import vn.vtit.gemek.module.resident.dto.CreateResidentRequest;
-import vn.vtit.gemek.module.resident.entity.ResidentType;
+import java.util.HashMap;
 import vn.vtit.gemek.module.user.dto.CreateUserRequest;
 import vn.vtit.gemek.module.user.entity.UserRole;
 
@@ -71,7 +70,6 @@ class AmenityControllerTest {
 
     private String adminToken;
     private String residentToken;
-    private UUID residentUserId;
 
     /** Fresh no-approval amenity created per test to eliminate cross-run slot conflicts. */
     private UUID gymAmenityId;
@@ -95,10 +93,9 @@ class AmenityControllerTest {
         // Create unique resident per test (UUID suffix guarantees uniqueness across runs).
         String uid = UUID.randomUUID().toString().replace("-", "").substring(0, 8);
         String residentEmail = "amenity.res." + uid + "@test.com";
-        residentUserId = createUser(residentEmail, UserRole.RESIDENT);
         UUID blockId = createBlock("AmBlock-" + uid);
         UUID apartmentId = createApartment(blockId, "AM-" + uid);
-        assignResident(residentUserId, apartmentId);
+        assignResident(residentEmail, apartmentId);
         residentToken = login(residentEmail, "Password@123456");
 
         // Create fresh amenities per test — unique names eliminate all cross-run slot conflicts.
@@ -151,10 +148,9 @@ class AmenityControllerTest {
         // Create a second resident to book the same slot — should conflict.
         String ovUid = UUID.randomUUID().toString().replace("-", "").substring(0, 8);
         String secondResidentEmail = "overlap.resident." + ovUid + "@test.com";
-        UUID secondUserId = createUser(secondResidentEmail, UserRole.RESIDENT);
         UUID blockId2 = createBlock("OvBlock-" + ovUid);
         UUID apt2 = createApartment(blockId2, "OV-" + ovUid);
-        assignResident(secondUserId, apt2);
+        assignResident(secondResidentEmail, apt2);
         String secondToken = login(secondResidentEmail, "Password@123456");
 
         // First booking succeeds.
@@ -364,16 +360,15 @@ class AmenityControllerTest {
         return UUID.fromString((String) body.get("id"));
     }
 
-    /**
-     * Assigns a user as an OWNER resident of the given apartment.
-     *
-     * @param userId      the user UUID.
-     * @param apartmentId the apartment UUID.
-     */
-    private void assignResident(UUID userId, UUID apartmentId) throws Exception {
-        CreateResidentRequest req = new CreateResidentRequest(
-                userId, apartmentId, ResidentType.OWNER,
-                LocalDate.of(2026, 1, 1), true, null);
+    private void assignResident(String email, UUID apartmentId) throws Exception {
+        Map<String, Object> req = new HashMap<>();
+        req.put("fullName", "Test Resident");
+        req.put("email", email);
+        req.put("password", "Password@123456");
+        req.put("apartmentId", apartmentId.toString());
+        req.put("type", "OWNER");
+        req.put("moveInDate", "2026-01-01");
+        req.put("isPrimaryContact", true);
         mockMvc.perform(post("/api/residents")
                         .header("Authorization", "Bearer " + adminToken)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -487,10 +482,9 @@ class AmenityControllerTest {
     void listBookings_residentCannotSeeOtherResidentBookings() throws Exception {
         // Create resident B with their own apartment and booking.
         String bUid = UUID.randomUUID().toString().replace("-", "").substring(0, 8);
-        UUID bUserId = createUser("res.b." + bUid + "@test.com", UserRole.RESIDENT);
         UUID bBlockId = createBlock("BBlock-" + bUid);
         UUID bAptId = createApartment(bBlockId, "B-" + bUid);
-        assignResident(bUserId, bAptId);
+        assignResident("res.b." + bUid + "@test.com", bAptId);
         String bToken = login("res.b." + bUid + "@test.com", "Password@123456");
 
         // Resident B creates a booking on a different amenity (bbq — unique per setUp).
@@ -526,10 +520,9 @@ class AmenityControllerTest {
     void listBookings_residentPassingOtherResidentId_seesOnlyOwn() throws Exception {
         // Create resident B.
         String bUid = UUID.randomUUID().toString().replace("-", "").substring(0, 8);
-        UUID bUserId = createUser("res.b2." + bUid + "@test.com", UserRole.RESIDENT);
         UUID bBlockId = createBlock("BBlock2-" + bUid);
         UUID bAptId = createApartment(bBlockId, "B2-" + bUid);
-        assignResident(bUserId, bAptId);
+        assignResident("res.b2." + bUid + "@test.com", bAptId);
         String bToken = login("res.b2." + bUid + "@test.com", "Password@123456");
 
         // Resident B creates a booking.
@@ -581,10 +574,9 @@ class AmenityControllerTest {
 
         // Resident B booking.
         String bUid = UUID.randomUUID().toString().replace("-", "").substring(0, 8);
-        UUID bUserId = createUser("res.b3." + bUid + "@test.com", UserRole.RESIDENT);
         UUID bBlockId = createBlock("BBlock3-" + bUid);
         UUID bAptId = createApartment(bBlockId, "B3-" + bUid);
-        assignResident(bUserId, bAptId);
+        assignResident("res.b3." + bUid + "@test.com", bAptId);
         String bToken = login("res.b3." + bUid + "@test.com", "Password@123456");
 
         CreateBookingRequest bReq = buildBookingRequest(

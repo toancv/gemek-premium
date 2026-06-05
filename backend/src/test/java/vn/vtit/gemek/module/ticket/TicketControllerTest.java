@@ -20,8 +20,7 @@ import vn.vtit.gemek.common.storage.FileStorageService;
 import vn.vtit.gemek.module.apartment.dto.CreateApartmentRequest;
 import vn.vtit.gemek.module.apartment.dto.CreateBlockRequest;
 import vn.vtit.gemek.module.auth.dto.LoginRequest;
-import vn.vtit.gemek.module.resident.dto.CreateResidentRequest;
-import vn.vtit.gemek.module.resident.entity.ResidentType;
+import java.util.HashMap;
 import vn.vtit.gemek.module.ticket.dto.AssignTicketRequest;
 import vn.vtit.gemek.module.ticket.dto.CreateTicketRequest;
 import vn.vtit.gemek.module.ticket.dto.RateTicketRequest;
@@ -165,13 +164,18 @@ class TicketControllerTest {
     /**
      * Assigns a user as an active resident of the given apartment.
      *
-     * @param userId      the user UUID.
+     * @param email       the new user's email.
      * @param apartmentId the apartment UUID.
      */
-    private void assignResident(UUID userId, UUID apartmentId) throws Exception {
-        CreateResidentRequest req = new CreateResidentRequest(
-                userId, apartmentId, ResidentType.OWNER,
-                LocalDate.of(2026, 1, 1), true, null);
+    private void assignResident(String email, UUID apartmentId) throws Exception {
+        Map<String, Object> req = new HashMap<>();
+        req.put("fullName", "Test Resident");
+        req.put("email", email);
+        req.put("password", "Password@123456");
+        req.put("apartmentId", apartmentId.toString());
+        req.put("type", "OWNER");
+        req.put("moveInDate", "2026-01-01");
+        req.put("isPrimaryContact", true);
         mockMvc.perform(post("/api/residents")
                         .header("Authorization", "Bearer " + adminToken)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -214,8 +218,7 @@ class TicketControllerTest {
         UUID blockId = createBlock("TBlock1-" + System.nanoTime());
         UUID apartmentId = createApartment(blockId, "T101");
         String email = "res.tick1." + System.nanoTime() + "@test.com";
-        UUID userId = createUser(email, UserRole.RESIDENT);
-        assignResident(userId, apartmentId);
+        assignResident(email, apartmentId);
         String residentToken = login(email, "Password@123456");
 
         CreateTicketRequest req = CreateTicketRequest.builder()
@@ -359,8 +362,7 @@ class TicketControllerTest {
         UUID blockId = createBlock("TBlock6-" + System.nanoTime());
         UUID apartmentId = createApartment(blockId, "T601");
         String email = "res.rate." + System.nanoTime() + "@test.com";
-        UUID userId = createUser(email, UserRole.RESIDENT);
-        assignResident(userId, apartmentId);
+        assignResident(email, apartmentId);
         String residentToken = login(email, "Password@123456");
 
         UUID ticketId = createTicket(residentToken, apartmentId, TicketCategory.MAINTENANCE_REPAIR);
@@ -417,8 +419,7 @@ class TicketControllerTest {
         UUID blockId = createBlock("TBlock7-" + System.nanoTime());
         UUID apartmentId = createApartment(blockId, "T701");
         String email = "res.rate2." + System.nanoTime() + "@test.com";
-        UUID userId = createUser(email, UserRole.RESIDENT);
-        assignResident(userId, apartmentId);
+        assignResident(email, apartmentId);
         String residentToken = login(email, "Password@123456");
 
         UUID ticketId = createTicket(residentToken, apartmentId, TicketCategory.COMPLAINT);
@@ -463,13 +464,11 @@ class TicketControllerTest {
         UUID aptB = createApartment(blockId, "TA802");
 
         String emailA = "res.scopeA." + System.nanoTime() + "@test.com";
-        UUID userA = createUser(emailA, UserRole.RESIDENT);
-        assignResident(userA, aptA);
+        assignResident(emailA, aptA);
         String tokenA = login(emailA, "Password@123456");
 
         String emailB = "res.scopeB." + System.nanoTime() + "@test.com";
-        UUID userB = createUser(emailB, UserRole.RESIDENT);
-        assignResident(userB, aptB);
+        assignResident(emailB, aptB);
 
         // Create one ticket for apartment A and one for apartment B (as admin).
         UUID ticketA = createTicket(tokenA, aptA, TicketCategory.COMPLAINT);

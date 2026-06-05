@@ -12,6 +12,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import vn.vtit.gemek.common.exception.AppException;
 import vn.vtit.gemek.common.exception.ErrorCode;
 import vn.vtit.gemek.module.apartment.entity.Apartment;
@@ -34,13 +35,14 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
 /**
- * Unit tests for {@link ResidentServiceImpl} — GAP-08 assignment guards.
+ * Unit tests for {@link ResidentServiceImpl}.
  *
- * <p>Verifies: duplicate-active-resident CONFLICT, user/apartment NOT_FOUND guards,
- * RESIDENT role cross-record FORBIDDEN, and double move-out CONFLICT.
+ * <p>Covers: duplicate-email CONFLICT, apartment NOT_FOUND, RESIDENT role FORBIDDEN,
+ * double move-out CONFLICT, and getMyResident guards.
  */
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
@@ -51,6 +53,7 @@ class ResidentServiceImplTest {
     @Mock private ApartmentRepository apartmentRepository;
     @Mock private UserRepository userRepository;
     @Mock private ResidentMapper residentMapper;
+    @Mock private PasswordEncoder passwordEncoder;
 
     private ResidentServiceImpl service;
 
@@ -65,7 +68,8 @@ class ResidentServiceImplTest {
     void setUp() {
         service = new ResidentServiceImpl(
                 residentRepository, historyRepository,
-                apartmentRepository, userRepository, residentMapper);
+                apartmentRepository, userRepository,
+                residentMapper, passwordEncoder);
 
         userId = UUID.randomUUID();
         apartmentId = UUID.randomUUID();
@@ -90,16 +94,18 @@ class ResidentServiceImplTest {
     }
 
     // =========================================================================
-    // createResident — user already active in another apartment → CONFLICT
+    // createResident — duplicate email → CONFLICT
     // =========================================================================
 
     @Test
-    @DisplayName("createResident — user already active resident throws CONFLICT")
-    void createResident_userAlreadyActiveResident_throwsConflict() {
-        when(residentRepository.existsActiveByUserId(userId)).thenReturn(true);
+    @DisplayName("createResident — duplicate email throws CONFLICT")
+    void createResident_duplicateEmail_throwsConflict() {
+        when(userRepository.existsByEmail("dup@test.com")).thenReturn(true);
 
         CreateResidentRequest request = new CreateResidentRequest(
-                userId, apartmentId, ResidentType.OWNER,
+                "Test User", "dup@test.com", "Pass@123456",
+                null, null,
+                apartmentId, ResidentType.OWNER,
                 LocalDate.of(2026, 1, 1), false, null);
 
         assertThatThrownBy(() -> service.createResident(request, UUID.randomUUID()))
@@ -109,17 +115,19 @@ class ResidentServiceImplTest {
     }
 
     // =========================================================================
-    // createResident — user not found → NOT_FOUND
+    // createResident — apartment not found → NOT_FOUND
     // =========================================================================
 
     @Test
-    @DisplayName("createResident — user not found throws NOT_FOUND")
-    void createResident_userNotFound_throwsNotFound() {
-        when(residentRepository.existsActiveByUserId(userId)).thenReturn(false);
-        when(userRepository.findById(userId)).thenReturn(Optional.empty());
+    @DisplayName("createResident — apartment not found throws NOT_FOUND")
+    void createResident_apartmentNotFound_throwsNotFound() {
+        when(userRepository.existsByEmail("new@test.com")).thenReturn(false);
+        when(apartmentRepository.findById(apartmentId)).thenReturn(Optional.empty());
 
         CreateResidentRequest request = new CreateResidentRequest(
-                userId, apartmentId, ResidentType.OWNER,
+                "Test User", "new@test.com", "Pass@123456",
+                null, null,
+                apartmentId, ResidentType.OWNER,
                 LocalDate.of(2026, 1, 1), false, null);
 
         assertThatThrownBy(() -> service.createResident(request, UUID.randomUUID()))
@@ -129,24 +137,29 @@ class ResidentServiceImplTest {
     }
 
     // =========================================================================
-    // createResident — apartment not found → NOT_FOUND
+    // createResident — success path saves user then resident
     // =========================================================================
 
     @Test
-    @DisplayName("createResident — apartment not found throws NOT_FOUND")
-    void createResident_apartmentNotFound_throwsNotFound() {
-        when(residentRepository.existsActiveByUserId(userId)).thenReturn(false);
-        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
-        when(apartmentRepository.findById(apartmentId)).thenReturn(Optional.empty());
+    @DisplayName("createResident — valid request saves user and resident, returns mapped response")
+    void createResident_validRequest_savesUserAndResident() {
+        when(userRepository.existsByEmail("ok@test.com")).thenReturn(false);
+        when(passwordEncoder.encode("Pass@123456")).thenReturn("$2a$hashed");
+        when(apartmentRepository.findById(apartmentId)).thenReturn(Optional.of(apartment));
+        when(userRepository.save(any(User.class))).thenReturn(user);
+        when(residentRepository.save(any(Resident.class))).thenReturn(resident);
+        ResidentResponse expected = ResidentResponse.builder().id(residentId).build();
+        when(residentMapper.toResponse(resident)).thenReturn(expected);
 
         CreateResidentRequest request = new CreateResidentRequest(
-                userId, apartmentId, ResidentType.OWNER,
+                "Nguyen Van A", "ok@test.com", "Pass@123456",
+                null, null,
+                apartmentId, ResidentType.OWNER,
                 LocalDate.of(2026, 1, 1), false, null);
 
-        assertThatThrownBy(() -> service.createResident(request, UUID.randomUUID()))
-                .isInstanceOf(AppException.class)
-                .satisfies(ex -> assertThat(((AppException) ex).getErrorCode())
-                        .isEqualTo(ErrorCode.NOT_FOUND));
+        ResidentResponse result = service.createResident(request, UUID.randomUUID());
+
+        assertThat(result.getId()).isEqualTo(residentId);
     }
 
     // =========================================================================

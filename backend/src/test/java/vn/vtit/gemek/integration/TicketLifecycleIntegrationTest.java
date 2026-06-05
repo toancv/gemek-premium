@@ -23,8 +23,7 @@ import vn.vtit.gemek.module.auth.dto.LoginRequest;
 import vn.vtit.gemek.module.contractor.dto.CreateContractorRequest;
 import vn.vtit.gemek.module.contractor.entity.ContractorSpecialty;
 import vn.vtit.gemek.module.contractor.repository.ContractorRepository;
-import vn.vtit.gemek.module.resident.dto.CreateResidentRequest;
-import vn.vtit.gemek.module.resident.entity.ResidentType;
+import java.util.HashMap;
 import vn.vtit.gemek.module.ticket.dto.AssignTicketRequest;
 import vn.vtit.gemek.module.ticket.dto.CreateTicketRequest;
 import vn.vtit.gemek.module.ticket.dto.RateTicketRequest;
@@ -109,8 +108,7 @@ class TicketLifecycleIntegrationTest {
         UUID blockId     = createBlock("LC1-" + System.nanoTime());
         UUID apartmentId = createApartment(blockId, "LC101");
         String email     = "res.lc1." + System.nanoTime() + "@test.com";
-        UUID userId      = createUser(email, UserRole.RESIDENT);
-        assignResident(userId, apartmentId);
+        assignResident(email, apartmentId);
         String residentToken = login(email, "Password@123456");
 
         // Resident creates ticket.
@@ -153,8 +151,7 @@ class TicketLifecycleIntegrationTest {
         UUID blockId     = createBlock("LC2-" + System.nanoTime());
         UUID apartmentId = createApartment(blockId, "LC201");
         String email     = "res.lc2." + System.nanoTime() + "@test.com";
-        UUID userId      = createUser(email, UserRole.RESIDENT);
-        assignResident(userId, apartmentId);
+        assignResident(email, apartmentId);
         String residentToken = login(email, "Password@123456");
 
         // Create contractor.
@@ -268,13 +265,11 @@ class TicketLifecycleIntegrationTest {
         UUID aptB    = createApartment(blockId, "LC5B");
 
         String emailA = "res.lc5a." + System.nanoTime() + "@test.com";
-        UUID userA    = createUser(emailA, UserRole.RESIDENT);
-        assignResident(userA, aptA);
+        assignResident(emailA, aptA);
         String tokenA = login(emailA, "Password@123456");
 
         String emailB = "res.lc5b." + System.nanoTime() + "@test.com";
-        UUID userB    = createUser(emailB, UserRole.RESIDENT);
-        assignResident(userB, aptB);
+        assignResident(emailB, aptB);
 
         // Create one ticket per apartment.
         UUID ticketA = createTicket(tokenA, aptA, TicketCategory.COMPLAINT);
@@ -356,10 +351,15 @@ class TicketLifecycleIntegrationTest {
         return UUID.fromString((String) body.get("id"));
     }
 
-    private void assignResident(UUID userId, UUID apartmentId) throws Exception {
-        CreateResidentRequest req = new CreateResidentRequest(
-                userId, apartmentId, ResidentType.OWNER,
-                LocalDate.of(2026, 1, 1), true, null);
+    private void assignResident(String email, UUID apartmentId) throws Exception {
+        Map<String, Object> req = new HashMap<>();
+        req.put("fullName", "Test Resident");
+        req.put("email", email);
+        req.put("password", "Password@123456");
+        req.put("apartmentId", apartmentId.toString());
+        req.put("type", "OWNER");
+        req.put("moveInDate", "2026-01-01");
+        req.put("isPrimaryContact", true);
         mockMvc.perform(post("/api/residents")
                         .header("Authorization", "Bearer " + adminToken)
                         .contentType(MediaType.APPLICATION_JSON)

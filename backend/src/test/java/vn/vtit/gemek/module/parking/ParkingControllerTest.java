@@ -23,8 +23,7 @@ import vn.vtit.gemek.module.parking.dto.CreateAssignmentRequest;
 import vn.vtit.gemek.module.parking.dto.CreateGuestVehicleRequest;
 import vn.vtit.gemek.module.parking.dto.CreateParkingSlotRequest;
 import vn.vtit.gemek.module.parking.entity.ParkingSlotType;
-import vn.vtit.gemek.module.resident.dto.CreateResidentRequest;
-import vn.vtit.gemek.module.resident.entity.ResidentType;
+import java.util.HashMap;
 import vn.vtit.gemek.module.user.dto.CreateUserRequest;
 import vn.vtit.gemek.module.user.entity.UserRole;
 import vn.vtit.gemek.module.vehicle.dto.CreateVehicleRequest;
@@ -140,35 +139,21 @@ class ParkingControllerTest {
     }
 
     /**
-     * Creates a user with RESIDENT role and returns the UUID.
+     * Creates a new user+resident atomically via the new transactional endpoint.
      *
-     * @param email user email.
-     * @return the created user UUID.
-     */
-    private UUID createResidentUser(String email) throws Exception {
-        CreateUserRequest req = new CreateUserRequest(
-                email, "Parking Resident", "0900000001", UserRole.RESIDENT, "Resident@123456");
-        MvcResult result = mockMvc.perform(post("/api/users")
-                        .header("Authorization", "Bearer " + adminToken)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(req)))
-                .andExpect(status().isCreated())
-                .andReturn();
-        Map<?, ?> body = objectMapper.readValue(result.getResponse().getContentAsString(), Map.class);
-        return UUID.fromString((String) body.get("id"));
-    }
-
-    /**
-     * Creates a resident record and returns its UUID.
-     *
-     * @param userId      user UUID.
-     * @param apartmentId apartment UUID.
+     * @param email       the new user's email.
+     * @param apartmentId the apartment UUID to assign.
      * @return the created resident UUID.
      */
-    private UUID createResident(UUID userId, UUID apartmentId) throws Exception {
-        CreateResidentRequest req = new CreateResidentRequest(
-                userId, apartmentId, ResidentType.OWNER,
-                LocalDate.of(2026, 1, 1), true, null);
+    private UUID createResident(String email, UUID apartmentId) throws Exception {
+        Map<String, Object> req = new HashMap<>();
+        req.put("fullName", "Parking Resident");
+        req.put("email", email);
+        req.put("password", "Resident@123456");
+        req.put("apartmentId", apartmentId.toString());
+        req.put("type", "OWNER");
+        req.put("moveInDate", "2026-01-01");
+        req.put("isPrimaryContact", true);
         MvcResult result = mockMvc.perform(post("/api/residents")
                         .header("Authorization", "Bearer " + adminToken)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -210,8 +195,7 @@ class ParkingControllerTest {
         String uid = UUID.randomUUID().toString().replace("-", "").substring(0, 8);
         UUID blockId = createBlock("ParkBlock-Assign-" + uid);
         UUID apartmentId = createApartment(blockId, "PA-" + uid);
-        UUID userId = createResidentUser("park.assign." + uid + "@test.com");
-        UUID residentId = createResident(userId, apartmentId);
+        UUID residentId = createResident("park.assign." + uid + "@test.com", apartmentId);
         String plate = "51A-" + uid;
         UUID vehicleId = createVehicle(residentId, apartmentId, plate);
         UUID slotId = createSlot("SA-" + uid, ParkingSlotType.CAR);
@@ -239,8 +223,7 @@ class ParkingControllerTest {
         String uid2 = UUID.randomUUID().toString().replace("-", "").substring(0, 8);
         UUID blockId = createBlock("ParkBlock-Dup-" + uid2);
         UUID apartmentId = createApartment(blockId, "PD-" + uid2);
-        UUID userId = createResidentUser("park.dup." + uid2 + "@test.com");
-        UUID residentId = createResident(userId, apartmentId);
+        UUID residentId = createResident("park.dup." + uid2 + "@test.com", apartmentId);
         String plate1 = "52A-" + uid2;
         String plate2 = "52B-" + uid2;
         UUID vehicle1 = createVehicle(residentId, apartmentId, plate1);
@@ -277,8 +260,7 @@ class ParkingControllerTest {
         String uid3 = UUID.randomUUID().toString().replace("-", "").substring(0, 8);
         UUID blockId = createBlock("ParkBlock-Unassign-" + uid3);
         UUID apartmentId = createApartment(blockId, "PU-" + uid3);
-        UUID userId = createResidentUser("park.unassign." + uid3 + "@test.com");
-        UUID residentId = createResident(userId, apartmentId);
+        UUID residentId = createResident("park.unassign." + uid3 + "@test.com", apartmentId);
         String plate = "53A-" + uid3;
         UUID vehicleId = createVehicle(residentId, apartmentId, plate);
         UUID slotId = createSlot("SU-" + uid3, ParkingSlotType.CAR);

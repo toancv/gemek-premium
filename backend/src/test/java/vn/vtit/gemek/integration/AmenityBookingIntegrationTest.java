@@ -24,8 +24,7 @@ import vn.vtit.gemek.module.amenity.entity.BookingStatus;
 import vn.vtit.gemek.module.apartment.dto.CreateApartmentRequest;
 import vn.vtit.gemek.module.apartment.dto.CreateBlockRequest;
 import vn.vtit.gemek.module.auth.dto.LoginRequest;
-import vn.vtit.gemek.module.resident.dto.CreateResidentRequest;
-import vn.vtit.gemek.module.resident.entity.ResidentType;
+import java.util.HashMap;
 import vn.vtit.gemek.module.user.dto.CreateUserRequest;
 import vn.vtit.gemek.module.user.entity.UserRole;
 
@@ -93,8 +92,7 @@ class AmenityBookingIntegrationTest {
         String email  = "res.ab." + uid + "@test.com";
         UUID blockId  = createBlock("ABBlock-" + uid);
         UUID aptId    = createApartment(blockId, "AB-" + uid);
-        UUID userId   = createUser(email, UserRole.RESIDENT);
-        assignResident(userId, aptId);
+        assignResident(email, aptId);
         residentToken = login(email, "Password@123456");
 
         // Create a fresh amenity per test — unique UUID name means no cross-run slot conflicts.
@@ -172,8 +170,7 @@ class AmenityBookingIntegrationTest {
         String emailB  = "res.ab2." + uid2 + "@test.com";
         UUID blockId2  = createBlock("ABBlock2-" + uid2);
         UUID aptId2    = createApartment(blockId2, "AB2-" + uid2);
-        UUID userIdB   = createUser(emailB, UserRole.RESIDENT);
-        assignResident(userIdB, aptId2);
+        assignResident(emailB, aptId2);
         String tokenB  = login(emailB, "Password@123456");
 
         // Resident B attempts the same slot — must conflict.
@@ -295,10 +292,15 @@ class AmenityBookingIntegrationTest {
         return UUID.fromString((String) body.get("id"));
     }
 
-    private void assignResident(UUID userId, UUID apartmentId) throws Exception {
-        CreateResidentRequest req = new CreateResidentRequest(
-                userId, apartmentId, ResidentType.OWNER,
-                LocalDate.of(2026, 1, 1), true, null);
+    private void assignResident(String email, UUID apartmentId) throws Exception {
+        Map<String, Object> req = new HashMap<>();
+        req.put("fullName", "Test Resident");
+        req.put("email", email);
+        req.put("password", "Password@123456");
+        req.put("apartmentId", apartmentId.toString());
+        req.put("type", "OWNER");
+        req.put("moveInDate", "2026-01-01");
+        req.put("isPrimaryContact", true);
         mockMvc.perform(post("/api/residents")
                         .header("Authorization", "Bearer " + adminToken)
                         .contentType(MediaType.APPLICATION_JSON)

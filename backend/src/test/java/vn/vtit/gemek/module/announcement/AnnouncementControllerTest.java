@@ -23,12 +23,10 @@ import vn.vtit.gemek.module.announcement.entity.AnnouncementType;
 import vn.vtit.gemek.module.apartment.dto.CreateApartmentRequest;
 import vn.vtit.gemek.module.apartment.dto.CreateBlockRequest;
 import vn.vtit.gemek.module.auth.dto.LoginRequest;
-import vn.vtit.gemek.module.resident.dto.CreateResidentRequest;
-import vn.vtit.gemek.module.resident.entity.ResidentType;
+import java.util.HashMap;
 import vn.vtit.gemek.module.user.dto.CreateUserRequest;
 import vn.vtit.gemek.module.user.entity.UserRole;
 
-import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -133,34 +131,20 @@ class AnnouncementControllerTest {
     }
 
     /**
-     * Creates a RESIDENT user and returns their UUID.
+     * Creates a new user+resident atomically via the new transactional endpoint.
      *
-     * @param email the user email.
-     * @return the created user UUID.
+     * @param email       the new user's email (also used for login).
+     * @param apartmentId the apartment UUID to assign the resident to.
      */
-    private UUID createResidentUser(String email) throws Exception {
-        CreateUserRequest req = new CreateUserRequest(
-                email, "Test Resident", "0900000099", UserRole.RESIDENT, "Password@123456");
-        MvcResult result = mockMvc.perform(post("/api/users")
-                        .header("Authorization", "Bearer " + adminToken)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(req)))
-                .andExpect(status().isCreated())
-                .andReturn();
-        Map<?, ?> body = objectMapper.readValue(result.getResponse().getContentAsString(), Map.class);
-        return UUID.fromString((String) body.get("id"));
-    }
-
-    /**
-     * Assigns a user as an active resident of the given apartment.
-     *
-     * @param userId      the user UUID.
-     * @param apartmentId the apartment UUID.
-     */
-    private void assignResident(UUID userId, UUID apartmentId) throws Exception {
-        CreateResidentRequest req = new CreateResidentRequest(
-                userId, apartmentId, ResidentType.OWNER,
-                LocalDate.of(2026, 1, 1), true, null);
+    private void assignResident(String email, UUID apartmentId) throws Exception {
+        Map<String, Object> req = new HashMap<>();
+        req.put("fullName", "Test Resident");
+        req.put("email", email);
+        req.put("password", "Password@123456");
+        req.put("apartmentId", apartmentId.toString());
+        req.put("type", "OWNER");
+        req.put("moveInDate", "2026-01-01");
+        req.put("isPrimaryContact", true);
         mockMvc.perform(post("/api/residents")
                         .header("Authorization", "Bearer " + adminToken)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -256,10 +240,9 @@ class AnnouncementControllerTest {
 
         // Create a resident user.
         String email = "res.read." + System.nanoTime() + "@test.com";
-        UUID userId = createResidentUser(email);
         UUID blockId = createBlock("AnnBlock-" + System.nanoTime());
         UUID apartmentId = createApartment(blockId, "AR301");
-        assignResident(userId, apartmentId);
+        assignResident(email, apartmentId);
         String residentToken = login(email, "Password@123456");
 
         // First mark-read.
@@ -296,10 +279,9 @@ class AnnouncementControllerTest {
 
         // Create and set up resident.
         String email = "res.list." + System.nanoTime() + "@test.com";
-        UUID userId = createResidentUser(email);
         UUID blockId = createBlock("AnnBlock2-" + System.nanoTime());
         UUID apartmentId = createApartment(blockId, "AL301");
-        assignResident(userId, apartmentId);
+        assignResident(email, apartmentId);
         String residentToken = login(email, "Password@123456");
 
         MvcResult result = mockMvc.perform(get("/api/announcements")

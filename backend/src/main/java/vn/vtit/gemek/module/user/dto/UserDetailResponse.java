@@ -7,6 +7,7 @@ package vn.vtit.gemek.module.user.dto;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import vn.vtit.gemek.module.user.entity.UserRole;
 
+import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.UUID;
 
@@ -19,6 +20,7 @@ import java.util.UUID;
  * @param fullName    the user's display name.
  * @param phone       the user's phone number, or {@code null}.
  * @param role        the user's role.
+ * @param dateOfBirth the user's date of birth, or {@code null}.
  * @param avatarUrl   the user's avatar MinIO object key, or {@code null}.
  * @param isActive    whether the account is active.
  * @param lastLoginAt timestamp of the most recent successful login, or {@code null}.
@@ -30,6 +32,7 @@ public record UserDetailResponse(
         String fullName,
         String phone,
         UserRole role,
+        LocalDate dateOfBirth,
         String avatarUrl,
         @JsonProperty("isActive") boolean isActive,
         OffsetDateTime lastLoginAt,

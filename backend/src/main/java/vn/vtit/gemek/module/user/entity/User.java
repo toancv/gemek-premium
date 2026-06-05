@@ -20,6 +20,7 @@ import lombok.Setter;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
+import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.UUID;
 
@@ -78,6 +79,10 @@ public class User {
     /** MinIO object key for the user's avatar. Not a full URL. */
     @Column(name = "avatar_url", length = 1000)
     private String avatarUrl;
+
+    /** Date of birth. Nullable — not required at account creation. */
+    @Column(name = "date_of_birth")
+    private LocalDate dateOfBirth;
 
     /** Timestamp of the user's most recent successful login. */
     @Column(name = "last_login_at")

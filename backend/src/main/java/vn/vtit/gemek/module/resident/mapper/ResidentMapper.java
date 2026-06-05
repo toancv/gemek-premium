@@ -28,6 +28,7 @@ public interface ResidentMapper {
     @Mapping(target = "user.fullName",     source = "user.fullName")
     @Mapping(target = "user.email",        source = "user.email")
     @Mapping(target = "user.phone",        source = "user.phone")
+    @Mapping(target = "user.dateOfBirth",  source = "user.dateOfBirth")
     @Mapping(target = "apartment.id",         source = "apartment.id")
     @Mapping(target = "apartment.unitNumber", source = "apartment.unitNumber")
     @Mapping(target = "apartment.block.name", source = "apartment.block.name")

@@ -5,6 +5,11 @@ Format: Date | Decision | Reasoning | Alternatives
 
 ---
 
+## 2026-06-05 | users.date_of_birth — nullable DATE column via V11 migration
+Added nullable `date_of_birth DATE` to users table (V11 migration). Exposed in UserResponse, UserDetailResponse, ResidentResponse.UserRef. No create/update flow yet — additive read-only this turn.
+
+---
+
 ## 2026-06-05 | GET /api/residents — search param + apartment.block in response
 
 **Decision:** Added optional `search` query param (Criteria API LIKE on user.fullName/email, same null-safe pattern as UserRepository fix). Added `apartment.block.name` to `ResidentResponse.ApartmentRef` and `ResidentMapper`. Fetch joins for user/apartment/block added to data query (not count) to avoid N+1.

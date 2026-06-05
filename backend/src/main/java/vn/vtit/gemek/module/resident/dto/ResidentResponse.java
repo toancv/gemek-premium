@@ -78,6 +78,9 @@ public class ResidentResponse {
 
         /** User's phone number. */
         private String phone;
+
+        /** User's date of birth, or {@code null}. */
+        private java.time.LocalDate dateOfBirth;
     }
 
     /**

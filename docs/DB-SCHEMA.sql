@@ -166,6 +166,7 @@ CREATE TABLE users (
     fcm_token           VARCHAR(500),               -- Firebase Cloud Messaging device token
     is_active           BOOLEAN         NOT NULL DEFAULT TRUE,
     avatar_url          VARCHAR(1000),              -- MinIO object key, not full URL
+    date_of_birth       DATE,
     last_login_at       TIMESTAMPTZ,
     created_at          TIMESTAMPTZ     NOT NULL DEFAULT NOW(),
     updated_at          TIMESTAMPTZ     NOT NULL DEFAULT NOW(),

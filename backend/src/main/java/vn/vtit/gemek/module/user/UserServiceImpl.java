@@ -4,10 +4,12 @@
  */
 package vn.vtit.gemek.module.user;
 
+import jakarta.persistence.criteria.Predicate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -65,9 +67,24 @@ public class UserServiceImpl implements UserService {
     @Override
     public PageResponse<UserResponse> listUsers(UserRole role, Boolean isActive, String search, Pageable pageable) {
         log.debug("Listing users — role={}, isActive={}, search={}", role, isActive, search);
-        Page<UserResponse> page = userRepository
-                .findAllWithFilters(role, isActive, search, pageable)
-                .map(userMapper::toUserResponse);
+        Specification<User> spec = (root, query, cb) -> {
+            java.util.List<Predicate> predicates = new java.util.ArrayList<>();
+            if (role != null) {
+                predicates.add(cb.equal(root.get("role"), role));
+            }
+            if (isActive != null) {
+                predicates.add(cb.equal(root.get("active"), isActive));
+            }
+            if (search != null && !search.isBlank()) {
+                String pattern = "%" + search.toLowerCase() + "%";
+                predicates.add(cb.or(
+                        cb.like(cb.lower(root.get("fullName")), pattern),
+                        cb.like(cb.lower(root.get("email")), pattern)
+                ));
+            }
+            return cb.and(predicates.toArray(new Predicate[0]));
+        };
+        Page<UserResponse> page = userRepository.findAll(spec, pageable).map(userMapper::toUserResponse);
         return PageResponse.of(page);
     }
 

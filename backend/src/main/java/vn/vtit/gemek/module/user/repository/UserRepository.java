@@ -7,8 +7,7 @@ package vn.vtit.gemek.module.user.repository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.query.Param;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import vn.vtit.gemek.module.user.entity.User;
 import vn.vtit.gemek.module.user.entity.UserRole;
 
@@ -20,8 +19,11 @@ import java.util.UUID;
  *
  * <p>Provides standard CRUD operations plus custom query methods for
  * email lookup and the admin user-list endpoint with filters.
+ * Extends {@link JpaSpecificationExecutor} so that dynamic optional filters
+ * are composed via Criteria API (avoids Hibernate-6 null→bytea type inference
+ * issue with JPQL LIKE/LOWER parameters).
  */
-public interface UserRepository extends JpaRepository<User, UUID> {
+public interface UserRepository extends JpaRepository<User, UUID>, JpaSpecificationExecutor<User> {
 
     /**
      * Finds a user by their unique email address.
@@ -46,29 +48,4 @@ public interface UserRepository extends JpaRepository<User, UUID> {
      * @return {@code true} if at least one user with that role exists.
      */
     boolean existsByRole(UserRole role);
-
-    /**
-     * Lists users with optional filters for the admin user-management page.
-     *
-     * <p>All filter parameters are nullable — passing {@code null} disables that filter.
-     *
-     * @param role     optional role filter; {@code null} matches all roles.
-     * @param isActive optional active-status filter; {@code null} matches both.
-     * @param search   optional substring search against full name or email; {@code null} disables.
-     * @param pageable pagination and sort parameters.
-     * @return a page of matching {@link User} entities.
-     */
-    @Query("""
-            SELECT u FROM User u
-            WHERE (:role IS NULL OR u.role = :role)
-              AND (:isActive IS NULL OR u.active = :isActive)
-              AND (:search IS NULL
-                   OR LOWER(u.fullName) LIKE LOWER(CONCAT('%', :search, '%'))
-                   OR LOWER(u.email)    LIKE LOWER(CONCAT('%', :search, '%')))
-            """)
-    Page<User> findAllWithFilters(
-            @Param("role") UserRole role,
-            @Param("isActive") Boolean isActive,
-            @Param("search") String search,
-            Pageable pageable);
 }

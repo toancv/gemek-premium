@@ -3,7 +3,7 @@
 ## Current State
 - **Phase:** DONE — all gates approved, deployment prep complete
 - **Gate:** G1 ✅ G2 ✅ G3 ✅ G4 ✅ (2026-06-03)
-- **Last completed:** 2026-06-05 — Admin resident create form: userId + apartmentId replaced with SearchableSelect dropdowns (user label: fullName — email; apt label: Block - Unit). 409 CONFLICT shows Vietnamese message. Added useUsers hook (size=200; >200 users is future work).
+- **Last completed:** 2026-06-05 — Fixed GET /api/users 500 (Hibernate 6 bytea bug). UserRepository now uses JpaSpecificationExecutor + Criteria API for optional search filters. 168/168 tests pass. Only 1 repo affected (ApartmentRepository already used COALESCE pattern that worked via Docker JAR).
 - **Blocked:** None
 
 ---

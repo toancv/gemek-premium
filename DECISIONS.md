@@ -5,6 +5,16 @@ Format: Date | Decision | Reasoning | Alternatives
 
 ---
 
+## 2026-06-05 | UserRepository — replace @Query findAllWithFilters with JpaSpecificationExecutor
+
+**Decision:** Removed the `@Query`-based `findAllWithFilters` from `UserRepository`; `UserRepository` now extends `JpaSpecificationExecutor<User>`. `UserServiceImpl.listUsers()` builds a `Specification<User>` programmatically using Criteria API, only adding the LIKE predicate when `search` is non-null.
+
+**Why:** Hibernate 6 + PostgreSQL JDBC driver binds all `String` named parameters in JPQL `LOWER(CONCAT('%', :param, '%'))` expressions as `bytea` regardless of value (null or non-null). PostgreSQL resolves ALL parameter types at query-planning time, so IS NULL short-circuit cannot prevent the `lower(bytea)` error. Multiple JPQL workarounds attempted failed: `COALESCE(:search, '')` (still bytea), `COALESCE(:search, column)` (type conflict error), `cast(:search as string)` (caused `could not determine data type of $1` for the IS NULL check of an unrelated enum param). Specifications use the JPA Criteria API which binds `String` parameters as `varchar` via `cb.like(cb.lower(root.get("fullName")), pattern)`.
+
+**Alternatives considered:** `cast(:search as string)` in JPQL (broken — shifts error to other params); `COALESCE(:search, column)` (broken in tests — `COALESCE types bytea and varchar cannot be matched`); native query (requires projection interface and separate count query, not worth the complexity). Specifications are the Spring-recommended approach for dynamic optional filters.
+
+---
+
 ## 2026-06-04 | API-SPEC corrected to match as-built backend — amenity approve/reject and parking routes
 
 Amenity: original spec defined two separate endpoints (`PUT /amenity-bookings/{id}/approve` with `{ notes }` and `PUT /amenity-bookings/{id}/reject` with `{ reason }`). The backend was implemented with a single unified endpoint (`PUT /amenity-bookings/{id}/approve`) accepting `{ status: BookingStatus, rejectionReason }`. The `/reject` endpoint was never built. API-SPEC updated to document the as-built contract. FE aligned to BE.

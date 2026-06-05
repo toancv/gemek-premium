@@ -492,12 +492,17 @@ Response `200 OK` — paginated list of resident objects. Each resident includes
 ### POST /api/residents
 
 **Auth:** ADMIN
-**Description:** Assign a user as a resident of an apartment.
+**Description:** Create a new user account and resident record in one atomic transaction.
+The `userId` field has been removed — the user is provisioned here, not pre-created separately.
 
 Request:
 ```json
 {
-  "userId": "uuid",
+  "fullName": "Nguyen Van A",
+  "email": "vana@example.com",
+  "password": "plaintext — BCrypt-hashed server-side",
+  "phone": "string|null",
+  "dateOfBirth": "1990-01-15|null",
   "apartmentId": "uuid",
   "type": "OWNER|TENANT",
   "moveInDate": "2024-01-01",
@@ -510,7 +515,7 @@ Response `201 Created`:
 ```json
 {
   "id": "uuid",
-  "user": { "id": "uuid", "fullName": "string", "email": "string" },
+  "user": { "id": "uuid", "fullName": "string", "email": "string", "phone": "string|null", "dateOfBirth": "date|null" },
   "apartment": { "id": "uuid", "unitNumber": "A301", "block": { "name": "Block A" } },
   "type": "OWNER",
   "moveInDate": "2024-01-01",
@@ -520,7 +525,7 @@ Response `201 Created`:
 }
 ```
 
-Errors: `409 CONFLICT` (user is already an active resident of another apartment)
+Errors: `409 CONFLICT` (email already registered), `404 NOT_FOUND` (apartment not found), `400 VALIDATION_ERROR` (missing required fields)
 
 ---
 

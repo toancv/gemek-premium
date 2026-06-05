@@ -5,6 +5,10 @@ Format: Date | Decision | Reasoning | Alternatives
 
 ---
 
+## 2026-06-05 | POST /api/residents — provisions new user + resident in one transaction; old assign-existing-user (userId) flow removed (breaking change)
+
+---
+
 ## 2026-06-05 | users.date_of_birth — nullable DATE column via V11 migration
 Added nullable `date_of_birth DATE` to users table (V11 migration). Exposed in UserResponse, UserDetailResponse, ResidentResponse.UserRef. No create/update flow yet — additive read-only this turn.
 

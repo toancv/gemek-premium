@@ -12,6 +12,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import vn.vtit.gemek.common.exception.AppException;
@@ -31,6 +32,7 @@ import vn.vtit.gemek.module.resident.mapper.ResidentMapper;
 import vn.vtit.gemek.module.resident.repository.ResidentHistoryRepository;
 import vn.vtit.gemek.module.resident.repository.ResidentRepository;
 import vn.vtit.gemek.module.user.entity.User;
+import vn.vtit.gemek.module.user.entity.UserRole;
 import vn.vtit.gemek.module.user.repository.UserRepository;
 
 import java.time.LocalDate;
@@ -57,6 +59,7 @@ public class ResidentServiceImpl implements ResidentService {
     private final ApartmentRepository apartmentRepository;
     private final UserRepository userRepository;
     private final ResidentMapper residentMapper;
+    private final PasswordEncoder passwordEncoder;
 
     /**
      * Constructs the service with its required dependencies.
@@ -66,17 +69,20 @@ public class ResidentServiceImpl implements ResidentService {
      * @param apartmentRepository the apartment JPA repository.
      * @param userRepository      the user JPA repository.
      * @param residentMapper      the MapStruct resident mapper.
+     * @param passwordEncoder     the BCrypt password encoder.
      */
     public ResidentServiceImpl(ResidentRepository residentRepository,
                                ResidentHistoryRepository historyRepository,
                                ApartmentRepository apartmentRepository,
                                UserRepository userRepository,
-                               ResidentMapper residentMapper) {
+                               ResidentMapper residentMapper,
+                               PasswordEncoder passwordEncoder) {
         this.residentRepository = residentRepository;
         this.historyRepository = historyRepository;
         this.apartmentRepository = apartmentRepository;
         this.userRepository = userRepository;
         this.residentMapper = residentMapper;
+        this.passwordEncoder = passwordEncoder;
     }
 
     /**
@@ -113,20 +119,28 @@ public class ResidentServiceImpl implements ResidentService {
     @Override
     @Transactional
     public ResidentResponse createResident(CreateResidentRequest req, UUID principalId) {
-        log.debug("Creating resident — userId={}, apartmentId={}", req.getUserId(), req.getApartmentId());
+        log.debug("Creating resident — email={}, apartmentId={}", req.getEmail(), req.getApartmentId());
 
-        // A user may only be an active resident in one apartment at a time.
-        if (residentRepository.existsActiveByUserId(req.getUserId())) {
-            throw new AppException(ErrorCode.CONFLICT, "User is already an active resident.");
+        // Email uniqueness check — reject before touching the DB to keep the transaction clean.
+        if (userRepository.existsByEmail(req.getEmail())) {
+            throw new AppException(ErrorCode.CONFLICT, "Email already registered: " + req.getEmail());
         }
-
-        User user = userRepository.findById(req.getUserId())
-                .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND,
-                        "User not found: " + req.getUserId()));
 
         Apartment apartment = apartmentRepository.findById(req.getApartmentId())
                 .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND,
                         "Apartment not found: " + req.getApartmentId()));
+
+        // Create the user account. Password is logged at DEBUG only as a masked marker; plaintext never logged.
+        User user = new User();
+        user.setEmail(req.getEmail());
+        user.setFullName(req.getFullName());
+        user.setPhone(req.getPhone());
+        user.setDateOfBirth(req.getDateOfBirth());
+        user.setPasswordHash(passwordEncoder.encode(req.getPassword()));
+        user.setRole(UserRole.RESIDENT);
+        user.setActive(true);
+        User savedUser = userRepository.save(user);
+        log.debug("User account created — userId={}, role=RESIDENT", savedUser.getId());
 
         // When setting as primary contact, clear the flag on all other active residents.
         if (req.isPrimaryContact()) {
@@ -135,7 +149,7 @@ public class ResidentServiceImpl implements ResidentService {
 
         OffsetDateTime now = OffsetDateTime.now();
         Resident resident = new Resident();
-        resident.setUser(user);
+        resident.setUser(savedUser);
         resident.setApartment(apartment);
         resident.setType(req.getType());
         resident.setMoveInDate(req.getMoveInDate());
@@ -146,14 +160,12 @@ public class ResidentServiceImpl implements ResidentService {
 
         Resident saved = residentRepository.save(resident);
 
-        // Write MOVED_IN history entry.
         appendHistory(saved, "MOVED_IN", req.getMoveInDate(), principalId, req.getNotes());
-
         if (req.isPrimaryContact()) {
             appendHistory(saved, "PRIMARY_CONTACT_SET", req.getMoveInDate(), principalId, null);
         }
 
-        log.info("Resident created — id={}, userId={}", saved.getId(), saved.getUser().getId());
+        log.info("Resident created — id={}, userId={}", saved.getId(), savedUser.getId());
         return residentMapper.toResponse(saved);
     }
 

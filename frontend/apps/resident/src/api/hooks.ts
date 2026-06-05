@@ -22,6 +22,7 @@ export const useCreateTicket = () => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (data: unknown) => post('/tickets', data),
+    meta: { skipErrorToast: true },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['tickets'] }),
   });
 };
@@ -31,6 +32,7 @@ export const useRateTicket = () => {
   return useMutation({
     mutationFn: ({ id, data }: { id: string; data: unknown }) =>
       post(`/tickets/${id}/rate`, data),
+    meta: { skipErrorToast: true },
     onSuccess: (_d, v) => qc.invalidateQueries({ queryKey: ['tickets', v.id] }),
   });
 };
@@ -45,6 +47,7 @@ export const useCreateBooking = () => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (data: unknown) => post('/amenity-bookings', data),
+    meta: { skipErrorToast: true, skipSuccessToast: true },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['my-bookings'] }),
   });
 };
@@ -53,6 +56,7 @@ export const useCancelBooking = () => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => put(`/amenity-bookings/${id}/cancel`, {}),
+    meta: { successMessage: 'Đã hủy đặt chỗ' },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['my-bookings'] }),
   });
 };
@@ -67,6 +71,7 @@ export const useMarkAnnouncementRead = () => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => post(`/announcements/${id}/read`),
+    meta: { skipSuccessToast: true },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['announcements'] }),
   });
 };
@@ -75,12 +80,13 @@ export const useCreateVehicle = () => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (data: unknown) => post('/vehicles', data),
+    meta: { skipErrorToast: true },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['my-vehicles'] }),
   });
 };
 
 export const useChangePassword = () =>
-  useMutation({ mutationFn: (data: unknown) => put('/auth/me/password', data) });
+  useMutation({ mutationFn: (data: unknown) => put('/auth/me/password', data), meta: { skipErrorToast: true } });
 
 export const useNotifications = () =>
   useQuery({ queryKey: ['notifications'], queryFn: () => get('/notifications', { size: 20 }) });
@@ -89,6 +95,7 @@ export const useMarkAllRead = () => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: () => put('/notifications/read-all'),
+    meta: { skipSuccessToast: true },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['notifications'] }),
   });
 };

@@ -10,6 +10,7 @@ export function ParkingPage() {
   const [formError, setFormError] = useState('');
   const logGuest = useMutation({
     mutationFn: (data: unknown) => apiClient.post('/parking/guest-vehicles', data).then((r) => r.data),
+    meta: { skipErrorToast: true },
     onSuccess: () => { setShowGuestForm(false); qc.invalidateQueries({ queryKey: ['my-parking'] }); },
   });
 

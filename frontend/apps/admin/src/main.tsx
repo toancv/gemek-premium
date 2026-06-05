@@ -1,6 +1,7 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClient, QueryClientProvider, MutationCache } from '@tanstack/react-query';
+import { mutationCacheHandlers } from '@gemek/ui';
 import App from './App';
 import './index.css';
 
@@ -9,6 +10,7 @@ import './index.css';
 // production bundle (exposes cached query data including resident PII and tokens).
 
 const queryClient = new QueryClient({
+  mutationCache: new MutationCache(mutationCacheHandlers),
   defaultOptions: {
     queries: { retry: 1, staleTime: 30_000 },
   },

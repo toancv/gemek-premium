@@ -21,6 +21,7 @@ export const useCreateApartment = () => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (data: unknown) => post('/apartments', data),
+    meta: { successMessage: 'Thêm căn hộ thành công' },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['apartments'] }),
   });
 };
@@ -29,6 +30,7 @@ export const useUpdateApartment = () => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ id, data }: { id: string; data: unknown }) => put(`/apartments/${id}`, data),
+    meta: { successMessage: 'Cập nhật căn hộ thành công' },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['apartments'] }),
   });
 };
@@ -48,6 +50,7 @@ export const useCreateResident = () => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (data: unknown) => post('/residents', data),
+    meta: { skipErrorToast: true },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['residents'] }),
   });
 };
@@ -63,6 +66,7 @@ export const useCreateTicket = () => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (data: unknown) => post('/tickets', data),
+    meta: { skipErrorToast: true },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['tickets'] }),
   });
 };
@@ -71,6 +75,7 @@ export const useAssignTicket = () => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ id, data }: { id: string; data: unknown }) => put(`/tickets/${id}/assign`, data),
+    meta: { skipErrorToast: true },
     onSuccess: (_d, v) => qc.invalidateQueries({ queryKey: ['tickets', v.id] }),
   });
 };
@@ -79,6 +84,7 @@ export const useUpdateTicketStatus = () => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ id, data }: { id: string; data: unknown }) => put(`/tickets/${id}/status`, data),
+    meta: { skipErrorToast: true },
     onSuccess: (_d, v) => { qc.invalidateQueries({ queryKey: ['tickets', v.id] }); qc.invalidateQueries({ queryKey: ['tickets'] }); },
   });
 };
@@ -91,6 +97,7 @@ export const useCreateContractor = () => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (data: unknown) => post('/contractors', data),
+    meta: { skipErrorToast: true },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['contractors'] }),
   });
 };
@@ -99,6 +106,7 @@ export const useUpdateContractor = () => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ id, data }: { id: string; data: unknown }) => put(`/contractors/${id}`, data),
+    meta: { skipErrorToast: true },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['contractors'] }),
   });
 };
@@ -111,6 +119,7 @@ export const useCreateAnnouncement = () => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (data: unknown) => post('/announcements', data),
+    meta: { skipErrorToast: true },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['announcements'] }),
   });
 };
@@ -119,6 +128,7 @@ export const usePublishAnnouncement = () => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => post(`/announcements/${id}/publish`),
+    meta: { skipErrorToast: true, skipSuccessToast: true },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['announcements'] }),
   });
 };
@@ -131,6 +141,7 @@ export const useCreateAmenity = () => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (data: unknown) => post('/amenities', data),
+    meta: { skipErrorToast: true },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['amenities'] }),
   });
 };
@@ -139,6 +150,7 @@ export const useUpdateAmenity = () => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ id, data }: { id: string; data: unknown }) => put(`/amenities/${id}`, data),
+    meta: { skipErrorToast: true },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['amenities'] }),
   });
 };
@@ -150,6 +162,7 @@ export const useApproveBooking = () => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => put(`/amenity-bookings/${id}/approve`, { status: 'APPROVED' }),
+    meta: { successMessage: 'Đã duyệt đặt chỗ' },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['amenity-bookings'] }),
   });
 };
@@ -159,6 +172,7 @@ export const useRejectBooking = () => {
   return useMutation({
     mutationFn: ({ id, reason }: { id: string; reason: string }) =>
       put(`/amenity-bookings/${id}/approve`, { status: 'REJECTED', rejectionReason: reason }),
+    meta: { successMessage: 'Đã từ chối đặt chỗ' },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['amenity-bookings'] }),
   });
 };
@@ -174,6 +188,7 @@ export const useCreateParkingAssignment = () => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (data: any) => post(`/parking/slots/${data.parkingSlotId}/assign`, data),
+    meta: { skipErrorToast: true },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['parking-slots'] }),
   });
 };
@@ -183,6 +198,7 @@ export const useEndParkingAssignment = () => {
   return useMutation({
     // id must be the SLOT UUID (not assignment UUID); BE: POST /parking/slots/{id}/unassign
     mutationFn: ({ id, data }: { id: string; data: unknown }) => post(`/parking/slots/${id}/unassign`, data),
+    meta: { successMessage: 'Đã kết thúc phân công chỗ đậu xe' },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['parking-slots'] }),
   });
 };
@@ -195,6 +211,7 @@ export const useCreateVehicle = () => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (data: unknown) => post('/vehicles', data),
+    meta: { skipErrorToast: true },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['vehicles'] }),
   });
 };
@@ -217,6 +234,7 @@ export const useMarkAllRead = () => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: () => put('/notifications/read-all'),
+    meta: { skipSuccessToast: true },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['notifications'] }),
   });
 };

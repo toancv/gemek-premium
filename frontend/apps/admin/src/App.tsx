@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { Toaster } from '@gemek/ui';
 import { useAuthStore } from './store/authStore';
 import { Layout } from './components/Layout';
 import { LoginPage } from './pages/LoginPage';
@@ -43,6 +44,7 @@ export default function App() {
   useEffect(() => { bootstrap(); }, [bootstrap]);
 
   return (
+    <>
     <BrowserRouter>
       <Routes>
         <Route path="/login" element={<LoginPage />} />
@@ -65,5 +67,7 @@ export default function App() {
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>
     </BrowserRouter>
+    <Toaster />
+    </>
   );
 }

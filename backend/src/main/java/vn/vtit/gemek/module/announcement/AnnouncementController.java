@@ -87,7 +87,7 @@ public class AnnouncementController {
 
         int cappedSize = Math.min(size, 100);
         Pageable pageable = PageRequest.of(page, cappedSize,
-                Sort.by(Sort.Order.desc("createdAt")));
+                Sort.by(Sort.Order.desc("createdAt"), Sort.Order.asc("id")));
         String role = extractRole(principal);
         return ResponseEntity.ok(
                 announcementService.listAnnouncements(principal.getId(), role, pageable));

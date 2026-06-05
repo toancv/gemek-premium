@@ -97,7 +97,7 @@ public class ResidentController {
 
         int cappedSize = Math.min(size, 100);
         Pageable pageable = PageRequest.of(page, cappedSize,
-                Sort.by(Sort.Order.asc("apartment.unitNumber"), Sort.Order.desc("createdAt")));
+                Sort.by(Sort.Order.asc("apartment.unitNumber"), Sort.Order.desc("createdAt"), Sort.Order.asc("id")));
         return ResponseEntity.ok(residentService.listResidents(apartmentId, type, isActive, search, pageable));
     }
 
@@ -196,7 +196,8 @@ public class ResidentController {
             @RequestParam(defaultValue = "20") int size) {
 
         int cappedSize = Math.min(size, 100);
-        Pageable pageable = PageRequest.of(page, cappedSize);
+        Pageable pageable = PageRequest.of(page, cappedSize,
+                Sort.by(Sort.Order.desc("createdAt"), Sort.Order.asc("id")));
         return ResponseEntity.ok(residentService.getResidentHistory(id, pageable));
     }
 
@@ -217,7 +218,8 @@ public class ResidentController {
             @RequestParam(defaultValue = "20") int size) {
 
         int cappedSize = Math.min(size, 100);
-        Pageable pageable = PageRequest.of(page, cappedSize);
+        Pageable pageable = PageRequest.of(page, cappedSize,
+                Sort.by(Sort.Order.desc("createdAt"), Sort.Order.asc("id")));
         return ResponseEntity.ok(residentService.getApartmentHistory(apartmentId, pageable));
     }
 }

@@ -81,7 +81,8 @@ public class BlockController {
         }
         int cappedSize = Math.min(size, 200);
         Sort.Direction sortDir = "asc".equalsIgnoreCase(direction) ? Sort.Direction.ASC : Sort.Direction.DESC;
-        Pageable pageable = PageRequest.of(page, cappedSize, Sort.by(sortDir, sort));
+        Pageable pageable = PageRequest.of(page, cappedSize,
+                Sort.by(new Sort.Order(sortDir, sort), Sort.Order.asc("id")));
 
         return ResponseEntity.ok(blockService.listBlocks(search, pageable));
     }

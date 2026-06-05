@@ -86,7 +86,8 @@ public class ContractorController {
             @RequestParam(defaultValue = "20") int size) {
 
         int cappedSize = Math.min(size, 100);
-        Pageable pageable = PageRequest.of(page, cappedSize, Sort.by(Sort.Order.asc("companyName")));
+        Pageable pageable = PageRequest.of(page, cappedSize,
+                Sort.by(Sort.Order.asc("companyName"), Sort.Order.asc("id")));
         return ResponseEntity.ok(contractorService.listContractors(search, specialty, active, pageable));
     }
 
@@ -173,7 +174,8 @@ public class ContractorController {
             @RequestParam(defaultValue = "20") int size) {
 
         int cappedSize = Math.min(size, 100);
-        Pageable pageable = PageRequest.of(page, cappedSize, Sort.by(Sort.Order.desc("startDate")));
+        Pageable pageable = PageRequest.of(page, cappedSize,
+                Sort.by(Sort.Order.desc("startDate"), Sort.Order.asc("id")));
         return ResponseEntity.ok(contractorService.listContracts(id, pageable));
     }
 

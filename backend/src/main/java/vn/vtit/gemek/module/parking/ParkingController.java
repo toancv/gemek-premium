@@ -94,8 +94,8 @@ public class ParkingController {
 
         int cappedSize = Math.min(size, 100);
         Sort sort = "desc".equalsIgnoreCase(direction)
-                ? Sort.by(Sort.Order.desc("slotNumber"))
-                : Sort.by(Sort.Order.asc("slotNumber"));
+                ? Sort.by(Sort.Order.desc("slotNumber"), Sort.Order.asc("id"))
+                : Sort.by(Sort.Order.asc("slotNumber"), Sort.Order.asc("id"));
         Pageable pageable = PageRequest.of(page, cappedSize, sort);
         return ResponseEntity.ok(parkingService.listSlots(type, status, zone, pageable));
     }
@@ -226,7 +226,7 @@ public class ParkingController {
 
         int cappedSize = Math.min(size, 100);
         Pageable pageable = PageRequest.of(page, cappedSize,
-                Sort.by(Sort.Order.desc("startDate")));
+                Sort.by(Sort.Order.desc("startDate"), Sort.Order.asc("id")));
         return ResponseEntity.ok(parkingService.listAssignments(apartmentId, slotId, active, pageable));
     }
 
@@ -267,7 +267,7 @@ public class ParkingController {
 
         int cappedSize = Math.min(size, 100);
         Pageable pageable = PageRequest.of(page, cappedSize,
-                Sort.by(Sort.Order.desc("entryTime")));
+                Sort.by(Sort.Order.desc("entryTime"), Sort.Order.asc("id")));
         return ResponseEntity.ok(parkingService.listGuestVehicles(apartmentId, active, pageable));
     }
 

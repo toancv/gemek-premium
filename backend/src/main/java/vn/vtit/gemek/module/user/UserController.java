@@ -94,7 +94,8 @@ public class UserController {
             throw new AppException(ErrorCode.VALIDATION_ERROR, "Invalid sort field: " + sort);
         }
         Sort.Direction sortDir = "asc".equalsIgnoreCase(direction) ? Sort.Direction.ASC : Sort.Direction.DESC;
-        Pageable pageable = PageRequest.of(page, cappedSize, Sort.by(sortDir, sort));
+        Pageable pageable = PageRequest.of(page, cappedSize,
+                Sort.by(new Sort.Order(sortDir, sort), Sort.Order.asc("id")));
 
         return ResponseEntity.ok(userService.listUsers(role, isActive, search, pageable));
     }

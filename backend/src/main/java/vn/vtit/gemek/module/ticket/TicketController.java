@@ -108,7 +108,7 @@ public class TicketController {
 
         int cappedSize = Math.min(size, 100);
         Pageable pageable = PageRequest.of(page, cappedSize,
-                Sort.by(Sort.Order.desc("createdAt")));
+                Sort.by(Sort.Order.desc("createdAt"), Sort.Order.asc("id")));
         String role = extractRole(principal);
         return ResponseEntity.ok(ticketService.listTickets(
                 principal.getId(), role, status, category, priority, apartmentId, pageable));

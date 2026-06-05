@@ -9,6 +9,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -78,7 +79,8 @@ public class NotificationController {
             @AuthenticationPrincipal UserPrincipal principal) {
 
         int cappedSize = Math.min(size, 100);
-        Pageable pageable = PageRequest.of(page, cappedSize);
+        Pageable pageable = PageRequest.of(page, cappedSize,
+                Sort.by(Sort.Order.desc("createdAt"), Sort.Order.asc("id")));
         Page<Notification> notificationPage =
                 notificationService.getMyNotifications(principal.getId(), pageable);
 

@@ -5,6 +5,10 @@ Format: Date | Decision | Reasoning | Alternatives
 
 ---
 
+## 2026-06-05 | Stable id tie-breaker added to all paginated list sorts — makes ordering deterministic (was causing intermittent test failures + unstable pagination across page boundaries)
+
+---
+
 ## 2026-06-05 | POST /api/residents — provisions new user + resident in one transaction; old assign-existing-user (userId) flow removed (breaking change)
 
 ---

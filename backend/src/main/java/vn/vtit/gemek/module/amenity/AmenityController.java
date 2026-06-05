@@ -99,7 +99,8 @@ public class AmenityController {
             @AuthenticationPrincipal UserPrincipal principal) {
 
         int cappedSize = Math.min(size, 100);
-        Pageable pageable = PageRequest.of(page, cappedSize, Sort.by(Sort.Order.asc("name")));
+        Pageable pageable = PageRequest.of(page, cappedSize,
+                Sort.by(Sort.Order.asc("name"), Sort.Order.asc("id")));
         return ResponseEntity.ok(amenityService.listAmenities(active, pageable));
     }
 
@@ -224,7 +225,7 @@ public class AmenityController {
 
         int cappedSize = Math.min(size, 100);
         Pageable pageable = PageRequest.of(page, cappedSize,
-                Sort.by(Sort.Order.desc("bookingDate")));
+                Sort.by(Sort.Order.desc("bookingDate"), Sort.Order.asc("id")));
         String role = extractRole(principal);
         return ResponseEntity.ok(
                 amenityService.listBookings(amenityId, residentId, status, pageable,

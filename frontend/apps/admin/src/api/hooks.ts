@@ -17,6 +17,14 @@ export const useApartments = (params?: Record<string, unknown>) =>
 export const useApartment = (id: string) =>
   useQuery({ queryKey: ['apartments', id], queryFn: () => get(`/apartments/${id}`), enabled: !!id });
 
+export const useCreateApartment = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: unknown) => post('/apartments', data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['apartments'] }),
+  });
+};
+
 export const useUpdateApartment = () => {
   const qc = useQueryClient();
   return useMutation({

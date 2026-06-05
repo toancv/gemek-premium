@@ -36,6 +36,10 @@ export const useUpdateApartment = () => {
 export const useBlocks = () =>
   useQuery({ queryKey: ['blocks'], queryFn: () => get('/blocks') });
 
+// Users
+export const useUsers = (params?: Record<string, unknown>) =>
+  useQuery({ queryKey: ['users', params], queryFn: () => get('/users', params) });
+
 // Residents
 export const useResidents = (params?: Record<string, unknown>) =>
   useQuery({ queryKey: ['residents', params], queryFn: () => get('/residents', params) });

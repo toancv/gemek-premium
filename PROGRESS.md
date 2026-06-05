@@ -3,7 +3,7 @@
 ## Current State
 - **Phase:** DONE — all gates approved, deployment prep complete
 - **Gate:** G1 ✅ G2 ✅ G3 ✅ G4 ✅ (2026-06-03)
-- **Last completed:** 2026-06-05 — Admin apartment form: added create modal with SearchableSelect for blockId (reuses @gemek/ui component, same pattern as ticket form); edit modal shows block as read-only (PUT doesn't accept blockId — immutable). Added useCreateApartment hook.
+- **Last completed:** 2026-06-05 — Admin resident create form: userId + apartmentId replaced with SearchableSelect dropdowns (user label: fullName — email; apt label: Block - Unit). 409 CONFLICT shows Vietnamese message. Added useUsers hook (size=200; >200 users is future work).
 - **Blocked:** None
 
 ---

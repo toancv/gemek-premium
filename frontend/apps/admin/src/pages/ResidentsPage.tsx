@@ -1,28 +1,66 @@
 import React, { useState } from 'react';
-import { useResidents, useCreateResident } from '../api/hooks';
+import { SearchableSelect } from '@gemek/ui';
+import { useResidents, useCreateResident, useUsers, useApartments } from '../api/hooks';
 
 export function ResidentsPage() {
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(0);
   const [showCreate, setShowCreate] = useState(false);
   const [formError, setFormError] = useState('');
+  const [selectedUserId, setSelectedUserId] = useState('');
+  const [selectedApartmentId, setSelectedApartmentId] = useState('');
+  const [userError, setUserError] = useState('');
+  const [aptError, setAptError] = useState('');
 
   const { data, isLoading, isError } = useResidents({ page, size: 20, ...(search && { search }) });
   const createResident = useCreateResident();
+  const { data: usersData, isLoading: usersLoading } = useUsers({ size: 200 });
+  const { data: aptsData, isLoading: aptsLoading } = useApartments({ size: 200, sort: 'unitNumber' });
+
+  const userOptions = (usersData?.data ?? []).map((u: any) => ({
+    value: u.id,
+    label: `${u.fullName} — ${u.email}`,
+  }));
+
+  const apartmentOptions = (aptsData?.data ?? []).map((a: any) => ({
+    value: a.id,
+    label: `${a.block?.name ?? ''} - ${a.unitNumber}`,
+  }));
+
+  function openCreate() {
+    setSelectedUserId('');
+    setSelectedApartmentId('');
+    setUserError('');
+    setAptError('');
+    setFormError('');
+    setShowCreate(true);
+  }
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormError('');
+    let valid = true;
+    if (!selectedUserId) { setUserError('Vui lòng chọn người dùng.'); valid = false; }
+    if (!selectedApartmentId) { setAptError('Vui lòng chọn căn hộ.'); valid = false; }
+    if (!valid) return;
     const fd = new FormData(e.target as HTMLFormElement);
-    const userId = (fd.get('userId') as string).trim();
-    const apartmentId = (fd.get('apartmentId') as string).trim();
     const moveInDate = fd.get('moveInDate') as string;
-    if (!userId || !apartmentId || !moveInDate) { setFormError('User ID, Apartment ID and Move-in Date are required'); return; }
+    if (!moveInDate) { setFormError('Vui lòng chọn ngày chuyển vào.'); return; }
     try {
-      await createResident.mutateAsync({ userId, apartmentId, type: fd.get('type'), moveInDate, isPrimaryContact: fd.get('isPrimaryContact') === 'true' });
+      await createResident.mutateAsync({
+        userId: selectedUserId,
+        apartmentId: selectedApartmentId,
+        type: fd.get('type'),
+        moveInDate,
+        isPrimaryContact: fd.get('isPrimaryContact') === 'true',
+      });
       setShowCreate(false);
     } catch (err: any) {
-      setFormError(err?.response?.data?.message ?? 'Failed to create resident');
+      if (err?.response?.status === 409) {
+        setFormError('Người dùng này đã là cư dân đang hoạt động của một căn hộ khác.');
+      } else {
+        setFormError(err?.response?.data?.message ?? 'Tạo cư dân thất bại.');
+      }
     }
   };
 
@@ -30,7 +68,7 @@ export function ResidentsPage() {
     <div>
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Residents</h1>
-        <button onClick={() => setShowCreate(true)} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium">
+        <button onClick={openCreate} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium">
           Add Resident
         </button>
       </div>
@@ -85,25 +123,49 @@ export function ResidentsPage() {
           <div className="relative bg-white rounded-lg shadow-xl w-full max-w-md p-6">
             <h2 className="text-lg font-semibold mb-4">Add Resident</h2>
             <form onSubmit={handleCreate} className="space-y-3">
-              <div><label className="block text-sm font-medium text-gray-700 mb-1">User ID <span className="text-red-500">*</span></label>
-                <input name="userId" className="block w-full border border-gray-300 rounded-md px-3 py-2 text-sm" placeholder="UUID of existing user" /></div>
-              <div><label className="block text-sm font-medium text-gray-700 mb-1">Apartment ID <span className="text-red-500">*</span></label>
-                <input name="apartmentId" className="block w-full border border-gray-300 rounded-md px-3 py-2 text-sm" placeholder="UUID of apartment" /></div>
-              <div><label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
-                <select name="type" className="block w-full border border-gray-300 rounded-md px-3 py-2 text-sm bg-white">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Người dùng <span className="text-red-500">*</span></label>
+                <SearchableSelect
+                  options={userOptions}
+                  value={selectedUserId}
+                  onChange={(v) => { setSelectedUserId(v); setUserError(''); }}
+                  loading={usersLoading}
+                  placeholder="Chọn người dùng..."
+                  error={userError}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Căn hộ <span className="text-red-500">*</span></label>
+                <SearchableSelect
+                  options={apartmentOptions}
+                  value={selectedApartmentId}
+                  onChange={(v) => { setSelectedApartmentId(v); setAptError(''); }}
+                  loading={aptsLoading}
+                  placeholder="Chọn căn hộ..."
+                  error={aptError}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Loại</label>
+                <select name="type" className="block w-full border border-gray-300 rounded-md px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
                   <option value="OWNER">Owner</option><option value="TENANT">Tenant</option>
-                </select></div>
-              <div><label className="block text-sm font-medium text-gray-700 mb-1">Move-in Date <span className="text-red-500">*</span></label>
-                <input name="moveInDate" type="date" className="block w-full border border-gray-300 rounded-md px-3 py-2 text-sm" /></div>
-              <div><label className="block text-sm font-medium text-gray-700 mb-1">Primary Contact</label>
-                <select name="isPrimaryContact" className="block w-full border border-gray-300 rounded-md px-3 py-2 text-sm bg-white">
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Ngày chuyển vào <span className="text-red-500">*</span></label>
+                <input name="moveInDate" type="date" className="block w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Liên hệ chính</label>
+                <select name="isPrimaryContact" className="block w-full border border-gray-300 rounded-md px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
                   <option value="false">No</option><option value="true">Yes</option>
-                </select></div>
+                </select>
+              </div>
               {formError && <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded">{formError}</p>}
               <div className="flex gap-2 justify-end pt-2">
-                <button type="button" onClick={() => setShowCreate(false)} className="px-4 py-2 text-sm border border-gray-300 rounded-md hover:bg-gray-50">Cancel</button>
+                <button type="button" onClick={() => setShowCreate(false)} className="px-4 py-2 text-sm border border-gray-300 rounded-md hover:bg-gray-50">Hủy</button>
                 <button type="submit" disabled={createResident.isPending} className="px-4 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50">
-                  {createResident.isPending ? 'Saving...' : 'Create'}
+                  {createResident.isPending ? 'Đang lưu...' : 'Tạo mới'}
                 </button>
               </div>
             </form>

@@ -102,8 +102,19 @@ class ResidentControllerTest {
      * @return the created user's UUID.
      */
     private UUID createResidentUser(String email) throws Exception {
+        return createResidentUser(email, "Test Resident");
+    }
+
+    /**
+     * Creates a user with RESIDENT role and the given full name, returns their UUID.
+     *
+     * @param email    the user's email address.
+     * @param fullName the user's full name.
+     * @return the created user's UUID.
+     */
+    private UUID createResidentUser(String email, String fullName) throws Exception {
         CreateUserRequest req = new CreateUserRequest(
-                email, "Test Resident", "0900000001", UserRole.RESIDENT, "Resident@123456");
+                email, fullName, "0900000001", UserRole.RESIDENT, "Resident@123456");
         MvcResult result = mockMvc.perform(post("/api/users")
                         .header("Authorization", "Bearer " + adminToken)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -306,5 +317,106 @@ class ResidentControllerTest {
                         .content(objectMapper.writeValueAsString(req)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.moveOutDate").value("2026-06-30"));
+    }
+
+    // -------------------------------------------------------------------------
+    // GET /api/residents — list + search + apartment.block
+    // -------------------------------------------------------------------------
+
+    @Test
+    @DisplayName("GET /api/residents — no search returns 200 with apartment.block.name in response")
+    void listResidents_noSearch_returns200WithBlock() throws Exception {
+        long ts = System.nanoTime();
+        String blockName = "ResBlock-ListBlock-" + ts;
+        UUID blockId = createBlock(blockName);
+        UUID aptId   = createApartment(blockId, "LB101");
+        UUID userId  = createResidentUser("res.listblock." + ts + "@test.com", "List Block User");
+        createResident(userId, aptId);
+
+        mockMvc.perform(get("/api/residents")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .param("apartmentId", aptId.toString()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[0].apartment.unitNumber").value("LB101"))
+                .andExpect(jsonPath("$.data[0].apartment.block.name").value(blockName));
+    }
+
+    @Test
+    @DisplayName("GET /api/residents?search=<name> — returns residents whose name matches, 200")
+    void listResidents_searchByName_returnsMatching() throws Exception {
+        long ts = System.nanoTime();
+        UUID blockId = createBlock("ResBlock-SrchName-" + ts);
+        UUID aptId1  = createApartment(blockId, "SN101");
+        UUID aptId2  = createApartment(blockId, "SN102");
+
+        String uniqueTag = "AlphaUniq" + ts;
+        UUID userId1 = createResidentUser("res.srch1." + ts + "@test.com", uniqueTag + " Person");
+        UUID userId2 = createResidentUser("res.srch2." + ts + "@test.com", "BetaOther Person");
+        createResident(userId1, aptId1);
+        createResident(userId2, aptId2);
+
+        mockMvc.perform(get("/api/residents")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .param("search", uniqueTag))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[0].user.fullName").value(uniqueTag + " Person"))
+                .andExpect(jsonPath("$.total").value(1));
+    }
+
+    @Test
+    @DisplayName("GET /api/residents?search=<email> — matches by email substring, 200")
+    void listResidents_searchByEmail_returnsMatching() throws Exception {
+        long ts = System.nanoTime();
+        String uniquePart = "emailsrch" + ts;
+        String email = "res." + uniquePart + "@test.com";
+        UUID blockId = createBlock("ResBlock-SrchEmail-" + ts);
+        UUID aptId   = createApartment(blockId, "SE101");
+        UUID userId  = createResidentUser(email, "Email Search Person");
+        createResident(userId, aptId);
+
+        mockMvc.perform(get("/api/residents")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .param("search", uniquePart))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[0].user.email").value(email))
+                .andExpect(jsonPath("$.total").value(1));
+    }
+
+    @Test
+    @DisplayName("GET /api/residents?search= — blank search returns 200 (no crash)")
+    void listResidents_blankSearch_returns200() throws Exception {
+        mockMvc.perform(get("/api/residents")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .param("search", ""))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    @DisplayName("GET /api/residents?search=X&type=OWNER — search combined with type filter, 200")
+    void listResidents_searchWithTypeFilter_returnsOnlyMatchingType() throws Exception {
+        long ts = System.nanoTime();
+        String uniqueTag = "ComboTag" + ts;
+        UUID blockId    = createBlock("ResBlock-Combo-" + ts);
+        UUID aptId1     = createApartment(blockId, "CB101");
+        UUID aptId2     = createApartment(blockId, "CB102");
+        UUID ownerUser  = createResidentUser("res.combo.owner." + ts + "@test.com", uniqueTag + " Owner");
+        UUID tenantUser = createResidentUser("res.combo.tenant." + ts + "@test.com", uniqueTag + " Tenant");
+
+        CreateResidentRequest ownerReq = new CreateResidentRequest(
+                ownerUser, aptId1, ResidentType.OWNER, LocalDate.of(2026, 1, 1), false, null);
+        mockMvc.perform(post("/api/residents")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(ownerReq)))
+                .andExpect(status().isCreated());
+        createResident(tenantUser, aptId2);
+
+        mockMvc.perform(get("/api/residents")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .param("search", uniqueTag)
+                        .param("type", "OWNER"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.total").value(1))
+                .andExpect(jsonPath("$.data[0].type").value("OWNER"));
     }
 }

@@ -21,10 +21,11 @@ public interface VehicleService {
      * Returns a paginated list of all vehicle records.
      *
      * @param apartmentId optional apartment UUID filter.
+     * @param search      optional case-insensitive substring matched against licensePlate, brand, and model.
      * @param pageable    pagination and sort parameters.
      * @return paginated vehicle response DTOs.
      */
-    PageResponse<VehicleResponse> listVehicles(UUID apartmentId, Pageable pageable);
+    PageResponse<VehicleResponse> listVehicles(UUID apartmentId, String search, Pageable pageable);
 
     /**
      * Registers a new vehicle.

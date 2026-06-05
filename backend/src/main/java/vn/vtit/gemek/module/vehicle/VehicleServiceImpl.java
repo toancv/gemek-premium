@@ -71,10 +71,10 @@ public class VehicleServiceImpl implements VehicleService {
      * {@inheritDoc}
      */
     @Override
-    public PageResponse<VehicleResponse> listVehicles(UUID apartmentId, Pageable pageable) {
-        log.debug("Listing vehicles — apartmentId={}", apartmentId);
+    public PageResponse<VehicleResponse> listVehicles(UUID apartmentId, String search, Pageable pageable) {
+        log.debug("Listing vehicles — apartmentId={}, search={}", apartmentId, search);
 
-        Specification<Vehicle> spec = buildSpecification(apartmentId);
+        Specification<Vehicle> spec = buildSpecification(apartmentId, search);
         Page<VehicleResponse> page = vehicleRepository.findAll(spec, pageable)
                 .map(vehicleMapper::toResponse);
         return PageResponse.of(page);
@@ -221,14 +221,27 @@ public class VehicleServiceImpl implements VehicleService {
     /**
      * Builds a JPA {@link Specification} from optional filter parameters.
      *
+     * <p>All predicates are composed with AND. The {@code search} predicate is an OR
+     * across licensePlate, brand, and model using Criteria API (not JPQL) to avoid
+     * the Hibernate-6 null-to-bytea type inference issue with nullable LIKE parameters.
+     *
      * @param apartmentId optional apartment UUID filter.
+     * @param search      optional case-insensitive substring; null or blank = no filter.
      * @return the composed specification.
      */
-    private Specification<Vehicle> buildSpecification(UUID apartmentId) {
+    private Specification<Vehicle> buildSpecification(UUID apartmentId, String search) {
         return (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
             if (apartmentId != null) {
                 predicates.add(cb.equal(root.get("apartment").get("id"), apartmentId));
+            }
+            if (search != null && !search.isBlank()) {
+                String pattern = "%" + search.toLowerCase() + "%";
+                Predicate plateMatch = cb.like(cb.lower(root.get("licensePlate")), pattern);
+                // coalesce nullable fields to empty string before lower() to keep the predicate safe.
+                Predicate brandMatch = cb.like(cb.lower(cb.coalesce(root.<String>get("brand"), "")), pattern);
+                Predicate modelMatch = cb.like(cb.lower(cb.coalesce(root.<String>get("model"), "")), pattern);
+                predicates.add(cb.or(plateMatch, brandMatch, modelMatch));
             }
             return cb.and(predicates.toArray(new Predicate[0]));
         };

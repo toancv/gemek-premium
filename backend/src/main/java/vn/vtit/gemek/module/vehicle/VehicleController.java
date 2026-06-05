@@ -55,25 +55,27 @@ public class VehicleController {
     }
 
     /**
-     * Returns a paginated list of vehicle records with an optional apartment filter.
+     * Returns a paginated list of vehicle records with optional filters.
      *
      * @param apartmentId optional apartment UUID filter.
+     * @param search      optional case-insensitive substring matched against licensePlate, brand, and model.
      * @param page        0-based page index (default 0).
      * @param size        page size (default 20, max 100).
      * @return paginated vehicle response DTOs.
      */
     @GetMapping
     @PreAuthorize("hasRole('ADMIN')")
-    @Operation(summary = "List vehicles with optional apartment filter")
+    @Operation(summary = "List vehicles with optional apartment and search filters")
     public ResponseEntity<PageResponse<VehicleResponse>> listVehicles(
             @RequestParam(required = false) UUID apartmentId,
+            @RequestParam(required = false) String search,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
 
         int cappedSize = Math.min(size, 100);
         Pageable pageable = PageRequest.of(page, cappedSize,
                 Sort.by(Sort.Order.asc("apartment.unitNumber"), Sort.Order.asc("licensePlate")));
-        return ResponseEntity.ok(vehicleService.listVehicles(apartmentId, pageable));
+        return ResponseEntity.ok(vehicleService.listVehicles(apartmentId, search, pageable));
     }
 
     /**

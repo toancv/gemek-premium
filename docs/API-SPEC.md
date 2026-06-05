@@ -604,8 +604,8 @@ Response: same shape as above.
 ### GET /api/vehicles
 
 **Auth:** ADMIN
-Query params: `apartmentId`, `residentId`, `type`, `licensePlate`, `isActive`
-Default sort: `createdAt desc`
+Query params: `apartmentId`, `residentId`, `type`, `licensePlate`, `isActive`, `search` (case-insensitive substring on licensePlate, brand, model — null/blank = no filter)
+Default sort: `apartment.unitNumber asc`, `licensePlate asc`
 
 Response `200 OK` — paginated:
 ```json

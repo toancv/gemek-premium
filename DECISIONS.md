@@ -246,6 +246,11 @@ Parking: original spec defined `POST /parking/assignments` (create) and `PUT /pa
 **Why:** Resident home screen needs to show "open" tickets (NEW + ASSIGNED + IN_PROGRESS) in a single call. Sending a comma-joined string to a single-enum param caused `IllegalArgumentException` → 500. Repeated params (`?status=NEW&status=ASSIGNED`) bind natively via Spring's `List<Enum>` binding with clean 400 on bad input.
 **Alternatives considered:** Comma-separated list with a custom `ConversionService` converter — rejected because repeated params are standard HTTP, require no custom code, and Spring's binding already handles them correctly.
 
+## 2026-06-05 | GET /api/vehicles `search` param — Criteria API, OR on licensePlate/brand/model
+**Decision:** Added `search` as case-insensitive substring OR across `licensePlate` (NOT NULL), `brand`, `model` (nullable — coalesced to "" before `lower()`). Criteria API only; no JPQL LIKE. Additive to existing `apartmentId` filter.
+**Why:** ParkingPage vehicleId dropdown needs server-search to find vehicles without knowing exact UUID. Criteria API avoids Hibernate-6 null→bytea bug on nullable LIKE parameters. `brand`/`model` included so partial make/model strings resolve vehicles without knowing the plate.
+**Alternatives considered:** JPQL with `(:s IS NULL OR LOWER(v.licensePlate) LIKE ...)` — rejected (Hibernate-6 bytea bug on null params, proven failure on this project).
+
 ## CTO Overrides
 _(record when CTO overrides agent decision)_
 

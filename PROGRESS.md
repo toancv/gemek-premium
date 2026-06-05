@@ -3,7 +3,7 @@
 ## Current State
 - **Phase:** DONE — all gates approved, deployment prep complete
 - **Gate:** G1 ✅ G2 ✅ G3 ✅ G4 ✅ (2026-06-03)
-- **Last completed:** 2026-06-05 — SearchableSelect gained optional async server-search mode (loadOptions prop). User dropdown on create-resident form now uses server-side search (GET /api/users?search=&size=20), enabling admins to find any of 202 users beyond the 100-row page cap. Static mode unchanged; 8/8 component tests pass; admin build clean.
+- **Last completed:** 2026-06-05 — Vehicle pages added to both portals. Contractor form: added taxCode + notes fields (were missing vs DTO). useBlocks: size=200 (was uncapped, defaulted to 20; now returns all blocks for apartment dropdown). Admin: VehiclesPage with async resident SearchableSelect (GET /api/residents?search=&size=20&isActive=true), apartment auto-derived from selected resident (no independent apartment picker), 409→"Biển số đã được đăng ký". Resident: MyVehiclesPage self-scoped via /residents/me (no list calls to /residents or /apartments), unit shown read-only. nginx rebuilt; 201 and 409 verified via curl.
 - **Blocked:** None
 
 ---

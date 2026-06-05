@@ -18,7 +18,7 @@ export function ContractorsPage() {
     e.preventDefault();
     setFormError('');
     const fd = new FormData(e.target as HTMLFormElement);
-    const payload = { companyName: fd.get('companyName'), contactPerson: fd.get('contactPerson'), phone: fd.get('phone'), email: fd.get('email'), specialty: fd.get('specialty'), address: fd.get('address') };
+    const payload = { companyName: fd.get('companyName'), contactPerson: fd.get('contactPerson'), phone: fd.get('phone'), email: fd.get('email'), specialty: fd.get('specialty'), address: fd.get('address'), taxCode: fd.get('taxCode') || null, notes: fd.get('notes') || null };
     if (!payload.companyName) { setFormError('Company name is required'); return; }
     try {
       if (isEdit) await updateContractor.mutateAsync({ id: modal.id, data: payload });
@@ -96,8 +96,12 @@ export function ContractorsPage() {
                 <select name="specialty" defaultValue={isEdit ? modal.specialty : 'OTHER'} className="block w-full border border-gray-300 rounded-md px-3 py-2 text-sm bg-white">
                   {SPECIALTIES.map((s) => <option key={s} value={s}>{s}</option>)}
                 </select></div>
-              <div><label className="block text-sm font-medium text-gray-700 mb-1">Address</label>
+              <div><label className="block text-sm font-medium text-gray-700 mb-1">Địa chỉ</label>
                 <input name="address" defaultValue={isEdit ? modal.address ?? '' : ''} className="block w-full border border-gray-300 rounded-md px-3 py-2 text-sm" /></div>
+              <div><label className="block text-sm font-medium text-gray-700 mb-1">Mã số thuế</label>
+                <input name="taxCode" defaultValue={isEdit ? modal.taxCode ?? '' : ''} className="block w-full border border-gray-300 rounded-md px-3 py-2 text-sm" /></div>
+              <div><label className="block text-sm font-medium text-gray-700 mb-1">Ghi chú</label>
+                <textarea name="notes" defaultValue={isEdit ? modal.notes ?? '' : ''} rows={3} className="block w-full border border-gray-300 rounded-md px-3 py-2 text-sm resize-none" /></div>
               {formError && <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded">{formError}</p>}
               <div className="flex gap-2 justify-end pt-2">
                 <button type="button" onClick={() => setModal(null)} className="px-4 py-2 text-sm border border-gray-300 rounded-md hover:bg-gray-50">Cancel</button>

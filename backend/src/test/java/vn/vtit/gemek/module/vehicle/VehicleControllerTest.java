@@ -281,6 +281,84 @@ class VehicleControllerTest {
     }
 
     // -------------------------------------------------------------------------
+    // GET /api/vehicles — search param
+    // -------------------------------------------------------------------------
+
+    @Test
+    @DisplayName("GET /api/vehicles — no search param returns 200")
+    void listVehicles_noSearch_returns200() throws Exception {
+        mockMvc.perform(get("/api/vehicles")
+                        .header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data").isArray());
+    }
+
+    @Test
+    @DisplayName("GET /api/vehicles?search= — blank search returns 200, no 500")
+    void listVehicles_blankSearch_returns200() throws Exception {
+        mockMvc.perform(get("/api/vehicles").param("search", "")
+                        .header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data").isArray());
+    }
+
+    @Test
+    @DisplayName("GET /api/vehicles?search=<plate-substring> — filters by license plate")
+    void listVehicles_searchByPlateSubstring_filtersResults() throws Exception {
+        String uid = UUID.randomUUID().toString().replace("-", "").substring(0, 8);
+        UUID blockId    = createBlock("VehBlock-Srch-" + uid);
+        UUID apartmentId = createApartment(blockId, "VS1-" + uid);
+        UUID userId     = createResidentUser("veh.srch." + uid + "@test.com");
+        UUID residentId = createResident(userId, apartmentId);
+
+        // Plate chosen to be unique enough for substring match.
+        String plate = "SRCH" + uid;
+        createVehicle(residentId, apartmentId, plate);
+
+        // Matching search — exactly this vehicle must be returned.
+        mockMvc.perform(get("/api/vehicles").param("search", "SRCH" + uid)
+                        .header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.total").value(1))
+                .andExpect(jsonPath("$.data[0].licensePlate").value(plate));
+
+        // Non-matching search — vehicle must not appear.
+        mockMvc.perform(get("/api/vehicles").param("search", "NOMATCH-" + uid)
+                        .header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data").isEmpty());
+    }
+
+    @Test
+    @DisplayName("GET /api/vehicles?search=<term>&apartmentId=<id> — search combines with apartmentId filter")
+    void listVehicles_searchWithApartmentId_combinesFilters() throws Exception {
+        String uid = UUID.randomUUID().toString().replace("-", "").substring(0, 8);
+        UUID blockId = createBlock("VehBlock-Flt-" + uid);
+        UUID aptA    = createApartment(blockId, "VFA-" + uid);
+        UUID aptB    = createApartment(blockId, "VFB-" + uid);
+
+        UUID userA = createResidentUser("veh.fltA." + uid + "@test.com");
+        UUID userB = createResidentUser("veh.fltB." + uid + "@test.com");
+        UUID resA  = createResident(userA, aptA);
+        UUID resB  = createResident(userB, aptB);
+
+        // Both plates share the same uid substring so both match the search term.
+        String plateA = "FLT" + uid + "A";
+        String plateB = "FLT" + uid + "B";
+        createVehicle(resA, aptA, plateA);
+        createVehicle(resB, aptB, plateB);
+
+        // search=FLT{uid} + apartmentId=aptA → only vehicle from aptA.
+        mockMvc.perform(get("/api/vehicles")
+                        .param("search", "FLT" + uid)
+                        .param("apartmentId", aptA.toString())
+                        .header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.total").value(1))
+                .andExpect(jsonPath("$.data[0].licensePlate").value(plateA));
+    }
+
+    // -------------------------------------------------------------------------
     // DELETE /api/vehicles/{id}
     // -------------------------------------------------------------------------
 

@@ -5,6 +5,7 @@
 package vn.vtit.gemek.module.apartment.repository;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.stereotype.Repository;
 import vn.vtit.gemek.module.apartment.entity.Block;
 
@@ -15,10 +16,11 @@ import java.util.UUID;
  * Spring Data JPA repository for the {@link Block} entity.
  *
  * <p>Provides standard CRUD operations plus name-based lookup methods for
- * uniqueness enforcement and the block list endpoint.
+ * uniqueness enforcement, and {@link JpaSpecificationExecutor} for dynamic
+ * search and pagination on the list endpoint.
  */
 @Repository
-public interface BlockRepository extends JpaRepository<Block, UUID> {
+public interface BlockRepository extends JpaRepository<Block, UUID>, JpaSpecificationExecutor<Block> {
 
     /**
      * Returns whether a block with the given name already exists.

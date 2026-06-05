@@ -4,12 +4,17 @@
  */
 package vn.vtit.gemek.module.apartment;
 
+import jakarta.persistence.criteria.Predicate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import vn.vtit.gemek.common.exception.AppException;
 import vn.vtit.gemek.common.exception.ErrorCode;
+import vn.vtit.gemek.common.model.PageResponse;
 import vn.vtit.gemek.module.apartment.dto.BlockResponse;
 import vn.vtit.gemek.module.apartment.dto.CreateBlockRequest;
 import vn.vtit.gemek.module.apartment.dto.UpdateBlockRequest;
@@ -18,6 +23,7 @@ import vn.vtit.gemek.module.apartment.mapper.BlockMapper;
 import vn.vtit.gemek.module.apartment.repository.ApartmentRepository;
 import vn.vtit.gemek.module.apartment.repository.BlockRepository;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -25,6 +31,8 @@ import java.util.UUID;
  * Implementation of {@link BlockService} for building block management.
  *
  * <p>Enforces name uniqueness and prevents deletion of blocks that have apartments.
+ * The list endpoint supports optional name search via the Criteria API to avoid
+ * the Hibernate-6 nullable JPQL {@code LIKE} issue on PostgreSQL.
  * All mutating methods are transactional.
  */
 @Service
@@ -56,10 +64,21 @@ public class BlockServiceImpl implements BlockService {
      * {@inheritDoc}
      */
     @Override
-    public List<BlockResponse> listBlocks() {
-        log.debug("Listing all blocks ordered by name.");
-        List<Block> blocks = blockRepository.findAllByOrderByNameAsc();
-        return blocks.stream().map(blockMapper::toResponse).toList();
+    public PageResponse<BlockResponse> listBlocks(String search, Pageable pageable) {
+        log.debug("Listing blocks — search={}", search);
+
+        // Build Specification via Criteria API — avoids Hibernate-6 null→bytea bug with JPQL LIKE.
+        Specification<Block> spec = (root, query, cb) -> {
+            List<Predicate> predicates = new ArrayList<>();
+            if (search != null && !search.isBlank()) {
+                String pattern = "%" + search.toLowerCase() + "%";
+                predicates.add(cb.like(cb.lower(root.get("name")), pattern));
+            }
+            return cb.and(predicates.toArray(new Predicate[0]));
+        };
+
+        Page<BlockResponse> page = blockRepository.findAll(spec, pageable).map(blockMapper::toResponse);
+        return PageResponse.of(page);
     }
 
     /**

@@ -4,11 +4,12 @@
  */
 package vn.vtit.gemek.module.apartment;
 
+import org.springframework.data.domain.Pageable;
+import vn.vtit.gemek.common.model.PageResponse;
 import vn.vtit.gemek.module.apartment.dto.BlockResponse;
 import vn.vtit.gemek.module.apartment.dto.CreateBlockRequest;
 import vn.vtit.gemek.module.apartment.dto.UpdateBlockRequest;
 
-import java.util.List;
 import java.util.UUID;
 
 /**
@@ -20,11 +21,13 @@ import java.util.UUID;
 public interface BlockService {
 
     /**
-     * Returns all blocks sorted alphabetically by name.
+     * Returns a paginated, searchable list of blocks sorted by the given pageable.
      *
-     * @return list of all block response DTOs.
+     * @param search   optional name substring filter (case-insensitive); ignored when null or blank.
+     * @param pageable page/size/sort from the request; default size=10, sort=name asc.
+     * @return paginated {@link PageResponse} of block DTOs.
      */
-    List<BlockResponse> listBlocks();
+    PageResponse<BlockResponse> listBlocks(String search, Pageable pageable);
 
     /**
      * Creates a new block.

@@ -7,6 +7,9 @@ package vn.vtit.gemek.module.apartment;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -17,25 +20,30 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import vn.vtit.gemek.common.exception.AppException;
+import vn.vtit.gemek.common.exception.ErrorCode;
+import vn.vtit.gemek.common.model.PageResponse;
 import vn.vtit.gemek.module.apartment.dto.BlockResponse;
 import vn.vtit.gemek.module.apartment.dto.CreateBlockRequest;
 import vn.vtit.gemek.module.apartment.dto.UpdateBlockRequest;
 
-import java.util.List;
-import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 /**
  * REST controller for building block management endpoints.
  *
- * <p>List endpoint is accessible to ADMIN, BOARD_MEMBER, and TECHNICIAN.
+ * <p>The list endpoint supports optional search, pagination, and sort.
  * All mutating endpoints require the ADMIN role.
  */
 @RestController
 @RequestMapping("/api/blocks")
 @Tag(name = "Blocks", description = "Building block management")
 public class BlockController {
+
+    private static final Set<String> ALLOWED_SORT_FIELDS = Set.of("name", "createdAt");
 
     private final BlockService blockService;
 
@@ -49,16 +57,33 @@ public class BlockController {
     }
 
     /**
-     * Returns all blocks sorted by name. No pagination — block count is small and bounded.
+     * Returns a paginated, searchable list of blocks.
      *
-     * @return 200 OK with a data-wrapped list of block DTOs.
+     * @param search    optional name substring filter (case-insensitive).
+     * @param page      0-based page index (default 0).
+     * @param size      page size (default 10, max 200).
+     * @param sort      sort field — one of {@code name}, {@code createdAt} (default {@code name}).
+     * @param direction sort direction — {@code asc} or {@code desc} (default {@code asc}).
+     * @return 200 OK with a {@link PageResponse} of block DTOs.
      */
     @GetMapping
     @PreAuthorize("hasAnyRole('ADMIN','BOARD_MEMBER','TECHNICIAN')")
-    @Operation(summary = "List all blocks")
-    public ResponseEntity<Map<String, List<BlockResponse>>> listBlocks() {
-        List<BlockResponse> blocks = blockService.listBlocks();
-        return ResponseEntity.ok(Map.of("data", blocks));
+    @Operation(summary = "List blocks with optional search, pagination, and sort")
+    public ResponseEntity<PageResponse<BlockResponse>> listBlocks(
+            @RequestParam(required = false) String search,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "name") String sort,
+            @RequestParam(defaultValue = "asc") String direction) {
+
+        if (!ALLOWED_SORT_FIELDS.contains(sort)) {
+            throw new AppException(ErrorCode.VALIDATION_ERROR, "Invalid sort field: " + sort);
+        }
+        int cappedSize = Math.min(size, 200);
+        Sort.Direction sortDir = "asc".equalsIgnoreCase(direction) ? Sort.Direction.ASC : Sort.Direction.DESC;
+        Pageable pageable = PageRequest.of(page, cappedSize, Sort.by(sortDir, sort));
+
+        return ResponseEntity.ok(blockService.listBlocks(search, pageable));
     }
 
     /**

@@ -1,6 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { SearchableSelect } from '@gemek/ui';
+import type { SearchableOption } from '@gemek/ui';
 import { useApartments, useBlocks, useCreateApartment, useUpdateApartment } from '../api/hooks';
+import { apiClient } from '../api/client';
 
 export function ApartmentsPage() {
   const [search, setSearch] = useState('');
@@ -14,11 +16,16 @@ export function ApartmentsPage() {
 
   const params = { page, size: 20, ...(search && { search }), ...(status && { status }), ...(blockId && { blockId }) };
   const { data, isLoading, isError } = useApartments(params);
-  const { data: blocksData, isLoading: blocksLoading } = useBlocks();
+  const { data: blocksData } = useBlocks();
   const createApt = useCreateApartment();
   const updateApt = useUpdateApartment();
 
-  const blockOptions = (blocksData?.data ?? []).map((b: any) => ({ value: b.id, label: b.name }));
+  const loadBlockOptions = useCallback(async (query: string): Promise<SearchableOption[]> => {
+    const params: Record<string, unknown> = { size: 10, sort: 'name', direction: 'asc' };
+    if (query) params.search = query;
+    const res = await apiClient.get('/blocks', { params });
+    return (res.data?.data ?? []).map((b: any) => ({ value: b.id, label: b.name }));
+  }, []);
 
   const statusColors: Record<string, string> = {
     OCCUPIED: 'bg-green-100 text-green-700',
@@ -129,10 +136,9 @@ export function ApartmentsPage() {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Block <span className="text-red-500">*</span></label>
                 <SearchableSelect
-                  options={blockOptions}
+                  loadOptions={loadBlockOptions}
                   value={newBlockId}
                   onChange={(v) => { setNewBlockId(v); setBlockError(''); }}
-                  loading={blocksLoading}
                   placeholder="Chọn block..."
                   error={blockError}
                 />

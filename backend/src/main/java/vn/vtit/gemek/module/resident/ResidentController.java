@@ -78,6 +78,8 @@ public class ResidentController {
      * @param apartmentId optional apartment UUID filter.
      * @param type        optional resident type filter.
      * @param isActive    optional active status filter.
+     * @param search      optional case-insensitive substring matched against the resident user's
+     *                    full name or email; {@code null} or blank disables the filter.
      * @param page        0-based page index (default 0).
      * @param size        page size (default 20, max 100).
      * @return paginated resident response DTOs.
@@ -89,13 +91,14 @@ public class ResidentController {
             @RequestParam(required = false) UUID apartmentId,
             @RequestParam(required = false) ResidentType type,
             @RequestParam(required = false) Boolean isActive,
+            @RequestParam(required = false) String search,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
 
         int cappedSize = Math.min(size, 100);
         Pageable pageable = PageRequest.of(page, cappedSize,
                 Sort.by(Sort.Order.asc("apartment.unitNumber"), Sort.Order.desc("createdAt")));
-        return ResponseEntity.ok(residentService.listResidents(apartmentId, type, isActive, pageable));
+        return ResponseEntity.ok(residentService.listResidents(apartmentId, type, isActive, search, pageable));
     }
 
     /**

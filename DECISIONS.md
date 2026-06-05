@@ -5,6 +5,14 @@ Format: Date | Decision | Reasoning | Alternatives
 
 ---
 
+## 2026-06-05 | GET /api/residents — search param + apartment.block in response
+
+**Decision:** Added optional `search` query param (Criteria API LIKE on user.fullName/email, same null-safe pattern as UserRepository fix). Added `apartment.block.name` to `ResidentResponse.ApartmentRef` and `ResidentMapper`. Fetch joins for user/apartment/block added to data query (not count) to avoid N+1.
+
+**Why:** Admin vehicle form needs a resident dropdown with server-side search (>100 residents exceed client-side cap). Apartment block needed to derive `apartmentId` after resident selection. Backward-compatible — only adds fields and a new optional param.
+
+---
+
 ## 2026-06-05 | SearchableSelect async server-search mode | loadOptions opt-in prop
 
 **Decision:** Added optional `loadOptions?: (query: string) => Promise<SearchableOption[]>` to SearchableSelect. When provided, debounces 300ms calls to the function instead of filtering client-side. Selected label stored in state, persists when not in current search results. Static mode (no prop) unchanged; user dropdown on create-resident uses it.

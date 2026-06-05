@@ -28,9 +28,10 @@ public interface ResidentMapper {
     @Mapping(target = "user.fullName",     source = "user.fullName")
     @Mapping(target = "user.email",        source = "user.email")
     @Mapping(target = "user.phone",        source = "user.phone")
-    @Mapping(target = "apartment.id",      source = "apartment.id")
+    @Mapping(target = "apartment.id",         source = "apartment.id")
     @Mapping(target = "apartment.unitNumber", source = "apartment.unitNumber")
-    @Mapping(target = "isPrimaryContact",  source = "primaryContact")
+    @Mapping(target = "apartment.block.name", source = "apartment.block.name")
+    @Mapping(target = "isPrimaryContact",     source = "primaryContact")
     ResidentResponse toResponse(Resident resident);
 
     /**

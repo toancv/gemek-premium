@@ -38,11 +38,13 @@ public interface ResidentService {
      * @param type        optional resident type filter.
      * @param isActive    when {@code true} returns only active residents (no move-out date);
      *                    when {@code false} returns only past residents; when {@code null} returns all.
+     * @param search      optional case-insensitive substring matched against the resident's user
+     *                    full name and email; {@code null} or blank means no filter.
      * @param pageable    pagination and sort parameters.
      * @return paginated resident response DTOs.
      */
     PageResponse<ResidentResponse> listResidents(UUID apartmentId, ResidentType type,
-                                                  Boolean isActive, Pageable pageable);
+                                                  Boolean isActive, String search, Pageable pageable);
 
     /**
      * Creates a new resident record and writes a MOVED_IN history entry.

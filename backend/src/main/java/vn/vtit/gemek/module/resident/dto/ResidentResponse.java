@@ -94,5 +94,21 @@ public class ResidentResponse {
 
         /** Apartment unit number within its block. */
         private String unitNumber;
+
+        /** Block this apartment belongs to. */
+        private BlockRef block;
+    }
+
+    /**
+     * Minimal block reference embedded in the apartment reference.
+     */
+    @Getter
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class BlockRef {
+
+        /** Block display name. */
+        private String name;
     }
 }

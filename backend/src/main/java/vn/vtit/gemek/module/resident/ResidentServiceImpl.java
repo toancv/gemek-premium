@@ -4,6 +4,8 @@
  */
 package vn.vtit.gemek.module.resident;
 
+import jakarta.persistence.criteria.Fetch;
+import jakarta.persistence.criteria.JoinType;
 import jakarta.persistence.criteria.Predicate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -96,10 +98,10 @@ public class ResidentServiceImpl implements ResidentService {
      */
     @Override
     public PageResponse<ResidentResponse> listResidents(UUID apartmentId, ResidentType type,
-                                                         Boolean isActive, Pageable pageable) {
-        log.debug("Listing residents — apartmentId={}, type={}, isActive={}", apartmentId, type, isActive);
+                                                         Boolean isActive, String search, Pageable pageable) {
+        log.debug("Listing residents — apartmentId={}, type={}, isActive={}, search={}", apartmentId, type, isActive, search);
 
-        Specification<Resident> spec = buildSpecification(apartmentId, type, isActive);
+        Specification<Resident> spec = buildSpecification(apartmentId, type, isActive, search);
         Page<ResidentResponse> page = residentRepository.findAll(spec, pageable)
                 .map(residentMapper::toResponse);
         return PageResponse.of(page);
@@ -286,14 +288,31 @@ public class ResidentServiceImpl implements ResidentService {
     /**
      * Builds a JPA {@link Specification} from optional filter parameters.
      *
+     * <p>For data queries (non-count), fetch joins are added for user, apartment,
+     * and apartment.block to avoid N+1 queries when mapping the response.
+     *
+     * <p>The search predicate uses the Criteria API with a pre-built literal pattern
+     * to avoid the Hibernate 6 null→bytea parameter-type bug that affects JPQL
+     * named parameters inside {@code LOWER()} expressions.
+     *
      * @param apartmentId optional apartment UUID filter.
      * @param type        optional resident type filter.
      * @param isActive    optional active/inactive filter.
+     * @param search      optional case-insensitive substring on user fullName or email.
      * @return the composed specification.
      */
-    private Specification<Resident> buildSpecification(UUID apartmentId, ResidentType type, Boolean isActive) {
+    private Specification<Resident> buildSpecification(UUID apartmentId, ResidentType type,
+                                                        Boolean isActive, String search) {
         return (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
+
+            // Eager-fetch associated entities in data queries to prevent N+1.
+            // Fetch is not valid in COUNT queries (Long result type).
+            if (!Long.class.equals(query.getResultType()) && !long.class.equals(query.getResultType())) {
+                Fetch<Resident, Apartment> aptFetch = root.fetch("apartment", JoinType.LEFT);
+                aptFetch.fetch("block", JoinType.LEFT);
+                root.fetch("user", JoinType.LEFT);
+            }
 
             if (apartmentId != null) {
                 predicates.add(cb.equal(root.get("apartment").get("id"), apartmentId));
@@ -305,6 +324,13 @@ public class ResidentServiceImpl implements ResidentService {
                 predicates.add(cb.isNull(root.get("moveOutDate")));
             } else if (Boolean.FALSE.equals(isActive)) {
                 predicates.add(cb.isNotNull(root.get("moveOutDate")));
+            }
+            if (search != null && !search.isBlank()) {
+                String pattern = "%" + search.toLowerCase() + "%";
+                predicates.add(cb.or(
+                        cb.like(cb.lower(root.get("user").get("fullName")), pattern),
+                        cb.like(cb.lower(root.get("user").get("email")), pattern)
+                ));
             }
 
             return cb.and(predicates.toArray(new Predicate[0]));

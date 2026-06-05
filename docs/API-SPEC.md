@@ -476,10 +476,10 @@ Errors: `409 CONFLICT` (apartment has active residents)
 ### GET /api/residents
 
 **Auth:** ADMIN
-Query params: `apartmentId`, `type` (`OWNER`/`TENANT`), `isActive` (bool — filters by `move_out_date IS NULL`)
-Default sort: `createdAt desc`
+Query params: `apartmentId`, `type` (`OWNER`/`TENANT`), `isActive` (bool — filters by `move_out_date IS NULL`), `search` (optional string — case-insensitive substring match on resident user's `fullName` or `email`; blank/absent = no filter)
+Default sort: `apartment.unitNumber asc, createdAt desc`
 
-Response `200 OK` — paginated list of resident objects.
+Response `200 OK` — paginated list of resident objects. Each resident includes `apartment.block.name`.
 
 ---
 
@@ -505,7 +505,7 @@ Response `201 Created`:
 {
   "id": "uuid",
   "user": { "id": "uuid", "fullName": "string", "email": "string" },
-  "apartment": { "id": "uuid", "unitNumber": "A301" },
+  "apartment": { "id": "uuid", "unitNumber": "A301", "block": { "name": "Block A" } },
   "type": "OWNER",
   "moveInDate": "2024-01-01",
   "moveOutDate": null,
@@ -608,7 +608,7 @@ Response `200 OK` — paginated:
     {
       "id": "uuid",
       "resident": { "id": "uuid", "user": { "fullName": "string" } },
-      "apartment": { "id": "uuid", "unitNumber": "A301" },
+      "apartment": { "id": "uuid", "unitNumber": "A301", "block": { "name": "Block A" } },
       "type": "CAR",
       "licensePlate": "51A-123.45",
       "brand": "Toyota",
@@ -1085,7 +1085,7 @@ Response `200 OK` — paginated:
       "id": "uuid",
       "amenity": { "id": "uuid", "name": "Swimming Pool" },
       "resident": { "id": "uuid", "user": { "id": "uuid", "fullName": "string" } },
-      "apartment": { "id": "uuid", "unitNumber": "A301" },
+      "apartment": { "id": "uuid", "unitNumber": "A301", "block": { "name": "Block A" } },
       "bookingDate": "2026-06-01",
       "startTime": "09:00",
       "endTime": "10:00",
@@ -1519,7 +1519,7 @@ Response `200 OK` — paginated:
       "currentAssignment": {
         "id": "uuid",
         "vehicle": { "licensePlate": "51A-123.45", "brand": "Toyota", "type": "CAR" },
-        "apartment": { "id": "uuid", "unitNumber": "A301" },
+        "apartment": { "id": "uuid", "unitNumber": "A301", "block": { "name": "Block A" } },
         "parkingCardNumber": "PC-0012",
         "startDate": "2026-01-01"
       }

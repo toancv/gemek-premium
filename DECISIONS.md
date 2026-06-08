@@ -5,6 +5,12 @@ Format: Date | Decision | Reasoning | Alternatives
 
 ---
 
+## 2026-06-08 | API-SPEC v2.1 aligned to phone-as-login as-built (step 8)
+
+POST /api/auth/login: request phone (was email), response user.phone (was email), normalization note added. POST /api/users: phone required, email optional. POST /api/residents: phone required + normalized, dateOfBirth required, email optional; error codes updated (PHONE_ALREADY_EXISTS added). Also fixed CreateResidentRequest.email: removed @NotBlank (email is optional per V12 schema; @Email format validation kept).
+
+---
+
 ## 2026-06-08 | Resident creation path: phone normalization + uniqueness (step 5)
 
 `ResidentServiceImpl.createResident()` built User directly, bypassing `UserServiceImpl.createUser()`. Added `PhoneUtils.normalize()` + `existsByPhone` check (→ PHONE_ALREADY_EXISTS 409) before persist. Email null-guard added (email is now optional). Consistent with UserServiceImpl order: normalize → phone-unique → email-unique → persist. Dup-phone was previously a 500 DB constraint violation; now 409.

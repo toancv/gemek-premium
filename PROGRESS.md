@@ -2,7 +2,7 @@
 
 ## ⚠️ IN PROGRESS — Phone-as-Login Migration (2026-06-08)
 
-**Status:** Steps 1–7 + step 5 complete. Steps 8, 9 remaining.
+**Status:** Steps 1–8 complete. Step 9 remaining.
 
 **Authoritative plan:** `reports/phone-username-survey.md` section D (9-step table).
 
@@ -15,7 +15,7 @@
 | 5 | Verify/update `CreateResidentRequest` + `ResidentServiceImpl` for phone on user creation | ✅ done | (fix + test commits below) |
 | 6 | FE both apps — auth stores (phone field, login sig, POST body), both `LoginPage.tsx` (label/type/validation in Vietnamese) | ✅ done | 0f34f24 (feat) + 388ba90 (docs) |
 | 7 | FE audit — Layout (both, already name+role only ✓), resident `ProfilePage.tsx` (phone primary + email secondary row), admin `ResidentsPage.tsx` (phone+email columns, `ResidentItem` type replacing `any`) | ✅ done | pending commit |
-| 8 | `API-SPEC.md` — auth login, user create, resident create contracts | ⏳ pending | — |
+| 8 | `API-SPEC.md` — auth login, user create, resident create contracts | ✅ done | (docs commit below) |
 | 9 | Extra tests — `AuthServiceImpl` login with phone, `CreateUserRequest` phone validation | ⏳ pending | — |
 
 **Resume pointer:** Read `reports/phone-username-survey.md` for full context, hidden couplings, and risk notes before starting step 3.

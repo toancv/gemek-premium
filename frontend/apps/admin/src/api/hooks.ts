@@ -50,7 +50,7 @@ export const useCreateResident = () => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (data: unknown) => post('/residents', data),
-    meta: { skipErrorToast: true },
+    meta: { skipErrorToast: true, successMessage: 'Tạo cư dân thành công' },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['residents'] }),
   });
 };

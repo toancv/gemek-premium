@@ -28,12 +28,15 @@ export function ResidentsPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [phone, setPhone] = useState('');
+  const [dateOfBirth, setDateOfBirth] = useState('');
   const [generatedPassword, setGeneratedPassword] = useState('');
 
   // Field errors
   const [fullNameError, setFullNameError] = useState('');
   const [emailError, setEmailError] = useState('');
   const [passwordError, setPasswordError] = useState('');
+  const [phoneError, setPhoneError] = useState('');
+  const [dobError, setDobError] = useState('');
 
   // Resident fields
   const [selectedApartmentId, setSelectedApartmentId] = useState('');
@@ -53,9 +56,9 @@ export function ResidentsPage() {
   }, []);
 
   function openCreate() {
-    setFullName(''); setEmail(''); setPassword(''); setPhone('');
+    setFullName(''); setEmail(''); setPassword(''); setPhone(''); setDateOfBirth('');
     setGeneratedPassword('');
-    setFullNameError(''); setEmailError(''); setPasswordError('');
+    setFullNameError(''); setEmailError(''); setPasswordError(''); setPhoneError(''); setDobError('');
     setSelectedApartmentId(''); setAptError('');
     setFormError('');
     setShowCreate(true);
@@ -75,6 +78,8 @@ export function ResidentsPage() {
     if (!fullName.trim()) { setFullNameError('Vui lòng nhập họ tên.'); valid = false; }
     if (!email.trim()) { setEmailError('Vui lòng nhập email.'); valid = false; }
     if (!password) { setPasswordError('Vui lòng nhập hoặc tạo mật khẩu.'); valid = false; }
+    if (!phone.trim()) { setPhoneError('Vui lòng nhập số điện thoại.'); valid = false; }
+    if (!dateOfBirth) { setDobError('Vui lòng nhập ngày sinh.'); valid = false; }
     if (!selectedApartmentId) { setAptError('Vui lòng chọn căn hộ.'); valid = false; }
     if (!valid) return;
 
@@ -87,7 +92,8 @@ export function ResidentsPage() {
         fullName: fullName.trim(),
         email: email.trim(),
         password,
-        phone: phone.trim() || undefined,
+        phone: phone.trim(),
+        dateOfBirth,
         apartmentId: selectedApartmentId,
         type: fd.get('type'),
         moveInDate,
@@ -218,13 +224,25 @@ export function ResidentsPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Số điện thoại</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Số điện thoại <span className="text-red-500">*</span></label>
                 <input
                   value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
+                  onChange={(e) => { setPhone(e.target.value); setPhoneError(''); }}
                   placeholder="0912345678"
-                  className="block w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className={`block w-full border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${phoneError ? 'border-red-400' : 'border-gray-300'}`}
                 />
+                {phoneError && <p className="text-xs text-red-600 mt-1">{phoneError}</p>}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Ngày sinh <span className="text-red-500">*</span></label>
+                <input
+                  type="date"
+                  value={dateOfBirth}
+                  onChange={(e) => { setDateOfBirth(e.target.value); setDobError(''); }}
+                  className={`block w-full border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${dobError ? 'border-red-400' : 'border-gray-300'}`}
+                />
+                {dobError && <p className="text-xs text-red-600 mt-1">{dobError}</p>}
               </div>
 
               <p className="text-xs text-gray-500 font-medium uppercase tracking-wide pt-2">Thông tin cư trú</p>

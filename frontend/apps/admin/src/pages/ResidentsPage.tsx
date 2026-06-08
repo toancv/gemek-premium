@@ -4,6 +4,14 @@ import type { SearchableOption } from '@gemek/ui';
 import { useResidents, useCreateResident } from '../api/hooks';
 import { apiClient } from '../api/client';
 
+interface ResidentItem {
+  id: string;
+  user: { fullName: string; phone: string; email: string | null };
+  apartment: { unitNumber: string; block?: { name: string } };
+  type: 'OWNER' | 'TENANT';
+  moveInDate: string;
+}
+
 /** Generates a random password satisfying: ≥8 chars, upper+lower+digit+special. */
 function generatePassword(): string {
   const upper = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
@@ -132,6 +140,7 @@ export function ResidentsPage() {
           <thead className="bg-gray-50 border-b border-gray-200">
             <tr>
               <th className="text-left px-4 py-3 font-medium text-gray-500">Name</th>
+              <th className="text-left px-4 py-3 font-medium text-gray-500">Số điện thoại</th>
               <th className="text-left px-4 py-3 font-medium text-gray-500">Email</th>
               <th className="text-left px-4 py-3 font-medium text-gray-500">Apartment</th>
               <th className="text-left px-4 py-3 font-medium text-gray-500">Type</th>
@@ -139,12 +148,13 @@ export function ResidentsPage() {
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
-            {isLoading && <tr><td colSpan={5} className="text-center py-8 text-gray-400">Loading...</td></tr>}
-            {!isLoading && !data?.data?.length && <tr><td colSpan={5} className="text-center py-8 text-gray-400">No residents found</td></tr>}
-            {data?.data?.map((r: any) => (
+            {isLoading && <tr><td colSpan={6} className="text-center py-8 text-gray-400">Loading...</td></tr>}
+            {!isLoading && !data?.data?.length && <tr><td colSpan={6} className="text-center py-8 text-gray-400">No residents found</td></tr>}
+            {data?.data?.map((r: ResidentItem) => (
               <tr key={r.id} className="hover:bg-gray-50">
-                <td className="px-4 py-3 font-medium">{r.user?.fullName ?? r.fullName}</td>
-                <td className="px-4 py-3 text-gray-500">{r.user?.email ?? r.email}</td>
+                <td className="px-4 py-3 font-medium">{r.user?.fullName}</td>
+                <td className="px-4 py-3 text-gray-500">{r.user?.phone}</td>
+                <td className="px-4 py-3 text-gray-500">{r.user?.email ?? '—'}</td>
                 <td className="px-4 py-3">{r.apartment?.unitNumber}</td>
                 <td className="px-4 py-3">
                   <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${r.type === 'OWNER' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'}`}>{r.type}</span>

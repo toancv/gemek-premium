@@ -46,7 +46,8 @@ export function ProfilePage() {
         </div>
         <div className="space-y-2 text-sm">
           <div className="flex gap-2"><span className="text-gray-500 w-20">Role:</span><span className="font-medium">{user?.role}</span></div>
-          {me?.phone && <div className="flex gap-2"><span className="text-gray-500 w-20">Phone:</span><span>{me.phone}</span></div>}
+          {me?.phone && <div className="flex gap-2"><span className="text-gray-500 w-20">Số điện thoại:</span><span>{me.phone}</span></div>}
+          {me?.email && <div className="flex gap-2"><span className="text-gray-500 w-20">Email:</span><span>{me.email}</span></div>}
           {me?.lastLoginAt && <div className="flex gap-2"><span className="text-gray-500 w-20">Last login:</span><span>{new Date(me.lastLoginAt).toLocaleString()}</span></div>}
         </div>
       </div>

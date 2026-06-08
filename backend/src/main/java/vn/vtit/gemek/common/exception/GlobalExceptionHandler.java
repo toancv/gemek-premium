@@ -7,6 +7,7 @@ package vn.vtit.gemek.common.exception;
 import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
@@ -97,6 +98,27 @@ public class GlobalExceptionHandler {
         log.warn("Type mismatch on {}: {}", request.getRequestURI(), message);
         return buildErrorResponse(ErrorCode.VALIDATION_ERROR.name(), message,
                 HttpStatus.BAD_REQUEST, request.getRequestURI());
+    }
+
+    /**
+     * Handles DB unique-constraint violations (e.g. duplicate phone or email) that reach the
+     * handler without being caught by the service-layer guard — typically from a race condition.
+     *
+     * <p>Without this handler, {@link DataIntegrityViolationException} falls to the catch-all
+     * and returns 500, bypassing the localized error-toast path on the frontend.
+     *
+     * @param ex      the constraint violation exception.
+     * @param request the current HTTP request.
+     * @return 409 CONFLICT response.
+     */
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<Map<String, Object>> handleDataIntegrityViolation(
+            DataIntegrityViolationException ex, HttpServletRequest request) {
+        log.warn("Constraint violation on {}: {}", request.getRequestURI(),
+                ex.getMostSpecificCause().getMessage());
+        return buildErrorResponse(ErrorCode.CONFLICT.name(),
+                "A unique constraint was violated — check phone or email for duplicates.",
+                HttpStatus.CONFLICT, request.getRequestURI());
     }
 
     /**

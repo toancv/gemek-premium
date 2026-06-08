@@ -110,7 +110,7 @@ export function ResidentsPage() {
       setShowCreate(false);
     } catch (err: any) {
       if (err?.response?.status === 409) {
-        setFormError('Email đã được sử dụng.');
+        setFormError(err?.response?.data?.message ?? 'Số điện thoại hoặc email đã được sử dụng.');
       } else if (err?.response?.status === 404) {
         setFormError('Căn hộ không tồn tại.');
       } else {

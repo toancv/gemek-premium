@@ -4,28 +4,43 @@ import type { SearchableOption } from '@gemek/ui';
 import { useResidents, useCreateResident } from '../api/hooks';
 import { apiClient } from '../api/client';
 
+/** Generates a random password satisfying: ≥8 chars, upper+lower+digit+special. */
+function generatePassword(): string {
+  const upper = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+  const lower = 'abcdefghjkmnpqrstuvwxyz';
+  const digits = '23456789';
+  const special = '!@#$%&*';
+  const all = upper + lower + digits + special;
+  const rand = (s: string) => s[Math.floor(Math.random() * s.length)];
+  const core = [rand(upper), rand(lower), rand(digits), rand(special)];
+  for (let i = 0; i < 8; i++) core.push(rand(all));
+  return core.sort(() => Math.random() - 0.5).join('').slice(0, 12);
+}
+
 export function ResidentsPage() {
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(0);
   const [showCreate, setShowCreate] = useState(false);
   const [formError, setFormError] = useState('');
-  const [selectedUserId, setSelectedUserId] = useState('');
+
+  // New-user inline fields
+  const [fullName, setFullName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [phone, setPhone] = useState('');
+  const [generatedPassword, setGeneratedPassword] = useState('');
+
+  // Field errors
+  const [fullNameError, setFullNameError] = useState('');
+  const [emailError, setEmailError] = useState('');
+  const [passwordError, setPasswordError] = useState('');
+
+  // Resident fields
   const [selectedApartmentId, setSelectedApartmentId] = useState('');
-  const [userError, setUserError] = useState('');
   const [aptError, setAptError] = useState('');
 
   const { data, isLoading, isError } = useResidents({ page, size: 20, ...(search && { search }) });
   const createResident = useCreateResident();
-
-  const loadUserOptions = useCallback(async (query: string): Promise<SearchableOption[]> => {
-    const params: Record<string, unknown> = { size: 20 };
-    if (query) params.search = query;
-    const res = await apiClient.get('/users', { params });
-    return (res.data?.data ?? []).map((u: any) => ({
-      value: u.id,
-      label: `${u.fullName} — ${u.email}`,
-    }));
-  }, []);
 
   const loadApartmentOptions = useCallback(async (query: string): Promise<SearchableOption[]> => {
     const params: Record<string, unknown> = { size: 10, sort: 'unitNumber', direction: 'asc' };
@@ -38,27 +53,41 @@ export function ResidentsPage() {
   }, []);
 
   function openCreate() {
-    setSelectedUserId('');
-    setSelectedApartmentId('');
-    setUserError('');
-    setAptError('');
+    setFullName(''); setEmail(''); setPassword(''); setPhone('');
+    setGeneratedPassword('');
+    setFullNameError(''); setEmailError(''); setPasswordError('');
+    setSelectedApartmentId(''); setAptError('');
     setFormError('');
     setShowCreate(true);
+  }
+
+  function handleGeneratePassword() {
+    const pw = generatePassword();
+    setPassword(pw);
+    setGeneratedPassword(pw);
+    setPasswordError('');
   }
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormError('');
     let valid = true;
-    if (!selectedUserId) { setUserError('Vui lòng chọn người dùng.'); valid = false; }
+    if (!fullName.trim()) { setFullNameError('Vui lòng nhập họ tên.'); valid = false; }
+    if (!email.trim()) { setEmailError('Vui lòng nhập email.'); valid = false; }
+    if (!password) { setPasswordError('Vui lòng nhập hoặc tạo mật khẩu.'); valid = false; }
     if (!selectedApartmentId) { setAptError('Vui lòng chọn căn hộ.'); valid = false; }
     if (!valid) return;
+
     const fd = new FormData(e.target as HTMLFormElement);
     const moveInDate = fd.get('moveInDate') as string;
     if (!moveInDate) { setFormError('Vui lòng chọn ngày chuyển vào.'); return; }
+
     try {
       await createResident.mutateAsync({
-        userId: selectedUserId,
+        fullName: fullName.trim(),
+        email: email.trim(),
+        password,
+        phone: phone.trim() || undefined,
         apartmentId: selectedApartmentId,
         type: fd.get('type'),
         moveInDate,
@@ -67,7 +96,9 @@ export function ResidentsPage() {
       setShowCreate(false);
     } catch (err: any) {
       if (err?.response?.status === 409) {
-        setFormError('Người dùng này đã là cư dân đang hoạt động của một căn hộ khác.');
+        setFormError('Email đã được sử dụng.');
+      } else if (err?.response?.status === 404) {
+        setFormError('Căn hộ không tồn tại.');
       } else {
         setFormError(err?.response?.data?.message ?? 'Tạo cư dân thất bại.');
       }
@@ -130,19 +161,74 @@ export function ResidentsPage() {
       {showCreate && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/50" onClick={() => setShowCreate(false)} />
-          <div className="relative bg-white rounded-lg shadow-xl w-full max-w-md p-6">
-            <h2 className="text-lg font-semibold mb-4">Add Resident</h2>
+          <div className="relative bg-white rounded-lg shadow-xl w-full max-w-md p-6 max-h-[90vh] overflow-y-auto">
+            <h2 className="text-lg font-semibold mb-4">Thêm cư dân mới</h2>
             <form onSubmit={handleCreate} className="space-y-3">
+
+              <p className="text-xs text-gray-500 font-medium uppercase tracking-wide pt-1">Thông tin tài khoản</p>
+
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Người dùng <span className="text-red-500">*</span></label>
-                <SearchableSelect
-                  value={selectedUserId}
-                  onChange={(v) => { setSelectedUserId(v); setUserError(''); }}
-                  loadOptions={loadUserOptions}
-                  placeholder="Chọn người dùng..."
-                  error={userError}
+                <label className="block text-sm font-medium text-gray-700 mb-1">Họ tên <span className="text-red-500">*</span></label>
+                <input
+                  value={fullName}
+                  onChange={(e) => { setFullName(e.target.value); setFullNameError(''); }}
+                  placeholder="Nguyễn Văn A"
+                  className={`block w-full border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${fullNameError ? 'border-red-400' : 'border-gray-300'}`}
+                />
+                {fullNameError && <p className="text-xs text-red-600 mt-1">{fullNameError}</p>}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Email <span className="text-red-500">*</span></label>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => { setEmail(e.target.value); setEmailError(''); }}
+                  placeholder="email@example.com"
+                  className={`block w-full border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${emailError ? 'border-red-400' : 'border-gray-300'}`}
+                />
+                {emailError && <p className="text-xs text-red-600 mt-1">{emailError}</p>}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Mật khẩu <span className="text-red-500">*</span></label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={password}
+                    onChange={(e) => { setPassword(e.target.value); setPasswordError(''); setGeneratedPassword(''); }}
+                    placeholder="Nhập hoặc tạo mật khẩu"
+                    className={`flex-1 border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono ${passwordError ? 'border-red-400' : 'border-gray-300'}`}
+                  />
+                  <button
+                    type="button"
+                    onClick={handleGeneratePassword}
+                    className="px-3 py-2 text-xs bg-gray-100 hover:bg-gray-200 border border-gray-300 rounded-md whitespace-nowrap"
+                  >
+                    Tạo mật khẩu
+                  </button>
+                </div>
+                {passwordError && <p className="text-xs text-red-600 mt-1">{passwordError}</p>}
+                {generatedPassword && (
+                  <div className="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded text-xs text-yellow-800">
+                    Mật khẩu đã tạo: <span className="font-mono font-bold select-all">{generatedPassword}</span>
+                    <span className="text-yellow-600 ml-1">— lưu lại để cung cấp cho cư dân.</span>
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Số điện thoại</label>
+                <input
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder="0912345678"
+                  className="block w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
+
+              <p className="text-xs text-gray-500 font-medium uppercase tracking-wide pt-2">Thông tin cư trú</p>
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Căn hộ <span className="text-red-500">*</span></label>
                 <SearchableSelect
@@ -153,22 +239,28 @@ export function ResidentsPage() {
                   error={aptError}
                 />
               </div>
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Loại</label>
                 <select name="type" className="block w-full border border-gray-300 rounded-md px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
-                  <option value="OWNER">Owner</option><option value="TENANT">Tenant</option>
+                  <option value="OWNER">Chủ sở hữu</option>
+                  <option value="TENANT">Người thuê</option>
                 </select>
               </div>
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Ngày chuyển vào <span className="text-red-500">*</span></label>
                 <input name="moveInDate" type="date" className="block w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Liên hệ chính</label>
                 <select name="isPrimaryContact" className="block w-full border border-gray-300 rounded-md px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
-                  <option value="false">No</option><option value="true">Yes</option>
+                  <option value="false">Không</option>
+                  <option value="true">Có</option>
                 </select>
               </div>
+
               {formError && <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded">{formError}</p>}
               <div className="flex gap-2 justify-end pt-2">
                 <button type="button" onClick={() => setShowCreate(false)} className="px-4 py-2 text-sm border border-gray-300 rounded-md hover:bg-gray-50">Hủy</button>

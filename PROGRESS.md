@@ -15,7 +15,7 @@
 | 3 | Core BE auth: `UserPrincipal` (phone field, getUsername→phone), `JwtTokenProvider` (CLAIM_PHONE), `LoginRequest` (phone field), `UserRepository` (findByPhone/existsByPhone), `LoginResponse.UserSummary` (phone field), `AuthServiceImpl` (findByPhone + normalize), `CreateUserRequest` (phone required, email optional), `UserServiceImpl` (existsByPhone guard) | ✅ done | 3e59bbc (feat) + 1ccce1b (test) |
 | 4 | `AdminSeeder` — promote hardcoded `"0900000000"` to `${app.admin.phone:0900000000}`, apply `PhoneUtils.normalize()` | ✅ done | e1e2d14 (feat) + bb4fe47 (test) |
 | 5 | Verify/update `CreateResidentRequest` + `ResidentServiceImpl` for phone on user creation | ⏳ pending | — |
-| 6 | FE both apps — auth stores (phone field, login sig, POST body), both `LoginPage.tsx` (label/type/validation in Vietnamese) | ⏳ pending | — |
+| 6 | FE both apps — auth stores (phone field, login sig, POST body), both `LoginPage.tsx` (label/type/validation in Vietnamese) | ✅ done | pending commit |
 | 7 | FE audit — `Layout.tsx`, `ProfilePage.tsx`, `ResidentsPage.tsx` for `user.email` display sites | ⏳ pending | — |
 | 8 | `API-SPEC.md` — auth login, user create, resident create contracts | ⏳ pending | — |
 | 9 | Extra tests — `AuthServiceImpl` login with phone, `CreateUserRequest` phone validation | ⏳ pending | — |

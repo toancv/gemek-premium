@@ -5,6 +5,12 @@ Format: Date | Decision | Reasoning | Alternatives
 
 ---
 
+## 2026-06-08 | FE login switched from email to phone (step 6)
+
+Both apps (admin + resident): `AuthUser.email→phone`, `login(email)→login(phone)`, POST body `{email}→{phone}`. `LoginPage.tsx` both apps: label "Số điện thoại", `type="tel"`, loose VN phone regex UX gate only — BE normalizes and validates definitively. `ProfilePage.tsx` (resident): `user?.email→user?.phone` (minimal build-fix, full audit step 7). `ResidentsPage.tsx` `r.user?.email` left as-is (typed `any`, no TS error; display audit step 7). Builds: admin ✅ resident ✅.
+
+---
+
 ## 2026-06-05 | Stable id tie-breaker added to all paginated list sorts — makes ordering deterministic (was causing intermittent test failures + unstable pagination across page boundaries)
 
 ---

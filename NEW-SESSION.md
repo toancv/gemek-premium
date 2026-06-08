@@ -42,6 +42,9 @@ If there is a progress file for work in progress (e.g. `reports/test-gap-progres
 - Commit in clearly separated groups: `fix` / `test` / `docs` / `chore` kept distinct. Do NOT mix production-code changes into a test commit. Stage only the files belonging to that group — never blind `git add -A`.
 - Before reporting "committed", verify with `git log --oneline` and `git status`; do not reply optimistically when the push is not confirmed.
 
+**Per-step context sync**
+- End every step by updating `PROGRESS.md` (+ `DECISIONS.md` if a decision was made) as a separate `docs(context): ...` commit. Include a resume-pointer naming the relevant `reports/` file. A fresh session must be able to reconstruct in-progress work from `PROGRESS.md` alone. Full rule in `CLAUDE.md § Per-step context sync`.
+
 **Gates & decisions**
 - Respect the approval gates in CLAUDE.md: STOP and wait for the CTO (human) to approve. Do NOT approve your own gate.
 - On a significant decision (architecture, data model, auth): create a BLOCKER report and wait for the CTO — do not pick one option and continue.

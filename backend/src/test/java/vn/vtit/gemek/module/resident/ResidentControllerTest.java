@@ -109,6 +109,8 @@ class ResidentControllerTest {
         req.put("fullName", fullName);
         req.put("email", email);
         req.put("password", DEFAULT_PASS);
+        req.put("phone", "0900000001");
+        req.put("dateOfBirth", "1990-01-01");
         req.put("apartmentId", apartmentId.toString());
         req.put("type", "TENANT");
         req.put("moveInDate", "2026-01-01");
@@ -158,8 +160,8 @@ class ResidentControllerTest {
         req.put("fullName", "Tran Thi B");
         req.put("email", email);
         req.put("password", DEFAULT_PASS);
-        req.put("dateOfBirth", "1990-05-20");
         req.put("phone", "0912345678");
+        req.put("dateOfBirth", "1990-05-20");
         req.put("apartmentId", apartmentId.toString());
         req.put("type", "OWNER");
         req.put("moveInDate", "2026-03-01");
@@ -216,6 +218,8 @@ class ResidentControllerTest {
         dup.put("fullName", "Another Person");
         dup.put("email", email);
         dup.put("password", DEFAULT_PASS);
+        dup.put("phone", "0900000002");
+        dup.put("dateOfBirth", "1985-03-15");
         dup.put("apartmentId", aptId2.toString());
         dup.put("type", "TENANT");
         dup.put("moveInDate", "2026-04-01");
@@ -245,6 +249,8 @@ class ResidentControllerTest {
         req.put("fullName", "Ghost User");
         req.put("email", uniqueEmail);
         req.put("password", DEFAULT_PASS);
+        req.put("phone", "0900000003");
+        req.put("dateOfBirth", "1992-07-20");
         req.put("apartmentId", bogusAptId.toString());
         req.put("type", "TENANT");
         req.put("moveInDate", "2026-01-01");
@@ -311,6 +317,8 @@ class ResidentControllerTest {
         req.put("fullName", "Good Pass User");
         req.put("email", "res.goodpw." + System.nanoTime() + "@test.com");
         req.put("password", DEFAULT_PASS);   // "Resident@123456" — upper+lower+digit+special
+        req.put("phone", "0900000004");
+        req.put("dateOfBirth", "1991-06-15");
         req.put("apartmentId", apartmentId.toString());
         req.put("type", "TENANT");
         req.put("moveInDate", "2026-01-01");
@@ -338,6 +346,8 @@ class ResidentControllerTest {
         req.put("fullName", "New Owner");
         req.put("email", email);
         req.put("password", DEFAULT_PASS);
+        req.put("phone", "0900000005");
+        req.put("dateOfBirth", "1980-11-20");
         req.put("apartmentId", apartmentId.toString());
         req.put("type", "OWNER");
         req.put("moveInDate", "2026-03-01");
@@ -545,6 +555,8 @@ class ResidentControllerTest {
         ownerReq.put("fullName", uniqueTag + " Owner");
         ownerReq.put("email", "res.combo.owner." + ts + "@test.com");
         ownerReq.put("password", DEFAULT_PASS);
+        ownerReq.put("phone", "0900000006");
+        ownerReq.put("dateOfBirth", "1988-04-10");
         ownerReq.put("apartmentId", aptId1.toString());
         ownerReq.put("type", "OWNER");
         ownerReq.put("moveInDate", "2026-01-01");
@@ -564,5 +576,57 @@ class ResidentControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.total").value(1))
                 .andExpect(jsonPath("$.data[0].type").value("OWNER"));
+    }
+
+    // -------------------------------------------------------------------------
+    // POST /api/residents — phone and dateOfBirth required
+    // -------------------------------------------------------------------------
+
+    @Test
+    @DisplayName("POST /api/residents — missing phone returns 400 VALIDATION_ERROR")
+    void createResident_missingPhone_400() throws Exception {
+        UUID blockId = createBlock("ResBlock-NoPhone-" + System.nanoTime());
+        UUID apartmentId = createApartment(blockId, "NP101");
+
+        Map<String, Object> req = new HashMap<>();
+        req.put("fullName", "No Phone User");
+        req.put("email", "res.nophone." + System.nanoTime() + "@test.com");
+        req.put("password", DEFAULT_PASS);
+        req.put("dateOfBirth", "1990-01-01");
+        // phone omitted
+        req.put("apartmentId", apartmentId.toString());
+        req.put("type", "TENANT");
+        req.put("moveInDate", "2026-01-01");
+
+        mockMvc.perform(post("/api/residents")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(req)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("VALIDATION_ERROR"));
+    }
+
+    @Test
+    @DisplayName("POST /api/residents — missing dateOfBirth returns 400 VALIDATION_ERROR")
+    void createResident_missingDateOfBirth_400() throws Exception {
+        UUID blockId = createBlock("ResBlock-NoDob-" + System.nanoTime());
+        UUID apartmentId = createApartment(blockId, "ND101");
+
+        Map<String, Object> req = new HashMap<>();
+        req.put("fullName", "No Dob User");
+        req.put("email", "res.nodob." + System.nanoTime() + "@test.com");
+        req.put("password", DEFAULT_PASS);
+        req.put("phone", "0900000007");
+        // dateOfBirth omitted
+        req.put("apartmentId", apartmentId.toString());
+        req.put("type", "TENANT");
+        req.put("moveInDate", "2026-01-01");
+
+        mockMvc.perform(post("/api/residents")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(req)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("VALIDATION_ERROR"));
     }
 }

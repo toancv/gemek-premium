@@ -264,6 +264,51 @@ Parking: original spec defined `POST /parking/assignments` (create) and `PUT /pa
 **Why:** ParkingPage vehicleId dropdown needs server-search to find vehicles without knowing exact UUID. Criteria API avoids Hibernate-6 null→bytea bug on nullable LIKE parameters. `brand`/`model` included so partial make/model strings resolve vehicles without knowing the plate.
 **Alternatives considered:** JPQL with `(:s IS NULL OR LOWER(v.licensePlate) LIKE ...)` — rejected (Hibernate-6 bytea bug on null params, proven failure on this project).
 
+## 2026-06-08 | Password complexity enforced on CreateResidentRequest (@Pattern from CreateUserRequest)
+**Decision:** `CreateResidentRequest.password` gains the same `@Pattern` regex as `CreateUserRequest` — min 8 chars, upper+lower+digit+special. Commits: 697edfd (fix), c704a04 (test).
+**Why:** POST /api/residents creates a new user; weak password accepted there while rejected on POST /api/users is an inconsistency and security gap.
+**How to apply:** Any DTO that accepts a user password must carry the same `@Pattern` constraint.
+
+---
+
+## 2026-06-08 | Add-resident form: inline user creation + generate-password button; phone + dateOfBirth required
+**Decision:** Admin add-resident form replaced the obsolete "select existing user" flow (SearchableSelect on users) with inline new-user creation fields. Generate-password button added. `dateOfBirth` field added. `phone` and `dateOfBirth` are now required on both the form (FE validation) and `CreateResidentRequest` (`@NotBlank`/`@NotNull`). Commits: 448bc15 (form), fa47149 (dob + validation), c1e3789 (BE required), 0061e4c (tests).
+**Why:** POST /api/residents was changed (cc42a6c session) to provision a new user+resident transactionally — the old "assign existing user" UI was already broken. phone is now a login identifier (phone-as-login initiative); dateOfBirth is needed for resident profiles.
+**How to apply:** Do not add an "assign existing user" path back without a deliberate product decision.
+
+---
+
+## 2026-06-08 | Global success-toast bug: Tailwind purging layout classes from @gemek/ui
+**Decision:** Root cause of success toasts not appearing was Tailwind CSS content scanning missing `packages/ui/src`. Classes `top-4`, `right-4`, `z-[200]` were purged. Fixed by adding `'../../packages/ui/src/**/*.{ts,tsx}'` to `content` in both apps' `tailwind.config.js`. Commit: 3dc1d6b.
+**Why:** TanStack MutationCache `onSuccess` was wiring correctly (d905b56); the toast component rendered but was positioned off-screen due to purged positioning classes.
+**How to apply:** Any new shared component in `packages/ui/src` with Tailwind classes is automatically scanned after this fix. If a new package is added under `packages/`, add it to both tailwind configs.
+
+---
+
+## 2026-06-08 | JAVA_HOME prerequisite documented in NEW-SESSION.md
+**Decision:** Documented that running Maven tests requires `JAVA_HOME` set to JDK 21 (Eclipse Adoptium path on this machine) and Maven path to IntelliJ's bundled Maven. Commit: 2d49936.
+**Why:** `mvn` is not in PATH; IntelliJ's bundled Maven at `C:\Program Files\JetBrains\IntelliJ IDEA 2026.1\plugins\maven\lib\maven3\bin\mvn.cmd` must be invoked directly with `$env:JAVA_HOME` set.
+**How to apply:** See `NEW-SESSION.md` for the exact PowerShell snippet before running any Maven commands.
+
+---
+
+## 2026-06-08 | PHONE-AS-LOGIN — CTO decisions (IN PROGRESS)
+**Decision:** Login identifier switches from email to phone number. Full implementation plan in `reports/phone-username-survey.md` section D.
+
+CTO decisions (fixed requirements):
+1. Login identifier = phone number; email is informational only, NOT used for login, NOT required.
+2. Canonical stored form: `0xxxxxxxxx` (leading 0, 10 digits, VN mobile `^0[3-9]\d{8}$`; landlines rejected).
+3. Accepted input formats: `0962464748`, `+84962464748`, `+840962464748`, `84962464748`, `840962464748` — all normalize to `0962464748`. Strip `+84`/`84`, ensure leading `0`. `+840...`/`840...` (redundant 0 after country code) handled: after stripping `84`, remainder already starts with `0` — do not double.
+4. Normalization MUST happen on backend only via `PhoneUtils.normalize()` (single shared util). FE may validate for UX only.
+5. DB reset locally acceptable — no data migration required.
+6. email: keep `UNIQUE` constraint but drop `NOT NULL` (nullable-unique allows multiple NULLs in Postgres).
+
+Steps done: step 1 PhoneUtils + tests (4b3f020), step 2 V12 migration (41b90ca). Steps 3–9 remaining — see PROGRESS.md.
+
+**WARNING:** Do NOT boot the app until step 3 (entity) + step 4 (AdminSeeder) both land. V12 makes `phone NOT NULL`; old AdminSeeder still hardcodes phone — it would fail or insert un-normalized value.
+
+---
+
 ## CTO Overrides
 _(record when CTO overrides agent decision)_
 

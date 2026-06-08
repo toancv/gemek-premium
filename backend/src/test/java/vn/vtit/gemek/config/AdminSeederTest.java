@@ -25,8 +25,8 @@ import static org.mockito.Mockito.when;
 /**
  * Unit tests for {@link AdminSeeder}.
  *
- * <p>Verifies idempotent seeding, blank-password fail-loud, and correct
- * hash storage without exercising the real BCrypt or database.
+ * <p>Verifies idempotent seeding, blank-password fail-loud, normalized phone
+ * storage, and correct hash storage without exercising the real BCrypt or database.
  */
 @ExtendWith(MockitoExtension.class)
 class AdminSeederTest {
@@ -37,20 +37,21 @@ class AdminSeederTest {
     @Mock
     private PasswordEncoder passwordEncoder;
 
-    private static final String ADMIN_EMAIL = "admin@gemek.vn";
+    private static final String ADMIN_EMAIL    = "admin@gemek.vn";
     private static final String ADMIN_PASSWORD = "TestAdmin@2026";
+    private static final String ADMIN_PHONE    = "0900000000";
 
     /**
      * Seeds an admin user when none exists and ADMIN_PASSWORD is set.
-     * Verifies role, email, active flag, and that the hash comes from the encoder.
+     * Verifies role, email, active flag, normalized phone, and that the hash comes from the encoder.
      */
     @Test
-    @DisplayName("seeds admin when none exists and password is configured")
+    @DisplayName("seeds admin — role/email/phone/hash correct")
     void seedsAdminWhenNoneExistsAndPasswordSet() throws Exception {
         when(userRepository.existsByRole(UserRole.ADMIN)).thenReturn(false);
         when(passwordEncoder.encode(ADMIN_PASSWORD)).thenReturn("bcrypt-hashed");
 
-        AdminSeeder seeder = new AdminSeeder(userRepository, passwordEncoder, ADMIN_EMAIL, ADMIN_PASSWORD);
+        AdminSeeder seeder = new AdminSeeder(userRepository, passwordEncoder, ADMIN_EMAIL, ADMIN_PASSWORD, ADMIN_PHONE);
         seeder.run(null);
 
         ArgumentCaptor<User> captor = ArgumentCaptor.forClass(User.class);
@@ -58,10 +59,28 @@ class AdminSeederTest {
         User saved = captor.getValue();
 
         assertThat(saved.getEmail()).isEqualTo(ADMIN_EMAIL);
+        assertThat(saved.getPhone()).isEqualTo("0900000000");
         assertThat(saved.getRole()).isEqualTo(UserRole.ADMIN);
         assertThat(saved.getPasswordHash()).isEqualTo("bcrypt-hashed");
         assertThat(saved.isActive()).isTrue();
         assertThat(saved.getFullName()).isNotBlank();
+    }
+
+    /**
+     * Non-canonical phone (+84900000000) is normalized to canonical 0900000000 before save.
+     */
+    @Test
+    @DisplayName("non-canonical phone env value normalized to 0900000000")
+    void nonCanonicalPhone_normalizedBeforeSave() throws Exception {
+        when(userRepository.existsByRole(UserRole.ADMIN)).thenReturn(false);
+        when(passwordEncoder.encode(ADMIN_PASSWORD)).thenReturn("bcrypt-hashed");
+
+        AdminSeeder seeder = new AdminSeeder(userRepository, passwordEncoder, ADMIN_EMAIL, ADMIN_PASSWORD, "+84900000000");
+        seeder.run(null);
+
+        ArgumentCaptor<User> captor = ArgumentCaptor.forClass(User.class);
+        verify(userRepository).save(captor.capture());
+        assertThat(captor.getValue().getPhone()).isEqualTo("0900000000");
     }
 
     /**
@@ -72,7 +91,7 @@ class AdminSeederTest {
     void doesNothingWhenAdminAlreadyExists() throws Exception {
         when(userRepository.existsByRole(UserRole.ADMIN)).thenReturn(true);
 
-        AdminSeeder seeder = new AdminSeeder(userRepository, passwordEncoder, ADMIN_EMAIL, ADMIN_PASSWORD);
+        AdminSeeder seeder = new AdminSeeder(userRepository, passwordEncoder, ADMIN_EMAIL, ADMIN_PASSWORD, ADMIN_PHONE);
         seeder.run(null);
 
         verify(userRepository, never()).save(any());
@@ -88,7 +107,7 @@ class AdminSeederTest {
     void throwsWhenPasswordBlankAndNoAdmin() {
         when(userRepository.existsByRole(UserRole.ADMIN)).thenReturn(false);
 
-        AdminSeeder seeder = new AdminSeeder(userRepository, passwordEncoder, ADMIN_EMAIL, "");
+        AdminSeeder seeder = new AdminSeeder(userRepository, passwordEncoder, ADMIN_EMAIL, "", ADMIN_PHONE);
 
         assertThatThrownBy(() -> seeder.run(null))
                 .isInstanceOf(IllegalStateException.class)

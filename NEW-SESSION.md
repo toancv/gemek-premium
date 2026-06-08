@@ -34,6 +34,9 @@ If there is a progress file for work in progress (e.g. `reports/test-gap-progres
 - If the **GateGuard** hook blocks the first Bash command of the session (demanding "present facts"): present the facts once, or start the session with `ECC_GATEGUARD=off`, or add `pre:bash:gateguard-fact-force` to `ECC_DISABLED_HOOKS`.
 - Context filling up fast is usually caused by too many MCP servers — consider disabling some via `/mcp` (keep < 10 MCPs, < 80 tools active).
 
+**Build prerequisite — Java 21**
+- `JAVA_HOME` must point to Java 21 before running `mvn test` or `mvn package`. On this machine: `C:\Program Files\Eclipse Adoptium\jdk-21.0.10.7-hotspot`. Wrong JDK symptom: `class file version 65.0 … only supports up to 61.0` (61 = Java 17 — Maven Surefire forked the wrong JVM, not a real test failure).
+
 **Git & tests**
 - Tests must be GREEN before committing. Never commit broken code.
 - Commit in clearly separated groups: `fix` / `test` / `docs` / `chore` kept distinct. Do NOT mix production-code changes into a test commit. Stage only the files belonging to that group — never blind `git add -A`.

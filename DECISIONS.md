@@ -5,6 +5,17 @@ Format: Date | Decision | Reasoning | Alternatives
 
 ---
 
+## 2026-06-08 | Phone-as-login COMPLETE — canonical decisions
+
+1. Login identifier = phone (was email). Email is informational only — NOT login, NOT required.
+2. Canonical stored form: `0xxxxxxxxx` (leading 0, 10 digits, `^0[3-9]\d{8}$`; VN mobile only).
+3. All input formats normalized on BE only via `PhoneUtils.normalize()` — FE does no normalization.
+4. Email: UNIQUE constraint kept; NOT NULL dropped (nullable-unique; multiple NULLs allowed in Postgres).
+5. DB reset locally acceptable — no data migration required (V12 migration handles schema).
+6. `CreateResidentRequest.email`: @NotBlank removed (commit 4237cba — mixed into docs commit; flagged for awareness).
+
+---
+
 ## 2026-06-08 | API-SPEC v2.1 aligned to phone-as-login as-built (step 8)
 
 POST /api/auth/login: request phone (was email), response user.phone (was email), normalization note added. POST /api/users: phone required, email optional. POST /api/residents: phone required + normalized, dateOfBirth required, email optional; error codes updated (PHONE_ALREADY_EXISTS added). Also fixed CreateResidentRequest.email: removed @NotBlank (email is optional per V12 schema; @Email format validation kept).

@@ -2,9 +2,7 @@
 
 ## ⚠️ IN PROGRESS — Phone-as-Login Migration (2026-06-08)
 
-**Status:** Steps 1–2 complete. Steps 3–9 remaining. App MUST NOT be booted yet.
-
-**WARNING:** V12 migration makes `phone NOT NULL`. Old `AdminSeeder` hardcodes phone value without normalization. Booting the app now will fail or insert bad data. Do not run `docker compose up` or `./mvnw spring-boot:run` until step 3 (entity) + step 4 (AdminSeeder) are committed.
+**Status:** Steps 1–7 complete. Steps 5, 8, 9 remaining.
 
 **Authoritative plan:** `reports/phone-username-survey.md` section D (9-step table).
 
@@ -15,8 +13,8 @@
 | 3 | Core BE auth: `UserPrincipal` (phone field, getUsername→phone), `JwtTokenProvider` (CLAIM_PHONE), `LoginRequest` (phone field), `UserRepository` (findByPhone/existsByPhone), `LoginResponse.UserSummary` (phone field), `AuthServiceImpl` (findByPhone + normalize), `CreateUserRequest` (phone required, email optional), `UserServiceImpl` (existsByPhone guard) | ✅ done | 3e59bbc (feat) + 1ccce1b (test) |
 | 4 | `AdminSeeder` — promote hardcoded `"0900000000"` to `${app.admin.phone:0900000000}`, apply `PhoneUtils.normalize()` | ✅ done | e1e2d14 (feat) + bb4fe47 (test) |
 | 5 | Verify/update `CreateResidentRequest` + `ResidentServiceImpl` for phone on user creation | ⏳ pending | — |
-| 6 | FE both apps — auth stores (phone field, login sig, POST body), both `LoginPage.tsx` (label/type/validation in Vietnamese) | ✅ done | pending commit |
-| 7 | FE audit — `Layout.tsx`, `ProfilePage.tsx`, `ResidentsPage.tsx` for `user.email` display sites | ⏳ pending | — |
+| 6 | FE both apps — auth stores (phone field, login sig, POST body), both `LoginPage.tsx` (label/type/validation in Vietnamese) | ✅ done | 0f34f24 (feat) + 388ba90 (docs) |
+| 7 | FE audit — Layout (both, already name+role only ✓), resident `ProfilePage.tsx` (phone primary + email secondary row), admin `ResidentsPage.tsx` (phone+email columns, `ResidentItem` type replacing `any`) | ✅ done | pending commit |
 | 8 | `API-SPEC.md` — auth login, user create, resident create contracts | ⏳ pending | — |
 | 9 | Extra tests — `AuthServiceImpl` login with phone, `CreateUserRequest` phone validation | ⏳ pending | — |
 

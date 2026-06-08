@@ -5,6 +5,16 @@ Format: Date | Decision | Reasoning | Alternatives
 
 ---
 
+## 2026-06-08 | Dup-phone 500 fix
+
+- Root cause: Docker container ran stale code (pre-step-5 ResidentServiceImpl had no existsByPhone guard); dup phone hit DB constraint → DataIntegrityViolationException → catch-all → 500.
+- Fix 1: Added DataIntegrityViolationException → 409 CONFLICT handler in GlobalExceptionHandler (defense-in-depth for race conditions and future constraints).
+- Fix 2: Rebuilt backend container to deploy step-5 phone guard in ResidentServiceImpl.
+- Fix 3: ResidentsPage 409 inline message now uses `err?.response?.data?.message` (was hardcoded wrong "Email đã được sử dụng.").
+- Note: `useCreateResident` has `skipErrorToast: true` — no global toast; errors surface inline via setFormError. Intentional for now; remove skipErrorToast if toast desired.
+
+---
+
 ## 2026-06-08 | Demo seed script
 
 - Data: 3 blocks, 10 apartments (4/3/3 per block), 30 residents (3 per apt: 1 OWNER + 2 TENANT), 5 staff (2 ADMIN + 3 TECHNICIAN).

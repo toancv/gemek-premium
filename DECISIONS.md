@@ -309,6 +309,28 @@ Steps done: step 1 PhoneUtils + tests (4b3f020), step 2 V12 migration (41b90ca).
 
 ---
 
+## 2026-06-08 | Phone-as-login steps 3–4: login identity now phone-keyed end-to-end in BE
+**Decision:** Steps 3 (auth/user module) and 4 (AdminSeeder) complete. Login identifier is now phone throughout the backend.
+
+Step 3 changes (3e59bbc feat + 1ccce1b test):
+- `LoginRequest`: `email` → `phone` (`@NotBlank`; real validation via `PhoneUtils.normalize()` in service).
+- `AuthServiceImpl.login()`: normalizes phone via `PhoneUtils.normalize()` → `findByPhone(normalized)`.
+- `UserPrincipal`: `phone` field; `getUsername()` returns phone; `SecurityConfig.UserDetailsService` updated to `findByPhone`.
+- `JwtTokenProvider`: `CLAIM_EMAIL` → `CLAIM_PHONE`; embed `principal.getPhone()` in access token (informational claim; filter still uses `sub` UUID).
+- `LoginResponse.UserSummary`: `email` → `phone` field.
+- `CreateUserRequest`: `phone` now `@NotBlank` (required); `email` now optional (nullable, `@Email` format-check if provided).
+- `UserServiceImpl.createUser()`: `existsByPhone` as primary uniqueness guard (409 → `PHONE_ALREADY_EXISTS`); optional `existsByEmail` guard if email provided; `PhoneUtils.normalize()` before persist.
+- `ErrorCode`: added `PHONE_ALREADY_EXISTS(HttpStatus.CONFLICT)`.
+- `User` entity: `email` `nullable=true`; `phone` `nullable=false, unique=true` (matches V12 migration).
+
+Step 4 changes (e1e2d14 feat + bb4fe47 test):
+- `AdminSeeder`: `adminPhone` injected via `${app.admin.phone:0900000000}`; `PhoneUtils.normalize()` applied before `admin.setPhone()`. Non-canonical env values (e.g. `+84900000000`) are silently corrected; invalid values fail loud at startup.
+
+**Why:** Centralize normalization at PhoneUtils; every write path normalizes before DB insert or lookup, ensuring the `uq_users_phone` UNIQUE constraint (V12) is satisfied regardless of input format.
+**How to apply:** Any future endpoint that writes a phone field must call `PhoneUtils.normalize()` before persistence. The `ResidentServiceImpl` (step 5) is next.
+
+---
+
 ## CTO Overrides
 _(record when CTO overrides agent decision)_
 

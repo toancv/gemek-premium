@@ -31,6 +31,7 @@ import vn.vtit.gemek.module.resident.entity.ResidentType;
 import vn.vtit.gemek.module.resident.mapper.ResidentMapper;
 import vn.vtit.gemek.module.resident.repository.ResidentHistoryRepository;
 import vn.vtit.gemek.module.resident.repository.ResidentRepository;
+import vn.vtit.gemek.common.util.PhoneUtils;
 import vn.vtit.gemek.module.user.entity.User;
 import vn.vtit.gemek.module.user.entity.UserRole;
 import vn.vtit.gemek.module.user.repository.UserRepository;
@@ -119,10 +120,18 @@ public class ResidentServiceImpl implements ResidentService {
     @Override
     @Transactional
     public ResidentResponse createResident(CreateResidentRequest req, UUID principalId) {
-        log.debug("Creating resident — email={}, apartmentId={}", req.getEmail(), req.getApartmentId());
+        log.debug("Creating resident — phone={}, apartmentId={}", req.getPhone(), req.getApartmentId());
+
+        // Normalize to canonical 0xxxxxxxxx; throws VALIDATION_ERROR on invalid format.
+        String normalizedPhone = PhoneUtils.normalize(req.getPhone());
+
+        // Phone uniqueness check — must use normalized form to match the uq_users_phone constraint.
+        if (userRepository.existsByPhone(normalizedPhone)) {
+            throw new AppException(ErrorCode.PHONE_ALREADY_EXISTS, "Phone already registered: " + normalizedPhone);
+        }
 
         // Email uniqueness check — reject before touching the DB to keep the transaction clean.
-        if (userRepository.existsByEmail(req.getEmail())) {
+        if (req.getEmail() != null && userRepository.existsByEmail(req.getEmail())) {
             throw new AppException(ErrorCode.CONFLICT, "Email already registered: " + req.getEmail());
         }
 
@@ -134,7 +143,7 @@ public class ResidentServiceImpl implements ResidentService {
         User user = new User();
         user.setEmail(req.getEmail());
         user.setFullName(req.getFullName());
-        user.setPhone(req.getPhone());
+        user.setPhone(normalizedPhone);
         user.setDateOfBirth(req.getDateOfBirth());
         user.setPasswordHash(passwordEncoder.encode(req.getPassword()));
         user.setRole(UserRole.RESIDENT);

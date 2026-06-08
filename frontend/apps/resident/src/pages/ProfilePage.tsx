@@ -41,7 +41,7 @@ export function ProfilePage() {
           </div>
           <div>
             <p className="font-semibold text-gray-900">{user?.fullName}</p>
-            <p className="text-sm text-gray-500">{user?.email}</p>
+            <p className="text-sm text-gray-500">{user?.phone}</p>
           </div>
         </div>
         <div className="space-y-2 text-sm">

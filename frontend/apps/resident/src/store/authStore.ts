@@ -4,7 +4,7 @@ import { apiClient } from '../api/client';
 
 interface AuthUser {
   id: string;
-  email: string;
+  phone: string;
   fullName: string;
   role: string;
   avatarUrl?: string | null;
@@ -17,7 +17,7 @@ interface AuthState {
   accessToken: string | null;
   authStatus: AuthStatus;
   bootstrap: () => Promise<void>;
-  login: (email: string, password: string) => Promise<void>;
+  login: (phone: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   refreshToken: () => Promise<void>;
   isAuthenticated: () => boolean;
@@ -62,8 +62,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
   },
 
-  login: async (email, password) => {
-    const res = await apiClient.post('/auth/login', { email, password });
+  login: async (phone, password) => {
+    const res = await apiClient.post('/auth/login', { phone, password });
     const { accessToken, refreshToken, user } = res.data;
     localStorage.setItem('gemek_refresh', refreshToken);
     set({ accessToken, user, authStatus: 'authenticated' });

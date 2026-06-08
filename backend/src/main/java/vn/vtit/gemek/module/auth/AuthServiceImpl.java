@@ -25,6 +25,7 @@ import vn.vtit.gemek.module.auth.dto.LoginResponse;
 import vn.vtit.gemek.module.auth.dto.RefreshTokenRequest;
 import vn.vtit.gemek.module.auth.dto.RefreshTokenResponse;
 import vn.vtit.gemek.module.auth.dto.UpdateFcmTokenRequest;
+import vn.vtit.gemek.common.util.PhoneUtils;
 import vn.vtit.gemek.module.user.dto.UserDetailResponse;
 import vn.vtit.gemek.module.user.entity.User;
 import vn.vtit.gemek.module.user.mapper.UserMapper;
@@ -110,18 +111,19 @@ public class AuthServiceImpl implements AuthService {
         String clientIp = resolveClientIp(httpRequest);
         enforceRateLimit(clientIp);
 
-        // Lookup user by email — invalid email returns the same error as wrong password
+        // Normalize and look up by phone — invalid phone returns same error as wrong password
         // to prevent user enumeration.
-        User user = userRepository.findByEmail(request.email())
+        String normalizedPhone = PhoneUtils.normalize(request.phone());
+        User user = userRepository.findByPhone(normalizedPhone)
                 .orElseThrow(() -> new AppException(ErrorCode.INVALID_CREDENTIALS,
-                        "Invalid email or password."));
+                        "Invalid phone number or password."));
 
         if (!user.isActive()) {
             throw new AppException(ErrorCode.ACCOUNT_INACTIVE, "Account is deactivated.");
         }
 
         if (!passwordEncoder.matches(request.password(), user.getPasswordHash())) {
-            throw new AppException(ErrorCode.INVALID_CREDENTIALS, "Invalid email or password.");
+            throw new AppException(ErrorCode.INVALID_CREDENTIALS, "Invalid phone number or password.");
         }
 
         // Update last login timestamp.
@@ -145,7 +147,7 @@ public class AuthServiceImpl implements AuthService {
 
         long expiresInSeconds = jwtConfig.getAccessTokenExpiryMs() / 1000;
         LoginResponse.UserSummary userSummary = new LoginResponse.UserSummary(
-                user.getId(), user.getEmail(), user.getFullName(), user.getRole(), user.getAvatarUrl());
+                user.getId(), user.getPhone(), user.getFullName(), user.getRole(), user.getAvatarUrl());
 
         return new LoginResponse(accessToken, refreshToken, expiresInSeconds, userSummary);
     }

@@ -22,7 +22,7 @@ import java.util.UUID;
  * Utility component for creating and validating JWT access and refresh tokens.
  *
  * <p>Access tokens: 15-minute expiry, HS256, claims include {@code sub=userId},
- * {@code email}, {@code role}, {@code jti=UUID}.
+ * {@code phone}, {@code role}, {@code jti=UUID}.
  *
  * <p>Refresh tokens: 7-day expiry, stored in Redis under key {@code refresh:{userId}:{jti}}.
  */
@@ -31,8 +31,8 @@ public class JwtTokenProvider {
 
     private static final Logger log = LoggerFactory.getLogger(JwtTokenProvider.class);
 
-    /** Claim key for the user's email address. */
-    public static final String CLAIM_EMAIL = "email";
+    /** Claim key for the user's phone number (informational; filter uses {@code sub} UUID). */
+    public static final String CLAIM_PHONE = "phone";
 
     /** Claim key for the user's role. */
     public static final String CLAIM_ROLE = "role";
@@ -73,7 +73,7 @@ public class JwtTokenProvider {
 
         return Jwts.builder()
                 .subject(principal.getId().toString())
-                .claim(CLAIM_EMAIL, principal.getEmail())
+                .claim(CLAIM_PHONE, principal.getPhone())
                 .claim(CLAIM_ROLE, extractRoleName(principal))
                 .claim(CLAIM_TOKEN_TYPE, TOKEN_TYPE_ACCESS)
                 .id(UUID.randomUUID().toString())

@@ -38,6 +38,9 @@ public enum ErrorCode {
     /** Email address already registered by another user. */
     EMAIL_ALREADY_EXISTS(HttpStatus.CONFLICT),
 
+    /** Phone number already registered by another user. */
+    PHONE_ALREADY_EXISTS(HttpStatus.CONFLICT),
+
     /** Login credentials are incorrect. */
     INVALID_CREDENTIALS(HttpStatus.UNAUTHORIZED),
 

@@ -15,7 +15,7 @@ import java.util.UUID;
 
 /**
  * Spring Security {@link UserDetails} implementation holding the authenticated user's
- * UUID, email, and role as a {@link GrantedAuthority}.
+ * UUID, phone number, and role as a {@link GrantedAuthority}.
  *
  * <p>Stored in the {@link org.springframework.security.core.context.SecurityContext}
  * after successful JWT verification. Service methods access it via
@@ -26,8 +26,8 @@ public class UserPrincipal implements UserDetails {
     /** The user's unique identifier. */
     private final UUID id;
 
-    /** The user's email address — also used as the username. */
-    private final String email;
+    /** The user's canonical phone number — used as the Spring Security username. */
+    private final String phone;
 
     /**
      * The user's hashed password.
@@ -48,7 +48,7 @@ public class UserPrincipal implements UserDetails {
      */
     public UserPrincipal(User user) {
         this.id = user.getId();
-        this.email = user.getEmail();
+        this.phone = user.getPhone();
         this.passwordHash = user.getPasswordHash();
         // Convention: role name is stored without ROLE_ prefix in DB; Spring Security expects ROLE_ prefix.
         this.authorities = List.of(new SimpleGrantedAuthority("ROLE_" + user.getRole().name()));
@@ -65,12 +65,12 @@ public class UserPrincipal implements UserDetails {
     }
 
     /**
-     * Returns the user's email address.
+     * Returns the user's canonical phone number.
      *
-     * @return the email address.
+     * @return the phone number.
      */
-    public String getEmail() {
-        return email;
+    public String getPhone() {
+        return phone;
     }
 
     /**
@@ -94,13 +94,13 @@ public class UserPrincipal implements UserDetails {
     }
 
     /**
-     * Returns the username — in this system the email address is the username.
+     * Returns the username — in this system the phone number is the username.
      *
-     * @return the email address.
+     * @return the canonical phone number.
      */
     @Override
     public String getUsername() {
-        return email;
+        return phone;
     }
 
     /**

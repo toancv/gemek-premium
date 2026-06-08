@@ -18,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 import vn.vtit.gemek.common.audit.Auditable;
 import vn.vtit.gemek.common.exception.AppException;
 import vn.vtit.gemek.common.exception.ErrorCode;
+import vn.vtit.gemek.common.util.PhoneUtils;
 import vn.vtit.gemek.common.model.PageResponse;
 import vn.vtit.gemek.module.user.dto.CreateUserRequest;
 import vn.vtit.gemek.module.user.dto.ResetPasswordRequest;
@@ -95,18 +96,26 @@ public class UserServiceImpl implements UserService {
     @Transactional
     @Auditable(action = "CREATE", entityType = "User")
     public UserResponse createUser(CreateUserRequest request) {
-        log.debug("Creating user with email={}", request.email());
+        String normalizedPhone = PhoneUtils.normalize(request.phone());
+        log.debug("Creating user with phone={}", normalizedPhone);
 
-        // Email uniqueness check before attempting insert to give a clear error message.
-        if (userRepository.existsByEmail(request.email())) {
+        // Phone uniqueness check — primary login identifier.
+        if (userRepository.existsByPhone(normalizedPhone)) {
+            throw new AppException(ErrorCode.PHONE_ALREADY_EXISTS,
+                    "Phone number is already registered: " + normalizedPhone);
+        }
+
+        // Email uniqueness check — informational, optional, but still unique-nullable.
+        String email = (request.email() != null && !request.email().isBlank()) ? request.email() : null;
+        if (email != null && userRepository.existsByEmail(email)) {
             throw new AppException(ErrorCode.EMAIL_ALREADY_EXISTS,
-                    "Email address is already registered: " + request.email());
+                    "Email address is already registered: " + email);
         }
 
         User user = new User();
-        user.setEmail(request.email());
+        user.setEmail(email);
         user.setFullName(request.fullName());
-        user.setPhone(request.phone());
+        user.setPhone(normalizedPhone);
         user.setRole(request.role());
         user.setPasswordHash(passwordEncoder.encode(request.password()));
         user.setActive(true);

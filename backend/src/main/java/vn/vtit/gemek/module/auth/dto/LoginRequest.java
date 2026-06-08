@@ -4,20 +4,19 @@
  */
 package vn.vtit.gemek.module.auth.dto;
 
-import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 
 /**
  * Request body for {@code POST /api/auth/login}.
  *
- * @param email    the user's registered email address.
+ * @param phone    the user's registered phone number (any standard VN format accepted;
+ *                 canonical normalization applied by the service via {@code PhoneUtils.normalize()}).
  * @param password the user's plaintext password.
  */
 public record LoginRequest(
 
-        @NotBlank(message = "Email is required.")
-        @Email(message = "Email must be a valid address.")
-        String email,
+        @NotBlank(message = "Phone number is required.")
+        String phone,
 
         @NotBlank(message = "Password is required.")
         String password

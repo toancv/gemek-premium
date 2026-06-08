@@ -27,14 +27,14 @@ public record LoginResponse(
      * Embedded user summary returned inside the login response.
      *
      * @param id        the user's unique identifier.
-     * @param email     the user's email address.
+     * @param phone     the user's canonical phone number (login identifier).
      * @param fullName  the user's display name.
      * @param role      the user's role.
      * @param avatarUrl the user's avatar object key, or {@code null}.
      */
     public record UserSummary(
             UUID id,
-            String email,
+            String phone,
             String fullName,
             UserRole role,
             String avatarUrl

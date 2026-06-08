@@ -14,15 +14,15 @@ import vn.vtit.gemek.module.user.entity.UserRole;
 /**
  * Request body for {@code POST /api/users} (ADMIN only).
  *
- * @param email    unique email address for the new user.
+ * @param email    optional informational email address; unique when provided.
  * @param fullName display name.
- * @param phone    optional phone number.
+ * @param phone    phone number used as the login identifier (required); canonical form
+ *                 enforced by {@code PhoneUtils.normalize()} in the service.
  * @param role     the user's role in the system.
  * @param password initial password (min 8 chars, upper + lower + digit + special).
  */
 public record CreateUserRequest(
 
-        @NotBlank(message = "Email is required.")
         @Email(message = "Email must be a valid address.")
         @Size(max = 255, message = "Email must not exceed 255 characters.")
         String email,
@@ -31,7 +31,7 @@ public record CreateUserRequest(
         @Size(max = 255, message = "Full name must not exceed 255 characters.")
         String fullName,
 
-        @Size(max = 20, message = "Phone must not exceed 20 characters.")
+        @NotBlank(message = "Phone number is required.")
         String phone,
 
         @NotNull(message = "Role is required.")

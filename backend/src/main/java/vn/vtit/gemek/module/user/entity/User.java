@@ -43,12 +43,12 @@ public class User {
     @Column(name = "id", updatable = false, nullable = false)
     private UUID id;
 
-    /** Unique email address used for authentication. */
-    @Column(name = "email", nullable = false, unique = true, length = 255)
+    /** Informational email address. Nullable; unique when provided (V12 migration). */
+    @Column(name = "email", nullable = true, unique = true, length = 255)
     private String email;
 
-    /** Optional phone number. */
-    @Column(name = "phone", length = 20)
+    /** Canonical phone number used as the primary login identifier. NOT NULL, UNIQUE (V12 migration). */
+    @Column(name = "phone", nullable = false, unique = true, length = 20)
     private String phone;
 
     /** Display name. */

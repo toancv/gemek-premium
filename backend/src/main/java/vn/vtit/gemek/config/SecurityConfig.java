@@ -140,13 +140,13 @@ public class SecurityConfig {
     }
 
     /**
-     * Creates a {@link UserDetailsService} that loads users by email from the database.
+     * Creates a {@link UserDetailsService} that loads users by phone number from the database.
      *
      * @return the {@link UserDetailsService} implementation.
      */
     @Bean
     public UserDetailsService userDetailsService() {
-        return username -> userRepository.findByEmail(username)
+        return username -> userRepository.findByPhone(username)
                 .map(vn.vtit.gemek.common.security.UserPrincipal::new)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found: " + username));
     }

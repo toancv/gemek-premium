@@ -42,6 +42,22 @@ public interface UserRepository extends JpaRepository<User, UUID>, JpaSpecificat
     boolean existsByEmail(String email);
 
     /**
+     * Finds a user by their unique canonical phone number.
+     *
+     * @param phone the canonical phone number ({@code 0xxxxxxxxx} form).
+     * @return an {@link Optional} containing the user if found.
+     */
+    Optional<User> findByPhone(String phone);
+
+    /**
+     * Returns whether a user with the given canonical phone number already exists.
+     *
+     * @param phone the canonical phone number to check.
+     * @return {@code true} if a user with that phone exists.
+     */
+    boolean existsByPhone(String phone);
+
+    /**
      * Returns whether any user with the given role exists.
      *
      * @param role the role to check.

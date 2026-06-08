@@ -37,8 +37,7 @@ public class CreateResidentRequest {
     @NotBlank(message = "fullName is required.")
     private String fullName;
 
-    /** Email address for the new user account. Must be unique and valid. */
-    @NotBlank(message = "email is required.")
+    /** Optional informational email address. Unique when provided; omit or send null to skip. */
     @Email(message = "email must be a valid address.")
     private String email;
 

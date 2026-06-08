@@ -1,7 +1,7 @@
 # API Specification — Apartment Management System
 
-**Version:** 2.0
-**Date:** 2026-05-29
+**Version:** 2.1
+**Date:** 2026-06-08
 **Base URL:** `https://{host}/api`
 **Auth:** `Authorization: Bearer <accessToken>` header on all endpoints unless marked **Public**.
 
@@ -67,12 +67,21 @@ Pagination query params (all list endpoints unless noted):
 
 **Auth:** Public
 **Rate limit:** 10 req/min per IP
-**Description:** Authenticate user and receive tokens.
+**Description:** Authenticate user and receive tokens. Phone is the login identifier.
+
+**Phone normalization:** The server accepts any standard Vietnamese mobile format and normalizes to canonical `0xxxxxxxxx` (10 digits, leading 0, prefix 3–9) before lookup. Accepted input formats (all resolve to the same canonical form):
+- `0901234567` — canonical, already correct
+- `+84901234567` — international with `+`
+- `84901234567` — international without `+`
+- `+840901234567` — international with redundant leading `0`
+- `096 246 4748` — spaces, dots, or hyphens stripped first
+
+Invalid format → `400 VALIDATION_ERROR`.
 
 Request:
 ```json
 {
-  "email": "user@example.com",
+  "phone": "0901234567",
   "password": "string"
 }
 ```
@@ -85,7 +94,7 @@ Response `200 OK`:
   "expiresIn": 900,
   "user": {
     "id": "uuid",
-    "email": "user@example.com",
+    "phone": "0901234567",
     "fullName": "Nguyen Van A",
     "role": "RESIDENT",
     "avatarUrl": null
@@ -93,7 +102,7 @@ Response `200 OK`:
 }
 ```
 
-Errors: `401 UNAUTHORIZED` (wrong credentials), `400 VALIDATION_ERROR`
+Errors: `401 UNAUTHORIZED` (wrong credentials), `400 VALIDATION_ERROR` (missing field or invalid phone format)
 
 ---
 
@@ -222,16 +231,16 @@ Response `200 OK` — paginated:
 ### POST /api/users
 
 **Auth:** ADMIN
-**Description:** Create a new user account (staff or resident).
+**Description:** Create a new user account (staff or resident). Phone is the login identifier and is required; email is informational and optional.
 
 Request:
 ```json
 {
-  "email": "string",
   "fullName": "string",
-  "phone": "string|null",
+  "phone": "string (required — any VN mobile format, normalized server-side)",
+  "email": "string|null (optional — must be valid format if provided; unique when present)",
   "role": "RESIDENT|TECHNICIAN|ADMIN|BOARD_MEMBER",
-  "password": "string"
+  "password": "string (min 8 chars, upper + lower + digit + special)"
 }
 ```
 
@@ -239,7 +248,7 @@ Response `201 Created`:
 ```json
 {
   "id": "uuid",
-  "email": "string",
+  "email": "string|null",
   "fullName": "string",
   "role": "string",
   "isActive": true,
@@ -247,7 +256,7 @@ Response `201 Created`:
 }
 ```
 
-Errors: `409 CONFLICT` (email already exists)
+Errors: `409 PHONE_ALREADY_EXISTS` (phone already registered), `409 EMAIL_ALREADY_EXISTS` (email already registered), `400 VALIDATION_ERROR`
 
 ---
 
@@ -494,18 +503,19 @@ Response `200 OK` — paginated list of resident objects. Each resident includes
 **Auth:** ADMIN
 **Description:** Create a new user account and resident record in one atomic transaction.
 The `userId` field has been removed — the user is provisioned here, not pre-created separately.
+Phone is the login identifier and is normalized server-side (see POST /api/auth/login for accepted formats).
 
 Request:
 ```json
 {
   "fullName": "Nguyen Van A",
-  "email": "vana@example.com",
-  "password": "plaintext — BCrypt-hashed server-side",
-  "phone": "string|null",
-  "dateOfBirth": "1990-01-15|null",
-  "apartmentId": "uuid",
-  "type": "OWNER|TENANT",
-  "moveInDate": "2024-01-01",
+  "phone": "0901234567 (required — any VN mobile format, normalized server-side)",
+  "dateOfBirth": "1990-01-15 (required)",
+  "email": "vana@example.com (optional — unique when provided)",
+  "password": "plaintext — BCrypt-hashed server-side (required)",
+  "apartmentId": "uuid (required)",
+  "type": "OWNER|TENANT (required)",
+  "moveInDate": "2024-01-01 (required)",
   "isPrimaryContact": false,
   "notes": "string|null"
 }
@@ -515,7 +525,7 @@ Response `201 Created`:
 ```json
 {
   "id": "uuid",
-  "user": { "id": "uuid", "fullName": "string", "email": "string", "phone": "string|null", "dateOfBirth": "date|null" },
+  "user": { "id": "uuid", "fullName": "string", "email": "string|null", "phone": "string", "dateOfBirth": "date" },
   "apartment": { "id": "uuid", "unitNumber": "A301", "block": { "name": "Block A" } },
   "type": "OWNER",
   "moveInDate": "2024-01-01",
@@ -525,7 +535,7 @@ Response `201 Created`:
 }
 ```
 
-Errors: `409 CONFLICT` (email already registered), `404 NOT_FOUND` (apartment not found), `400 VALIDATION_ERROR` (missing required fields)
+Errors: `409 PHONE_ALREADY_EXISTS` (phone already registered), `409 CONFLICT` (email already registered), `404 NOT_FOUND` (apartment not found), `400 VALIDATION_ERROR`
 
 ---
 

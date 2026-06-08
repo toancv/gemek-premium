@@ -50,10 +50,12 @@ public class CreateResidentRequest {
     )
     private String password;
 
-    /** Optional phone number. */
+    /** Phone number of the new user. Must not be blank. */
+    @NotBlank(message = "phone is required.")
     private String phone;
 
-    /** Optional date of birth. */
+    /** Date of birth of the new user. Must not be null. */
+    @NotNull(message = "dateOfBirth is required.")
     private LocalDate dateOfBirth;
 
     // -------------------------------------------------------------------------

@@ -12,6 +12,7 @@ import org.springframework.boot.ApplicationRunner;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
+import vn.vtit.gemek.common.util.PhoneUtils;
 import vn.vtit.gemek.module.user.entity.User;
 import vn.vtit.gemek.module.user.entity.UserRole;
 import vn.vtit.gemek.module.user.repository.UserRepository;
@@ -25,6 +26,10 @@ import vn.vtit.gemek.module.user.repository.UserRepository;
  *
  * <p>Password is hashed in-JVM using the configured {@link PasswordEncoder} (BCrypt-12).
  * The plaintext password is never logged.
+ *
+ * <p>Phone is normalized via {@link PhoneUtils#normalize(String)} before storage so that
+ * non-canonical env values (e.g. {@code +84900000000}) produce the canonical form
+ * required by the {@code uq_users_phone} UNIQUE constraint (V12 migration).
  */
 @Component
 public class AdminSeeder implements ApplicationRunner {
@@ -35,6 +40,7 @@ public class AdminSeeder implements ApplicationRunner {
     private final PasswordEncoder passwordEncoder;
     private final String adminEmail;
     private final String adminPassword;
+    private final String adminPhone;
 
     /**
      * Constructs the seeder with all dependencies and config values injected.
@@ -43,15 +49,19 @@ public class AdminSeeder implements ApplicationRunner {
      * @param passwordEncoder BCrypt encoder (strength 12) from SecurityConfig.
      * @param adminEmail      admin email, bound from {@code ADMIN_EMAIL} env var.
      * @param adminPassword   plaintext admin password, bound from {@code ADMIN_PASSWORD} env var.
+     * @param adminPhone      admin phone (any accepted VN format), bound from {@code ADMIN_PHONE} env var;
+     *                        defaults to {@code 0900000000}.
      */
     public AdminSeeder(UserRepository userRepository,
                        PasswordEncoder passwordEncoder,
                        @Value("${app.admin.email:admin@gemek.vn}") String adminEmail,
-                       @Value("${app.admin.password:}") String adminPassword) {
+                       @Value("${app.admin.password:}") String adminPassword,
+                       @Value("${app.admin.phone:0900000000}") String adminPhone) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.adminEmail = adminEmail;
         this.adminPassword = adminPassword;
+        this.adminPhone = adminPhone;
     }
 
     /**
@@ -73,15 +83,18 @@ public class AdminSeeder implements ApplicationRunner {
                     "Set the ADMIN_PASSWORD environment variable before starting the application.");
         }
 
+        // Normalize phone — throws VALIDATION_ERROR (surfaces as startup failure) if misconfigured.
+        String normalizedPhone = PhoneUtils.normalize(adminPhone);
+
         User admin = new User();
         admin.setEmail(adminEmail);
         admin.setFullName("System Administrator");
-        admin.setPhone("0900000000");
+        admin.setPhone(normalizedPhone);
         admin.setPasswordHash(passwordEncoder.encode(adminPassword));
         admin.setRole(UserRole.ADMIN);
         admin.setActive(true);
 
         userRepository.save(admin);
-        log.info("Admin user seeded for email: {}", adminEmail);
+        log.info("Admin user seeded — phone={}", normalizedPhone);
     }
 }

@@ -5,6 +5,16 @@ Format: Date | Decision | Reasoning | Alternatives
 
 ---
 
+## 2026-06-08 | Demo seed script
+
+- Data: 3 blocks, 10 apartments (4/3/3 per block), 30 residents (3 per apt: 1 OWNER + 2 TENANT), 5 staff (2 ADMIN + 3 TECHNICIAN).
+- Password `Demo@1234`, BCrypt strength=12; hash embedded as literal (no `$` env-var interpolation).
+- Phones: staff `0901100001–0901100005`, residents `0901200001–0901200030` — all canonical `^0[3-9]\d{8}$`, no collision with default admin `0900000000`.
+- Amenities, amenity_bookings, parking intentionally excluded (features hidden/deferred).
+- Script replaces prior `scripts/seed-demo-local.sql` (previous version had 30 apts + vehicles + contractors + tickets + bookings — too heavy).
+
+---
+
 ## 2026-06-08 | Phone-as-login COMPLETE — canonical decisions
 
 1. Login identifier = phone (was email). Email is informational only — NOT login, NOT required.

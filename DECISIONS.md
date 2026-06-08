@@ -5,6 +5,12 @@ Format: Date | Decision | Reasoning | Alternatives
 
 ---
 
+## 2026-06-08 | Resident creation path: phone normalization + uniqueness (step 5)
+
+`ResidentServiceImpl.createResident()` built User directly, bypassing `UserServiceImpl.createUser()`. Added `PhoneUtils.normalize()` + `existsByPhone` check (→ PHONE_ALREADY_EXISTS 409) before persist. Email null-guard added (email is now optional). Consistent with UserServiceImpl order: normalize → phone-unique → email-unique → persist. Dup-phone was previously a 500 DB constraint violation; now 409.
+
+---
+
 ## 2026-06-08 | FE login switched from email to phone (step 6)
 
 Both apps (admin + resident): `AuthUser.email→phone`, `login(email)→login(phone)`, POST body `{email}→{phone}`. `LoginPage.tsx` both apps: label "Số điện thoại", `type="tel"`, loose VN phone regex UX gate only — BE normalizes and validates definitively. `ProfilePage.tsx` (resident): `user?.email→user?.phone` (minimal build-fix, full audit step 7). `ResidentsPage.tsx` `r.user?.email` left as-is (typed `any`, no TS error; display audit step 7). Builds: admin ✅ resident ✅.

@@ -153,6 +153,18 @@ class UserServiceImplTest {
         assertThat(captor.getValue().getEmail()).isNull();
     }
 
+    @Test
+    @DisplayName("createUser: null phone — throws VALIDATION_ERROR (phone required)")
+    void createUser_nullPhone_throwsValidationError() {
+        CreateUserRequest request = new CreateUserRequest(
+                null, "Test User", null, UserRole.RESIDENT, "Test@12345");
+
+        assertThatThrownBy(() -> userService.createUser(request))
+                .isInstanceOf(AppException.class)
+                .satisfies(ex -> assertThat(((AppException) ex).getErrorCode())
+                        .isEqualTo(ErrorCode.VALIDATION_ERROR));
+    }
+
     // -------------------------------------------------------------------------
     // updateUser() — SEC-04 role-change audit logging
     // -------------------------------------------------------------------------

@@ -198,6 +198,33 @@ class ResidentServiceImplTest {
     }
 
     // =========================================================================
+    // createResident — null email accepted (email optional since V12 / 4237cba)
+    // =========================================================================
+
+    @Test
+    @DisplayName("createResident — null email is accepted; user persisted with null email")
+    void createResident_nullEmail_savedWithNullEmail() {
+        when(userRepository.existsByPhone("0900000001")).thenReturn(false);
+        when(passwordEncoder.encode("Pass@123456")).thenReturn("$2a$hashed");
+        when(apartmentRepository.findById(apartmentId)).thenReturn(Optional.of(apartment));
+        when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(residentRepository.save(any(Resident.class))).thenReturn(resident);
+        when(residentMapper.toResponse(resident)).thenReturn(ResidentResponse.builder().id(residentId).build());
+
+        CreateResidentRequest request = new CreateResidentRequest(
+                "Nguyen Van A", null, "Pass@123456",
+                "0900000001", LocalDate.of(1990, 1, 1),
+                apartmentId, ResidentType.OWNER,
+                LocalDate.of(2026, 1, 1), false, null);
+
+        service.createResident(request, UUID.randomUUID());
+
+        ArgumentCaptor<User> captor = forClass(User.class);
+        verify(userRepository).save(captor.capture());
+        assertThat(captor.getValue().getEmail()).isNull();
+    }
+
+    // =========================================================================
     // createResident — duplicate phone → PHONE_ALREADY_EXISTS
     // =========================================================================
 

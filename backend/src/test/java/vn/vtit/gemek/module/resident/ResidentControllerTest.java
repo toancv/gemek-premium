@@ -279,6 +279,50 @@ class ResidentControllerTest {
                 .andExpect(jsonPath("$.error").value("VALIDATION_ERROR"));
     }
 
+    @Test
+    @DisplayName("POST /api/residents — weak password (no complexity) returns 400 VALIDATION_ERROR")
+    void createResident_weakPassword_400() throws Exception {
+        UUID blockId = createBlock("ResBlock-WeakPw-" + System.nanoTime());
+        UUID apartmentId = createApartment(blockId, "WP101");
+
+        Map<String, Object> req = new HashMap<>();
+        req.put("fullName", "Weak Pass User");
+        req.put("email", "res.weakpw." + System.nanoTime() + "@test.com");
+        req.put("password", "weak");   // non-blank but fails complexity rule
+        req.put("apartmentId", apartmentId.toString());
+        req.put("type", "TENANT");
+        req.put("moveInDate", "2026-01-01");
+
+        mockMvc.perform(post("/api/residents")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(req)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("VALIDATION_ERROR"));
+    }
+
+    @Test
+    @DisplayName("POST /api/residents — compliant password (upper+lower+digit+special, ≥8) returns 201")
+    void createResident_compliantPassword_201() throws Exception {
+        UUID blockId = createBlock("ResBlock-GoodPw-" + System.nanoTime());
+        UUID apartmentId = createApartment(blockId, "GP101");
+
+        Map<String, Object> req = new HashMap<>();
+        req.put("fullName", "Good Pass User");
+        req.put("email", "res.goodpw." + System.nanoTime() + "@test.com");
+        req.put("password", DEFAULT_PASS);   // "Resident@123456" — upper+lower+digit+special
+        req.put("apartmentId", apartmentId.toString());
+        req.put("type", "TENANT");
+        req.put("moveInDate", "2026-01-01");
+
+        mockMvc.perform(post("/api/residents")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(req)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.id").isNotEmpty());
+    }
+
     // -------------------------------------------------------------------------
     // POST /api/residents — admin creates with OWNER type (existing behaviour check)
     // -------------------------------------------------------------------------

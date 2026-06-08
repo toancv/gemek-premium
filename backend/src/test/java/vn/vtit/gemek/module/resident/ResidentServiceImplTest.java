@@ -28,6 +28,8 @@ import vn.vtit.gemek.module.resident.repository.ResidentRepository;
 import vn.vtit.gemek.module.user.entity.User;
 import vn.vtit.gemek.module.user.repository.UserRepository;
 
+import org.mockito.ArgumentCaptor;
+
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.Optional;
@@ -35,7 +37,9 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentCaptor.forClass;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
@@ -100,11 +104,12 @@ class ResidentServiceImplTest {
     @Test
     @DisplayName("createResident — duplicate email throws CONFLICT")
     void createResident_duplicateEmail_throwsConflict() {
+        when(userRepository.existsByPhone("0900000001")).thenReturn(false);
         when(userRepository.existsByEmail("dup@test.com")).thenReturn(true);
 
         CreateResidentRequest request = new CreateResidentRequest(
                 "Test User", "dup@test.com", "Pass@123456",
-                null, null,
+                "0900000001", null,
                 apartmentId, ResidentType.OWNER,
                 LocalDate.of(2026, 1, 1), false, null);
 
@@ -121,12 +126,13 @@ class ResidentServiceImplTest {
     @Test
     @DisplayName("createResident — apartment not found throws NOT_FOUND")
     void createResident_apartmentNotFound_throwsNotFound() {
+        when(userRepository.existsByPhone("0900000001")).thenReturn(false);
         when(userRepository.existsByEmail("new@test.com")).thenReturn(false);
         when(apartmentRepository.findById(apartmentId)).thenReturn(Optional.empty());
 
         CreateResidentRequest request = new CreateResidentRequest(
                 "Test User", "new@test.com", "Pass@123456",
-                null, null,
+                "0900000001", null,
                 apartmentId, ResidentType.OWNER,
                 LocalDate.of(2026, 1, 1), false, null);
 
@@ -143,6 +149,7 @@ class ResidentServiceImplTest {
     @Test
     @DisplayName("createResident — valid request saves user and resident, returns mapped response")
     void createResident_validRequest_savesUserAndResident() {
+        when(userRepository.existsByPhone("0900000001")).thenReturn(false);
         when(userRepository.existsByEmail("ok@test.com")).thenReturn(false);
         when(passwordEncoder.encode("Pass@123456")).thenReturn("$2a$hashed");
         when(apartmentRepository.findById(apartmentId)).thenReturn(Optional.of(apartment));
@@ -153,13 +160,62 @@ class ResidentServiceImplTest {
 
         CreateResidentRequest request = new CreateResidentRequest(
                 "Nguyen Van A", "ok@test.com", "Pass@123456",
-                null, null,
+                "0900000001", null,
                 apartmentId, ResidentType.OWNER,
                 LocalDate.of(2026, 1, 1), false, null);
 
         ResidentResponse result = service.createResident(request, UUID.randomUUID());
 
         assertThat(result.getId()).isEqualTo(residentId);
+    }
+
+    // =========================================================================
+    // createResident — non-canonical phone stored as canonical
+    // =========================================================================
+
+    @Test
+    @DisplayName("createResident — non-canonical phone (+84 prefix) is stored as canonical 0xxxxxxxxx")
+    void createResident_nonCanonicalPhone_storesCanonical() {
+        when(userRepository.existsByPhone("0900000001")).thenReturn(false);
+        when(userRepository.existsByEmail("ok@test.com")).thenReturn(false);
+        when(passwordEncoder.encode("Pass@123456")).thenReturn("$2a$hashed");
+        when(apartmentRepository.findById(apartmentId)).thenReturn(Optional.of(apartment));
+        when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(residentRepository.save(any(Resident.class))).thenReturn(resident);
+        when(residentMapper.toResponse(resident)).thenReturn(ResidentResponse.builder().id(residentId).build());
+
+        CreateResidentRequest request = new CreateResidentRequest(
+                "Nguyen Van A", "ok@test.com", "Pass@123456",
+                "+84900000001", null,
+                apartmentId, ResidentType.OWNER,
+                LocalDate.of(2026, 1, 1), false, null);
+
+        service.createResident(request, UUID.randomUUID());
+
+        ArgumentCaptor<User> captor = forClass(User.class);
+        verify(userRepository).save(captor.capture());
+        assertThat(captor.getValue().getPhone()).isEqualTo("0900000001");
+    }
+
+    // =========================================================================
+    // createResident — duplicate phone → PHONE_ALREADY_EXISTS
+    // =========================================================================
+
+    @Test
+    @DisplayName("createResident — duplicate phone throws PHONE_ALREADY_EXISTS")
+    void createResident_duplicatePhone_throwsPhoneAlreadyExists() {
+        when(userRepository.existsByPhone("0900000001")).thenReturn(true);
+
+        CreateResidentRequest request = new CreateResidentRequest(
+                "Test User", "new@test.com", "Pass@123456",
+                "0900000001", null,
+                apartmentId, ResidentType.OWNER,
+                LocalDate.of(2026, 1, 1), false, null);
+
+        assertThatThrownBy(() -> service.createResident(request, UUID.randomUUID()))
+                .isInstanceOf(AppException.class)
+                .satisfies(ex -> assertThat(((AppException) ex).getErrorCode())
+                        .isEqualTo(ErrorCode.PHONE_ALREADY_EXISTS));
     }
 
     // =========================================================================

@@ -8,6 +8,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -41,8 +42,12 @@ public class CreateResidentRequest {
     @Email(message = "email must be a valid address.")
     private String email;
 
-    /** Plain-text password — will be BCrypt-hashed before storage. Must not be blank. */
+    /** Plain-text password — will be BCrypt-hashed before storage. Must not be blank and must meet complexity requirements. */
     @NotBlank(message = "password is required.")
+    @Pattern(
+            regexp = "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[^a-zA-Z0-9]).{8,}$",
+            message = "Password must be at least 8 characters and include upper, lower, digit, and special character."
+    )
     private String password;
 
     /** Optional phone number. */

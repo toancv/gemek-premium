@@ -43,8 +43,9 @@ class AuthControllerTest {
     @Autowired
     private ObjectMapper objectMapper;
 
-    /** Seeded by V2 migration: admin@gemek.vn / Admin@123456. */
-    private static final String ADMIN_EMAIL = "admin@gemek.vn";
+    /** Seeded by AdminSeeder: phone 0900000000, email admin@gemek.vn, password Admin@123456. */
+    private static final String ADMIN_PHONE    = "0900000000";
+    private static final String ADMIN_EMAIL    = "admin@gemek.vn";
     private static final String ADMIN_PASSWORD = "Admin@123456";
 
     // -------------------------------------------------------------------------
@@ -54,7 +55,7 @@ class AuthControllerTest {
     @Test
     @DisplayName("POST /api/auth/login — valid credentials returns 200 with tokens")
     void login_validCredentials_returns200WithTokens() throws Exception {
-        LoginRequest request = new LoginRequest(ADMIN_EMAIL, ADMIN_PASSWORD);
+        LoginRequest request = new LoginRequest(ADMIN_PHONE, ADMIN_PASSWORD);
 
         mockMvc.perform(post("/api/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -63,7 +64,7 @@ class AuthControllerTest {
                 .andExpect(jsonPath("$.accessToken").isNotEmpty())
                 .andExpect(jsonPath("$.refreshToken").isNotEmpty())
                 .andExpect(jsonPath("$.expiresIn").value(900))
-                .andExpect(jsonPath("$.user.email").value(ADMIN_EMAIL))
+                .andExpect(jsonPath("$.user.phone").value(ADMIN_PHONE))
                 .andExpect(jsonPath("$.user.role").value("ADMIN"));
     }
 
@@ -80,8 +81,8 @@ class AuthControllerTest {
     }
 
     @Test
-    @DisplayName("POST /api/auth/login — missing email returns 400 validation error")
-    void login_missingEmail_returns400() throws Exception {
+    @DisplayName("POST /api/auth/login — missing phone returns 400 validation error")
+    void login_missingPhone_returns400() throws Exception {
         Map<String, String> body = Map.of("password", "somepass");
 
         mockMvc.perform(post("/api/auth/login")
@@ -99,7 +100,7 @@ class AuthControllerTest {
     @DisplayName("POST /api/auth/refresh — valid refresh token returns new access token")
     void refresh_validToken_returnsNewAccessToken() throws Exception {
         // First login to get a refresh token.
-        LoginRequest loginRequest = new LoginRequest(ADMIN_EMAIL, ADMIN_PASSWORD);
+        LoginRequest loginRequest = new LoginRequest(ADMIN_PHONE, ADMIN_PASSWORD);
         MvcResult loginResult = mockMvc.perform(post("/api/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(loginRequest)))
@@ -128,7 +129,7 @@ class AuthControllerTest {
     @DisplayName("POST /api/auth/logout — returns 204 and subsequent request returns 401")
     void logout_validToken_returns204AndSubsequentRequestReturns401() throws Exception {
         // Login to get tokens.
-        LoginRequest loginRequest = new LoginRequest(ADMIN_EMAIL, ADMIN_PASSWORD);
+        LoginRequest loginRequest = new LoginRequest(ADMIN_PHONE, ADMIN_PASSWORD);
         MvcResult loginResult = mockMvc.perform(post("/api/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(loginRequest)))
@@ -154,7 +155,7 @@ class AuthControllerTest {
     @DisplayName("GET /api/auth/me — returns user profile for authenticated user")
     void getMe_authenticated_returnsProfile() throws Exception {
         // Login.
-        LoginRequest loginRequest = new LoginRequest(ADMIN_EMAIL, ADMIN_PASSWORD);
+        LoginRequest loginRequest = new LoginRequest(ADMIN_PHONE, ADMIN_PASSWORD);
         MvcResult loginResult = mockMvc.perform(post("/api/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(loginRequest)))

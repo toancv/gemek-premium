@@ -81,6 +81,8 @@ class AuthServiceTest {
 
     private AuthServiceImpl authService;
 
+    private static final String PHONE = "0962464748";
+
     /** A reusable active admin user for most test scenarios. */
     private User testUser;
 
@@ -91,6 +93,7 @@ class AuthServiceTest {
 
         testUser = new User();
         testUser.setId(UUID.randomUUID());
+        testUser.setPhone(PHONE);
         testUser.setEmail("admin@gemek.vn");
         testUser.setFullName("Admin User");
         testUser.setPasswordHash("$2a$12$hashedpassword");
@@ -111,7 +114,7 @@ class AuthServiceTest {
     @DisplayName("login: valid credentials returns tokens and updates lastLoginAt")
     void login_validCredentials_returnsTokensAndUpdatesLastLoginAt() {
         when(valueOps.increment(anyString())).thenReturn(1L);
-        when(userRepository.findByEmail(testUser.getEmail())).thenReturn(Optional.of(testUser));
+        when(userRepository.findByPhone(PHONE)).thenReturn(Optional.of(testUser));
         when(passwordEncoder.matches("Admin@123456", testUser.getPasswordHash())).thenReturn(true);
         when(tokenProvider.generateAccessToken(any(UserPrincipal.class))).thenReturn("access.token.here");
         when(tokenProvider.generateRefreshToken(testUser.getId())).thenReturn("refresh.token.here");
@@ -119,13 +122,13 @@ class AuthServiceTest {
         when(jwtConfig.getAccessTokenExpiryMs()).thenReturn(900_000L);
         when(jwtConfig.getRefreshTokenExpiryMs()).thenReturn(604_800_000L);
 
-        LoginRequest request = new LoginRequest(testUser.getEmail(), "Admin@123456");
+        LoginRequest request = new LoginRequest(PHONE, "Admin@123456");
         LoginResponse response = authService.login(request, httpRequest);
 
         assertThat(response.accessToken()).isEqualTo("access.token.here");
         assertThat(response.refreshToken()).isEqualTo("refresh.token.here");
         assertThat(response.expiresIn()).isEqualTo(900L);
-        assertThat(response.user().email()).isEqualTo(testUser.getEmail());
+        assertThat(response.user().phone()).isEqualTo(PHONE);
 
         // Verify lastLoginAt was updated via save.
         ArgumentCaptor<User> userCaptor = ArgumentCaptor.forClass(User.class);
@@ -141,13 +144,32 @@ class AuthServiceTest {
     }
 
     @Test
+    @DisplayName("login: non-canonical +84 format normalized — resolves same account")
+    void login_nonCanonicalPhone_normalizedAndResolvesAccount() {
+        when(valueOps.increment(anyString())).thenReturn(1L);
+        // PhoneUtils.normalize("+84962464748") → "0962464748"; stub on canonical form.
+        when(userRepository.findByPhone(PHONE)).thenReturn(Optional.of(testUser));
+        when(passwordEncoder.matches("Admin@123456", testUser.getPasswordHash())).thenReturn(true);
+        when(tokenProvider.generateAccessToken(any(UserPrincipal.class))).thenReturn("access.token.here");
+        when(tokenProvider.generateRefreshToken(testUser.getId())).thenReturn("refresh.token.here");
+        when(tokenProvider.extractJti("refresh.token.here")).thenReturn("refresh-jti-uuid");
+        when(jwtConfig.getAccessTokenExpiryMs()).thenReturn(900_000L);
+        when(jwtConfig.getRefreshTokenExpiryMs()).thenReturn(604_800_000L);
+
+        LoginRequest request = new LoginRequest("+84962464748", "Admin@123456");
+        LoginResponse response = authService.login(request, httpRequest);
+
+        assertThat(response.user().phone()).isEqualTo(PHONE);
+    }
+
+    @Test
     @DisplayName("login: wrong password throws INVALID_CREDENTIALS")
     void login_wrongPassword_throwsInvalidCredentials() {
         when(valueOps.increment(anyString())).thenReturn(1L);
-        when(userRepository.findByEmail(testUser.getEmail())).thenReturn(Optional.of(testUser));
+        when(userRepository.findByPhone(PHONE)).thenReturn(Optional.of(testUser));
         when(passwordEncoder.matches("wrongpass", testUser.getPasswordHash())).thenReturn(false);
 
-        LoginRequest request = new LoginRequest(testUser.getEmail(), "wrongpass");
+        LoginRequest request = new LoginRequest(PHONE, "wrongpass");
 
         assertThatThrownBy(() -> authService.login(request, httpRequest))
                 .isInstanceOf(AppException.class)
@@ -158,12 +180,12 @@ class AuthServiceTest {
     }
 
     @Test
-    @DisplayName("login: unknown email throws INVALID_CREDENTIALS (no user enumeration)")
-    void login_unknownEmail_throwsInvalidCredentials() {
+    @DisplayName("login: unknown phone throws INVALID_CREDENTIALS (no user enumeration)")
+    void login_unknownPhone_throwsInvalidCredentials() {
         when(valueOps.increment(anyString())).thenReturn(1L);
-        when(userRepository.findByEmail("unknown@gemek.vn")).thenReturn(Optional.empty());
+        when(userRepository.findByPhone("0999999999")).thenReturn(Optional.empty());
 
-        LoginRequest request = new LoginRequest("unknown@gemek.vn", "somepass");
+        LoginRequest request = new LoginRequest("0999999999", "somepass");
 
         assertThatThrownBy(() -> authService.login(request, httpRequest))
                 .isInstanceOf(AppException.class)
@@ -177,7 +199,7 @@ class AuthServiceTest {
         // Simulate counter already at 11 (over the 10 req/min limit).
         when(valueOps.increment(anyString())).thenReturn(11L);
 
-        LoginRequest request = new LoginRequest(testUser.getEmail(), "Admin@123456");
+        LoginRequest request = new LoginRequest(PHONE, "Admin@123456");
 
         assertThatThrownBy(() -> authService.login(request, httpRequest))
                 .isInstanceOf(AppException.class)
@@ -197,7 +219,6 @@ class AuthServiceTest {
         String accessToken = "valid.access.token";
 
         // SECURITY-FIX: SEC-14 — logout now uses SCAN cursor instead of KEYS.
-        // Mock the cursor so forEachRemaining yields one key then stops.
         Cursor<String> mockCursor = org.mockito.Mockito.mock(Cursor.class);
         org.mockito.Mockito.doAnswer(inv -> {
             java.util.function.Consumer<String> consumer = inv.getArgument(0);
@@ -238,7 +259,6 @@ class AuthServiceTest {
         when(tokenProvider.generateAccessToken(any(UserPrincipal.class))).thenReturn("new.access.token");
         when(jwtConfig.getAccessTokenExpiryMs()).thenReturn(900_000L);
 
-        // Pass httpRequest mock (already stubs getRemoteAddr → "127.0.0.1" in setUp)
         when(valueOps.increment(anyString())).thenReturn(1L);
         RefreshTokenRequest request = new RefreshTokenRequest("valid.refresh.token");
         var response = authService.refreshToken(request, httpRequest);
@@ -276,10 +296,8 @@ class AuthServiceTest {
     void logout_nullToken_returnsGracefullyWithoutException() {
         UserPrincipal principal = new UserPrincipal(testUser);
 
-        // Must not throw — null guard in logout() short-circuits before any Redis call.
         authService.logout(principal, null);
 
-        // No interactions with redisTemplate expected.
         verify(redisTemplate, never()).opsForValue();
     }
 

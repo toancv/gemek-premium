@@ -17,6 +17,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import vn.vtit.gemek.common.exception.AppException;
 import vn.vtit.gemek.common.exception.ErrorCode;
+import vn.vtit.gemek.module.user.dto.CreateUserRequest;
 import vn.vtit.gemek.module.user.dto.UpdateUserRequest;
 import vn.vtit.gemek.module.user.entity.User;
 import vn.vtit.gemek.module.user.entity.UserRole;
@@ -34,7 +35,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
- * Unit tests for {@link UserServiceImpl} — SEC-04 role-change audit logging and self-deactivation guard.
+ * Unit tests for {@link UserServiceImpl}.
  */
 @ExtendWith(MockitoExtension.class)
 class UserServiceImplTest {
@@ -56,7 +57,104 @@ class UserServiceImplTest {
     }
 
     // -------------------------------------------------------------------------
-    // SEC-04: role change is allowed but must be auditable (WARN log produced)
+    // createUser() — phone uniqueness + normalization
+    // -------------------------------------------------------------------------
+
+    @Test
+    @DisplayName("createUser: canonical phone, new — saved with normalized phone")
+    void createUser_newPhone_savedWithNormalizedPhone() {
+        CreateUserRequest request = new CreateUserRequest(
+                "user@gemek.vn", "Test User", "0962464748", UserRole.RESIDENT, "Test@12345");
+
+        when(userRepository.existsByPhone("0962464748")).thenReturn(false);
+        when(userRepository.existsByEmail("user@gemek.vn")).thenReturn(false);
+        when(passwordEncoder.encode("Test@12345")).thenReturn("$hashed");
+        when(userRepository.save(any())).thenAnswer(inv -> {
+            User u = inv.getArgument(0);
+            u.setId(UUID.randomUUID());
+            return u;
+        });
+
+        userService.createUser(request);
+
+        ArgumentCaptor<User> captor = ArgumentCaptor.forClass(User.class);
+        verify(userRepository).save(captor.capture());
+        assertThat(captor.getValue().getPhone()).isEqualTo("0962464748");
+    }
+
+    @Test
+    @DisplayName("createUser: +84 format — normalized to 0xxxxxxxxx before existsByPhone and save")
+    void createUser_plus84Phone_normalizedBeforeSave() {
+        CreateUserRequest request = new CreateUserRequest(
+                null, "Test User", "+84962464748", UserRole.RESIDENT, "Test@12345");
+
+        when(userRepository.existsByPhone("0962464748")).thenReturn(false);
+        when(passwordEncoder.encode("Test@12345")).thenReturn("$hashed");
+        when(userRepository.save(any())).thenAnswer(inv -> {
+            User u = inv.getArgument(0);
+            u.setId(UUID.randomUUID());
+            return u;
+        });
+
+        userService.createUser(request);
+
+        ArgumentCaptor<User> captor = ArgumentCaptor.forClass(User.class);
+        verify(userRepository).save(captor.capture());
+        assertThat(captor.getValue().getPhone()).isEqualTo("0962464748");
+    }
+
+    @Test
+    @DisplayName("createUser: duplicate phone — throws PHONE_ALREADY_EXISTS")
+    void createUser_duplicatePhone_throwsPhoneAlreadyExists() {
+        CreateUserRequest request = new CreateUserRequest(
+                null, "Test User", "0962464748", UserRole.RESIDENT, "Test@12345");
+
+        when(userRepository.existsByPhone("0962464748")).thenReturn(true);
+
+        assertThatThrownBy(() -> userService.createUser(request))
+                .isInstanceOf(AppException.class)
+                .satisfies(ex -> assertThat(((AppException) ex).getErrorCode())
+                        .isEqualTo(ErrorCode.PHONE_ALREADY_EXISTS));
+    }
+
+    @Test
+    @DisplayName("createUser: duplicate email (when provided) — throws EMAIL_ALREADY_EXISTS")
+    void createUser_duplicateEmail_throwsEmailAlreadyExists() {
+        CreateUserRequest request = new CreateUserRequest(
+                "dup@gemek.vn", "Test User", "0962464748", UserRole.RESIDENT, "Test@12345");
+
+        when(userRepository.existsByPhone("0962464748")).thenReturn(false);
+        when(userRepository.existsByEmail("dup@gemek.vn")).thenReturn(true);
+
+        assertThatThrownBy(() -> userService.createUser(request))
+                .isInstanceOf(AppException.class)
+                .satisfies(ex -> assertThat(((AppException) ex).getErrorCode())
+                        .isEqualTo(ErrorCode.EMAIL_ALREADY_EXISTS));
+    }
+
+    @Test
+    @DisplayName("createUser: null email — saved with null email (email optional)")
+    void createUser_nullEmail_savedWithNullEmail() {
+        CreateUserRequest request = new CreateUserRequest(
+                null, "Test User", "0962464748", UserRole.RESIDENT, "Test@12345");
+
+        when(userRepository.existsByPhone("0962464748")).thenReturn(false);
+        when(passwordEncoder.encode("Test@12345")).thenReturn("$hashed");
+        when(userRepository.save(any())).thenAnswer(inv -> {
+            User u = inv.getArgument(0);
+            u.setId(UUID.randomUUID());
+            return u;
+        });
+
+        userService.createUser(request);
+
+        ArgumentCaptor<User> captor = ArgumentCaptor.forClass(User.class);
+        verify(userRepository).save(captor.capture());
+        assertThat(captor.getValue().getEmail()).isNull();
+    }
+
+    // -------------------------------------------------------------------------
+    // updateUser() — SEC-04 role-change audit logging
     // -------------------------------------------------------------------------
 
     @Test
@@ -66,7 +164,6 @@ class UserServiceImplTest {
         User existing = buildUser(userId, UserRole.RESIDENT);
         UpdateUserRequest request = new UpdateUserRequest("Admin User", "0900000001", UserRole.ADMIN, true);
 
-        // Stub SecurityContext so actorId lookup does not NPE
         Authentication auth = mock(Authentication.class);
         when(auth.getName()).thenReturn("admin-uuid");
         SecurityContext ctx = mock(SecurityContext.class);
@@ -115,7 +212,7 @@ class UserServiceImplTest {
     }
 
     // -------------------------------------------------------------------------
-    // Self-deactivation guard
+    // deactivateUser() — self-deactivation guard
     // -------------------------------------------------------------------------
 
     @Test
@@ -157,10 +254,10 @@ class UserServiceImplTest {
     private User buildUser(UUID id, UserRole role) {
         User user = new User();
         user.setId(id);
+        user.setPhone("0900000000");
         user.setEmail("test@gemek.vn");
         user.setPasswordHash("$2a$12$hash");
         user.setFullName("Test User");
-        user.setPhone("0900000000");
         user.setRole(role);
         user.setActive(true);
         return user;

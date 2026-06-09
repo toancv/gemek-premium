@@ -44,6 +44,12 @@ const ERROR_MESSAGES: Record<string, string> = {
   WRONG_CURRENT_PASSWORD: 'Mật khẩu hiện tại không đúng.',
   PASSWORD_POLICY_VIOLATION: 'Mật khẩu mới phải có tối thiểu 8 ký tự, gồm chữ hoa, chữ thường, số và ký tự đặc biệt.',
 
+  // Amenity
+  AMENITY_NAME_EXISTS: 'Tên tiện ích đã tồn tại.',
+
+  // Booking lifecycle
+  BOOKING_NOT_PENDING: 'Chỉ có thể duyệt hoặc từ chối đặt chỗ đang chờ xử lý.',
+
   // Rate / server
   RATE_LIMITED: 'Bạn thao tác quá nhanh, vui lòng thử lại sau.',
   INTERNAL_ERROR: 'Có lỗi xảy ra, vui lòng thử lại.',

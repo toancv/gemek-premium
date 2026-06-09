@@ -106,6 +106,14 @@ describe('getVnErrorMessage', () => {
     expect(getVnErrorMessage('')).toBe(FALLBACK);
   });
 
+  it('AMENITY_NAME_EXISTS returns VN message about duplicate name', () => {
+    expect(getVnErrorMessage('AMENITY_NAME_EXISTS')).toBe('Tên tiện ích đã tồn tại.');
+  });
+
+  it('BOOKING_NOT_PENDING returns VN message about non-pending booking', () => {
+    expect(getVnErrorMessage('BOOKING_NOT_PENDING')).toBe('Chỉ có thể duyệt hoặc từ chối đặt chỗ đang chờ xử lý.');
+  });
+
   it('never returns empty string for any known code', () => {
     const knownCodes = [
       'PHONE_ALREADY_EXISTS', 'EMAIL_ALREADY_EXISTS', 'INVALID_CREDENTIALS',
@@ -115,7 +123,7 @@ describe('getVnErrorMessage', () => {
       'SELF_OPERATION_NOT_ALLOWED', 'RATE_LIMITED', 'INTERNAL_ERROR',
       'LICENSE_PLATE_ALREADY_EXISTS', 'SLOT_NUMBER_ALREADY_EXISTS',
       'TICKET_ALREADY_RATED', 'RESIDENT_ALREADY_MOVED_OUT', 'WRONG_CURRENT_PASSWORD',
-      'PASSWORD_POLICY_VIOLATION',
+      'PASSWORD_POLICY_VIOLATION', 'AMENITY_NAME_EXISTS', 'BOOKING_NOT_PENDING',
     ];
     for (const code of knownCodes) {
       const msg = getVnErrorMessage(code);

@@ -202,7 +202,7 @@ class VehicleControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(dup)))
                 .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.error").value("CONFLICT"));
+                .andExpect(jsonPath("$.error").value("LICENSE_PLATE_ALREADY_EXISTS"));
     }
 
     // -------------------------------------------------------------------------

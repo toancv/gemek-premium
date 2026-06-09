@@ -117,8 +117,8 @@ class AnnouncementServiceImplTest {
     // =========================================================================
 
     @Test
-    @DisplayName("updateAnnouncement — editing a published announcement throws CONFLICT")
-    void updateAnnouncement_publishedAnnouncement_throwsConflict() {
+    @DisplayName("updateAnnouncement — editing a published announcement throws INVALID_STATUS_TRANSITION")
+    void updateAnnouncement_publishedAnnouncement_throwsInvalidStatusTransition() {
         when(announcementRepository.findById(announcementId))
                 .thenReturn(Optional.of(publishedAnnouncement));
 
@@ -128,7 +128,7 @@ class AnnouncementServiceImplTest {
         assertThatThrownBy(() -> service.updateAnnouncement(announcementId, request))
                 .isInstanceOf(AppException.class)
                 .satisfies(ex -> assertThat(((AppException) ex).getErrorCode())
-                        .isEqualTo(ErrorCode.CONFLICT));
+                        .isEqualTo(ErrorCode.INVALID_STATUS_TRANSITION));
     }
 
     // =========================================================================

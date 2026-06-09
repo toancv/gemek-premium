@@ -282,8 +282,8 @@ class ResidentServiceImplTest {
     // =========================================================================
 
     @Test
-    @DisplayName("moveOut — resident already has moveOutDate set throws CONFLICT")
-    void moveOut_alreadyMovedOut_throwsConflict() {
+    @DisplayName("moveOut — resident already has moveOutDate set throws RESIDENT_ALREADY_MOVED_OUT")
+    void moveOut_alreadyMovedOut_throwsResidentAlreadyMovedOut() {
         resident.setMoveOutDate(LocalDate.of(2026, 3, 1));
         when(residentRepository.findById(residentId)).thenReturn(Optional.of(resident));
 
@@ -292,7 +292,7 @@ class ResidentServiceImplTest {
         assertThatThrownBy(() -> service.moveOut(residentId, request, UUID.randomUUID()))
                 .isInstanceOf(AppException.class)
                 .satisfies(ex -> assertThat(((AppException) ex).getErrorCode())
-                        .isEqualTo(ErrorCode.CONFLICT));
+                        .isEqualTo(ErrorCode.RESIDENT_ALREADY_MOVED_OUT));
     }
 
     // =========================================================================

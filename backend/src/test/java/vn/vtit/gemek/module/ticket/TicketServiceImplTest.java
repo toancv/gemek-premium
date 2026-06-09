@@ -22,6 +22,7 @@ import vn.vtit.gemek.module.contractor.repository.ContractorRepository;
 import vn.vtit.gemek.module.notification.NotificationService;
 import vn.vtit.gemek.module.resident.entity.Resident;
 import vn.vtit.gemek.module.resident.repository.ResidentRepository;
+import vn.vtit.gemek.module.ticket.dto.RateTicketRequest;
 import vn.vtit.gemek.module.ticket.dto.TicketDetailResponse;
 import vn.vtit.gemek.module.ticket.entity.Ticket;
 import vn.vtit.gemek.module.ticket.entity.TicketPhoto;
@@ -216,5 +217,38 @@ class TicketServiceImplTest {
 
         // ADMIN is unrestricted — must complete without exception
         service.assertPresignAccess("tickets/photo.jpg", UUID.randomUUID(), "ADMIN");
+    }
+
+    // -------------------------------------------------------------------------
+    // rateTicket — status not DONE → INVALID_STATUS_TRANSITION
+    // -------------------------------------------------------------------------
+
+    @Test
+    @DisplayName("rateTicket — ticket not DONE throws INVALID_STATUS_TRANSITION")
+    void rateTicket_notDone_throwsInvalidStatusTransition() {
+        ticket.setStatus(TicketStatus.NEW);
+        RateTicketRequest req = new RateTicketRequest(5, null);
+
+        assertThatThrownBy(() -> service.rateTicket(ticketId, req, submitter.getId()))
+                .isInstanceOf(AppException.class)
+                .satisfies(ex -> assertThat(((AppException) ex).getErrorCode())
+                        .isEqualTo(ErrorCode.INVALID_STATUS_TRANSITION));
+    }
+
+    // -------------------------------------------------------------------------
+    // rateTicket — already rated → TICKET_ALREADY_RATED
+    // -------------------------------------------------------------------------
+
+    @Test
+    @DisplayName("rateTicket — ticket already rated throws TICKET_ALREADY_RATED")
+    void rateTicket_alreadyRated_throwsTicketAlreadyRated() {
+        ticket.setStatus(TicketStatus.DONE);
+        ticket.setRating((short) 4);
+        RateTicketRequest req = new RateTicketRequest(5, null);
+
+        assertThatThrownBy(() -> service.rateTicket(ticketId, req, submitter.getId()))
+                .isInstanceOf(AppException.class)
+                .satisfies(ex -> assertThat(((AppException) ex).getErrorCode())
+                        .isEqualTo(ErrorCode.TICKET_ALREADY_RATED));
     }
 }

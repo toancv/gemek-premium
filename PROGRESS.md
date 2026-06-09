@@ -13,7 +13,7 @@
 - Survey complete: `reports/form-feedback-survey.md`
 - BE error code audit complete: `reports/error-code-audit.md` — 20 codes (16 specific, 4 generic); CONFLICT gaps patched (e604f8a, 7 spots, 4 new enum entries)
 - `getVnErrorMessage(errorCode?)` util in `@gemek/ui/src/lib/errorMessages.ts` — maps all 20 BE codes + fallback; 24 tests green; extended (00db804)
-- **Cluster 1 done (ecda711):** 5 forms standardized — admin LoginPage, resident LoginPage, resident ProfilePage (change-password), resident AmenitiesPage (book), resident TicketDetailPage (rate). All use `getVnErrorMessage(err?.response?.data?.error)`; success actions fire VN toast; no raw `.message` or English errors remain.
+- **Cluster 1 done (ecda711 + 80a0fff):** 5 forms standardized — admin LoginPage, resident LoginPage, resident ProfilePage (change-password), resident AmenitiesPage (book), resident TicketDetailPage (rate). All use `getVnErrorMessage(err?.response?.data?.error)`; success → `toast.success('...')`; both apps build clean (tsc + vite, exit 0).
 
 **What is REMAINING:**
 - Apply form-feedback standard to remaining 21 deviating forms (see `reports/form-feedback-survey.md` priority list)

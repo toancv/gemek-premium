@@ -35,9 +35,22 @@ Forms: admin Login, resident Login, resident Change Password, resident Book Amen
 3. **Toast positioning:** Toast container uses `fixed left-1/2 -translate-x-1/2` (viewport-centered). Do NOT revert to `fixed right-4` (viewport-right) — breaks resident narrow column. Do NOT add `position:relative` wrapper — fixed ignores it.
 4. **Login success = navigate only.** No toast on successful login. All other mutations: success → toast.
 
+### Cluster 2 — IN PROGRESS (2026-06-09)
+
+**Authoritative plan:** `reports/form-feedback-survey.md`
+**Next item:** AnnouncementsPage — Create Announcement (#6) + Publish Announcement (#7)
+
+**Done in cluster 2 so far:**
+- AmenitiesPage (#2 Create Amenity, #3 Edit Amenity, #4 Approve Booking, #5 Reject Booking) — d171df5
+  - Create/Edit: `meta.successMessage` added to hooks; `getVnErrorMessage(err?.response?.data?.error)` in catch
+  - Approve: `skipErrorToast:true` + async try/catch handler + `approveError` inline banner above bookings table
+  - Reject: `skipErrorToast:true` + try/catch in dialog handler + `rejectError` inline in reject dialog
+  - No new BE codes needed — all thrown codes (`CONFLICT`, `NOT_FOUND`, `VALIDATION_ERROR`) already mapped
+
 ### What is REMAINING
 
-Clusters 2–5: ~21 deviating forms. Exact list in `reports/form-feedback-survey.md` (priority-ordered).
+Clusters 2–5: 17 deviating forms remaining. Exact list in `reports/form-feedback-survey.md` (priority-ordered).
+Already done in cluster 2: forms #2–#5 (AmenitiesPage).
 
 Apply per-form: `getVnErrorMessage(err?.response?.data?.error)` for errors; `meta: { successMessage: 'VN msg' }` for success (or component-level `toast.success()` where component already imports toast); remove raw `.message` echoing; remove English success strings.
 

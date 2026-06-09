@@ -132,7 +132,7 @@ public class ResidentServiceImpl implements ResidentService {
 
         // Email uniqueness check — reject before touching the DB to keep the transaction clean.
         if (req.getEmail() != null && userRepository.existsByEmail(req.getEmail())) {
-            throw new AppException(ErrorCode.CONFLICT, "Email already registered: " + req.getEmail());
+            throw new AppException(ErrorCode.EMAIL_ALREADY_EXISTS, "Email address is already registered.");
         }
 
         Apartment apartment = apartmentRepository.findById(req.getApartmentId())

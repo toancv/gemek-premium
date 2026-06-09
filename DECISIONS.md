@@ -17,7 +17,15 @@ Format: Date | Decision | Reasoning | Alternatives
 
 **WRONG_CURRENT_PASSWORD (422):** Wrong current password in change-password flow uses `HttpStatus.UNPROCESSABLE_ENTITY` (422) not `UNAUTHORIZED` (401). 422 bypasses the 401 interceptor → error reaches component immediately. `INVALID_CREDENTIALS` (401) is reserved for login only.
 
-**skipSuccessToast pattern:** Mutations that call `toast.success(...)` inline in the component MUST set `meta: { skipSuccessToast: true }` to prevent the global MutationCache from also firing a generic toast.
+**skipSuccessToast pattern (REVISED — see 2026-06-09 round 2):** `skipSuccessToast: true` suppresses the global MutationCache toast entirely. If the component's own `toast.success` is also not working, the result is zero toasts. Prefer `meta.successMessage` over component-level toast for reliability.
+
+---
+
+## 2026-06-09 | Change-password toast + password-policy error (round 2 fixes)
+
+**Decision A — Success toast via meta.successMessage (locked pattern update):** `useChangePassword` uses `meta: { successMessage: 'Đổi mật khẩu thành công.' }` — MutationCache handler fires it. Component no longer imports or calls `toast.success`. Reason: component-level `toast.success` from external `@gemek/ui` import may not share the same `listeners` array as the `Toaster` in some build configurations; the MutationCache path (`mutationToast.ts` → internal relative import) is confirmed working. Rule: for non-navigation mutations where the only success signal is a toast, prefer `meta.successMessage` over component-level toast.success unless there is a reason to fire it from the component (e.g. conditional message based on response data).
+
+**Decision B — PASSWORD_POLICY_VIOLATION (422) for weak new password:** `@Pattern` removed from `ChangePasswordRequest.newPassword` — Spring's `MethodArgumentNotValidException` maps to generic `VALIDATION_ERROR`. Domain validation (password complexity) moved to `AuthServiceImpl.changePassword()` → throws `PASSWORD_POLICY_VIOLATION` (422). FE maps to "Mật khẩu mới phải có tối thiểu 8 ký tự, gồm chữ hoa, chữ thường, số và ký tự đặc biệt." Pattern: any domain-specific validation that needs its own user-facing VN message must have its own `ErrorCode` enum entry; never rely on `VALIDATION_ERROR` for domain rules.
 
 ---
 

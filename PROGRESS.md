@@ -13,7 +13,8 @@
 - Survey complete: `reports/form-feedback-survey.md`
 - BE error code audit complete: `reports/error-code-audit.md` — 20 codes (16 specific, 4 generic); CONFLICT gaps patched (e604f8a, 7 spots, 4 new enum entries)
 - `getVnErrorMessage(errorCode?)` util in `@gemek/ui/src/lib/errorMessages.ts` — maps all 20 BE codes + fallback; 24 tests green; extended (00db804)
-- **Cluster 1 done (ecda711 + 80a0fff + b4d2889):** 5 forms standardized. Post-testing fixes: login 401 interceptor URL guard (no reload on auth endpoint failure); `WRONG_CURRENT_PASSWORD` (422) added to BE — wrong current password no longer triggers refresh+retry cycle; `getVnErrorMessage` maps new code → "Mật khẩu hiện tại không đúng."; `useChangePassword` has `skipSuccessToast: true`; 33 UI tests + AuthServiceTest green; both apps tsc+vite exit 0.
+- **Cluster 1 done (ecda711 + 80a0fff + b4d2889):** 5 forms standardized. Post-testing fixes: login 401 interceptor URL guard (no reload on auth endpoint failure); `WRONG_CURRENT_PASSWORD` (422) added to BE; `getVnErrorMessage` maps new code.
+- **Cluster 1 post-testing round 2 (8a6ba52 + 48a6388):** change-password success toast and password-policy error fixed. Root causes: (A) `skipSuccessToast: true` removed the only working toast path — fix: use `meta.successMessage` via MutationCache handler (proven-working internal toast path). (B) `@Pattern` on ChangePasswordRequest threw generic `VALIDATION_ERROR` — fix: `PASSWORD_POLICY_VIOLATION` (422) from service layer; maps to specific VN message. `getVnErrorMessage` now maps 22 codes; 26 UI tests green; AuthServiceTest green; both apps exit 0.
 
 **What is REMAINING:**
 - Apply form-feedback standard to remaining 21 deviating forms (see `reports/form-feedback-survey.md` priority list)

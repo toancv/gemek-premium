@@ -78,7 +78,13 @@ public enum ErrorCode {
     WRONG_CURRENT_PASSWORD(HttpStatus.UNPROCESSABLE_ENTITY),
 
     /** New password supplied during a password-change request does not meet the policy. */
-    PASSWORD_POLICY_VIOLATION(HttpStatus.UNPROCESSABLE_ENTITY);
+    PASSWORD_POLICY_VIOLATION(HttpStatus.UNPROCESSABLE_ENTITY),
+
+    /** An amenity with the given name already exists. */
+    AMENITY_NAME_EXISTS(HttpStatus.CONFLICT),
+
+    /** Booking cannot be approved or rejected because it is not in PENDING status. */
+    BOOKING_NOT_PENDING(HttpStatus.CONFLICT);
 
     /** HTTP status code associated with this error code. */
     private final HttpStatus httpStatus;

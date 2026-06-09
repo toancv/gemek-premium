@@ -124,7 +124,7 @@ public class AmenityServiceImpl implements AmenityService {
 
         // Enforce unique name constraint at the service layer before the INSERT.
         if (amenityRepository.existsByName(req.getName())) {
-            throw new AppException(ErrorCode.CONFLICT,
+            throw new AppException(ErrorCode.AMENITY_NAME_EXISTS,
                     "Amenity with name '" + req.getName() + "' already exists.");
         }
 
@@ -170,7 +170,7 @@ public class AmenityServiceImpl implements AmenityService {
         // Validate new name uniqueness only when the name is being changed.
         if (req.getName() != null && !req.getName().equals(amenity.getName())) {
             if (amenityRepository.existsByNameAndIdNot(req.getName(), id)) {
-                throw new AppException(ErrorCode.CONFLICT,
+                throw new AppException(ErrorCode.AMENITY_NAME_EXISTS,
                         "Amenity with name '" + req.getName() + "' already exists.");
             }
             amenity.setName(req.getName());
@@ -463,7 +463,7 @@ public class AmenityServiceImpl implements AmenityService {
 
         // Only PENDING bookings may be acted upon.
         if (booking.getStatus() != BookingStatus.PENDING) {
-            throw new AppException(ErrorCode.CONFLICT,
+            throw new AppException(ErrorCode.BOOKING_NOT_PENDING,
                     "Only PENDING bookings can be approved or rejected. Current status: "
                             + booking.getStatus());
         }

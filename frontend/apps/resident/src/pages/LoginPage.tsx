@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { getVnErrorMessage } from '@gemek/ui';
 import { useAuthStore } from '../store/authStore';
 
 const VN_PHONE_RE = /^(\+?84|0)[3-9]\d{8}$/;
@@ -26,7 +27,7 @@ export function LoginPage() {
       await login(phone.trim(), password);
       navigate('/', { replace: true });
     } catch (err: any) {
-      setError(err?.response?.data?.message ?? 'Số điện thoại hoặc mật khẩu không đúng');
+      setError(getVnErrorMessage(err?.response?.data?.error));
     } finally {
       setLoading(false);
     }

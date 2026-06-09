@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { toast, getVnErrorMessage } from '@gemek/ui';
 import { useAmenities, useCreateBooking } from '../api/hooks';
 
 export function AmenitiesPage() {
@@ -16,12 +17,13 @@ export function AmenitiesPage() {
     const bookingDate = fd.get('bookingDate') as string;
     const startTime = fd.get('startTime') as string;
     const endTime = fd.get('endTime') as string;
-    if (!bookingDate || !startTime || !endTime) { setFormError('Date, start time and end time are required'); return; }
+    if (!bookingDate || !startTime || !endTime) { setFormError('Vui lòng chọn ngày, giờ bắt đầu và giờ kết thúc'); return; }
     try {
       await create.mutateAsync({ amenityId: selected.id, bookingDate, startTime, endTime, notes: fd.get('notes') || null });
+      toast({ title: 'Đặt chỗ thành công.' });
       setSuccess(true);
       setTimeout(() => { setSelected(null); setSuccess(false); }, 1500);
-    } catch (err: any) { setFormError(err?.response?.data?.message ?? 'Failed to book'); }
+    } catch (err: any) { setFormError(getVnErrorMessage((err as any)?.response?.data?.error)); }
   };
 
   return (
@@ -55,7 +57,7 @@ export function AmenitiesPage() {
             {success ? (
               <div className="text-center py-6">
                 <p className="text-4xl mb-2">✅</p>
-                <p className="font-medium text-green-700">Booking submitted!</p>
+                <p className="font-medium text-green-700">Đặt chỗ thành công!</p>
               </div>
             ) : (
               <form onSubmit={handleBook} className="space-y-3">

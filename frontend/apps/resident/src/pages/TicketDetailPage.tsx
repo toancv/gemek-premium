@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { toast, getVnErrorMessage } from '@gemek/ui';
 import { useTicket, useRateTicket } from '../api/hooks';
 
 const STATUS_BG: Record<string, string> = {
@@ -18,17 +19,18 @@ export function TicketDetailPage() {
   const [rateError, setRateError] = useState('');
 
   if (isLoading) return <div className="flex items-center justify-center h-64"><svg className="animate-spin h-8 w-8 text-blue-600" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg></div>;
-  if (isError) return <div className="p-4 bg-red-50 text-red-700 m-4 rounded-xl">Failed to load ticket.</div>;
+  if (isError) return <div className="p-4 bg-red-50 text-red-700 m-4 rounded-xl">Không thể tải yêu cầu hỗ trợ.</div>;
 
   const canRate = ticket.status === 'DONE' && !ticket.rating;
 
   const handleRate = async (e: React.FormEvent) => {
     e.preventDefault();
     setRateError('');
-    if (!rating) { setRateError('Please select a rating'); return; }
+    if (!rating) { setRateError('Vui lòng chọn số sao'); return; }
     try {
       await rate.mutateAsync({ id: id!, data: { rating, comment: comment || null } });
-    } catch (err: any) { setRateError(err?.response?.data?.message ?? 'Failed to submit rating'); }
+      toast({ title: 'Đánh giá thành công.' });
+    } catch (err: any) { setRateError(getVnErrorMessage((err as any)?.response?.data?.error)); }
   };
 
   return (

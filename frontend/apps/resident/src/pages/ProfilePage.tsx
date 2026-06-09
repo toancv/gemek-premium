@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { toast, getVnErrorMessage } from '@gemek/ui';
 import { useAuthStore } from '../store/authStore';
 import { useMe, useChangePassword } from '../api/hooks';
 
@@ -11,21 +12,19 @@ export function ProfilePage() {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [pwError, setPwError] = useState('');
-  const [pwSuccess, setPwSuccess] = useState(false);
 
   const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
     setPwError('');
-    setPwSuccess(false);
-    if (!currentPassword || !newPassword) { setPwError('All fields are required'); return; }
-    if (newPassword !== confirmPassword) { setPwError('New passwords do not match'); return; }
-    if (newPassword.length < 8) { setPwError('Password must be at least 8 characters'); return; }
+    if (!currentPassword || !newPassword) { setPwError('Vui lòng điền đầy đủ thông tin'); return; }
+    if (newPassword !== confirmPassword) { setPwError('Mật khẩu mới không khớp'); return; }
+    if (newPassword.length < 8) { setPwError('Mật khẩu mới phải có ít nhất 8 ký tự'); return; }
     try {
       await changePassword.mutateAsync({ currentPassword, newPassword });
-      setPwSuccess(true);
       setCurrentPassword(''); setNewPassword(''); setConfirmPassword('');
+      toast({ title: 'Đổi mật khẩu thành công.' });
     } catch (err: any) {
-      setPwError(err?.response?.data?.message ?? 'Failed to change password');
+      setPwError(getVnErrorMessage((err as any)?.response?.data?.error));
     }
   };
 
@@ -63,7 +62,6 @@ export function ProfilePage() {
           <div><label className="block text-sm font-medium text-gray-700 mb-1">Confirm New Password</label>
             <input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} className="block w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm" autoComplete="new-password" /></div>
           {pwError && <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg">{pwError}</p>}
-          {pwSuccess && <p className="text-sm text-green-600 bg-green-50 px-3 py-2 rounded-lg">Password changed successfully</p>}
           <button type="submit" disabled={changePassword.isPending} className="w-full bg-blue-600 text-white rounded-lg py-2.5 text-sm font-medium disabled:opacity-50">
             {changePassword.isPending ? 'Changing...' : 'Change Password'}
           </button>

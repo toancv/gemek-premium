@@ -28,7 +28,9 @@ Common error codes:
 | `FORBIDDEN` | 403 | Valid token but insufficient role or resource ownership |
 | `NOT_FOUND` | 404 | Resource does not exist |
 | `VALIDATION_ERROR` | 400 | Request body or query param fails validation |
-| `CONFLICT` | 409 | Duplicate or invalid state transition |
+| `CONFLICT` | 409 | Duplicate or invalid state transition (generic fallback) |
+| `AMENITY_NAME_EXISTS` | 409 | Amenity name already taken |
+| `BOOKING_NOT_PENDING` | 409 | Approve/reject attempted on non-PENDING booking |
 | `INTERNAL_ERROR` | 500 | Unexpected server error |
 | `RATE_LIMITED` | 429 | Too many requests |
 
@@ -1048,6 +1050,7 @@ Request:
 ```
 
 Response `201 Created` — amenity object.
+Errors: `409 AMENITY_NAME_EXISTS` (name already taken), `400 VALIDATION_ERROR`
 
 ---
 
@@ -1056,6 +1059,7 @@ Response `201 Created` — amenity object.
 **Auth:** ADMIN
 Request: same as POST.
 Response `200 OK` — updated amenity object.
+Errors: `409 AMENITY_NAME_EXISTS` (name already taken by another amenity), `404 NOT_FOUND`, `400 VALIDATION_ERROR`
 
 ---
 
@@ -1170,7 +1174,7 @@ Request:
 `status` is required (`@NotNull`). `rejectionReason` should be provided when `status = REJECTED`.
 
 Response `200 OK`
-Errors: `409 CONFLICT` (booking is not in PENDING status)
+Errors: `409 BOOKING_NOT_PENDING` (booking is not in PENDING status), `404 NOT_FOUND`
 
 > **Note:** A separate `/reject` endpoint was specified in the original design but was not implemented.
 > Rejection is performed via this same `/approve` endpoint with `status: "REJECTED"`.

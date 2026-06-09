@@ -11,13 +11,15 @@
 - Email address no longer leaked in ResidentServiceImpl error message.
 - Admin ResidentsPage create form fixed (ea68b10): `PHONE_ALREADY_EXISTS` → `setPhoneError("Số điện thoại đã được sử dụng.")`, `EMAIL_ALREADY_EXISTS` → `setEmailError("Email đã được sử dụng.")`, unknown 409 → generic VN; raw serverMsg no longer echoed
 - Survey complete: `reports/form-feedback-survey.md`
+- BE error code audit complete: `reports/error-code-audit.md` — 16 codes (10 specific, 6 generic); 7 CONFLICT-gap sites flagged for later BE patches (highest: `LICENSE_PLATE_ALREADY_EXISTS` in VehicleServiceImpl)
+- `getVnErrorMessage(errorCode?)` util in `@gemek/ui/src/lib/errorMessages.ts` — maps all 16 BE codes + fallback; 20 tests green (28/28 total in ui package)
 
 **What is REMAINING:**
-- Apply fix standard to 26 remaining deviating forms (see survey for priority list)
-- Key systemic issues: raw `.message` used in 22 forms; missing success toast in 16; English fallbacks in 10; silent errors in 4
-- Recommended: create shared `getVnErrorMessage(errorCode)` util in `@gemek/ui` first, then patch forms
+- Apply form-feedback standard to 26 deviating forms (see `reports/form-feedback-survey.md` priority list)
+- Cluster plan: use `getVnErrorMessage` from `@gemek/ui` in each form's catch block; add `meta.successMessage` for missing success toasts; fix silent-error handlers
+- Key systemic issues: raw `.message` in 22 forms; missing success toast in 16; English fallbacks in 10; silent errors in 4
 
-**Resume pointer:** Read `reports/form-feedback-survey.md` summary table; next turn = implement shared util + patch all deviating forms (or batch by priority per CTO).
+**Resume pointer:** Foundation done. Next turn = cluster A: patch all admin forms (top priority from survey) importing `getVnErrorMessage` from `@gemek/ui`. Reference `reports/form-feedback-survey.md` + `reports/error-code-audit.md`.
 
 ---
 

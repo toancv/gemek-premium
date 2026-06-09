@@ -19,6 +19,20 @@ Format: Date | Decision | Reasoning | Alternatives
 
 ---
 
+## 2026-06-09 | Form-feedback foundation — shared getVnErrorMessage util
+
+**Decision:** Single `getVnErrorMessage(errorCode?: string): string` pure function in `@gemek/ui/src/lib/errorMessages.ts`, exported from `@gemek/ui`. Both apps import this; no duplicated code in individual forms.
+
+**Mapping:** All 16 BE ErrorCode values mapped to Vietnamese. Generic codes (CONFLICT, NOT_FOUND, VALIDATION_ERROR, UNAUTHORIZED, FORBIDDEN, INTERNAL_ERROR) get broad but correct VN sentences. Specific codes (PHONE_ALREADY_EXISTS, EMAIL_ALREADY_EXISTS, INVALID_CREDENTIALS, etc.) get precise VN sentences. Unknown/undefined → fallback "Có lỗi xảy ra, vui lòng thử lại."
+
+**BE gap list:** 7 CONFLICT throw sites flagged in `reports/error-code-audit.md` where a more specific code would improve UX (highest priority: license-plate dup in VehicleServiceImpl — currently FE can only show generic CONFLICT message). These are NOT fixed now; logged for a future BE patch turn.
+
+**Why:** Centralizing the mapping prevents drift (each form choosing different VN phrasing) and ensures that raw English server messages can never leak to the UI through this path.
+
+**Alternatives:** Inline the mapping per form — rejected (maintenance burden, easy to forget fallback rule).
+
+---
+
 ## 2026-06-08 | Dup-phone 500 fix
 
 - Root cause: Docker container ran stale code (pre-step-5 ResidentServiceImpl had no existsByPhone guard); dup phone hit DB constraint → DataIntegrityViolationException → catch-all → 500.

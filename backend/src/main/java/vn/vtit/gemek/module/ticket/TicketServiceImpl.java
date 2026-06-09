@@ -588,12 +588,12 @@ public class TicketServiceImpl implements TicketService {
 
         // Ticket must be DONE before rating.
         if (ticket.getStatus() != TicketStatus.DONE) {
-            throw new AppException(ErrorCode.CONFLICT, "Ticket must be DONE to rate.");
+            throw new AppException(ErrorCode.INVALID_STATUS_TRANSITION, "Ticket must be DONE to rate.");
         }
 
         // Rating may only be submitted once.
         if (ticket.getRating() != null) {
-            throw new AppException(ErrorCode.CONFLICT, "Ticket already rated.");
+            throw new AppException(ErrorCode.TICKET_ALREADY_RATED, "Ticket rating has already been submitted.");
         }
 
         ticket.setRating(req.getRating().shortValue());

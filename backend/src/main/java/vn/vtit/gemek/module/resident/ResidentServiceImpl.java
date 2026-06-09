@@ -248,7 +248,7 @@ public class ResidentServiceImpl implements ResidentService {
 
         // Guard against processing an already-moved-out resident.
         if (resident.getMoveOutDate() != null) {
-            throw new AppException(ErrorCode.CONFLICT, "Resident has already moved out.");
+            throw new AppException(ErrorCode.RESIDENT_ALREADY_MOVED_OUT, "Resident has already moved out.");
         }
 
         resident.setMoveOutDate(req.getMoveOutDate());

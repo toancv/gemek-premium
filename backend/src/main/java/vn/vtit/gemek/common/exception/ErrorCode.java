@@ -60,7 +60,19 @@ public enum ErrorCode {
     HAS_ACTIVE_DEPENDENCIES(HttpStatus.CONFLICT),
 
     /** Cannot perform action on own account. */
-    SELF_OPERATION_NOT_ALLOWED(HttpStatus.BAD_REQUEST);
+    SELF_OPERATION_NOT_ALLOWED(HttpStatus.BAD_REQUEST),
+
+    /** License plate already registered by another vehicle. */
+    LICENSE_PLATE_ALREADY_EXISTS(HttpStatus.CONFLICT),
+
+    /** Parking slot number already exists. */
+    SLOT_NUMBER_ALREADY_EXISTS(HttpStatus.CONFLICT),
+
+    /** Ticket rating has already been submitted. */
+    TICKET_ALREADY_RATED(HttpStatus.CONFLICT),
+
+    /** Resident has already moved out. */
+    RESIDENT_ALREADY_MOVED_OUT(HttpStatus.CONFLICT);
 
     /** HTTP status code associated with this error code. */
     private final HttpStatus httpStatus;

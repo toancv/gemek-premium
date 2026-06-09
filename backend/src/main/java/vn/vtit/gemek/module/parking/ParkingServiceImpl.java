@@ -118,8 +118,8 @@ public class ParkingServiceImpl implements ParkingService {
 
         // Slot numbers must be globally unique.
         if (slotRepository.existsBySlotNumber(req.getSlotNumber())) {
-            throw new AppException(ErrorCode.CONFLICT,
-                    "Slot number '" + req.getSlotNumber() + "' already exists.");
+            throw new AppException(ErrorCode.SLOT_NUMBER_ALREADY_EXISTS,
+                    "Parking slot number is already in use.");
         }
 
         ParkingSlot slot = new ParkingSlot();

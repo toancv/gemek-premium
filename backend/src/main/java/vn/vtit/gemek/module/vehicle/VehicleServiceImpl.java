@@ -103,8 +103,8 @@ public class VehicleServiceImpl implements VehicleService {
 
         // License plate must be globally unique.
         if (vehicleRepository.existsByLicensePlate(req.getLicensePlate())) {
-            throw new AppException(ErrorCode.CONFLICT,
-                    "License plate '" + req.getLicensePlate() + "' is already registered.");
+            throw new AppException(ErrorCode.LICENSE_PLATE_ALREADY_EXISTS,
+                    "License plate is already registered.");
         }
 
         OffsetDateTime now = OffsetDateTime.now();
@@ -163,8 +163,8 @@ public class VehicleServiceImpl implements VehicleService {
         // License plate conflict check — exclude the current vehicle record.
         if (req.getLicensePlate() != null
                 && vehicleRepository.existsByLicensePlateAndIdNot(req.getLicensePlate(), id)) {
-            throw new AppException(ErrorCode.CONFLICT,
-                    "License plate '" + req.getLicensePlate() + "' is already registered.");
+            throw new AppException(ErrorCode.LICENSE_PLATE_ALREADY_EXISTS,
+                    "License plate is already registered.");
         }
 
         if (req.getType() != null) {

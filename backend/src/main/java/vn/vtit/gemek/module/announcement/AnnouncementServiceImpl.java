@@ -195,7 +195,7 @@ public class AnnouncementServiceImpl implements AnnouncementService {
 
         // Published announcements are immutable.
         if (announcement.getPublishedAt() != null) {
-            throw new AppException(ErrorCode.CONFLICT, "Cannot edit a published announcement.");
+            throw new AppException(ErrorCode.INVALID_STATUS_TRANSITION, "Cannot edit a published announcement.");
         }
 
         // Apply only non-null fields from the request.

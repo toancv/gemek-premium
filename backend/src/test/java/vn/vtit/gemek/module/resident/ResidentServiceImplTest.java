@@ -116,7 +116,7 @@ class ResidentServiceImplTest {
         assertThatThrownBy(() -> service.createResident(request, UUID.randomUUID()))
                 .isInstanceOf(AppException.class)
                 .satisfies(ex -> assertThat(((AppException) ex).getErrorCode())
-                        .isEqualTo(ErrorCode.CONFLICT));
+                        .isEqualTo(ErrorCode.EMAIL_ALREADY_EXISTS));
     }
 
     // =========================================================================

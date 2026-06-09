@@ -60,6 +60,37 @@ Apply per-form: `getVnErrorMessage(err?.response?.data?.error)` for errors; `met
 
 ---
 
+## ⚠️ TECH DEBT — Test Regressions (inventoried 2026-06-09)
+
+**Full inventory:** `reports/test-regression-inventory.md`
+
+**Status:** 16 test classes red, 104/244 failures. Zero green-before-migration. Deferred — fix in dedicated session.
+
+**Root cause:** All failures = phone-login migration. Test classes still send `admin@gemek.vn` (email) to `LoginRequest.phone` field → `PhoneUtils.isValid()` rejects → 400. `UserControllerTest` additionally uses wrong password (`Admin@123456` vs `GemekAdmin2026` in DB).
+
+| Class | Failures |
+|-------|----------|
+| `ResidentControllerTest` | 19 |
+| `TicketControllerTest` | 12 |
+| `BlockControllerTest` | 9 |
+| `VehicleControllerTest` | 9 |
+| `ParkingControllerTest` | 8 |
+| `TicketLifecycleIntegrationTest` | 5 |
+| `ApartmentControllerTest` | 5 |
+| `ContractorControllerTest` | 5 |
+| `AuthControllerTest` | 5 |
+| `AnnouncementControllerTest` | 4 |
+| `AmenityBookingIntegrationTest` | 4 |
+| `UserControllerTest` | 4 |
+| `ReportControllerTest` | 6 |
+| `NotificationControllerTest` | 3 |
+| `NotificationIntegrationTest` | 3 |
+| `AnnouncementFlowIntegrationTest` | 3 |
+
+**Fix pattern** (mechanical, same as `AmenityControllerTest` in 2bf2fa5): email→phone constant, password→`GemekAdmin2026`, add `phoneFromUid` helper, update resident-create helpers with `phone`+`dateOfBirth`.
+
+---
+
 ## ✅ COMPLETE — Phone-as-Login Migration (2026-06-08)
 
 **Status:** All 9 steps complete.

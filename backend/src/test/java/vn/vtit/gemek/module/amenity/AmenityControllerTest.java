@@ -79,8 +79,9 @@ class AmenityControllerTest {
     /** Fixed booking date: today + 7 days, always within the 14-day advance window. */
     private static final LocalDate BOOKING_DATE = LocalDate.now().plusDays(7);
 
-    private static final String ADMIN_EMAIL    = "admin@gemek.vn";
-    private static final String ADMIN_PASSWORD = "Admin@123456";
+    private static final String ADMIN_PHONE    = "0900000000";
+    // Password matches the hash stored when the admin was first seeded via ADMIN_PASSWORD in .env.
+    private static final String ADMIN_PASSWORD = "GemekAdmin2026";
 
     /**
      * Authenticates admin, creates a resident user and apartment, and resolves the
@@ -88,15 +89,15 @@ class AmenityControllerTest {
      */
     @BeforeEach
     void setUp() throws Exception {
-        adminToken = login(ADMIN_EMAIL, ADMIN_PASSWORD);
+        adminToken = login(ADMIN_PHONE, ADMIN_PASSWORD);
 
         // Create unique resident per test (UUID suffix guarantees uniqueness across runs).
         String uid = UUID.randomUUID().toString().replace("-", "").substring(0, 8);
-        String residentEmail = "amenity.res." + uid + "@test.com";
+        String residentPhone = phoneFromUid(uid);
         UUID blockId = createBlock("AmBlock-" + uid);
         UUID apartmentId = createApartment(blockId, "AM-" + uid);
-        assignResident(residentEmail, apartmentId);
-        residentToken = login(residentEmail, "Password@123456");
+        assignResident(residentPhone, apartmentId);
+        residentToken = login(residentPhone, "Password@123456");
 
         // Create fresh amenities per test — unique names eliminate all cross-run slot conflicts.
         gymAmenityId = createAmenity("Gym-" + uid, false, (short) 1);
@@ -147,11 +148,11 @@ class AmenityControllerTest {
 
         // Create a second resident to book the same slot — should conflict.
         String ovUid = UUID.randomUUID().toString().replace("-", "").substring(0, 8);
-        String secondResidentEmail = "overlap.resident." + ovUid + "@test.com";
+        String secondResidentPhone = phoneFromUid(ovUid);
         UUID blockId2 = createBlock("OvBlock-" + ovUid);
         UUID apt2 = createApartment(blockId2, "OV-" + ovUid);
-        assignResident(secondResidentEmail, apt2);
-        String secondToken = login(secondResidentEmail, "Password@123456");
+        assignResident(secondResidentPhone, apt2);
+        String secondToken = login(secondResidentPhone, "Password@123456");
 
         // First booking succeeds.
         mockMvc.perform(post("/api/amenity-bookings")
@@ -287,12 +288,12 @@ class AmenityControllerTest {
     /**
      * Authenticates a user and returns the JWT access token.
      *
-     * @param email    user email.
+     * @param phone    user phone number in canonical 0xxxxxxxxx format.
      * @param password user password.
      * @return the JWT access token.
      */
-    private String login(String email, String password) throws Exception {
-        LoginRequest req = new LoginRequest(email, password);
+    private String login(String phone, String password) throws Exception {
+        LoginRequest req = new LoginRequest(phone, password);
         MvcResult result = mockMvc.perform(post("/api/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(req)))
@@ -360,10 +361,11 @@ class AmenityControllerTest {
         return UUID.fromString((String) body.get("id"));
     }
 
-    private void assignResident(String email, UUID apartmentId) throws Exception {
+    private void assignResident(String phone, UUID apartmentId) throws Exception {
         Map<String, Object> req = new HashMap<>();
         req.put("fullName", "Test Resident");
-        req.put("email", email);
+        req.put("phone", phone);
+        req.put("dateOfBirth", "1990-01-01");
         req.put("password", "Password@123456");
         req.put("apartmentId", apartmentId.toString());
         req.put("type", "OWNER");
@@ -484,8 +486,8 @@ class AmenityControllerTest {
         String bUid = UUID.randomUUID().toString().replace("-", "").substring(0, 8);
         UUID bBlockId = createBlock("BBlock-" + bUid);
         UUID bAptId = createApartment(bBlockId, "B-" + bUid);
-        assignResident("res.b." + bUid + "@test.com", bAptId);
-        String bToken = login("res.b." + bUid + "@test.com", "Password@123456");
+        assignResident(phoneFromUid(bUid), bAptId);
+        String bToken = login(phoneFromUid(bUid), "Password@123456");
 
         // Resident B creates a booking on a different amenity (bbq — unique per setUp).
         CreateBookingRequest bReq = buildBookingRequest(
@@ -522,8 +524,8 @@ class AmenityControllerTest {
         String bUid = UUID.randomUUID().toString().replace("-", "").substring(0, 8);
         UUID bBlockId = createBlock("BBlock2-" + bUid);
         UUID bAptId = createApartment(bBlockId, "B2-" + bUid);
-        assignResident("res.b2." + bUid + "@test.com", bAptId);
-        String bToken = login("res.b2." + bUid + "@test.com", "Password@123456");
+        assignResident(phoneFromUid(bUid), bAptId);
+        String bToken = login(phoneFromUid(bUid), "Password@123456");
 
         // Resident B creates a booking.
         CreateBookingRequest bReq = buildBookingRequest(
@@ -576,8 +578,8 @@ class AmenityControllerTest {
         String bUid = UUID.randomUUID().toString().replace("-", "").substring(0, 8);
         UUID bBlockId = createBlock("BBlock3-" + bUid);
         UUID bAptId = createApartment(bBlockId, "B3-" + bUid);
-        assignResident("res.b3." + bUid + "@test.com", bAptId);
-        String bToken = login("res.b3." + bUid + "@test.com", "Password@123456");
+        assignResident(phoneFromUid(bUid), bAptId);
+        String bToken = login(phoneFromUid(bUid), "Password@123456");
 
         CreateBookingRequest bReq = buildBookingRequest(
                 bbqAmenityId, BOOKING_DATE, LocalTime.of(11, 0), LocalTime.of(12, 0));
@@ -690,5 +692,113 @@ class AmenityControllerTest {
         req.setStartTime(start);
         req.setEndTime(end);
         return req;
+    }
+
+    /**
+     * Derives a deterministic 10-digit VN phone from an 8-char hex uid.
+     *
+     * @param uid 8-character lowercase hexadecimal string (from UUID).
+     * @return a 10-digit VN phone starting with "090".
+     */
+    private static String phoneFromUid(String uid) {
+        long num = Long.parseLong(uid.substring(0, 7), 16) % 9_000_000L + 1_000_000L;
+        return "090" + num;
+    }
+
+    // =========================================================================
+    // Test 13 — POST /api/amenities dup name → 409 AMENITY_NAME_EXISTS
+    // =========================================================================
+
+    /**
+     * Verifies that creating an amenity with a duplicate name returns 409 with AMENITY_NAME_EXISTS.
+     */
+    @Test
+    @DisplayName("POST /api/amenities — duplicate name → 409 AMENITY_NAME_EXISTS")
+    void createAmenity_dupName_returns409AmenityNameExists() throws Exception {
+        String uid = UUID.randomUUID().toString().replace("-", "").substring(0, 8);
+        String name = "DupAmenity-" + uid;
+        createAmenity(name, false, (short) 1);
+
+        CreateAmenityRequest req = new CreateAmenityRequest();
+        req.setName(name);
+        req.setDescription("duplicate");
+        req.setLocation("Floor 1");
+        req.setOpeningTime(LocalTime.of(8, 0));
+        req.setClosingTime(LocalTime.of(22, 0));
+        req.setMaxDailyBookingsPerResident((short) 1);
+        req.setRequiresApproval(false);
+
+        mockMvc.perform(post("/api/amenities")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(req)))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.error").value("AMENITY_NAME_EXISTS"));
+    }
+
+    // =========================================================================
+    // Test 14 — PUT /api/amenities/{id} dup name → 409 AMENITY_NAME_EXISTS
+    // =========================================================================
+
+    /**
+     * Verifies that renaming an amenity to an existing name returns 409 with AMENITY_NAME_EXISTS.
+     */
+    @Test
+    @DisplayName("PUT /api/amenities/{id} — rename to existing name → 409 AMENITY_NAME_EXISTS")
+    void updateAmenity_dupName_returns409AmenityNameExists() throws Exception {
+        String uid = UUID.randomUUID().toString().replace("-", "").substring(0, 8);
+        String nameA = "DupA-" + uid;
+        String nameB = "DupB-" + uid;
+        createAmenity(nameA, false, (short) 1);
+        UUID amenityB = createAmenity(nameB, false, (short) 1);
+
+        Map<String, Object> req = new HashMap<>();
+        req.put("name", nameA);
+
+        mockMvc.perform(put("/api/amenities/" + amenityB)
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(req)))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.error").value("AMENITY_NAME_EXISTS"));
+    }
+
+    // =========================================================================
+    // Test 15 — PUT /api/amenity-bookings/{id}/approve not-PENDING → 409 BOOKING_NOT_PENDING
+    // =========================================================================
+
+    /**
+     * Verifies that approving an already-approved booking returns 409 with BOOKING_NOT_PENDING.
+     */
+    @Test
+    @DisplayName("PUT /api/amenity-bookings/{id}/approve — booking not PENDING → 409 BOOKING_NOT_PENDING")
+    void approveBooking_notPending_returns409BookingNotPending() throws Exception {
+        CreateBookingRequest booking = buildBookingRequest(
+                bbqAmenityId, BOOKING_DATE, LocalTime.of(10, 0), LocalTime.of(11, 0));
+        MvcResult result = mockMvc.perform(post("/api/amenity-bookings")
+                        .header("Authorization", "Bearer " + residentToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(booking)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.status").value("PENDING"))
+                .andReturn();
+        String bookingId = (String) objectMapper.readValue(
+                result.getResponse().getContentAsString(), Map.class).get("id");
+
+        ApproveRejectRequest approveReq = new ApproveRejectRequest();
+        approveReq.setStatus(BookingStatus.APPROVED);
+
+        mockMvc.perform(put("/api/amenity-bookings/" + bookingId + "/approve")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(approveReq)))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(put("/api/amenity-bookings/" + bookingId + "/approve")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(approveReq)))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.error").value("BOOKING_NOT_PENDING"));
     }
 }

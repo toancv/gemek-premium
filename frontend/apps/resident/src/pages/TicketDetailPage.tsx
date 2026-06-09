@@ -29,7 +29,7 @@ export function TicketDetailPage() {
     if (!rating) { setRateError('Vui lòng chọn số sao'); return; }
     try {
       await rate.mutateAsync({ id: id!, data: { rating, comment: comment || null } });
-      toast({ title: 'Đánh giá thành công.' });
+      toast.success('Đánh giá thành công.');
     } catch (err: any) { setRateError(getVnErrorMessage((err as any)?.response?.data?.error)); }
   };
 

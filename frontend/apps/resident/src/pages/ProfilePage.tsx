@@ -22,7 +22,7 @@ export function ProfilePage() {
     try {
       await changePassword.mutateAsync({ currentPassword, newPassword });
       setCurrentPassword(''); setNewPassword(''); setConfirmPassword('');
-      toast({ title: 'Đổi mật khẩu thành công.' });
+      toast.success('Đổi mật khẩu thành công.');
     } catch (err: any) {
       setPwError(getVnErrorMessage((err as any)?.response?.data?.error));
     }

@@ -1,0 +1,24 @@
+=== ADMIN tsc ===
+ADMIN_TSC_EXIT:0
+[36mvite v5.4.8 [32mbuilding for production...[36m[39m
+transforming...
+[32m✓[39m 166 modules transformed.
+rendering chunks...
+computing gzip size...
+[2mdist/[22m[32mindex.html                 [39m[1m[2m  0.41 kB[22m[1m[22m[2m │ gzip:  0.28 kB[22m
+[2mdist/[22m[35massets/index-CG7UOAmx.css  [39m[1m[2m 18.04 kB[22m[1m[22m[2m │ gzip:  4.03 kB[22m
+[2mdist/[22m[36massets/index-ConB-BhR.js   [39m[1m[2m340.76 kB[22m[1m[22m[2m │ gzip: 99.00 kB[22m
+[32m✓ built in 2.02s[39m
+ADMIN_BUILD_EXIT:0
+=== RESIDENT tsc ===
+RESIDENT_TSC_EXIT:0
+[36mvite v5.4.8 [32mbuilding for production...[36m[39m
+transforming...
+[32m✓[39m 163 modules transformed.
+rendering chunks...
+computing gzip size...
+[2mdist/[22m[32mindex.html                 [39m[1m[2m  0.42 kB[22m[1m[22m[2m │ gzip:  0.29 kB[22m
+[2mdist/[22m[35massets/index-CL0Tcwo5.css  [39m[1m[2m 15.19 kB[22m[1m[22m[2m │ gzip:  3.60 kB[22m
+[2mdist/[22m[36massets/index-IADWLf8d.js   [39m[1m[2m279.05 kB[22m[1m[22m[2m │ gzip: 89.25 kB[22m
+[32m✓ built in 1.91s[39m
+RESIDENT_BUILD_EXIT:0

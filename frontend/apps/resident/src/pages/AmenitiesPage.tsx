@@ -20,7 +20,7 @@ export function AmenitiesPage() {
     if (!bookingDate || !startTime || !endTime) { setFormError('Vui lòng chọn ngày, giờ bắt đầu và giờ kết thúc'); return; }
     try {
       await create.mutateAsync({ amenityId: selected.id, bookingDate, startTime, endTime, notes: fd.get('notes') || null });
-      toast({ title: 'Đặt chỗ thành công.' });
+      toast.success('Đặt chỗ thành công.');
       setSuccess(true);
       setTimeout(() => { setSelected(null); setSuccess(false); }, 1500);
     } catch (err: any) { setFormError(getVnErrorMessage((err as any)?.response?.data?.error)); }

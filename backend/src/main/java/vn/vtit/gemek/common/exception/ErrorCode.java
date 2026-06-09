@@ -72,7 +72,10 @@ public enum ErrorCode {
     TICKET_ALREADY_RATED(HttpStatus.CONFLICT),
 
     /** Resident has already moved out. */
-    RESIDENT_ALREADY_MOVED_OUT(HttpStatus.CONFLICT);
+    RESIDENT_ALREADY_MOVED_OUT(HttpStatus.CONFLICT),
+
+    /** Current password supplied during a password-change request is incorrect. */
+    WRONG_CURRENT_PASSWORD(HttpStatus.UNPROCESSABLE_ENTITY);
 
     /** HTTP status code associated with this error code. */
     private final HttpStatus httpStatus;

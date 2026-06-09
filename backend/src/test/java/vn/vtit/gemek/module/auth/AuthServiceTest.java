@@ -310,4 +310,24 @@ class AuthServiceTest {
 
         verify(redisTemplate, never()).opsForValue();
     }
+
+    // -------------------------------------------------------------------------
+    // changePassword() — wrong current password → WRONG_CURRENT_PASSWORD
+    // -------------------------------------------------------------------------
+
+    @Test
+    @DisplayName("changePassword: wrong current password throws WRONG_CURRENT_PASSWORD")
+    void changePassword_wrongCurrentPassword_throwsWrongCurrentPassword() {
+        UserPrincipal principal = new UserPrincipal(testUser);
+        vn.vtit.gemek.module.auth.dto.ChangePasswordRequest req =
+                new vn.vtit.gemek.module.auth.dto.ChangePasswordRequest("wrongPass", "NewPass@1234");
+
+        when(userRepository.findById(testUser.getId())).thenReturn(Optional.of(testUser));
+        when(passwordEncoder.matches("wrongPass", testUser.getPasswordHash())).thenReturn(false);
+
+        assertThatThrownBy(() -> authService.changePassword(principal, req))
+                .isInstanceOf(AppException.class)
+                .satisfies(ex -> assertThat(((AppException) ex).getErrorCode())
+                        .isEqualTo(ErrorCode.WRONG_CURRENT_PASSWORD));
+    }
 }

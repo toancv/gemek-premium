@@ -261,7 +261,7 @@ public class AuthServiceImpl implements AuthService {
                 .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND, "User not found."));
 
         if (!passwordEncoder.matches(request.currentPassword(), user.getPasswordHash())) {
-            throw new AppException(ErrorCode.INVALID_CREDENTIALS, "Current password is incorrect.");
+            throw new AppException(ErrorCode.WRONG_CURRENT_PASSWORD, "Current password is incorrect.");
         }
 
         user.setPasswordHash(passwordEncoder.encode(request.newPassword()));

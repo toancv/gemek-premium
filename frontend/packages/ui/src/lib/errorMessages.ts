@@ -40,6 +40,9 @@ const ERROR_MESSAGES: Record<string, string> = {
   TICKET_ALREADY_RATED: 'Yêu cầu này đã được đánh giá.',
   RESIDENT_ALREADY_MOVED_OUT: 'Cư dân này đã rời khỏi căn hộ.',
 
+  // Password change
+  WRONG_CURRENT_PASSWORD: 'Mật khẩu hiện tại không đúng.',
+
   // Rate / server
   RATE_LIMITED: 'Bạn thao tác quá nhanh, vui lòng thử lại sau.',
   INTERNAL_ERROR: 'Có lỗi xảy ra, vui lòng thử lại.',

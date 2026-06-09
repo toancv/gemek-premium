@@ -76,6 +76,10 @@ describe('getVnErrorMessage', () => {
     expect(getVnErrorMessage('RESIDENT_ALREADY_MOVED_OUT')).toBe('Cư dân này đã rời khỏi căn hộ.');
   });
 
+  it('maps WRONG_CURRENT_PASSWORD', () => {
+    expect(getVnErrorMessage('WRONG_CURRENT_PASSWORD')).toBe('Mật khẩu hiện tại không đúng.');
+  });
+
   it('maps RATE_LIMITED', () => {
     expect(getVnErrorMessage('RATE_LIMITED')).toBe('Bạn thao tác quá nhanh, vui lòng thử lại sau.');
   });
@@ -104,7 +108,7 @@ describe('getVnErrorMessage', () => {
       'HAS_ACTIVE_DEPENDENCIES', 'CONTRACTOR_ASSIGNMENT_NOT_ALLOWED',
       'SELF_OPERATION_NOT_ALLOWED', 'RATE_LIMITED', 'INTERNAL_ERROR',
       'LICENSE_PLATE_ALREADY_EXISTS', 'SLOT_NUMBER_ALREADY_EXISTS',
-      'TICKET_ALREADY_RATED', 'RESIDENT_ALREADY_MOVED_OUT',
+      'TICKET_ALREADY_RATED', 'RESIDENT_ALREADY_MOVED_OUT', 'WRONG_CURRENT_PASSWORD',
     ];
     for (const code of knownCodes) {
       const msg = getVnErrorMessage(code);

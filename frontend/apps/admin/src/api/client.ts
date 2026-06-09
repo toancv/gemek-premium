@@ -29,6 +29,10 @@ apiClient.interceptors.response.use(
   async (error: AxiosError) => {
     const original = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
     if (error.response?.status === 401 && !original._retry) {
+      // Auth endpoints return 401 as a business-logic response — do not retry or redirect.
+      if (original.url?.includes('/auth/login') || original.url?.includes('/auth/refresh')) {
+        return Promise.reject(error);
+      }
       if (isRefreshing) {
         return new Promise((resolve, reject) => {
           failedQueue.push({ resolve, reject });

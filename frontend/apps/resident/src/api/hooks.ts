@@ -86,7 +86,7 @@ export const useCreateVehicle = () => {
 };
 
 export const useChangePassword = () =>
-  useMutation({ mutationFn: (data: unknown) => put('/auth/me/password', data), meta: { skipErrorToast: true } });
+  useMutation({ mutationFn: (data: unknown) => put('/auth/me/password', data), meta: { skipErrorToast: true, skipSuccessToast: true } });
 
 export const useNotifications = () =>
   useQuery({ queryKey: ['notifications'], queryFn: () => get('/notifications', { size: 20 }) });

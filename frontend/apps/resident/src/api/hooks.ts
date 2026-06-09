@@ -86,7 +86,7 @@ export const useCreateVehicle = () => {
 };
 
 export const useChangePassword = () =>
-  useMutation({ mutationFn: (data: unknown) => put('/auth/me/password', data), meta: { skipErrorToast: true, skipSuccessToast: true } });
+  useMutation({ mutationFn: (data: unknown) => put('/auth/me/password', data), meta: { skipErrorToast: true, successMessage: 'Đổi mật khẩu thành công.' } });
 
 export const useNotifications = () =>
   useQuery({ queryKey: ['notifications'], queryFn: () => get('/notifications', { size: 20 }) });

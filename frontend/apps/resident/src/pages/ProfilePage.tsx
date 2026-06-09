@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { toast, getVnErrorMessage } from '@gemek/ui';
+import { getVnErrorMessage } from '@gemek/ui';
 import { useAuthStore } from '../store/authStore';
 import { useMe, useChangePassword } from '../api/hooks';
 
@@ -22,7 +22,6 @@ export function ProfilePage() {
     try {
       await changePassword.mutateAsync({ currentPassword, newPassword });
       setCurrentPassword(''); setNewPassword(''); setConfirmPassword('');
-      toast.success('Đổi mật khẩu thành công.');
     } catch (err: any) {
       setPwError(getVnErrorMessage((err as any)?.response?.data?.error));
     }

@@ -80,6 +80,12 @@ describe('getVnErrorMessage', () => {
     expect(getVnErrorMessage('WRONG_CURRENT_PASSWORD')).toBe('Mật khẩu hiện tại không đúng.');
   });
 
+  it('maps PASSWORD_POLICY_VIOLATION', () => {
+    expect(getVnErrorMessage('PASSWORD_POLICY_VIOLATION')).toBe(
+      'Mật khẩu mới phải có tối thiểu 8 ký tự, gồm chữ hoa, chữ thường, số và ký tự đặc biệt.'
+    );
+  });
+
   it('maps RATE_LIMITED', () => {
     expect(getVnErrorMessage('RATE_LIMITED')).toBe('Bạn thao tác quá nhanh, vui lòng thử lại sau.');
   });
@@ -109,6 +115,7 @@ describe('getVnErrorMessage', () => {
       'SELF_OPERATION_NOT_ALLOWED', 'RATE_LIMITED', 'INTERNAL_ERROR',
       'LICENSE_PLATE_ALREADY_EXISTS', 'SLOT_NUMBER_ALREADY_EXISTS',
       'TICKET_ALREADY_RATED', 'RESIDENT_ALREADY_MOVED_OUT', 'WRONG_CURRENT_PASSWORD',
+      'PASSWORD_POLICY_VIOLATION',
     ];
     for (const code of knownCodes) {
       const msg = getVnErrorMessage(code);

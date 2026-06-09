@@ -19,7 +19,9 @@
 - Cluster plan: use `getVnErrorMessage` from `@gemek/ui` in each form's catch block; add `meta.successMessage` for missing success toasts; fix silent-error handlers
 - Key systemic issues: raw `.message` in 22 forms; missing success toast in 16; English fallbacks in 10; silent errors in 4
 
-**Resume pointer:** Foundation done. Next turn = cluster A: patch all admin forms (top priority from survey) importing `getVnErrorMessage` from `@gemek/ui`. Reference `reports/form-feedback-survey.md` + `reports/error-code-audit.md`.
+- CONFLICT gaps patched (e604f8a): 7 spots → specific codes; 4 new enum entries added (`LICENSE_PLATE_ALREADY_EXISTS`, `SLOT_NUMBER_ALREADY_EXISTS`, `TICKET_ALREADY_RATED`, `RESIDENT_ALREADY_MOVED_OUT`); util extended (00db804); 31 unit tests green.
+
+**Resume pointer:** Foundation complete. Next = cluster A: patch all 26 deviating forms using `getVnErrorMessage` from `@gemek/ui`. Reference `reports/form-feedback-survey.md`.
 
 ---
 

@@ -13,6 +13,12 @@ Format: Date | Decision | Reasoning | Alternatives
 
 **Toast API (locked standard):** `toast.success(message: string)` / `toast.error(message: string)`. Do NOT call `toast(...)` directly — it is an object, not a function. All future clusters must use `.success()` / `.error()` form.
 
+**Interceptor URL guard (locked standard):** Both `apiClient` interceptors skip the 401 refresh+retry for `/auth/login` and `/auth/refresh` — these return 401 as a business signal, not a token-expiry signal. Add any future auth-only endpoint to this guard if it returns 401 for business logic.
+
+**WRONG_CURRENT_PASSWORD (422):** Wrong current password in change-password flow uses `HttpStatus.UNPROCESSABLE_ENTITY` (422) not `UNAUTHORIZED` (401). 422 bypasses the 401 interceptor → error reaches component immediately. `INVALID_CREDENTIALS` (401) is reserved for login only.
+
+**skipSuccessToast pattern:** Mutations that call `toast.success(...)` inline in the component MUST set `meta: { skipSuccessToast: true }` to prevent the global MutationCache from also firing a generic toast.
+
 ---
 
 ## 2026-06-09 | Form-feedback standard + distinct dup-code finding

@@ -109,12 +109,19 @@ export function ResidentsPage() {
       });
       setShowCreate(false);
     } catch (err: any) {
+      const errorCode = err?.response?.data?.error;
       if (err?.response?.status === 409) {
-        setFormError(err?.response?.data?.message ?? 'Số điện thoại hoặc email đã được sử dụng.');
+        if (errorCode === 'PHONE_ALREADY_EXISTS') {
+          setPhoneError('Số điện thoại đã được sử dụng.');
+        } else if (errorCode === 'EMAIL_ALREADY_EXISTS') {
+          setEmailError('Email đã được sử dụng.');
+        } else {
+          setFormError('Có lỗi xảy ra, vui lòng thử lại.');
+        }
       } else if (err?.response?.status === 404) {
         setFormError('Căn hộ không tồn tại.');
       } else {
-        setFormError(err?.response?.data?.message ?? 'Tạo cư dân thất bại.');
+        setFormError('Có lỗi xảy ra, vui lòng thử lại.');
       }
     }
   };

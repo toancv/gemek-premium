@@ -4,25 +4,44 @@
 
 **Standard:** All forms → errors = VN inline by BE error CODE (never raw serverMsg); success = toast.
 
-**Authoritative plan:** `reports/form-feedback-survey.md` — 27 forms audited, 26 deviating, 1 fixed.
+**Authoritative plan:** `reports/form-feedback-survey.md` — 27 forms audited, 26 deviating, 1 fixed pre-survey.
 
-**What is DONE:**
-- BE distinct dup codes NOW CONFIRMED BOTH PATHS: `ResidentServiceImpl` was throwing `CONFLICT` for email-dup (bug fixed e66b86e); `UserServiceImpl` was already correct. Both now throw `EMAIL_ALREADY_EXISTS` (409).
-- Email address no longer leaked in ResidentServiceImpl error message.
-- Admin ResidentsPage create form fixed (ea68b10): `PHONE_ALREADY_EXISTS` → `setPhoneError("Số điện thoại đã được sử dụng.")`, `EMAIL_ALREADY_EXISTS` → `setEmailError("Email đã được sử dụng.")`, unknown 409 → generic VN; raw serverMsg no longer echoed
-- Survey complete: `reports/form-feedback-survey.md`
-- BE error code audit complete: `reports/error-code-audit.md` — 20 codes (16 specific, 4 generic); CONFLICT gaps patched (e604f8a, 7 spots, 4 new enum entries)
-- `getVnErrorMessage(errorCode?)` util in `@gemek/ui/src/lib/errorMessages.ts` — maps all 20 BE codes + fallback; 24 tests green; extended (00db804)
-- **Cluster 1 done (ecda711 + 80a0fff + b4d2889):** 5 forms standardized. Post-testing fixes: login 401 interceptor URL guard (no reload on auth endpoint failure); `WRONG_CURRENT_PASSWORD` (422) added to BE; `getVnErrorMessage` maps new code.
-- **Cluster 1 post-testing round 2 (8a6ba52 + 48a6388):** change-password success toast and password-policy error fixed. (B) `PASSWORD_POLICY_VIOLATION` (422) from service layer. `getVnErrorMessage` now maps 22 codes; 26 UI tests green; AuthServiceTest green; both apps exit 0.
-- **Toast positioning fix (c518623):** Resident tailwind.config lacked `packages/ui/src` scan → all Toast classes purged → white strip. Fixed. Singleton confirmed: ONE listeners[] instance; component-level `toast.success()` is reliable. DECISIONS.md updated with canonical pattern.
-- **Toast viewport-anchor fix (c4b3179):** Prior "right-4 md+" fix was wrong root cause. Real issue: resident column is `max-w-md mx-auto` (448px centered); `fixed right-4` anchors to full-viewport right edge → toast outside app frame on desktop. Fixed: `left-1/2 -translate-x-1/2 w-[calc(100%-2rem)] max-w-sm` — always centered in viewport = centered over resident column. Both apps exit 0.
+### What is DONE
 
-**What is REMAINING:**
-- Apply form-feedback standard to remaining 21 deviating forms (see `reports/form-feedback-survey.md` priority list)
-- Cluster plan: use `getVnErrorMessage` from `@gemek/ui` in each form's catch block; add success toast where missing; fix silent-error handlers
+**Foundation (BE + shared util):**
+- BE: `ResidentServiceImpl` email-dup throws `EMAIL_ALREADY_EXISTS` not generic `CONFLICT` (e66b86e). Both dup paths symmetric.
+- BE: 7 generic-CONFLICT spots → specific codes; 4 new `ErrorCode` entries (e604f8a). `reports/error-code-audit.md` has full list.
+- Shared util: `getVnErrorMessage(errorCode?: string): string` in `@gemek/ui/src/lib/errorMessages.ts` — 22 codes mapped to VN, unknown → fallback. 26 tests green (00db804 + extensions).
 
-**Resume pointer:** Cluster 1 complete (5 forms). Next = cluster 2: patch remaining 21 forms. Reference `reports/form-feedback-survey.md`.
+**Cluster 1 — 5 forms standardized:**
+Forms: admin Login, resident Login, resident Change Password, resident Book Amenity, resident Rate Ticket.
+- Admin ResidentsPage create form: `PHONE_ALREADY_EXISTS`/`EMAIL_ALREADY_EXISTS` → per-field inline VN (ea68b10).
+- 5 forms: errors via `getVnErrorMessage(err?.response?.data?.error)`; success via MutationCache `meta.successMessage` or navigate (ecda711 + 80a0fff + b4d2889).
+- Login 401-interceptor reload fix: both `apiClient` interceptors skip refresh+retry for `/auth/login` and `/auth/refresh` — business-logic 401 must not trigger token-refresh loop (b4d2889).
+- `WRONG_CURRENT_PASSWORD` (422): added to BE (`ErrorCode` + `AuthServiceImpl`) and mapped in `getVnErrorMessage`. 422 bypasses 401 interceptor.
+- `PASSWORD_POLICY_VIOLATION` (422): `@Pattern` removed from `ChangePasswordRequest.newPassword`; domain check moved to service layer; mapped in `getVnErrorMessage` (8a6ba52 + 48a6388).
+- Change-password success toast: `useChangePassword` hook uses `meta: { successMessage: 'Đổi mật khẩu thành công.' }` → MutationCache fires toast. `skipSuccessToast` removed (48a6388).
+- Toast CSS purge fix: resident `tailwind.config.js` now includes `../../packages/ui/src/**/*.{ts,tsx}` (c518623). CSS grew 15.19→17.50kB confirming Toast classes included.
+- Toast positioning fix: `fixed right-4` anchors to viewport right edge; resident column is `max-w-md mx-auto` (448px) → toast outside frame on desktop. Fixed to `left-1/2 -translate-x-1/2 w-[calc(100%-2rem)] max-w-sm` — centered over column on all widths (c4b3179).
+
+**Auth state (confirmed stable):**
+- Phone-as-login migration: COMPLETE (all 9 steps, see ✅ section below).
+- Change-password hash integrity: NO corrupting path — both validations precede `setPasswordHash`; `@Transactional` rolls back on exception. Earlier corruption non-reproducible in current code (`reports/change-pw-integrity.md`).
+
+### Cluster 1 Lessons (apply to clusters 2–5)
+
+1. **Success toast = `meta.successMessage` via MutationCache**, NOT component-level `toast.success()`. Use `meta: { successMessage: 'VN message' }` in the mutation hook; MutationCache fires it automatically. Component-level `toast.success()` is also valid (singleton, reliable), but `meta.successMessage` is cleaner when message is fixed.
+2. **Toast API:** call `toast.success(msg)` / `toast.error(msg)`. Never `toast({...})` — `toast` is an object, not a function.
+3. **Toast positioning:** Toast container uses `fixed left-1/2 -translate-x-1/2` (viewport-centered). Do NOT revert to `fixed right-4` (viewport-right) — breaks resident narrow column. Do NOT add `position:relative` wrapper — fixed ignores it.
+4. **Login success = navigate only.** No toast on successful login. All other mutations: success → toast.
+
+### What is REMAINING
+
+Clusters 2–5: ~21 deviating forms. Exact list in `reports/form-feedback-survey.md` (priority-ordered).
+
+Apply per-form: `getVnErrorMessage(err?.response?.data?.error)` for errors; `meta: { successMessage: 'VN msg' }` for success (or component-level `toast.success()` where component already imports toast); remove raw `.message` echoing; remove English success strings.
+
+**Resume pointer:** Open `reports/form-feedback-survey.md` → work through deviating forms in priority order starting after cluster 1.
 
 ---
 

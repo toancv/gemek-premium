@@ -76,6 +76,22 @@ Format: Date | Decision | Reasoning | Alternatives
 
 ---
 
+## 2026-06-09 | Cluster-1 lessons locked for clusters 2–5
+
+**Lesson 1 — Success toast path:** Use `meta: { successMessage: 'VN message' }` in the TanStack Query mutation hook. MutationCache `onSuccess` fires `toast.success(meta.successMessage)` automatically. Component-level `toast.success()` also works (singleton, same listeners[]) but requires importing toast in the component. `meta.successMessage` is preferred for fixed messages. `skipSuccessToast: true` only needed when both paths fire simultaneously.
+
+**Lesson 2 — Toast API shape:** `toast` is an object with `.success(msg)` and `.error(msg)` methods. Calling `toast({...})` throws. All future clusters must use `toast.success(msg)` / `toast.error(msg)`.
+
+**Lesson 3 — Toast positioning (locked, do not revert):** Toast container `fixed left-1/2 -translate-x-1/2 w-[calc(100%-2rem)] max-w-sm`. Viewport-centered. Prior `fixed right-4` anchored to full-viewport right edge — outside resident's `max-w-md mx-auto` column on desktop. Resolved in c4b3179. Do not add responsive right-anchor back.
+
+**Login rule:** Login success = navigate only. No toast on auth endpoints. All other mutations: success → toast via MutationCache or component.
+
+**Change-password specifics:** `useChangePassword` hook: `meta: { skipErrorToast: true, successMessage: 'Đổi mật khẩu thành công.' }`. Errors caught inline: `getVnErrorMessage(err?.response?.data?.error)` — maps `WRONG_CURRENT_PASSWORD` and `PASSWORD_POLICY_VIOLATION` to specific VN strings.
+
+**Auth state confirmed stable:** Phone-as-login complete. Change-password hash integrity verified in `reports/change-pw-integrity.md` — no corrupting path exists in current code; earlier corruption non-reproducible.
+
+---
+
 ## 2026-06-08 | Dup-phone 500 fix
 
 - Root cause: Docker container ran stale code (pre-step-5 ResidentServiceImpl had no existsByPhone guard); dup phone hit DB constraint → DataIntegrityViolationException → catch-all → 500.

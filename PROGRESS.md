@@ -11,17 +11,15 @@
 - Email address no longer leaked in ResidentServiceImpl error message.
 - Admin ResidentsPage create form fixed (ea68b10): `PHONE_ALREADY_EXISTS` → `setPhoneError("Số điện thoại đã được sử dụng.")`, `EMAIL_ALREADY_EXISTS` → `setEmailError("Email đã được sử dụng.")`, unknown 409 → generic VN; raw serverMsg no longer echoed
 - Survey complete: `reports/form-feedback-survey.md`
-- BE error code audit complete: `reports/error-code-audit.md` — 16 codes (10 specific, 6 generic); 7 CONFLICT-gap sites flagged for later BE patches (highest: `LICENSE_PLATE_ALREADY_EXISTS` in VehicleServiceImpl)
-- `getVnErrorMessage(errorCode?)` util in `@gemek/ui/src/lib/errorMessages.ts` — maps all 16 BE codes + fallback; 20 tests green (28/28 total in ui package)
+- BE error code audit complete: `reports/error-code-audit.md` — 20 codes (16 specific, 4 generic); CONFLICT gaps patched (e604f8a, 7 spots, 4 new enum entries)
+- `getVnErrorMessage(errorCode?)` util in `@gemek/ui/src/lib/errorMessages.ts` — maps all 20 BE codes + fallback; 24 tests green; extended (00db804)
+- **Cluster 1 done (ecda711):** 5 forms standardized — admin LoginPage, resident LoginPage, resident ProfilePage (change-password), resident AmenitiesPage (book), resident TicketDetailPage (rate). All use `getVnErrorMessage(err?.response?.data?.error)`; success actions fire VN toast; no raw `.message` or English errors remain.
 
 **What is REMAINING:**
-- Apply form-feedback standard to 26 deviating forms (see `reports/form-feedback-survey.md` priority list)
-- Cluster plan: use `getVnErrorMessage` from `@gemek/ui` in each form's catch block; add `meta.successMessage` for missing success toasts; fix silent-error handlers
-- Key systemic issues: raw `.message` in 22 forms; missing success toast in 16; English fallbacks in 10; silent errors in 4
+- Apply form-feedback standard to remaining 21 deviating forms (see `reports/form-feedback-survey.md` priority list)
+- Cluster plan: use `getVnErrorMessage` from `@gemek/ui` in each form's catch block; add success toast where missing; fix silent-error handlers
 
-- CONFLICT gaps patched (e604f8a): 7 spots → specific codes; 4 new enum entries added (`LICENSE_PLATE_ALREADY_EXISTS`, `SLOT_NUMBER_ALREADY_EXISTS`, `TICKET_ALREADY_RATED`, `RESIDENT_ALREADY_MOVED_OUT`); util extended (00db804); 31 unit tests green.
-
-**Resume pointer:** Foundation complete. Next = cluster A: patch all 26 deviating forms using `getVnErrorMessage` from `@gemek/ui`. Reference `reports/form-feedback-survey.md`.
+**Resume pointer:** Cluster 1 complete (5 forms). Next = cluster 2: patch remaining 21 forms. Reference `reports/form-feedback-survey.md`.
 
 ---
 

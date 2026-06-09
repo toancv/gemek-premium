@@ -5,6 +5,14 @@ Format: Date | Decision | Reasoning | Alternatives
 
 ---
 
+## 2026-06-09 | Cluster 1 form-feedback patch (5 forms)
+
+**Decision:** Login (both apps): error → `getVnErrorMessage(code)`, success → navigate (no toast). Change-password / Book amenity / Rate ticket: success → explicit `toast({ title: '...' })` in VN; error → `getVnErrorMessage(code)`. Inline English success removed from ProfilePage (was `pwSuccess` state + static string).
+
+**Why:** Login navigate-on-success is sufficient UX signal; toast there would be redundant. The other 3 are non-navigation mutations where the user stays on the same page — a toast is the only clear success signal.
+
+---
+
 ## 2026-06-09 | Form-feedback standard + distinct dup-code finding
 
 **Decision:** All forms in both apps follow one standard: validation/server errors → VN inline message below field; success → toast. No mixed patterns.

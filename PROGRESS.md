@@ -2,20 +2,21 @@
 
 ## 🔄 IN PROGRESS — Form-Feedback Standardization (2026-06-09)
 
-**Standard:** All forms in both apps → errors = VN inline message below field; success = toast.
+**Standard:** All forms → errors = VN inline by BE error CODE (never raw serverMsg); success = toast.
 
-**Authoritative plan:** `reports/form-feedback-survey.md` (DOES NOT EXIST YET — survey not started)
+**Authoritative plan:** `reports/form-feedback-survey.md` — 27 forms audited, 26 deviating, 1 fixed.
 
-**What is DONE (no BE change needed):**
-- BE already emits distinct duplicate error codes: `PHONE_ALREADY_EXISTS` vs `EMAIL_ALREADY_EXISTS` — confirmed in `ErrorCode.java`, `ResidentServiceImpl.java`, `UserServiceImpl.java`
-- dup-phone 500→409 fix committed (b13807d + 2971559); ResidentsPage already uses `serverMsg` for 409 instead of hardcoded string
+**What is DONE:**
+- BE distinct dup codes confirmed: `PHONE_ALREADY_EXISTS` / `EMAIL_ALREADY_EXISTS` in ErrorCode + services
+- Admin ResidentsPage create form fixed (ea68b10): `PHONE_ALREADY_EXISTS` → `setPhoneError("Số điện thoại đã được sử dụng.")`, `EMAIL_ALREADY_EXISTS` → `setEmailError("Email đã được sử dụng.")`, unknown 409 → generic VN; raw serverMsg no longer echoed
+- Survey complete: `reports/form-feedback-survey.md`
 
 **What is REMAINING:**
-1. FE admin resident-create form: map `PHONE_ALREADY_EXISTS` → "Số điện thoại đã được sử dụng." and `EMAIL_ALREADY_EXISTS` → "Email đã được sử dụng." as inline field errors (~2 files)
-2. All-forms survey (`reports/form-feedback-survey.md`): audit every form in both apps for error→VN-inline and success→toast compliance
-3. Apply standard to other deviating forms found in survey
+- Apply fix standard to 26 remaining deviating forms (see survey for priority list)
+- Key systemic issues: raw `.message` used in 22 forms; missing success toast in 16; English fallbacks in 10; silent errors in 4
+- Recommended: create shared `getVnErrorMessage(errorCode)` util in `@gemek/ui` first, then patch forms
 
-**Resume pointer:** Start with step 1 (resident create form FE fix), then survey, then apply fixes.
+**Resume pointer:** Read `reports/form-feedback-survey.md` summary table; next turn = implement shared util + patch all deviating forms (or batch by priority per CTO).
 
 ---
 

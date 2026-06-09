@@ -13,7 +13,7 @@ Format: Date | Decision | Reasoning | Alternatives
 
 **Why:** FE was hardcoding "Email đã được sử dụng." for all 409 dup errors regardless of which field caused it. The BE already provides the correct signal; FE must surface it as per-field inline error.
 
-**How to apply:** Resident-create form FE fix: catch 409 + check `errorCode` field in response body → set field-level error via `setError()` (React Hook Form). Same pattern for any future form with multi-field uniqueness constraints.
+**How to apply:** FE catch block reads `err?.response?.data?.error` (the BE error code string). Map known codes to fixed VN strings via a shared util; unknown codes and non-409 errors fall back to "Có lỗi xảy ra, vui lòng thử lại." — never echo `err?.response?.data?.message` (leaks raw server text, may expose phone/email, may be English). Set field-level error (`setPhoneError` / `setEmailError`) where the field state exists; otherwise set form-level `setFormError`.
 
 ---
 

@@ -41,11 +41,13 @@ Forms: admin Login, resident Login, resident Change Password, resident Book Amen
 **Next item:** AnnouncementsPage — Create Announcement (#6) + Publish Announcement (#7)
 
 **Done in cluster 2 so far:**
-- AmenitiesPage (#2 Create Amenity, #3 Edit Amenity, #4 Approve Booking, #5 Reject Booking) — d171df5
-  - Create/Edit: `meta.successMessage` added to hooks; `getVnErrorMessage(err?.response?.data?.error)` in catch
-  - Approve: `skipErrorToast:true` + async try/catch handler + `approveError` inline banner above bookings table
-  - Reject: `skipErrorToast:true` + try/catch in dialog handler + `rejectError` inline in reject dialog
-  - No new BE codes needed — all thrown codes (`CONFLICT`, `NOT_FOUND`, `VALIDATION_ERROR`) already mapped
+- AmenitiesPage (#2 Create Amenity, #3 Edit Amenity, #4 Approve Booking, #5 Reject Booking) — **AWAITING browser-verify (CTO: docker compose up -d --build nginx, then test 4 flows)**
+  - FE form feedback: d171df5 — Create/Edit successMessage; Approve/Reject skipErrorToast + inline error areas
+  - CONFLICT→specific-code split: 073a3bf (BE), 2bf2fa5 (BE tests), 72bc19f (ui map + tests), 51e6808 (API-SPEC)
+    - `AMENITY_NAME_EXISTS` (create/edit dup name), `BOOKING_NOT_PENDING` (approve/reject non-pending)
+    - AmenityControllerTest: 15/15 pass incl. 3 new assertions for new codes
+    - Pre-existing phone-login test regression fixed for AmenityControllerTest (admin pw = GemekAdmin2026)
+    - Other test files (VehicleControllerTest etc.): same pre-existing phone-login regression — separate fix needed
 
 ### What is REMAINING
 

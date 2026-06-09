@@ -1,12 +1,15 @@
 import React, { useState } from 'react';
+import { getVnErrorMessage } from '@gemek/ui';
 import { useAmenities, useAmenityBookings, useApproveBooking, useRejectBooking, useCreateAmenity, useUpdateAmenity } from '../api/hooks';
 
 export function AmenitiesPage() {
   const [tab, setTab] = useState<'amenities' | 'bookings'>('amenities');
   const [modal, setModal] = useState<null | 'create' | any>(null);
   const [formError, setFormError] = useState('');
+  const [approveError, setApproveError] = useState('');
   const [rejectReason, setRejectReason] = useState('');
   const [rejectId, setRejectId] = useState<string | null>(null);
+  const [rejectError, setRejectError] = useState('');
 
   const { data: amenitiesData, isLoading, isError } = useAmenities();
   const { data: bookingsData, isLoading: bLoading } = useAmenityBookings({ status: 'PENDING', size: 50 });
@@ -21,12 +24,33 @@ export function AmenitiesPage() {
     setFormError('');
     const fd = new FormData(e.target as HTMLFormElement);
     const payload = { name: fd.get('name'), location: fd.get('location'), capacity: Number(fd.get('capacity')), openingTime: fd.get('openingTime'), closingTime: fd.get('closingTime'), maxDailyBookingsPerResident: Number(fd.get('maxDailyBookingsPerResident')), requiresApproval: fd.get('requiresApproval') === 'true' };
-    if (!payload.name) { setFormError('Name is required'); return; }
+    if (!payload.name) { setFormError('Tên tiện ích là bắt buộc.'); return; }
     try {
       if (isEdit) await update.mutateAsync({ id: modal.id, data: payload });
       else await create.mutateAsync(payload);
       setModal(null);
-    } catch (err: any) { setFormError(err?.response?.data?.message ?? 'Failed'); }
+    } catch (err: any) { setFormError(getVnErrorMessage(err?.response?.data?.error)); }
+  };
+
+  const handleApprove = async (id: string) => {
+    setApproveError('');
+    try {
+      await approve.mutateAsync(id);
+    } catch (err: any) {
+      setApproveError(getVnErrorMessage(err?.response?.data?.error));
+    }
+  };
+
+  const handleReject = async () => {
+    if (!rejectReason.trim()) return;
+    setRejectError('');
+    try {
+      await reject.mutateAsync({ id: rejectId!, reason: rejectReason });
+      setRejectId(null);
+      setRejectReason('');
+    } catch (err: any) {
+      setRejectError(getVnErrorMessage(err?.response?.data?.error));
+    }
   };
 
   return (
@@ -42,7 +66,7 @@ export function AmenitiesPage() {
         </button>
       </div>
 
-      {isError && <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-700 mb-4">Failed to load data.</div>}
+      {isError && <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-700 mb-4">Không thể tải dữ liệu.</div>}
 
       {tab === 'amenities' && (
         <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
@@ -76,54 +100,54 @@ export function AmenitiesPage() {
       )}
 
       {tab === 'bookings' && (
-        <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-          <table className="w-full text-sm">
-            <thead className="bg-gray-50 border-b border-gray-200">
-              <tr>
-                <th className="text-left px-4 py-3 font-medium text-gray-500">Amenity</th>
-                <th className="text-left px-4 py-3 font-medium text-gray-500">Resident</th>
-                <th className="text-left px-4 py-3 font-medium text-gray-500">Apartment</th>
-                <th className="text-left px-4 py-3 font-medium text-gray-500">Date</th>
-                <th className="text-left px-4 py-3 font-medium text-gray-500">Time</th>
-                <th className="text-left px-4 py-3 font-medium text-gray-500">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {bLoading && <tr><td colSpan={6} className="text-center py-8 text-gray-400">Loading...</td></tr>}
-              {!bLoading && !bookingsData?.data?.length && <tr><td colSpan={6} className="text-center py-8 text-gray-400">No pending bookings</td></tr>}
-              {bookingsData?.data?.map((b: any) => (
-                <tr key={b.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-3 font-medium">{b.amenity?.name}</td>
-                  <td className="px-4 py-3">{b.resident?.user?.fullName}</td>
-                  <td className="px-4 py-3">{b.apartment?.unitNumber}</td>
-                  <td className="px-4 py-3">{b.bookingDate}</td>
-                  <td className="px-4 py-3">{b.startTime} - {b.endTime}</td>
-                  <td className="px-4 py-3 flex gap-2">
-                    <button onClick={() => approve.mutate(b.id)} disabled={approve.isPending} className="text-green-600 hover:underline text-xs disabled:opacity-50">Approve</button>
-                    <button onClick={() => setRejectId(b.id)} className="text-red-600 hover:underline text-xs">Reject</button>
-                  </td>
+        <div>
+          {approveError && <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-700 mb-3">{approveError}</div>}
+          <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+            <table className="w-full text-sm">
+              <thead className="bg-gray-50 border-b border-gray-200">
+                <tr>
+                  <th className="text-left px-4 py-3 font-medium text-gray-500">Amenity</th>
+                  <th className="text-left px-4 py-3 font-medium text-gray-500">Resident</th>
+                  <th className="text-left px-4 py-3 font-medium text-gray-500">Apartment</th>
+                  <th className="text-left px-4 py-3 font-medium text-gray-500">Date</th>
+                  <th className="text-left px-4 py-3 font-medium text-gray-500">Time</th>
+                  <th className="text-left px-4 py-3 font-medium text-gray-500">Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {bLoading && <tr><td colSpan={6} className="text-center py-8 text-gray-400">Loading...</td></tr>}
+                {!bLoading && !bookingsData?.data?.length && <tr><td colSpan={6} className="text-center py-8 text-gray-400">No pending bookings</td></tr>}
+                {bookingsData?.data?.map((b: any) => (
+                  <tr key={b.id} className="hover:bg-gray-50">
+                    <td className="px-4 py-3 font-medium">{b.amenity?.name}</td>
+                    <td className="px-4 py-3">{b.resident?.user?.fullName}</td>
+                    <td className="px-4 py-3">{b.apartment?.unitNumber}</td>
+                    <td className="px-4 py-3">{b.bookingDate}</td>
+                    <td className="px-4 py-3">{b.startTime} - {b.endTime}</td>
+                    <td className="px-4 py-3 flex gap-2">
+                      <button onClick={() => handleApprove(b.id)} disabled={approve.isPending} className="text-green-600 hover:underline text-xs disabled:opacity-50">Approve</button>
+                      <button onClick={() => { setRejectId(b.id); setRejectError(''); }} className="text-red-600 hover:underline text-xs">Reject</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 
       {/* Reject dialog */}
       {rejectId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/50" onClick={() => setRejectId(null)} />
+          <div className="absolute inset-0 bg-black/50" onClick={() => { setRejectId(null); setRejectError(''); }} />
           <div className="relative bg-white rounded-lg shadow-xl w-full max-w-sm p-6">
             <h2 className="text-lg font-semibold mb-3">Reject Booking</h2>
             <label className="block text-sm font-medium text-gray-700 mb-1">Reason <span className="text-red-500">*</span></label>
-            <textarea value={rejectReason} onChange={(e) => setRejectReason(e.target.value)} rows={3} className="block w-full border border-gray-300 rounded-md px-3 py-2 text-sm mb-4" />
+            <textarea value={rejectReason} onChange={(e) => setRejectReason(e.target.value)} rows={3} className="block w-full border border-gray-300 rounded-md px-3 py-2 text-sm mb-3" />
+            {rejectError && <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded mb-3">{rejectError}</p>}
             <div className="flex gap-2 justify-end">
-              <button onClick={() => { setRejectId(null); setRejectReason(''); }} className="px-4 py-2 text-sm border border-gray-300 rounded-md hover:bg-gray-50">Cancel</button>
-              <button onClick={async () => {
-                if (!rejectReason.trim()) return;
-                await reject.mutateAsync({ id: rejectId, reason: rejectReason });
-                setRejectId(null); setRejectReason('');
-              }} disabled={reject.isPending || !rejectReason.trim()} className="px-4 py-2 text-sm bg-red-600 text-white rounded-md hover:bg-red-700 disabled:opacity-50">
+              <button onClick={() => { setRejectId(null); setRejectReason(''); setRejectError(''); }} className="px-4 py-2 text-sm border border-gray-300 rounded-md hover:bg-gray-50">Cancel</button>
+              <button onClick={handleReject} disabled={reject.isPending || !rejectReason.trim()} className="px-4 py-2 text-sm bg-red-600 text-white rounded-md hover:bg-red-700 disabled:opacity-50">
                 {reject.isPending ? 'Rejecting...' : 'Reject'}
               </button>
             </div>

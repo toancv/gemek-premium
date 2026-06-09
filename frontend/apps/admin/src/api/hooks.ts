@@ -141,7 +141,7 @@ export const useCreateAmenity = () => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (data: unknown) => post('/amenities', data),
-    meta: { skipErrorToast: true },
+    meta: { skipErrorToast: true, successMessage: 'Tạo tiện ích thành công.' },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['amenities'] }),
   });
 };
@@ -150,7 +150,7 @@ export const useUpdateAmenity = () => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ id, data }: { id: string; data: unknown }) => put(`/amenities/${id}`, data),
-    meta: { skipErrorToast: true },
+    meta: { skipErrorToast: true, successMessage: 'Cập nhật tiện ích thành công.' },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['amenities'] }),
   });
 };
@@ -162,7 +162,7 @@ export const useApproveBooking = () => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => put(`/amenity-bookings/${id}/approve`, { status: 'APPROVED' }),
-    meta: { successMessage: 'Đã duyệt đặt chỗ' },
+    meta: { successMessage: 'Đã duyệt đặt chỗ', skipErrorToast: true },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['amenity-bookings'] }),
   });
 };
@@ -172,7 +172,7 @@ export const useRejectBooking = () => {
   return useMutation({
     mutationFn: ({ id, reason }: { id: string; reason: string }) =>
       put(`/amenity-bookings/${id}/approve`, { status: 'REJECTED', rejectionReason: reason }),
-    meta: { successMessage: 'Đã từ chối đặt chỗ' },
+    meta: { successMessage: 'Đã từ chối đặt chỗ', skipErrorToast: true },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['amenity-bookings'] }),
   });
 };

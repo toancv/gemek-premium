@@ -13,6 +13,8 @@ Format: Date | Decision | Reasoning | Alternatives
 
 **Why:** FE was hardcoding "Email đã được sử dụng." for all 409 dup errors regardless of which field caused it. The BE already provides the correct signal; FE must surface it as per-field inline error.
 
+**2026-06-09 addendum:** `ResidentServiceImpl` was throwing generic `CONFLICT` for email-dup (one-line fix, e66b86e). Root cause: service-layer email guard was added independently from the phone guard and used the wrong error code. Both paths now symmetric: phone-dup → `PHONE_ALREADY_EXISTS`, email-dup → `EMAIL_ALREADY_EXISTS`. Test updated (902ff48) — old test asserted `CONFLICT` (was testing the bug, not the intent).
+
 **How to apply:** FE catch block reads `err?.response?.data?.error` (the BE error code string). Map known codes to fixed VN strings via a shared util; unknown codes and non-409 errors fall back to "Có lỗi xảy ra, vui lòng thử lại." — never echo `err?.response?.data?.message` (leaks raw server text, may expose phone/email, may be English). Set field-level error (`setPhoneError` / `setEmailError`) where the field state exists; otherwise set form-level `setFormError`.
 
 ---

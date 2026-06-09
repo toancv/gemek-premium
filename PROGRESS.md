@@ -7,7 +7,8 @@
 **Authoritative plan:** `reports/form-feedback-survey.md` — 27 forms audited, 26 deviating, 1 fixed.
 
 **What is DONE:**
-- BE distinct dup codes confirmed: `PHONE_ALREADY_EXISTS` / `EMAIL_ALREADY_EXISTS` in ErrorCode + services
+- BE distinct dup codes NOW CONFIRMED BOTH PATHS: `ResidentServiceImpl` was throwing `CONFLICT` for email-dup (bug fixed e66b86e); `UserServiceImpl` was already correct. Both now throw `EMAIL_ALREADY_EXISTS` (409).
+- Email address no longer leaked in ResidentServiceImpl error message.
 - Admin ResidentsPage create form fixed (ea68b10): `PHONE_ALREADY_EXISTS` → `setPhoneError("Số điện thoại đã được sử dụng.")`, `EMAIL_ALREADY_EXISTS` → `setEmailError("Email đã được sử dụng.")`, unknown 409 → generic VN; raw serverMsg no longer echoed
 - Survey complete: `reports/form-feedback-survey.md`
 

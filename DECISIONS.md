@@ -5,6 +5,18 @@ Format: Date | Decision | Reasoning | Alternatives
 
 ---
 
+## 2026-06-09 | Form-feedback standard + distinct dup-code finding
+
+**Decision:** All forms in both apps follow one standard: validation/server errors → VN inline message below field; success → toast. No mixed patterns.
+
+**Finding:** BE already emits `PHONE_ALREADY_EXISTS` vs `EMAIL_ALREADY_EXISTS` as distinct codes (confirmed in `ErrorCode.java`, `ResidentServiceImpl.java`, `UserServiceImpl.java`). No BE changes needed for dup-key distinction — only FE mapping is missing.
+
+**Why:** FE was hardcoding "Email đã được sử dụng." for all 409 dup errors regardless of which field caused it. The BE already provides the correct signal; FE must surface it as per-field inline error.
+
+**How to apply:** Resident-create form FE fix: catch 409 + check `errorCode` field in response body → set field-level error via `setError()` (React Hook Form). Same pattern for any future form with multi-field uniqueness constraints.
+
+---
+
 ## 2026-06-08 | Dup-phone 500 fix
 
 - Root cause: Docker container ran stale code (pre-step-5 ResidentServiceImpl had no existsByPhone guard); dup phone hit DB constraint → DataIntegrityViolationException → catch-all → 500.

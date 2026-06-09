@@ -32,6 +32,14 @@ const ERROR_MESSAGES: Record<string, string> = {
   INVALID_STATUS_TRANSITION: 'Không thể chuyển trạng thái trong bước này.',
   HAS_ACTIVE_DEPENDENCIES: 'Không thể xóa vì vẫn còn dữ liệu liên quan đang hoạt động.',
 
+  // Vehicle / parking uniqueness
+  LICENSE_PLATE_ALREADY_EXISTS: 'Biển số xe đã được đăng ký.',
+  SLOT_NUMBER_ALREADY_EXISTS: 'Số ô đỗ xe đã tồn tại.',
+
+  // Ticket lifecycle
+  TICKET_ALREADY_RATED: 'Yêu cầu này đã được đánh giá.',
+  RESIDENT_ALREADY_MOVED_OUT: 'Cư dân này đã rời khỏi căn hộ.',
+
   // Rate / server
   RATE_LIMITED: 'Bạn thao tác quá nhanh, vui lòng thử lại sau.',
   INTERNAL_ERROR: 'Có lỗi xảy ra, vui lòng thử lại.',

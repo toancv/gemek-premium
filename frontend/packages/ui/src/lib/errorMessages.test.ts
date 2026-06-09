@@ -60,6 +60,22 @@ describe('getVnErrorMessage', () => {
     expect(getVnErrorMessage('SELF_OPERATION_NOT_ALLOWED')).toBe('Không thể thực hiện thao tác này trên tài khoản của bạn.');
   });
 
+  it('maps LICENSE_PLATE_ALREADY_EXISTS', () => {
+    expect(getVnErrorMessage('LICENSE_PLATE_ALREADY_EXISTS')).toBe('Biển số xe đã được đăng ký.');
+  });
+
+  it('maps SLOT_NUMBER_ALREADY_EXISTS', () => {
+    expect(getVnErrorMessage('SLOT_NUMBER_ALREADY_EXISTS')).toBe('Số ô đỗ xe đã tồn tại.');
+  });
+
+  it('maps TICKET_ALREADY_RATED', () => {
+    expect(getVnErrorMessage('TICKET_ALREADY_RATED')).toBe('Yêu cầu này đã được đánh giá.');
+  });
+
+  it('maps RESIDENT_ALREADY_MOVED_OUT', () => {
+    expect(getVnErrorMessage('RESIDENT_ALREADY_MOVED_OUT')).toBe('Cư dân này đã rời khỏi căn hộ.');
+  });
+
   it('maps RATE_LIMITED', () => {
     expect(getVnErrorMessage('RATE_LIMITED')).toBe('Bạn thao tác quá nhanh, vui lòng thử lại sau.');
   });
@@ -87,6 +103,8 @@ describe('getVnErrorMessage', () => {
       'NOT_FOUND', 'VALIDATION_ERROR', 'CONFLICT', 'INVALID_STATUS_TRANSITION',
       'HAS_ACTIVE_DEPENDENCIES', 'CONTRACTOR_ASSIGNMENT_NOT_ALLOWED',
       'SELF_OPERATION_NOT_ALLOWED', 'RATE_LIMITED', 'INTERNAL_ERROR',
+      'LICENSE_PLATE_ALREADY_EXISTS', 'SLOT_NUMBER_ALREADY_EXISTS',
+      'TICKET_ALREADY_RATED', 'RESIDENT_ALREADY_MOVED_OUT',
     ];
     for (const code of knownCodes) {
       const msg = getVnErrorMessage(code);

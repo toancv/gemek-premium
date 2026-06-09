@@ -264,6 +264,12 @@ public class AuthServiceImpl implements AuthService {
             throw new AppException(ErrorCode.WRONG_CURRENT_PASSWORD, "Current password is incorrect.");
         }
 
+        // Domain rule: new password must meet complexity policy (moved from DTO @Pattern to allow specific error code).
+        if (!request.newPassword().matches("^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[^a-zA-Z0-9]).{8,}$")) {
+            throw new AppException(ErrorCode.PASSWORD_POLICY_VIOLATION,
+                    "Password must be at least 8 characters and include upper, lower, digit, and special character.");
+        }
+
         user.setPasswordHash(passwordEncoder.encode(request.newPassword()));
         userRepository.save(user);
         log.info("Password changed for user id={}", user.getId());

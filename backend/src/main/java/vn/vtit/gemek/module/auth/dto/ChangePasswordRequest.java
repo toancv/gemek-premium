@@ -5,7 +5,6 @@
 package vn.vtit.gemek.module.auth.dto;
 
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Pattern;
 
 /**
  * Request body for {@code PUT /api/auth/me/password}.
@@ -19,9 +18,5 @@ public record ChangePasswordRequest(
         String currentPassword,
 
         @NotBlank(message = "New password is required.")
-        @Pattern(
-                regexp = "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[^a-zA-Z0-9]).{8,}$",
-                message = "Password must be at least 8 characters and include upper, lower, digit, and special character."
-        )
         String newPassword
 ) {}

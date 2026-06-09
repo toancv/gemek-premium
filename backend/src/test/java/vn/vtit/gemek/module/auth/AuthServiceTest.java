@@ -316,6 +316,22 @@ class AuthServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
+    @DisplayName("changePassword: weak new password throws PASSWORD_POLICY_VIOLATION")
+    void changePassword_weakNewPassword_throwsPasswordPolicyViolation() {
+        UserPrincipal principal = new UserPrincipal(testUser);
+        vn.vtit.gemek.module.auth.dto.ChangePasswordRequest req =
+                new vn.vtit.gemek.module.auth.dto.ChangePasswordRequest("Admin@123456", "weakpass");
+
+        when(userRepository.findById(testUser.getId())).thenReturn(Optional.of(testUser));
+        when(passwordEncoder.matches("Admin@123456", testUser.getPasswordHash())).thenReturn(true);
+
+        assertThatThrownBy(() -> authService.changePassword(principal, req))
+                .isInstanceOf(AppException.class)
+                .satisfies(ex -> assertThat(((AppException) ex).getErrorCode())
+                        .isEqualTo(ErrorCode.PASSWORD_POLICY_VIOLATION));
+    }
+
+    @Test
     @DisplayName("changePassword: wrong current password throws WRONG_CURRENT_PASSWORD")
     void changePassword_wrongCurrentPassword_throwsWrongCurrentPassword() {
         UserPrincipal principal = new UserPrincipal(testUser);

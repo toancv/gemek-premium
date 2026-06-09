@@ -75,7 +75,10 @@ public enum ErrorCode {
     RESIDENT_ALREADY_MOVED_OUT(HttpStatus.CONFLICT),
 
     /** Current password supplied during a password-change request is incorrect. */
-    WRONG_CURRENT_PASSWORD(HttpStatus.UNPROCESSABLE_ENTITY);
+    WRONG_CURRENT_PASSWORD(HttpStatus.UNPROCESSABLE_ENTITY),
+
+    /** New password supplied during a password-change request does not meet the policy. */
+    PASSWORD_POLICY_VIOLATION(HttpStatus.UNPROCESSABLE_ENTITY);
 
     /** HTTP status code associated with this error code. */
     private final HttpStatus httpStatus;

@@ -15,7 +15,8 @@
 - `getVnErrorMessage(errorCode?)` util in `@gemek/ui/src/lib/errorMessages.ts` — maps all 20 BE codes + fallback; 24 tests green; extended (00db804)
 - **Cluster 1 done (ecda711 + 80a0fff + b4d2889):** 5 forms standardized. Post-testing fixes: login 401 interceptor URL guard (no reload on auth endpoint failure); `WRONG_CURRENT_PASSWORD` (422) added to BE; `getVnErrorMessage` maps new code.
 - **Cluster 1 post-testing round 2 (8a6ba52 + 48a6388):** change-password success toast and password-policy error fixed. (B) `PASSWORD_POLICY_VIOLATION` (422) from service layer. `getVnErrorMessage` now maps 22 codes; 26 UI tests green; AuthServiceTest green; both apps exit 0.
-- **Toast positioning fix (c518623):** Resident tailwind.config lacked `packages/ui/src` scan → all Toast classes purged → white strip. Fixed. Toast.tsx now mobile-responsive (full-width on mobile, right-corner on md+). Singleton confirmed: ONE listeners[] instance; component-level `toast.success()` is reliable. DECISIONS.md updated with canonical pattern.
+- **Toast positioning fix (c518623):** Resident tailwind.config lacked `packages/ui/src` scan → all Toast classes purged → white strip. Fixed. Singleton confirmed: ONE listeners[] instance; component-level `toast.success()` is reliable. DECISIONS.md updated with canonical pattern.
+- **Toast viewport-anchor fix (c4b3179):** Prior "right-4 md+" fix was wrong root cause. Real issue: resident column is `max-w-md mx-auto` (448px centered); `fixed right-4` anchors to full-viewport right edge → toast outside app frame on desktop. Fixed: `left-1/2 -translate-x-1/2 w-[calc(100%-2rem)] max-w-sm` — always centered in viewport = centered over resident column. Both apps exit 0.
 
 **What is REMAINING:**
 - Apply form-feedback standard to remaining 21 deviating forms (see `reports/form-feedback-survey.md` priority list)

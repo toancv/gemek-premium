@@ -33,7 +33,9 @@ Format: Date | Decision | Reasoning | Alternatives
 
 **Root cause:** Resident `tailwind.config.js` did not include `packages/ui/src` in content scan → all `Toast.tsx` classes purged in production build → toast renders as unstyled white block in document flow. Admin config already had the scan; only resident was missing it.
 
-**Mobile fix:** `Toast.tsx` replaced `fixed right-4` + `style={{ width:'100%', maxWidth:'24rem' }}` with responsive Tailwind: `left-4 right-4` on mobile, `md:left-auto md:right-4 md:max-w-sm` on desktop.
+**Mobile fix (c518623 — partially wrong):** `Toast.tsx` replaced inline style with Tailwind classes. Tailwind purge was real and fixed. However `md:left-auto md:right-4` still anchored to viewport right edge.
+
+**Viewport-anchor fix (c4b3179 — correct):** Root cause was `position:fixed` anchored to viewport right edge. Resident layout is `max-w-md mx-auto` (448px centered) — on wide desktop, `right-4` puts toast far outside the app column. Fix: `left-1/2 -translate-x-1/2 w-[calc(100%-2rem)] max-w-sm` — viewport-centered, always over the column. Prior `md:left-auto md:right-4` removed.
 
 **Tailwind scan rule (locked):** Every app that imports `@gemek/ui` components MUST include `../../packages/ui/src/**/*.{ts,tsx}` in its `tailwind.config.js` content array. Failure = all UI-package classes purged.
 

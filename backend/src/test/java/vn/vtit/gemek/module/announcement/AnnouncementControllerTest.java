@@ -24,8 +24,6 @@ import vn.vtit.gemek.module.apartment.dto.CreateApartmentRequest;
 import vn.vtit.gemek.module.apartment.dto.CreateBlockRequest;
 import vn.vtit.gemek.module.auth.dto.LoginRequest;
 import java.util.HashMap;
-import vn.vtit.gemek.module.user.dto.CreateUserRequest;
-import vn.vtit.gemek.module.user.entity.UserRole;
 
 import java.util.List;
 import java.util.Map;
@@ -63,27 +61,32 @@ class AnnouncementControllerTest {
 
     private String adminToken;
 
-    private static final String ADMIN_EMAIL    = "admin@gemek.vn";
-    private static final String ADMIN_PASSWORD = "Admin@123456";
+    private static final String ADMIN_PHONE    = "0900000000";
+    private static final String ADMIN_PASSWORD = "GemekAdmin2026";
 
     @BeforeEach
     void setUp() throws Exception {
-        adminToken = login(ADMIN_EMAIL, ADMIN_PASSWORD);
+        adminToken = login(ADMIN_PHONE, ADMIN_PASSWORD);
     }
 
     // =========================================================================
     // Helpers
     // =========================================================================
 
+    private static String phoneFromUid(String uid) {
+        long num = Long.parseLong(uid.substring(0, 7), 16) % 9_000_000L + 1_000_000L;
+        return "090" + num;
+    }
+
     /**
      * Authenticates and returns the JWT access token.
      *
-     * @param email    user email.
+     * @param phone    user phone.
      * @param password user password.
      * @return the JWT access token string.
      */
-    private String login(String email, String password) throws Exception {
-        LoginRequest req = new LoginRequest(email, password);
+    private String login(String phone, String password) throws Exception {
+        LoginRequest req = new LoginRequest(phone, password);
         MvcResult result = mockMvc.perform(post("/api/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(req)))
@@ -133,13 +136,14 @@ class AnnouncementControllerTest {
     /**
      * Creates a new user+resident atomically via the new transactional endpoint.
      *
-     * @param email       the new user's email (also used for login).
+     * @param phone       the new user's phone (also used for login).
      * @param apartmentId the apartment UUID to assign the resident to.
      */
-    private void assignResident(String email, UUID apartmentId) throws Exception {
+    private void assignResident(String phone, UUID apartmentId) throws Exception {
         Map<String, Object> req = new HashMap<>();
         req.put("fullName", "Test Resident");
-        req.put("email", email);
+        req.put("phone", phone);
+        req.put("dateOfBirth", "1990-01-01");
         req.put("password", "Password@123456");
         req.put("apartmentId", apartmentId.toString());
         req.put("type", "OWNER");
@@ -239,11 +243,12 @@ class AnnouncementControllerTest {
                 .andExpect(status().isOk());
 
         // Create a resident user.
-        String email = "res.read." + System.nanoTime() + "@test.com";
-        UUID blockId = createBlock("AnnBlock-" + System.nanoTime());
+        String uid = UUID.randomUUID().toString().replace("-", "").substring(0, 8);
+        String phone = phoneFromUid(uid);
+        UUID blockId = createBlock("AnnBlock-" + uid);
         UUID apartmentId = createApartment(blockId, "AR301");
-        assignResident(email, apartmentId);
-        String residentToken = login(email, "Password@123456");
+        assignResident(phone, apartmentId);
+        String residentToken = login(phone, "Password@123456");
 
         // First mark-read.
         mockMvc.perform(post("/api/announcements/" + announcementId + "/read")
@@ -278,11 +283,12 @@ class AnnouncementControllerTest {
                 .andExpect(status().isOk());
 
         // Create and set up resident.
-        String email = "res.list." + System.nanoTime() + "@test.com";
-        UUID blockId = createBlock("AnnBlock2-" + System.nanoTime());
+        String uid2 = UUID.randomUUID().toString().replace("-", "").substring(0, 8);
+        String phone2 = phoneFromUid(uid2);
+        UUID blockId = createBlock("AnnBlock2-" + uid2);
         UUID apartmentId = createApartment(blockId, "AL301");
-        assignResident(email, apartmentId);
-        String residentToken = login(email, "Password@123456");
+        assignResident(phone2, apartmentId);
+        String residentToken = login(phone2, "Password@123456");
 
         MvcResult result = mockMvc.perform(get("/api/announcements")
                         .header("Authorization", "Bearer " + residentToken))

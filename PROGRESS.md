@@ -168,9 +168,13 @@ All 16 classes fixed. Fix pattern: `ADMIN_EMAIL` → `ADMIN_PHONE = "0900000000"
 - Translated: AnnouncementsPage ('Thông báo', emptyYet 'thông báo', 'Everyone'→'Tất cả'), AmenitiesPage hidden-deferred ('Đặt tiện ích', 'Đặt {name}' interpolated, full booking form), ParkingPage ('Bãi xe', 'Chỗ đậu xe của tôi', Khu/Loại/Phương tiện/Thẻ/Từ labels, 'Slot' fallback→'Chỗ đậu').
 - Terminology sweep: 'Gửi yêu cầu'→'Gửi phản ánh' + 'Loại yêu cầu'→'Loại phản ánh' (MyTicketsPage), modal 'Tạo phản ánh'→'Gửi phản ánh', 'Không thể tải yêu cầu hỗ trợ.'→'Không thể tải phản ánh.' (TicketDetailPage), useCreateTicket successMessage 'Đã gửi yêu cầu.'→'Đã gửi phản ánh.' (hooks.ts, text only). Grep confirms 0 "yêu cầu" left in resident src. Commit bd795b5.
 - Verified: `tsc --noEmit` + `vite build` green (resident). NOT browser-verified — CTO step (port 81; Amenities/Parking are TEMP_HIDDEN_DEFERRED, nav-hidden — verify via direct URL or note deferred).
-- Wording flag for CTO: AnnouncementsPage title 'Thông báo' (CTO-specified) vs nav.news/home section 'Tin tức' and notification panel 'Thông báo' — same word for two concepts; revisit if confusing.
+- ~~Wording flag~~ RESOLVED 2026-06-10: CTO ruled Announcements = "Tin tức" everywhere, notification bell = "Thông báo" (DECISIONS.md). AnnouncementsPage title fixed → 'Tin tức'. Grep verified: no swaps in resident src. Commit cd784b1.
 
-**NEXT: enum display-maps (10 AMBIGUOUS groups, per-app `src/i18n/enums.ts`) → then admin app (~247 strings, ~3–4 page clusters) per reports/i18n-inventory.md.**
+**Enum display-label maps BUILT (2026-06-10), NOT yet wired:**
+- `@gemek/ui` `lib/enumLabels.ts`: 7 groups + `labelFor(enumType, key)` (raw-key fallback, null→''). Display only — raw enum keys stay in `value=`/filters/comparisons. 51/51 ui tests green. Commit 0c9e8d3.
+- Wiring happens per-page during admin translation. Resident pages still render raw enums in a few spots (e.g. TicketDetail status/priority, MyTickets/MyBookings status chips, Parking type) — later cleanup pass adopts labelFor there.
+
+**NEXT: admin app i18n (~247 strings) — cluster A1 = Layout + DashboardPage + ReportsPage per reports/i18n-inventory.md. Create admin `src/i18n/vi.ts` (same pattern as resident: createT(vi, viShared)). Wire labelFor where enums display. Terminology: Ticket→'Phản ánh', Announcements→'Tin tức', bell→'Thông báo'.**
 
 **Resident cluster 1 COMPLETE (2026-06-10):**
 - viShared empty-state refined: `common.emptyYet` / `common.emptyFound` replace `common.empty`; 11 ui tests green. Commit 24aff81.

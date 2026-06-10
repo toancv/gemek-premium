@@ -521,6 +521,18 @@ Also: viShared empty-state refined into two keys — `common.emptyYet` ('Chưa c
 
 ---
 
+## 2026-06-10 | i18n terminology: Announcements = "Tin tức", notification bell = "Thông báo" (CTO decision, both apps)
+
+**Decision:** The announcements feature is "Tin tức" everywhere (nav, home section, page title); the notification bell/panel is "Thông báo". One word per concept — never swap.
+
+**Why:** Cluster 2 initially titled AnnouncementsPage 'Thông báo', colliding with the notification panel word while nav/home said 'Tin tức' — two words for one concept, one word for two concepts.
+
+**How to apply:** Admin app translation must use "Tin tức" for AnnouncementsPage/nav and "Thông báo" only for the notification bell/panel. Enum-label maps for announcement types are separate.
+
+Also: enum display-label maps built in `@gemek/ui` (`packages/ui/src/lib/enumLabels.ts`) — 7 groups (ApartmentStatus, TicketStatus, TicketPriority, ContractorSpecialty, VehicleType, ParkingSlotStatus, ActiveStatus) + `labelFor(enumType, key)` with raw-key fallback. DISPLAY ONLY — `<option value=>`, filters, comparisons keep raw BE enum keys. NOT yet wired into any page; wiring happens per-page during admin (and a later resident cleanup pass).
+
+---
+
 ## CTO Overrides
 _(record when CTO overrides agent decision)_
 

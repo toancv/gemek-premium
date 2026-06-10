@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 import { useNotifications, useMarkAllRead } from '../api/hooks';
+import { t } from '../i18n/vi';
 
 export function Layout() {
   const user = useAuthStore((s) => s.user);
@@ -14,17 +15,17 @@ export function Layout() {
   const handleLogout = async () => { await logout(); navigate('/login'); };
 
   const navLinks = [
-    { to: '/', label: 'Home', icon: 'H', end: true },
-    { to: '/tickets', label: 'Tickets', icon: 'T' },
+    { to: '/', label: t('nav.home'), icon: 'H', end: true },
+    { to: '/tickets', label: t('nav.tickets'), icon: 'T' },
     // TEMP_HIDDEN_DEFERRED: amenities nav — feature deferred, see PROGRESS.md
     // { to: '/amenities', label: 'Amenities', icon: 'A' },
     // TEMP_HIDDEN_DEFERRED: bookings nav — feature deferred, see PROGRESS.md
     // { to: '/bookings', label: 'Bookings', icon: 'B' },
     // TEMP_HIDDEN_DEFERRED: parking nav — feature deferred, see PROGRESS.md
     // { to: '/parking', label: 'Parking', icon: 'P' },
-    { to: '/vehicles', label: 'Vehicles', icon: 'V' },
-    { to: '/announcements', label: 'News', icon: 'N' },
-    { to: '/profile', label: 'Profile', icon: 'Me' },
+    { to: '/vehicles', label: t('nav.vehicles'), icon: 'V' },
+    { to: '/announcements', label: t('nav.news'), icon: 'N' },
+    { to: '/profile', label: t('nav.profile'), icon: 'Me' },
   ];
 
   return (
@@ -33,7 +34,7 @@ export function Layout() {
       <header className="bg-blue-600 text-white px-4 py-3 flex items-center justify-between sticky top-0 z-40">
         <div>
           <h1 className="font-semibold text-sm">Gemek Premium</h1>
-          <p className="text-blue-200 text-xs">Hello, {user?.fullName?.split(' ').pop()}</p>
+          <p className="text-blue-200 text-xs">{t('layout.hello', { name: user?.fullName?.split(' ').pop() ?? '' })}</p>
         </div>
         <div className="flex items-center gap-3">
           <div className="relative">
@@ -48,11 +49,11 @@ export function Layout() {
             {notifOpen && (
               <div className="absolute right-0 top-full mt-1 w-72 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
                 <div className="flex items-center justify-between px-4 py-2 border-b border-gray-100">
-                  <span className="font-medium text-sm text-gray-900">Notifications</span>
-                  <button onClick={() => markAllRead.mutate()} className="text-xs text-blue-600">Mark all read</button>
+                  <span className="font-medium text-sm text-gray-900">{t('layout.notifications')}</span>
+                  <button onClick={() => markAllRead.mutate()} className="text-xs text-blue-600">{t('layout.markAllRead')}</button>
                 </div>
                 <div className="max-h-64 overflow-y-auto">
-                  {(!notifData?.data?.length) && <p className="text-center text-gray-400 text-sm py-4">No notifications</p>}
+                  {(!notifData?.data?.length) && <p className="text-center text-gray-400 text-sm py-4">{t('layout.noNotifications')}</p>}
                   {notifData?.data?.map((n: any) => (
                     <div key={n.id} className={'px-4 py-3 border-b border-gray-50 ' + (!n.isRead ? 'bg-blue-50' : '')}>
                       <p className="text-sm font-medium text-gray-800">{n.title}</p>
@@ -63,7 +64,7 @@ export function Layout() {
               </div>
             )}
           </div>
-          <button onClick={handleLogout} className="text-blue-200 text-xs hover:text-white">Out</button>
+          <button onClick={handleLogout} className="text-blue-200 text-xs hover:text-white">{t('layout.signOut')}</button>
         </div>
       </header>
 

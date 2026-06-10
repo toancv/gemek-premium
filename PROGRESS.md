@@ -160,17 +160,18 @@ All 16 classes fixed. Fix pattern: `ADMIN_EMAIL` → `ADMIN_PHONE = "0900000000"
 
 ---
 
-## 🔲 NOT STARTED — i18n Phase 2: Translation
+## ⏸ IN PROGRESS — i18n Phase 2: Translation (Step 1 pilot DONE, awaiting CTO pattern review)
 
 **Resume pointer (fresh session):** Read `reports/i18n-inventory.md` for full string list. Architecture locked in DECISIONS.md (2026-06-10 i18n entry).
 
-**Step 1 (next):**
-1. Create shared VN dictionary + `t(key, params?)` helper with `{variable}` interpolation in `@gemek/ui` (`packages/ui/src/lib/vi.ts`, exported from `packages/ui/src/index.ts`). Seed with cross-app common strings.
-2. Create resident per-app dictionary (`frontend/apps/resident/src/i18n/vi.ts`). Leave `src/i18n/enums.ts` as placeholder/comment only.
-3. Translate **resident `Layout.tsx` + `HomePage.tsx` ONLY** using `t()`. Pull shared strings from `@gemek/ui`; put resident-specific ones in resident `vi.ts`.
-4. Verify: `tsc` + `vite build` for resident app must pass.
-5. Commit order: (a) `feat(ui): shared VN dictionary + t() helper` + tests; (b) `feat(resident-i18n): resident VN dictionary + translate Layout + HomePage`; (c) `docs(context)`.
-6. Report pilot to CTO. Await approval before rollout.
+**Step 1 pilot COMPLETE (2026-06-10):**
+- `packages/ui/src/lib/vi.ts` — `viShared` dict (Hủy/Lưu/Sửa/Đang tải.../Trước/Sau/Thao tác/Trạng thái + `common.empty` = 'Không có {item}') + `createT(...dicts)` factory + `interpolate()`; exported from `packages/ui/src/index.ts`. 10 unit tests green (`vi.test.ts`). Commit 39dc7a9.
+- `frontend/apps/resident/src/i18n/vi.ts` — resident dict (nav/layout/home) + app-bound `t = createT(vi, viShared)` (app dict shadows shared). `src/i18n/enums.ts` NOT created — enum display-maps are a separate later step.
+- Resident `Layout.tsx` + `HomePage.tsx` translated via `t()`. Key terms: Home→Trang chủ, Tickets→Yêu cầu, Vehicles→Phương tiện, News→Tin tức, Profile→Cá nhân, 'Hello, {name}'→'Xin chào, {name}' (interpolated). Commit 66b2515.
+- Verified: `tsc --noEmit` + `vite build` green (resident). NOT browser-verified — CTO step (`docker compose up -d --build nginx`).
+- Untouched (per scope): getVnErrorMessage / meta.successMessage feedback, enum `value=` attrs, all other files.
+
+**⏸ NEXT: STOPPED for CTO pattern review. Do NOT roll out further until CTO approves the pilot pattern.**
 
 **Rollout order (after pilot approval):**
 - Resident remainder (ParkingPage, ProfilePage, TicketDetailPage, AmenitiesPage, etc.)

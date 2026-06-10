@@ -35,7 +35,7 @@ Forms: admin Login, resident Login, resident Change Password, resident Book Amen
 3. **Toast positioning:** Toast container uses `fixed left-1/2 -translate-x-1/2` (viewport-centered). Do NOT revert to `fixed right-4` (viewport-right) — breaks resident narrow column. Do NOT add `position:relative` wrapper — fixed ignores it.
 4. **Login success = navigate only.** No toast on successful login. All other mutations: success → toast.
 
-### Cluster 2 — IN PROGRESS (2026-06-09)
+### Cluster 2 — IN PROGRESS (2026-06-10)
 
 **Authoritative plan:** `reports/form-feedback-survey.md`
 **Next item:** AnnouncementsPage — Create Announcement (#6) + Publish Announcement (#7)
@@ -60,44 +60,14 @@ Apply per-form: `getVnErrorMessage(err?.response?.data?.error)` for errors; `met
 
 ---
 
-## ⚠️ TECH DEBT — Test Regressions (FIX IN PROGRESS 2026-06-10)
+## ✅ TECH DEBT — Test Regressions (CLEARED 2026-06-10)
 
 **Full inventory:** `reports/test-regression-inventory.md`
+**Final report:** `reports/test-regression-final.md`
 
-**Status:** 6/16 classes fixed so far. Remaining: 10 classes. Resume: ContractorControllerTest next.
+**Result: 244 run, 244 pass, 0 fail.**
 
-**Fixed (green):**
-- UserControllerTest (ecc4725), AuthControllerTest (3be66bc)
-- NotificationControllerTest (e5c19f4), NotificationIntegrationTest (138d99b)
-- AnnouncementFlowIntegrationTest (5111b35), AnnouncementControllerTest (fba84f8)
-
-**Remaining:**
-ContractorControllerTest, AmenityBookingIntegrationTest, ApartmentControllerTest, BlockControllerTest,
-ReportControllerTest, TicketLifecycleIntegrationTest, ParkingControllerTest, VehicleControllerTest,
-TicketControllerTest, ResidentControllerTest
-
-**Root cause:** All failures = phone-login migration. Test classes still send `admin@gemek.vn` (email) to `LoginRequest.phone` field → `PhoneUtils.isValid()` rejects → 400. `UserControllerTest` additionally uses wrong password (`Admin@123456` vs `GemekAdmin2026` in DB).
-
-| Class | Failures |
-|-------|----------|
-| `ResidentControllerTest` | 19 |
-| `TicketControllerTest` | 12 |
-| `BlockControllerTest` | 9 |
-| `VehicleControllerTest` | 9 |
-| `ParkingControllerTest` | 8 |
-| `TicketLifecycleIntegrationTest` | 5 |
-| `ApartmentControllerTest` | 5 |
-| `ContractorControllerTest` | 5 |
-| `AuthControllerTest` | 5 |
-| `AnnouncementControllerTest` | 4 |
-| `AmenityBookingIntegrationTest` | 4 |
-| `UserControllerTest` | 4 |
-| `ReportControllerTest` | 6 |
-| `NotificationControllerTest` | 3 |
-| `NotificationIntegrationTest` | 3 |
-| `AnnouncementFlowIntegrationTest` | 3 |
-
-**Fix pattern** (mechanical, same as `AmenityControllerTest` in 2bf2fa5): email→phone constant, password→`GemekAdmin2026`, add `phoneFromUid` helper, update resident-create helpers with `phone`+`dateOfBirth`.
+All 16 classes fixed. Fix pattern: `ADMIN_EMAIL` → `ADMIN_PHONE = "0900000000"`, `ADMIN_PASSWORD = "GemekAdmin2026"`, add `phoneFromUid` helper, resident-create helpers use `phone`+`dateOfBirth` instead of `email`. Two assertion fixes: `UserControllerTest` search (position-based → existence check), `TicketControllerTest` rate-not-done (`CONFLICT` → `INVALID_STATUS_TRANSITION`), `ResidentControllerTest` dup-email (`CONFLICT` → `EMAIL_ALREADY_EXISTS`).
 
 ---
 

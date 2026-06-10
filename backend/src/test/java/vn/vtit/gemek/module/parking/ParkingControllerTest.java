@@ -63,12 +63,12 @@ class ParkingControllerTest {
 
     private String adminToken;
 
-    private static final String ADMIN_EMAIL    = "admin@gemek.vn";
-    private static final String ADMIN_PASSWORD = "Admin@123456";
+    private static final String ADMIN_PHONE    = "0900000000";
+    private static final String ADMIN_PASSWORD = "GemekAdmin2026";
 
     @BeforeEach
     void obtainAdminToken() throws Exception {
-        LoginRequest login = new LoginRequest(ADMIN_EMAIL, ADMIN_PASSWORD);
+        LoginRequest login = new LoginRequest(ADMIN_PHONE, ADMIN_PASSWORD);
         MvcResult result = mockMvc.perform(post("/api/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(login)))
@@ -138,17 +138,23 @@ class ParkingControllerTest {
         return UUID.fromString((String) body.get("id"));
     }
 
+    private static String phoneFromUid(String uid) {
+        long num = Long.parseLong(uid.substring(0, 7), 16) % 9_000_000L + 1_000_000L;
+        return "090" + num;
+    }
+
     /**
      * Creates a new user+resident atomically via the new transactional endpoint.
      *
-     * @param email       the new user's email.
+     * @param phone       the new user's phone.
      * @param apartmentId the apartment UUID to assign.
      * @return the created resident UUID.
      */
-    private UUID createResident(String email, UUID apartmentId) throws Exception {
+    private UUID createResident(String phone, UUID apartmentId) throws Exception {
         Map<String, Object> req = new HashMap<>();
         req.put("fullName", "Parking Resident");
-        req.put("email", email);
+        req.put("phone", phone);
+        req.put("dateOfBirth", "1990-01-01");
         req.put("password", "Resident@123456");
         req.put("apartmentId", apartmentId.toString());
         req.put("type", "OWNER");
@@ -195,7 +201,7 @@ class ParkingControllerTest {
         String uid = UUID.randomUUID().toString().replace("-", "").substring(0, 8);
         UUID blockId = createBlock("ParkBlock-Assign-" + uid);
         UUID apartmentId = createApartment(blockId, "PA-" + uid);
-        UUID residentId = createResident("park.assign." + uid + "@test.com", apartmentId);
+        UUID residentId = createResident(phoneFromUid(uid), apartmentId);
         String plate = "51A-" + uid;
         UUID vehicleId = createVehicle(residentId, apartmentId, plate);
         UUID slotId = createSlot("SA-" + uid, ParkingSlotType.CAR);
@@ -223,7 +229,7 @@ class ParkingControllerTest {
         String uid2 = UUID.randomUUID().toString().replace("-", "").substring(0, 8);
         UUID blockId = createBlock("ParkBlock-Dup-" + uid2);
         UUID apartmentId = createApartment(blockId, "PD-" + uid2);
-        UUID residentId = createResident("park.dup." + uid2 + "@test.com", apartmentId);
+        UUID residentId = createResident(phoneFromUid(uid2), apartmentId);
         String plate1 = "52A-" + uid2;
         String plate2 = "52B-" + uid2;
         UUID vehicle1 = createVehicle(residentId, apartmentId, plate1);
@@ -260,7 +266,7 @@ class ParkingControllerTest {
         String uid3 = UUID.randomUUID().toString().replace("-", "").substring(0, 8);
         UUID blockId = createBlock("ParkBlock-Unassign-" + uid3);
         UUID apartmentId = createApartment(blockId, "PU-" + uid3);
-        UUID residentId = createResident("park.unassign." + uid3 + "@test.com", apartmentId);
+        UUID residentId = createResident(phoneFromUid(uid3), apartmentId);
         String plate = "53A-" + uid3;
         UUID vehicleId = createVehicle(residentId, apartmentId, plate);
         UUID slotId = createSlot("SU-" + uid3, ParkingSlotType.CAR);
@@ -363,9 +369,9 @@ class ParkingControllerTest {
     void createSlot_nonAdmin_returns403() throws Exception {
         // Create and authenticate a RESIDENT user
         String uid = UUID.randomUUID().toString().replace("-", "").substring(0, 8);
+        String resPhone = phoneFromUid(uid);
         CreateUserRequest userReq = new CreateUserRequest(
-                "parking.res." + uid + "@test.com", "Resident", "0900000001",
-                UserRole.RESIDENT, "Password@123456");
+                null, "Resident", resPhone, UserRole.RESIDENT, "Password@123456");
         mockMvc.perform(post("/api/users")
                         .header("Authorization", "Bearer " + adminToken)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -373,8 +379,7 @@ class ParkingControllerTest {
                 .andExpect(status().isCreated());
 
         vn.vtit.gemek.module.auth.dto.LoginRequest loginReq =
-                new vn.vtit.gemek.module.auth.dto.LoginRequest(
-                        "parking.res." + uid + "@test.com", "Password@123456");
+                new vn.vtit.gemek.module.auth.dto.LoginRequest(resPhone, "Password@123456");
         MvcResult r = mockMvc.perform(post("/api/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(loginReq)))

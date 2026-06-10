@@ -1,5 +1,6 @@
 import React from 'react';
 import { useAnnouncements, useMarkAnnouncementRead } from '../api/hooks';
+import { t } from '../i18n/vi';
 
 const TYPE_COLORS: Record<string, string> = {
   GENERAL: 'bg-blue-100 text-blue-700', URGENT: 'bg-red-100 text-red-700',
@@ -13,12 +14,12 @@ export function AnnouncementsPage() {
 
   return (
     <div className="p-4">
-      <h1 className="text-lg font-bold text-gray-900 mb-4">Announcements</h1>
-      {isLoading && <div className="text-center py-8 text-gray-400">Loading...</div>}
+      <h1 className="text-lg font-bold text-gray-900 mb-4">{t('announcements.title')}</h1>
+      {isLoading && <div className="text-center py-8 text-gray-400">{t('common.loading')}</div>}
       {!isLoading && !data?.data?.length && (
         <div className="text-center py-12 text-gray-400">
           <p className="text-4xl mb-2">📢</p>
-          <p>No announcements</p>
+          <p>{t('common.emptyYet', { item: 'thông báo' })}</p>
         </div>
       )}
       {/* markRead is intentionally fire-and-forget: read-marking is best-effort UX, not a user action that needs feedback */}
@@ -31,7 +32,7 @@ export function AnnouncementsPage() {
               <span className={`flex-shrink-0 text-xs px-2 py-0.5 rounded-full ${TYPE_COLORS[a.type] ?? 'bg-gray-100 text-gray-700'}`}>{a.type}</span>
             </div>
             <div className="flex items-center justify-between text-xs text-gray-400">
-              <span>{a.targetScope === 'ALL' ? 'Everyone' : `${a.targetScope}${a.targetBlock ? ': ' + a.targetBlock.name : ''}`}</span>
+              <span>{a.targetScope === 'ALL' ? t('announcements.everyone') : `${a.targetScope}${a.targetBlock ? ': ' + a.targetBlock.name : ''}`}</span>
               <span>{a.publishedAt ? new Date(a.publishedAt).toLocaleDateString() : ''}</span>
             </div>
             {!a.isRead && <div className="w-2 h-2 rounded-full bg-blue-600 absolute top-4 left-4" />}

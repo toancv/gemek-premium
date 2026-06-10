@@ -35,7 +35,8 @@ export const vi: TranslationDict = {
     title: 'Phản ánh của tôi',
     new: '+ Tạo mới',
     createFirst: 'Tạo phản ánh đầu tiên',
-    modalTitle: 'Tạo phản ánh',
+    // Verb consistency (CTO 2026-06-10): create/submit action = "Gửi phản ánh"
+    modalTitle: 'Gửi phản ánh',
   },
   bookings: {
     title: 'Lượt đặt của tôi',
@@ -56,6 +57,34 @@ export const vi: TranslationDict = {
     commentPlaceholder: 'Nhận xét (không bắt buộc)...',
     submitting: 'Đang gửi...',
     submitRating: 'Gửi đánh giá',
+  },
+  announcements: {
+    title: 'Thông báo',
+    everyone: 'Tất cả',
+  },
+  amenities: {
+    title: 'Đặt tiện ích',
+    capacity: 'Sức chứa:',
+    requiresApproval: 'Cần phê duyệt',
+    book: 'Đặt',
+    bookName: 'Đặt {name}',
+    date: 'Ngày',
+    start: 'Bắt đầu',
+    end: 'Kết thúc',
+    notes: 'Ghi chú',
+    booking: 'Đang đặt...',
+    confirm: 'Xác nhận',
+  },
+  parking: {
+    title: 'Bãi xe',
+    mySlots: 'Chỗ đậu xe của tôi',
+    zone: 'Khu:',
+    type: 'Loại:',
+    vehicle: 'Phương tiện:',
+    card: 'Thẻ:',
+    since: 'Từ:',
+    // Fallback when slotNumber missing — display text, not enum
+    slotFallback: 'Chỗ đậu',
   },
   profile: {
     title: 'Trang cá nhân',

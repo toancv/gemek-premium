@@ -22,7 +22,7 @@ export const useCreateTicket = () => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (data: unknown) => post('/tickets', data),
-    meta: { skipErrorToast: true, successMessage: 'Đã gửi yêu cầu.' },
+    meta: { skipErrorToast: true, successMessage: 'Đã gửi phản ánh.' },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['tickets'] }),
   });
 };

@@ -85,7 +85,7 @@ export function MyTicketsPage() {
                 )}
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Loại yêu cầu</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Loại phản ánh</label>
                 <select name="category" className="block w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm bg-white">
                   <option value="MAINTENANCE_REPAIR">Sửa chữa & Bảo trì</option>
                   <option value="COMPLAINT">Khiếu nại</option>
@@ -110,7 +110,7 @@ export function MyTicketsPage() {
                   disabled={create.isPending || !apartment?.id || aptLoading}
                   className="flex-1 py-2.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
                 >
-                  {create.isPending ? 'Đang gửi...' : 'Gửi yêu cầu'}
+                  {create.isPending ? 'Đang gửi...' : 'Gửi phản ánh'}
                 </button>
               </div>
             </form>

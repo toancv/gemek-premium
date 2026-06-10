@@ -3,6 +3,7 @@ import { useParkingAssignments } from '../api/hooks';
 import { apiClient } from '../api/client';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { getVnErrorMessage } from '@gemek/ui';
+import { t } from '../i18n/vi';
 
 export function ParkingPage() {
   const { data, isLoading } = useParkingAssignments();
@@ -29,24 +30,24 @@ export function ParkingPage() {
 
   return (
     <div className="p-4 space-y-4">
-      <h1 className="text-lg font-bold text-gray-900">Parking</h1>
+      <h1 className="text-lg font-bold text-gray-900">{t('parking.title')}</h1>
 
       {/* My parking slots */}
       <div>
-        <h2 className="font-semibold text-gray-700 text-sm mb-2">My Parking Slots</h2>
-        {isLoading && <div className="text-center py-4 text-gray-400">Loading...</div>}
+        <h2 className="font-semibold text-gray-700 text-sm mb-2">{t('parking.mySlots')}</h2>
+        {isLoading && <div className="text-center py-4 text-gray-400">{t('common.loading')}</div>}
         {!isLoading && !data?.data?.length && (
-          <div className="bg-white rounded-xl border border-gray-200 p-4 text-center text-gray-400 text-sm">No parking slots assigned</div>
+          <div className="bg-white rounded-xl border border-gray-200 p-4 text-center text-gray-400 text-sm">{t('common.emptyYet', { item: 'chỗ đậu xe' })}</div>
         )}
         <div className="space-y-3">
           {data?.data?.map((a: any) => (
             <div key={a.id} className="bg-white rounded-xl border border-gray-200 p-4">
-              <p className="font-semibold text-gray-900">{a.parkingSlot?.slotNumber ?? 'Slot'}</p>
+              <p className="font-semibold text-gray-900">{a.parkingSlot?.slotNumber ?? t('parking.slotFallback')}</p>
               <div className="text-sm text-gray-500 mt-1 space-y-0.5">
-                <p>Zone: {a.parkingSlot?.zone ?? '—'} • Type: {a.parkingSlot?.type ?? '—'}</p>
-                <p>Vehicle: {a.vehicle?.licensePlate ?? '—'}</p>
-                <p>Card: {a.parkingCardNumber ?? '—'}</p>
-                <p>Since: {a.startDate}</p>
+                <p>{t('parking.zone')} {a.parkingSlot?.zone ?? '—'} • {t('parking.type')} {a.parkingSlot?.type ?? '—'}</p>
+                <p>{t('parking.vehicle')} {a.vehicle?.licensePlate ?? '—'}</p>
+                <p>{t('parking.card')} {a.parkingCardNumber ?? '—'}</p>
+                <p>{t('parking.since')} {a.startDate}</p>
               </div>
             </div>
           ))}

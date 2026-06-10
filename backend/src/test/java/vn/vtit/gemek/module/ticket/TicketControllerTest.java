@@ -71,30 +71,35 @@ class TicketControllerTest {
     private String adminToken;
     private String technicianToken;
 
-    private static final String ADMIN_EMAIL    = "admin@gemek.vn";
-    private static final String ADMIN_PASSWORD = "Admin@123456";
+    private static final String ADMIN_PHONE    = "0900000000";
+    private static final String ADMIN_PASSWORD = "GemekAdmin2026";
 
     @BeforeEach
     void setUp() throws Exception {
         // Presign mock returns a fixed URL for any key.
         when(fileStorageService.presign(anyString())).thenReturn("http://minio/presigned-url");
 
-        adminToken = login(ADMIN_EMAIL, ADMIN_PASSWORD);
+        adminToken = login(ADMIN_PHONE, ADMIN_PASSWORD);
     }
 
     // =========================================================================
     // Helper methods
     // =========================================================================
 
+    private static String phoneFromUid(String uid) {
+        long num = Long.parseLong(uid.substring(0, 7), 16) % 9_000_000L + 1_000_000L;
+        return "090" + num;
+    }
+
     /**
      * Logs in and returns the access token.
      *
-     * @param email    user email.
+     * @param phone    user phone number.
      * @param password user password.
      * @return the JWT access token string.
      */
-    private String login(String email, String password) throws Exception {
-        LoginRequest req = new LoginRequest(email, password);
+    private String login(String phone, String password) throws Exception {
+        LoginRequest req = new LoginRequest(phone, password);
         MvcResult result = mockMvc.perform(post("/api/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(req)))
@@ -144,13 +149,13 @@ class TicketControllerTest {
     /**
      * Creates a user with the given role and returns their UUID.
      *
-     * @param email the user email.
+     * @param phone the user phone number.
      * @param role  the user role.
      * @return the created user UUID.
      */
-    private UUID createUser(String email, UserRole role) throws Exception {
+    private UUID createUser(String phone, UserRole role) throws Exception {
         CreateUserRequest req = new CreateUserRequest(
-                email, "Test User", "0900000001", role, "Password@123456");
+                null, "Test User", phone, role, "Password@123456");
         MvcResult result = mockMvc.perform(post("/api/users")
                         .header("Authorization", "Bearer " + adminToken)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -164,13 +169,14 @@ class TicketControllerTest {
     /**
      * Assigns a user as an active resident of the given apartment.
      *
-     * @param email       the new user's email.
+     * @param phone       the new user's phone number.
      * @param apartmentId the apartment UUID.
      */
-    private void assignResident(String email, UUID apartmentId) throws Exception {
+    private void assignResident(String phone, UUID apartmentId) throws Exception {
         Map<String, Object> req = new HashMap<>();
         req.put("fullName", "Test Resident");
-        req.put("email", email);
+        req.put("phone", phone);
+        req.put("dateOfBirth", "1990-01-01");
         req.put("password", "Password@123456");
         req.put("apartmentId", apartmentId.toString());
         req.put("type", "OWNER");
@@ -217,9 +223,10 @@ class TicketControllerTest {
     void createTicket_resident_returns201StatusNew() throws Exception {
         UUID blockId = createBlock("TBlock1-" + System.nanoTime());
         UUID apartmentId = createApartment(blockId, "T101");
-        String email = "res.tick1." + System.nanoTime() + "@test.com";
-        assignResident(email, apartmentId);
-        String residentToken = login(email, "Password@123456");
+        String uid1 = UUID.randomUUID().toString().replace("-", "").substring(0, 8);
+        String phone1 = phoneFromUid(uid1);
+        assignResident(phone1, apartmentId);
+        String residentToken = login(phone1, "Password@123456");
 
         CreateTicketRequest req = CreateTicketRequest.builder()
                 .apartmentId(apartmentId)
@@ -249,8 +256,8 @@ class TicketControllerTest {
         UUID apartmentId = createApartment(blockId, "T201");
         UUID ticketId = createTicket(adminToken, apartmentId, TicketCategory.MAINTENANCE_REPAIR);
 
-        String techEmail = "tech.assign." + System.nanoTime() + "@test.com";
-        UUID techId = createUser(techEmail, UserRole.TECHNICIAN);
+        String techUid2 = UUID.randomUUID().toString().replace("-", "").substring(0, 8);
+        UUID techId = createUser(phoneFromUid(techUid2), UserRole.TECHNICIAN);
 
         AssignTicketRequest req = AssignTicketRequest.builder()
                 .assignedToUserId(techId)
@@ -302,8 +309,8 @@ class TicketControllerTest {
         UUID apartmentId = createApartment(blockId, "T401");
         UUID ticketId = createTicket(adminToken, apartmentId, TicketCategory.MAINTENANCE_REPAIR);
 
-        String techEmail = "tech.status." + System.nanoTime() + "@test.com";
-        UUID techId = createUser(techEmail, UserRole.TECHNICIAN);
+        String techUid4 = UUID.randomUUID().toString().replace("-", "").substring(0, 8);
+        UUID techId = createUser(phoneFromUid(techUid4), UserRole.TECHNICIAN);
 
         // Assign the ticket first.
         AssignTicketRequest assignReq = AssignTicketRequest.builder()
@@ -361,15 +368,16 @@ class TicketControllerTest {
     void rateTicket_doneTicked_returns200() throws Exception {
         UUID blockId = createBlock("TBlock6-" + System.nanoTime());
         UUID apartmentId = createApartment(blockId, "T601");
-        String email = "res.rate." + System.nanoTime() + "@test.com";
-        assignResident(email, apartmentId);
-        String residentToken = login(email, "Password@123456");
+        String uid6 = UUID.randomUUID().toString().replace("-", "").substring(0, 8);
+        String phone6 = phoneFromUid(uid6);
+        assignResident(phone6, apartmentId);
+        String residentToken = login(phone6, "Password@123456");
 
         UUID ticketId = createTicket(residentToken, apartmentId, TicketCategory.MAINTENANCE_REPAIR);
 
         // ADMIN moves ticket through to DONE: NEW → ASSIGNED → IN_PROGRESS → DONE.
-        String techEmail = "tech.rate." + System.nanoTime() + "@test.com";
-        UUID techId = createUser(techEmail, UserRole.TECHNICIAN);
+        String techUid6 = UUID.randomUUID().toString().replace("-", "").substring(0, 8);
+        UUID techId = createUser(phoneFromUid(techUid6), UserRole.TECHNICIAN);
 
         AssignTicketRequest assignReq = AssignTicketRequest.builder()
                 .assignedToUserId(techId)
@@ -418,15 +426,16 @@ class TicketControllerTest {
     void rateTicket_notDone_returns409() throws Exception {
         UUID blockId = createBlock("TBlock7-" + System.nanoTime());
         UUID apartmentId = createApartment(blockId, "T701");
-        String email = "res.rate2." + System.nanoTime() + "@test.com";
-        assignResident(email, apartmentId);
-        String residentToken = login(email, "Password@123456");
+        String uid7 = UUID.randomUUID().toString().replace("-", "").substring(0, 8);
+        String phone7 = phoneFromUid(uid7);
+        assignResident(phone7, apartmentId);
+        String residentToken = login(phone7, "Password@123456");
 
         UUID ticketId = createTicket(residentToken, apartmentId, TicketCategory.COMPLAINT);
 
         // Move to IN_PROGRESS but not DONE.
-        String techEmail = "tech.rate2." + System.nanoTime() + "@test.com";
-        UUID techId = createUser(techEmail, UserRole.TECHNICIAN);
+        String techUid7 = UUID.randomUUID().toString().replace("-", "").substring(0, 8);
+        UUID techId = createUser(phoneFromUid(techUid7), UserRole.TECHNICIAN);
 
         mockMvc.perform(put("/api/tickets/" + ticketId + "/assign")
                         .header("Authorization", "Bearer " + adminToken)
@@ -449,7 +458,7 @@ class TicketControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(rateReq)))
                 .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.error").value("CONFLICT"));
+                .andExpect(jsonPath("$.error").value("INVALID_STATUS_TRANSITION"));
     }
 
     // =========================================================================
@@ -463,12 +472,14 @@ class TicketControllerTest {
         UUID aptA = createApartment(blockId, "TA801");
         UUID aptB = createApartment(blockId, "TA802");
 
-        String emailA = "res.scopeA." + System.nanoTime() + "@test.com";
-        assignResident(emailA, aptA);
-        String tokenA = login(emailA, "Password@123456");
+        String uidA = UUID.randomUUID().toString().replace("-", "").substring(0, 8);
+        String phoneA = phoneFromUid(uidA);
+        assignResident(phoneA, aptA);
+        String tokenA = login(phoneA, "Password@123456");
 
-        String emailB = "res.scopeB." + System.nanoTime() + "@test.com";
-        assignResident(emailB, aptB);
+        String uidB = UUID.randomUUID().toString().replace("-", "").substring(0, 8);
+        String phoneB = phoneFromUid(uidB);
+        assignResident(phoneB, aptB);
 
         // Create one ticket for apartment A and one for apartment B (as admin).
         UUID ticketA = createTicket(tokenA, aptA, TicketCategory.COMPLAINT);
@@ -510,8 +521,8 @@ class TicketControllerTest {
         UUID ticketNew = createTicket(adminToken, aptId, TicketCategory.COMPLAINT);
         UUID ticketAssigned = createTicket(adminToken, aptId, TicketCategory.MAINTENANCE_REPAIR);
 
-        String techEmail = "tech.ms9." + System.nanoTime() + "@test.com";
-        UUID techId = createUser(techEmail, UserRole.TECHNICIAN);
+        String techUid9 = UUID.randomUUID().toString().replace("-", "").substring(0, 8);
+        UUID techId = createUser(phoneFromUid(techUid9), UserRole.TECHNICIAN);
 
         // Move ticketAssigned → ASSIGNED via assign endpoint.
         mockMvc.perform(put("/api/tickets/" + ticketAssigned + "/assign")

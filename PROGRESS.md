@@ -38,11 +38,12 @@ Forms: admin Login, resident Login, resident Change Password, resident Book Amen
 ### Cluster 2 — IN PROGRESS (2026-06-10)
 
 **Authoritative plan:** `reports/form-feedback-survey.md`
-**Next item:** AnnouncementsPage — Create Announcement (#6) + Publish Announcement (#7)
+**Next item:** next form after AnnouncementsPage in `reports/form-feedback-survey.md`
 
 **Admin toast position fixed (0da5f4c):** `Toaster` gained optional `position` prop (`"center"` default | `"top-right"`). Admin passes `position="top-right"`; resident unchanged. Both tsc+vite builds pass. Browser-verify deferred to CTO.
 
 **Done in cluster 2 so far:**
+- AnnouncementsPage (#6 Create Announcement, #7 Publish Announcement) — code landed ec3a2d8, **AWAITING browser-verify**. Diagnosis: `reports/cluster2-announcements-diagnosis.md`. BE: 4/4 tests pass. FE: tsc+vite build clean.
 - AmenitiesPage (#2 Create Amenity, #3 Edit Amenity, #4 Approve Booking, #5 Reject Booking) — **AWAITING browser-verify (CTO: docker compose up -d --build nginx, then test 4 flows)**
   - FE form feedback: d171df5 — Create/Edit successMessage; Approve/Reject skipErrorToast + inline error areas
   - CONFLICT→specific-code split: 073a3bf (BE), 2bf2fa5 (BE tests), 72bc19f (ui map + tests), 51e6808 (API-SPEC)

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useMyTickets, useCreateTicket, useMyResident } from '../api/hooks';
 import { getVnErrorMessage } from '@gemek/ui';
+import { t } from '../i18n/vi';
 
 const STATUS_BG: Record<string, string> = {
   NEW: 'bg-blue-100 text-blue-700', ASSIGNED: 'bg-purple-100 text-purple-700',
@@ -41,16 +42,16 @@ export function MyTicketsPage() {
   return (
     <div className="p-4">
       <div className="flex items-center justify-between mb-4">
-        <h1 className="text-lg font-bold text-gray-900">My Tickets</h1>
-        <button onClick={() => { setShowForm(true); setFormError(''); }} className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium">+ New</button>
+        <h1 className="text-lg font-bold text-gray-900">{t('tickets.title')}</h1>
+        <button onClick={() => { setShowForm(true); setFormError(''); }} className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium">{t('tickets.new')}</button>
       </div>
 
-      {isLoading && <div className="text-center py-8 text-gray-400">Loading...</div>}
+      {isLoading && <div className="text-center py-8 text-gray-400">{t('common.loading')}</div>}
       {!isLoading && !data?.data?.length && (
         <div className="text-center py-12 text-gray-400">
           <p className="text-4xl mb-2">🎫</p>
-          <p>No tickets yet</p>
-          <button onClick={() => setShowForm(true)} className="mt-3 text-blue-600 text-sm">Create your first ticket</button>
+          <p>{t('common.emptyYet', { item: 'phản ánh' })}</p>
+          <button onClick={() => setShowForm(true)} className="mt-3 text-blue-600 text-sm">{t('tickets.createFirst')}</button>
         </div>
       )}
       <div className="space-y-3">
@@ -69,7 +70,7 @@ export function MyTicketsPage() {
         <div className="fixed inset-0 z-50 flex items-end justify-center">
           <div className="absolute inset-0 bg-black/50" onClick={() => setShowForm(false)} />
           <div className="relative bg-white rounded-t-2xl w-full max-w-md p-6 pb-8">
-            <h2 className="text-lg font-semibold mb-4">New Ticket</h2>
+            <h2 className="text-lg font-semibold mb-4">{t('tickets.modalTitle')}</h2>
             <form onSubmit={handleCreate} className="space-y-3">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Căn hộ</label>

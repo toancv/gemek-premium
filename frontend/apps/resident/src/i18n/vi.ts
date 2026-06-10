@@ -11,7 +11,8 @@ import { createT, viShared, type TranslationDict } from '@gemek/ui';
 export const vi: TranslationDict = {
   nav: {
     home: 'Trang chủ',
-    tickets: 'Yêu cầu',
+    // Terminology decision 2026-06-10: user-facing "Ticket" = "Phản ánh" (display only)
+    tickets: 'Phản ánh',
     vehicles: 'Phương tiện',
     news: 'Tin tức',
     profile: 'Cá nhân',
@@ -25,10 +26,47 @@ export const vi: TranslationDict = {
   },
   home: {
     welcomeBack: 'Chào mừng trở lại',
-    activeTickets: 'Yêu cầu đang xử lý',
+    activeTickets: 'Phản ánh đang xử lý',
     announcements: 'Tin tức',
     viewAll: 'Xem tất cả',
     noAnnouncements: 'Chưa có tin tức nào',
+  },
+  tickets: {
+    title: 'Phản ánh của tôi',
+    new: '+ Tạo mới',
+    createFirst: 'Tạo phản ánh đầu tiên',
+    modalTitle: 'Tạo phản ánh',
+  },
+  bookings: {
+    title: 'Lượt đặt của tôi',
+  },
+  ticketDetail: {
+    back: '← Quay lại',
+    category: 'Loại:',
+    priority: 'Mức ưu tiên:',
+    submitted: 'Ngày gửi:',
+    assignedTo: 'Phụ trách:',
+    breached: '(Quá hạn)',
+    yourRating: 'Đánh giá của bạn:',
+    photos: 'Hình ảnh',
+    timeline: 'Lịch sử',
+    // Null-oldStatus fallback in status timeline — display text, not an enum value
+    created: 'Khởi tạo',
+    rateService: 'Đánh giá dịch vụ',
+    commentPlaceholder: 'Nhận xét (không bắt buộc)...',
+    submitting: 'Đang gửi...',
+    submitRating: 'Gửi đánh giá',
+  },
+  profile: {
+    title: 'Trang cá nhân',
+    role: 'Vai trò:',
+    lastLogin: 'Đăng nhập gần nhất:',
+    changePassword: 'Đổi mật khẩu',
+    currentPassword: 'Mật khẩu hiện tại',
+    newPassword: 'Mật khẩu mới',
+    confirmNewPassword: 'Xác nhận mật khẩu mới',
+    changing: 'Đang đổi...',
+    signOut: 'Đăng xuất',
   },
 };
 

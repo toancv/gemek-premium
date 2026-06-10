@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { toast, getVnErrorMessage } from '@gemek/ui';
 import { useTicket, useRateTicket } from '../api/hooks';
+import { t } from '../i18n/vi';
 
 const STATUS_BG: Record<string, string> = {
   NEW: 'bg-blue-100 text-blue-700', ASSIGNED: 'bg-purple-100 text-purple-700',
@@ -35,7 +36,7 @@ export function TicketDetailPage() {
 
   return (
     <div className="p-4 space-y-4">
-      <button onClick={() => navigate(-1)} className="text-sm text-blue-600 flex items-center gap-1">&larr; Back</button>
+      <button onClick={() => navigate(-1)} className="text-sm text-blue-600 flex items-center gap-1">{t('ticketDetail.back')}</button>
 
       <div className="bg-white rounded-xl border border-gray-200 p-4">
         <div className="flex items-start justify-between gap-2 mb-3">
@@ -43,16 +44,16 @@ export function TicketDetailPage() {
           <span className={`flex-shrink-0 text-xs px-2 py-0.5 rounded-full ${STATUS_BG[ticket.status] ?? 'bg-gray-100 text-gray-700'}`}>{ticket.status}</span>
         </div>
         <div className="space-y-1 text-sm">
-          <div className="flex gap-2"><span className="text-gray-500">Category:</span><span>{ticket.category?.replace(/_/g, ' ')}</span></div>
-          <div className="flex gap-2"><span className="text-gray-500">Priority:</span><span>{ticket.priority}</span></div>
-          <div className="flex gap-2"><span className="text-gray-500">Submitted:</span><span>{new Date(ticket.createdAt).toLocaleDateString()}</span></div>
-          {ticket.assignedToUser && <div className="flex gap-2"><span className="text-gray-500">Assigned to:</span><span>{ticket.assignedToUser.fullName}</span></div>}
-          {ticket.slaDeadline && <div className="flex gap-2"><span className="text-gray-500">SLA:</span><span className={ticket.slaBreached ? 'text-red-600 font-medium' : ''}>{new Date(ticket.slaDeadline).toLocaleDateString()}{ticket.slaBreached ? ' (Breached)' : ''}</span></div>}
+          <div className="flex gap-2"><span className="text-gray-500">{t('ticketDetail.category')}</span><span>{ticket.category?.replace(/_/g, ' ')}</span></div>
+          <div className="flex gap-2"><span className="text-gray-500">{t('ticketDetail.priority')}</span><span>{ticket.priority}</span></div>
+          <div className="flex gap-2"><span className="text-gray-500">{t('ticketDetail.submitted')}</span><span>{new Date(ticket.createdAt).toLocaleDateString()}</span></div>
+          {ticket.assignedToUser && <div className="flex gap-2"><span className="text-gray-500">{t('ticketDetail.assignedTo')}</span><span>{ticket.assignedToUser.fullName}</span></div>}
+          {ticket.slaDeadline && <div className="flex gap-2"><span className="text-gray-500">SLA:</span><span className={ticket.slaBreached ? 'text-red-600 font-medium' : ''}>{new Date(ticket.slaDeadline).toLocaleDateString()}{ticket.slaBreached ? ' ' + t('ticketDetail.breached') : ''}</span></div>}
         </div>
         {ticket.description && <p className="mt-3 text-sm text-gray-600 bg-gray-50 p-3 rounded-lg">{ticket.description}</p>}
         {ticket.rating && (
           <div className="mt-3 p-3 bg-yellow-50 rounded-lg">
-            <p className="text-sm font-medium">Your rating: {'★'.repeat(ticket.rating)}{'☆'.repeat(5 - ticket.rating)}</p>
+            <p className="text-sm font-medium">{t('ticketDetail.yourRating')} {'★'.repeat(ticket.rating)}{'☆'.repeat(5 - ticket.rating)}</p>
             {ticket.ratingComment && <p className="text-xs text-gray-500 mt-1">"{ticket.ratingComment}"</p>}
           </div>
         )}
@@ -60,7 +61,7 @@ export function TicketDetailPage() {
 
       {ticket.photos?.length > 0 && (
         <div className="bg-white rounded-xl border border-gray-200 p-4">
-          <h2 className="font-semibold text-gray-900 mb-3 text-sm">Photos</h2>
+          <h2 className="font-semibold text-gray-900 mb-3 text-sm">{t('ticketDetail.photos')}</h2>
           <div className="grid grid-cols-2 gap-2">
             {ticket.photos.map((p: any) => (
               <div key={p.id} className="rounded-lg overflow-hidden border border-gray-200">
@@ -74,13 +75,13 @@ export function TicketDetailPage() {
 
       {/* Status timeline */}
       <div className="bg-white rounded-xl border border-gray-200 p-4">
-        <h2 className="font-semibold text-gray-900 mb-3 text-sm">Timeline</h2>
+        <h2 className="font-semibold text-gray-900 mb-3 text-sm">{t('ticketDetail.timeline')}</h2>
         <div className="space-y-3">
           {ticket.statusHistory?.map((h: any) => (
             <div key={h.id} className="flex gap-3 text-sm">
               <div className="w-2 h-2 rounded-full bg-blue-500 mt-1.5 flex-shrink-0" />
               <div>
-                <p className="font-medium">{h.oldStatus ?? 'Created'} → {h.newStatus}</p>
+                <p className="font-medium">{h.oldStatus ?? t('ticketDetail.created')} → {h.newStatus}</p>
                 <p className="text-xs text-gray-400">{h.changedBy?.fullName} • {new Date(h.changedAt).toLocaleString()}</p>
                 {h.notes && <p className="text-xs text-gray-500 mt-0.5">{h.notes}</p>}
               </div>
@@ -91,7 +92,7 @@ export function TicketDetailPage() {
 
       {canRate && (
         <div className="bg-white rounded-xl border border-gray-200 p-4">
-          <h2 className="font-semibold text-gray-900 mb-3 text-sm">Rate this service</h2>
+          <h2 className="font-semibold text-gray-900 mb-3 text-sm">{t('ticketDetail.rateService')}</h2>
           <form onSubmit={handleRate} className="space-y-3">
             <div className="flex gap-2 justify-center">
               {[1,2,3,4,5].map((s) => (
@@ -100,10 +101,10 @@ export function TicketDetailPage() {
               ))}
             </div>
             <textarea value={comment} onChange={(e) => setComment(e.target.value)} rows={2}
-              placeholder="Optional comment..." className="block w-full border border-gray-300 rounded-lg px-3 py-2 text-sm resize-none" />
+              placeholder={t('ticketDetail.commentPlaceholder')} className="block w-full border border-gray-300 rounded-lg px-3 py-2 text-sm resize-none" />
             {rateError && <p className="text-xs text-red-600">{rateError}</p>}
             <button type="submit" disabled={rate.isPending} className="w-full bg-yellow-500 text-white rounded-lg py-2.5 text-sm font-medium hover:bg-yellow-600 disabled:opacity-50">
-              {rate.isPending ? 'Submitting...' : 'Submit Rating'}
+              {rate.isPending ? t('ticketDetail.submitting') : t('ticketDetail.submitRating')}
             </button>
           </form>
         </div>

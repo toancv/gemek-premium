@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useMyBookings, useCancelBooking } from '../api/hooks';
 import { getVnErrorMessage } from '@gemek/ui';
+import { t } from '../i18n/vi';
 
 const STATUS_BG: Record<string, string> = {
   PENDING: 'bg-yellow-100 text-yellow-700', APPROVED: 'bg-green-100 text-green-700',
@@ -25,12 +26,12 @@ export function MyBookingsPage() {
 
   return (
     <div className="p-4">
-      <h1 className="text-lg font-bold text-gray-900 mb-4">My Bookings</h1>
-      {isLoading && <div className="text-center py-8 text-gray-400">Loading...</div>}
+      <h1 className="text-lg font-bold text-gray-900 mb-4">{t('bookings.title')}</h1>
+      {isLoading && <div className="text-center py-8 text-gray-400">{t('common.loading')}</div>}
       {!isLoading && !data?.data?.length && (
         <div className="text-center py-12 text-gray-400">
           <p className="text-4xl mb-2">📅</p>
-          <p>No bookings yet</p>
+          <p>{t('common.emptyYet', { item: 'lượt đặt' })}</p>
         </div>
       )}
       {cancelError && <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg mb-3">{cancelError}</p>}

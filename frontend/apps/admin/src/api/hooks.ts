@@ -75,7 +75,7 @@ export const useAssignTicket = () => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ id, data }: { id: string; data: unknown }) => put(`/tickets/${id}/assign`, data),
-    meta: { skipErrorToast: true },
+    meta: { skipErrorToast: true, successMessage: 'Đã phân công yêu cầu.' },
     onSuccess: (_d, v) => qc.invalidateQueries({ queryKey: ['tickets', v.id] }),
   });
 };
@@ -84,7 +84,7 @@ export const useUpdateTicketStatus = () => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ id, data }: { id: string; data: unknown }) => put(`/tickets/${id}/status`, data),
-    meta: { skipErrorToast: true },
+    meta: { skipErrorToast: true, successMessage: 'Đã cập nhật trạng thái.' },
     onSuccess: (_d, v) => { qc.invalidateQueries({ queryKey: ['tickets', v.id] }); qc.invalidateQueries({ queryKey: ['tickets'] }); },
   });
 };

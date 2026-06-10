@@ -1,6 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { SearchableSelect } from '@gemek/ui';
+import { SearchableSelect, getVnErrorMessage } from '@gemek/ui';
 import type { SearchableOption } from '@gemek/ui';
 import { useTickets, useCreateTicket } from '../api/hooks';
 import { apiClient } from '../api/client';
@@ -58,7 +58,7 @@ export function TicketsPage() {
       setApartmentId('');
       navigate(`/tickets/${created.id}`);
     } catch (err: any) {
-      setFormError(err?.response?.data?.message ?? 'Tạo ticket thất bại');
+      setFormError(getVnErrorMessage(err?.response?.data?.error));
     }
   };
 

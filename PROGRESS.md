@@ -146,6 +146,39 @@ All 16 classes fixed. Fix pattern: `ADMIN_EMAIL` → `ADMIN_PHONE = "0900000000"
 
 ---
 
+## ✅ COMPLETE — i18n Phase 1: Inventory (2026-06-10)
+
+**Output:** `reports/i18n-inventory.md` — full categorized inventory of English UI strings needing Vietnamese translation across both React apps.
+
+**Counts:**
+- Admin app: ~247 TRANSLATE strings across 11 files. Top 3: ParkingPage (~38), AmenitiesPage (~37), ReportsPage (~33).
+- Resident app: ~68 TRANSLATE strings across 8 files. Top 3: AmenitiesPage (~13), TicketDetailPage (~12), ProfilePage (~10).
+- AMBIGUOUS: 10 strings requiring CTO ruling (BE enum values rendered as display labels — primarily ticket status/priority, vehicle types, apartment status, parking slot type/status, contractor specialties, and 'Created' null-oldStatus fallback).
+- AnnouncementsPage (admin): 0 strings — fully Vietnamese, no work needed.
+
+**Scope rules (locked):** IN = static JSX text nodes, placeholders, buttons, labels, nav, table headers, empty states, modal titles, tab names. OUT = `getVnErrorMessage` strings (already VN), enum `value=` attrs, variable names, code comments, already-VN strings.
+
+---
+
+## 🔲 NOT STARTED — i18n Phase 2: Translation
+
+**Resume pointer (fresh session):** Read `reports/i18n-inventory.md` for full string list. Architecture locked in DECISIONS.md (2026-06-10 i18n entry).
+
+**Step 1 (next):**
+1. Create shared VN dictionary + `t(key, params?)` helper with `{variable}` interpolation in `@gemek/ui` (`packages/ui/src/lib/vi.ts`, exported from `packages/ui/src/index.ts`). Seed with cross-app common strings.
+2. Create resident per-app dictionary (`frontend/apps/resident/src/i18n/vi.ts`). Leave `src/i18n/enums.ts` as placeholder/comment only.
+3. Translate **resident `Layout.tsx` + `HomePage.tsx` ONLY** using `t()`. Pull shared strings from `@gemek/ui`; put resident-specific ones in resident `vi.ts`.
+4. Verify: `tsc` + `vite build` for resident app must pass.
+5. Commit order: (a) `feat(ui): shared VN dictionary + t() helper` + tests; (b) `feat(resident-i18n): resident VN dictionary + translate Layout + HomePage`; (c) `docs(context)`.
+6. Report pilot to CTO. Await approval before rollout.
+
+**Rollout order (after pilot approval):**
+- Resident remainder (ParkingPage, ProfilePage, TicketDetailPage, AmenitiesPage, etc.)
+- Enum display-maps — separate step (`src/i18n/enums.ts` per app)
+- Admin app — ~3–4 clusters per reports/i18n-inventory.md (ParkingPage, AmenitiesPage, ReportsPage, then remaining pages)
+
+---
+
 ## Current State
 - **Phase:** DONE (all gates and phone-as-login migration)
 - **Gate:** G1 ✅ G2 ✅ G3 ✅ G4 ✅ (2026-06-03)

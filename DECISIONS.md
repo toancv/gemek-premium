@@ -48,6 +48,26 @@ Format: Date | Decision | Reasoning | Alternatives
 
 ---
 
+## 2026-06-10 | i18n architecture — plain-TS dictionary, shared + per-app, enum maps separate
+
+**Decision:** Internationalize both React apps using a plain TypeScript dictionary approach. No `react-i18next` or any new dependency.
+
+**Architecture (locked):**
+1. **Shared dictionary** in `@gemek/ui` (`packages/ui/src/lib/vi.ts`) — cross-app strings (Hủy, Lưu, Sửa, Đang tải..., Trước, Sau, Thao tác, Trạng thái, generic empty-state pattern). Exported `t(key, params?)` helper with `{variable}` interpolation (e.g. `t('greeting', { name })` → `"Xin chào, An"`). Interpolation required from day one — inventory has `{name}`, `{N}`, `{unitNumber}`.
+2. **Per-app dictionary** (`src/i18n/vi.ts` in each app) — app-specific strings that import/extend shared strings. Admin and resident each get their own file.
+3. **Enum display-maps** kept **entirely separate** from UI-text dictionaries. These map BE enum keys → VN display labels (e.g. `CAR` → `"Ô tô"`). `value=` attributes ALWAYS stay the raw BE enum key; only the visible label is translated. Location: `src/i18n/enums.ts` per app (placeholder; populated in a later dedicated step).
+4. **TEMP_HIDDEN_DEFERRED pages** (amenities, bookings, parking nav) — translate these too when they are un-deferred; do not skip them.
+
+**Pilot scope:** resident `Layout.tsx` + `HomePage.tsx` only. Demonstrates shared vs. per-app string split. Await CTO approval before rollout.
+
+**Rollout order (after pilot approval):** resident remainder → enum display-maps → admin (~3–4 page clusters matching reports/i18n-inventory.md).
+
+**Why:** react-i18next adds build complexity (loader, provider, namespace files) for a single-language app that only needs EN→VN. A plain-TS dictionary is zero-dep, type-safe, tree-shakeable, and fully auditable. Enum maps are separated because their keys come from BE domain model (not UI copy) and are used in `value=` attributes — conflating them with copy strings would break form submissions.
+
+**Alternatives:** react-i18next (rejected — overkill for single target language); inline string replacement per file (rejected — no central auditability, no reuse across apps).
+
+---
+
 ## 2026-06-10 | Defer Module 10 notification dispatch to dedicated sprint
 
 **Decision:** Do NOT implement announcement-to-notification dispatch now. Record as deferred tech debt.

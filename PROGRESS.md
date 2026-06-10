@@ -60,11 +60,21 @@ Apply per-form: `getVnErrorMessage(err?.response?.data?.error)` for errors; `met
 
 ---
 
-## ⚠️ TECH DEBT — Test Regressions (inventoried 2026-06-09)
+## ⚠️ TECH DEBT — Test Regressions (FIX IN PROGRESS 2026-06-10)
 
 **Full inventory:** `reports/test-regression-inventory.md`
 
-**Status:** 16 test classes red, 104/244 failures. Zero green-before-migration. Deferred — fix in dedicated session.
+**Status:** 6/16 classes fixed so far. Remaining: 10 classes. Resume: ContractorControllerTest next.
+
+**Fixed (green):**
+- UserControllerTest (ecc4725), AuthControllerTest (3be66bc)
+- NotificationControllerTest (e5c19f4), NotificationIntegrationTest (138d99b)
+- AnnouncementFlowIntegrationTest (5111b35), AnnouncementControllerTest (fba84f8)
+
+**Remaining:**
+ContractorControllerTest, AmenityBookingIntegrationTest, ApartmentControllerTest, BlockControllerTest,
+ReportControllerTest, TicketLifecycleIntegrationTest, ParkingControllerTest, VehicleControllerTest,
+TicketControllerTest, ResidentControllerTest
 
 **Root cause:** All failures = phone-login migration. Test classes still send `admin@gemek.vn` (email) to `LoginRequest.phone` field → `PhoneUtils.isValid()` rejects → 400. `UserControllerTest` additionally uses wrong password (`Admin@123456` vs `GemekAdmin2026` in DB).
 

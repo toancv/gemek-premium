@@ -57,33 +57,42 @@ Forms: admin Login, resident Login, resident Change Password, resident Book Amen
 - ApartmentsPage (#8 Create Apartment, #9 Edit Apartment) — code landed eb2ece4, **AWAITING browser-verify**. No new ErrorCodes needed. Diagnosis: `reports/cluster3-apartments-diagnosis.md`. BE: 5/5 pass. FE: tsc+vite build clean. CONFLICT reuse noted (see diagnosis §4) — deferred.
 
 **Done in cluster 4:**
-- ContractorsPage (#10 Create Contractor, #11 Edit Contractor) — code landed 888aa4a, **AWAITING browser-verify**. No new ErrorCodes. Diagnosis: `reports/cluster4-contractors-diagnosis.md`. BE: 5/5 pass. FE: tsc+vite clean.
+- ContractorsPage (#10 Create Contractor, #11 Edit Contractor) — code landed 888aa4a, CTO smoke-verified on browser — OK. No new ErrorCodes. Diagnosis: `reports/cluster4-contractors-diagnosis.md`.
 
 **Done in cluster 5:**
-- ParkingPage (#13 Assign Parking Slot, #14 End Parking Assignment) — code landed b726f90, **AWAITING browser-verify**. Diagnosis: `reports/cluster5-parking-admin-diagnosis.md`. #13: added `meta.successMessage` + VN inline error; #14: added `skipErrorToast: true` + inline error via `endError` state (success path untouched). tsc + vite build clean.
+- ParkingPage (#13 Assign Parking Slot, #14 End Parking Assignment) — code landed b726f90, CTO smoke-verified on browser — OK. Diagnosis: `reports/cluster5-parking-admin-diagnosis.md`. #13: added `meta.successMessage` + VN inline error; #14: added `skipErrorToast: true` + inline error via `endError` state (success path untouched).
 
-**Next item:** cluster 6 = admin TicketDetailPage + TicketsPage forms #15–#17 per `reports/form-feedback-survey.md`
+**Done in cluster 6:**
+- TicketDetailPage (#15 Assign Ticket, #16 Update Status) + TicketsPage (#17 Create Ticket) — code landed 31f59b4, **smoke-verify pending**. Diagnosis: `reports/cluster6-tickets-admin-diagnosis.md`. #15: success toast + VN inline error (split `assignError` from shared `actionError` — bug fix: errors were rendering in wrong panel). #16: success toast + VN inline error + English strings removed (`statusError` state added). #17: VN inline error only (redirect on success unchanged). BE HTTP-verified: 12/12 TicketControllerTest pass. tsc + vite build clean.
 
-**Admin toast position fixed (0da5f4c):** `Toaster` gained optional `position` prop (`"center"` default | `"top-right"`). Admin passes `position="top-right"`; resident unchanged. Both tsc+vite builds pass. Browser-verify deferred to CTO.
+**Next item:** cluster 7 = admin VehiclesPage #18 per `reports/form-feedback-survey.md`
+
+**Admin toast position fixed (0da5f4c):** `Toaster` gained optional `position` prop (`"center"` default | `"top-right"`). Admin passes `position="top-right"`; resident unchanged.
 
 **Done in cluster 2 so far:**
-- AnnouncementsPage (#6 Create Announcement, #7 Publish Announcement) — code landed ec3a2d8, **AWAITING browser-verify**. Diagnosis: `reports/cluster2-announcements-diagnosis.md`. BE: 4/4 tests pass. FE: tsc+vite build clean.
-- AmenitiesPage (#2 Create Amenity, #3 Edit Amenity, #4 Approve Booking, #5 Reject Booking) — **AWAITING browser-verify (CTO: docker compose up -d --build nginx, then test 4 flows)**
+- AnnouncementsPage (#6 Create Announcement, #7 Publish Announcement) — code landed ec3a2d8, CTO smoke-verified on browser — OK. Diagnosis: `reports/cluster2-announcements-diagnosis.md`. BE: 4/4 tests pass.
+- AmenitiesPage (#2 Create Amenity, #3 Edit Amenity, #4 Approve Booking, #5 Reject Booking) — CTO smoke-verified on browser — OK.
   - FE form feedback: d171df5 — Create/Edit successMessage; Approve/Reject skipErrorToast + inline error areas
   - CONFLICT→specific-code split: 073a3bf (BE), 2bf2fa5 (BE tests), 72bc19f (ui map + tests), 51e6808 (API-SPEC)
     - `AMENITY_NAME_EXISTS` (create/edit dup name), `BOOKING_NOT_PENDING` (approve/reject non-pending)
-    - AmenityControllerTest: 15/15 pass incl. 3 new assertions for new codes
-    - Pre-existing phone-login test regression fixed for AmenityControllerTest (admin pw = GemekAdmin2026)
-    - Other test files (VehicleControllerTest etc.): same pre-existing phone-login regression — separate fix needed
+
+## ⚠️ DEFERRED — Code-Split Candidates (batch pass later)
+
+Generic codes reused for context-specific cases — surfacing as less-specific VN messages. Recommend dedicated codes; defer to one batched BE + ui pass.
+
+| Operation | Current code | Case | Recommended |
+|-----------|-------------|------|-------------|
+| assignSlot (parking) | `CONFLICT` | slot status ≠ AVAILABLE | `SLOT_NOT_AVAILABLE` |
+| assignSlot (parking) | `CONFLICT` | slot already has active assignment | `SLOT_ALREADY_ASSIGNED` |
+| assignTicket | `VALIDATION_ERROR` | both assignedToUserId + assignedToContractorId set | `BOTH_ASSIGNEES_SET` |
+
+---
 
 ### What is REMAINING
 
-Clusters 2–5: 17 deviating forms remaining. Exact list in `reports/form-feedback-survey.md` (priority-ordered).
-Already done in cluster 2: forms #2–#5 (AmenitiesPage).
+Apply per-form: `getVnErrorMessage(err?.response?.data?.error)` for errors; `meta: { successMessage: 'VN msg' }` for success; remove raw `.message` echoing; remove English fallback strings.
 
-Apply per-form: `getVnErrorMessage(err?.response?.data?.error)` for errors; `meta: { successMessage: 'VN msg' }` for success (or component-level `toast.success()` where component already imports toast); remove raw `.message` echoing; remove English success strings.
-
-**Resume pointer:** Open `reports/form-feedback-survey.md` → work through deviating forms in priority order starting after cluster 1.
+**Resume pointer:** Open `reports/form-feedback-survey.md` → cluster 7 = admin VehiclesPage #18.
 
 ---
 

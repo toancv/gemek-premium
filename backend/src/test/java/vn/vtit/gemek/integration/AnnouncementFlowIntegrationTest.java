@@ -67,12 +67,12 @@ class AnnouncementFlowIntegrationTest {
 
     private String adminToken;
 
-    private static final String ADMIN_EMAIL    = "admin@gemek.vn";
-    private static final String ADMIN_PASSWORD = "Admin@123456";
+    private static final String ADMIN_PHONE    = "0900000000";
+    private static final String ADMIN_PASSWORD = "GemekAdmin2026";
 
     @BeforeEach
     void setUp() throws Exception {
-        adminToken = login(ADMIN_EMAIL, ADMIN_PASSWORD);
+        adminToken = login(ADMIN_PHONE, ADMIN_PASSWORD);
     }
 
     // =========================================================================
@@ -95,8 +95,7 @@ class AnnouncementFlowIntegrationTest {
         assertNotNull(published.get("publishedAt"), "publishedAt must be set after publish");
 
         // Create resident.
-        String email         = "res.af1." + System.nanoTime() + "@test.com";
-        String residentToken = createResidentWithToken(email);
+        String residentToken = createResidentWithToken();
 
         // Resident's list must contain the published announcement.
         MvcResult listResult = mockMvc.perform(get("/api/announcements")
@@ -138,10 +137,10 @@ class AnnouncementFlowIntegrationTest {
         UUID aptA      = createApartment(blockA, "AFA1");
         UUID aptB      = createApartment(blockB, "AFB1");
 
-        String emailA       = "res.af2a." + System.nanoTime() + "@test.com";
-        String emailB       = "res.af2b." + System.nanoTime() + "@test.com";
-        String tokenA       = createResidentWithTokenForApartment(emailA, aptA);
-        String tokenB       = createResidentWithTokenForApartment(emailB, aptB);
+        String uidA  = UUID.randomUUID().toString().replace("-", "").substring(0, 8);
+        String uidB  = UUID.randomUUID().toString().replace("-", "").substring(0, 8);
+        String tokenA = createResidentWithTokenForApartment(phoneFromUid(uidA), aptA);
+        String tokenB = createResidentWithTokenForApartment(phoneFromUid(uidB), aptB);
 
         // Admin creates BLOCK-scoped announcement targeting block A.
         String title = "BlockAOnly-" + System.nanoTime();
@@ -188,8 +187,7 @@ class AnnouncementFlowIntegrationTest {
         createAnnouncement(adminToken, draftTitle, AnnouncementScope.ALL, null);
 
         // Create resident and check list — draft must not appear.
-        String email         = "res.af3." + System.nanoTime() + "@test.com";
-        String residentToken = createResidentWithToken(email);
+        String residentToken = createResidentWithToken();
 
         MvcResult result = mockMvc.perform(get("/api/announcements")
                         .header("Authorization", "Bearer " + residentToken))
@@ -215,8 +213,13 @@ class AnnouncementFlowIntegrationTest {
     // Helpers
     // =========================================================================
 
-    private String login(String email, String password) throws Exception {
-        LoginRequest req = new LoginRequest(email, password);
+    private static String phoneFromUid(String uid) {
+        long num = Long.parseLong(uid.substring(0, 7), 16) % 9_000_000L + 1_000_000L;
+        return "090" + num;
+    }
+
+    private String login(String phone, String password) throws Exception {
+        LoginRequest req = new LoginRequest(phone, password);
         MvcResult result = mockMvc.perform(post("/api/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(req)))
@@ -250,9 +253,9 @@ class AnnouncementFlowIntegrationTest {
         return UUID.fromString((String) body.get("id"));
     }
 
-    private UUID createUser(String email) throws Exception {
+    private UUID createUser(String phone) throws Exception {
         CreateUserRequest req = new CreateUserRequest(
-                email, "Test Resident", "0900000099", UserRole.RESIDENT, "Password@123456");
+                null, "Test Resident", phone, UserRole.RESIDENT, "Password@123456");
         MvcResult result = mockMvc.perform(post("/api/users")
                         .header("Authorization", "Bearer " + adminToken)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -266,26 +269,27 @@ class AnnouncementFlowIntegrationTest {
     /**
      * Creates a resident user with a new block+apartment, returns their JWT token.
      *
-     * @param email the resident's email address.
      * @return the resident JWT access token.
      */
-    private String createResidentWithToken(String email) throws Exception {
-        UUID blockId     = createBlock("AFBlock-" + System.nanoTime());
-        UUID apartmentId = createApartment(blockId, "AF" + (System.nanoTime() % 100_000_000L));
-        return createResidentWithTokenForApartment(email, apartmentId);
+    private String createResidentWithToken() throws Exception {
+        String uid       = UUID.randomUUID().toString().replace("-", "").substring(0, 8);
+        UUID blockId     = createBlock("AFBlock-" + uid);
+        UUID apartmentId = createApartment(blockId, "AF" + uid.substring(0, 6));
+        return createResidentWithTokenForApartment(phoneFromUid(uid), apartmentId);
     }
 
     /**
      * Creates a resident user assigned to the given apartment, returns their JWT token.
      *
-     * @param email       the resident's email address.
+     * @param phone       the resident's phone number.
      * @param apartmentId the pre-existing apartment UUID to assign the resident to.
      * @return the resident JWT access token.
      */
-    private String createResidentWithTokenForApartment(String email, UUID apartmentId) throws Exception {
+    private String createResidentWithTokenForApartment(String phone, UUID apartmentId) throws Exception {
         Map<String, Object> req = new HashMap<>();
         req.put("fullName", "Test Resident");
-        req.put("email", email);
+        req.put("phone", phone);
+        req.put("dateOfBirth", "1990-01-01");
         req.put("password", "Password@123456");
         req.put("apartmentId", apartmentId.toString());
         req.put("type", "OWNER");
@@ -296,7 +300,7 @@ class AnnouncementFlowIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(req)))
                 .andExpect(status().isCreated());
-        return login(email, "Password@123456");
+        return login(phone, "Password@123456");
     }
 
     private UUID createAnnouncement(String token, String title,

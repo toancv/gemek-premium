@@ -128,7 +128,7 @@ export const usePublishAnnouncement = () => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => post(`/announcements/${id}/publish`),
-    meta: { skipErrorToast: true, successMessage: 'Đã đăng thông báo tới cư dân.' },
+    meta: { skipErrorToast: true, successMessage: 'Đã đăng thông báo.' },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['announcements'] }),
   });
 };

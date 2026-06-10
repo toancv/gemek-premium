@@ -53,7 +53,10 @@ Forms: admin Login, resident Login, resident Change Password, resident Book Amen
 ### Cluster 2 — IN PROGRESS (2026-06-10)
 
 **Authoritative plan:** `reports/form-feedback-survey.md`
-**Next item:** cluster 3 — open `reports/form-feedback-survey.md`, work through remaining deviating forms in priority order after cluster 2
+**Done in cluster 3 so far:**
+- ApartmentsPage (#8 Create Apartment, #9 Edit Apartment) — code landed eb2ece4, **AWAITING browser-verify**. No new ErrorCodes needed. Diagnosis: `reports/cluster3-apartments-diagnosis.md`. BE: 5/5 pass. FE: tsc+vite build clean. CONFLICT reuse noted (see diagnosis §4) — deferred.
+
+**Next item:** cluster 4 = ContractorsPage #10 (Create Contractor) + #11 (Edit Contractor) per `reports/form-feedback-survey.md`
 
 **Admin toast position fixed (0da5f4c):** `Toaster` gained optional `position` prop (`"center"` default | `"top-right"`). Admin passes `position="top-right"`; resident unchanged. Both tsc+vite builds pass. Browser-verify deferred to CTO.
 

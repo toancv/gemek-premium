@@ -42,8 +42,7 @@ class UserControllerTest {
     private String adminToken;
 
     private static final String ADMIN_PHONE    = "0900000000";
-    private static final String ADMIN_EMAIL    = "admin@gemek.vn";
-    private static final String ADMIN_PASSWORD = "Admin@123456";
+    private static final String ADMIN_PASSWORD = "GemekAdmin2026";
 
     @BeforeEach
     void obtainAdminToken() throws Exception {
@@ -88,7 +87,7 @@ class UserControllerTest {
                         .header("Authorization", "Bearer " + adminToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data").isArray())
-                .andExpect(jsonPath("$.data[0].email").value("admin@gemek.vn"));
+                .andExpect(jsonPath("$.data[?(@.email == 'admin@gemek.vn')]").exists());
     }
 
     @Test

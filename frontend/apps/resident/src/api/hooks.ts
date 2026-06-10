@@ -22,7 +22,7 @@ export const useCreateTicket = () => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (data: unknown) => post('/tickets', data),
-    meta: { skipErrorToast: true },
+    meta: { skipErrorToast: true, successMessage: 'Đã gửi yêu cầu.' },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['tickets'] }),
   });
 };
@@ -56,7 +56,7 @@ export const useCancelBooking = () => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => put(`/amenity-bookings/${id}/cancel`, {}),
-    meta: { successMessage: 'Đã hủy đặt chỗ' },
+    meta: { skipErrorToast: true, successMessage: 'Đã hủy đặt chỗ' },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['my-bookings'] }),
   });
 };
@@ -80,7 +80,7 @@ export const useCreateVehicle = () => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (data: unknown) => post('/vehicles', data),
-    meta: { skipErrorToast: true },
+    meta: { skipErrorToast: true, successMessage: 'Đã đăng ký phương tiện.' },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['my-vehicles'] }),
   });
 };

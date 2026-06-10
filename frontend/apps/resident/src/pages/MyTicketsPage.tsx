@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useMyTickets, useCreateTicket, useMyResident } from '../api/hooks';
+import { getVnErrorMessage } from '@gemek/ui';
 
 const STATUS_BG: Record<string, string> = {
   NEW: 'bg-blue-100 text-blue-700', ASSIGNED: 'bg-purple-100 text-purple-700',
@@ -34,7 +35,7 @@ export function MyTicketsPage() {
         priority: 'MEDIUM',
       });
       setShowForm(false);
-    } catch (err: any) { setFormError(err?.response?.data?.message ?? 'Tạo yêu cầu thất bại'); }
+    } catch (err: any) { setFormError(getVnErrorMessage(err?.response?.data?.error)); }
   };
 
   return (

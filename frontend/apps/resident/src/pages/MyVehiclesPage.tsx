@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useMyResident, useCreateVehicle } from '../api/hooks';
+import { getVnErrorMessage } from '@gemek/ui';
 
 const VEHICLE_TYPES = ['CAR', 'MOTORBIKE', 'BICYCLE', 'OTHER'];
 
@@ -51,11 +52,7 @@ export function MyVehiclesPage() {
       setFormError('');
       (e.target as HTMLFormElement).reset();
     } catch (err: any) {
-      if (err?.response?.status === 409) {
-        setFormError('Biển số đã được đăng ký');
-      } else {
-        setFormError(err?.response?.data?.message ?? 'Không thể đăng ký phương tiện');
-      }
+      setFormError(getVnErrorMessage(err?.response?.data?.error));
     }
   };
 

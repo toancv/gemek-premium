@@ -21,6 +21,7 @@ export function AnnouncementsPage() {
           <p>No announcements</p>
         </div>
       )}
+      {/* markRead is intentionally fire-and-forget: read-marking is best-effort UX, not a user action that needs feedback */}
       <div className="space-y-3">
         {data?.data?.map((a: any) => (
           <div key={a.id} onClick={() => { if (!a.isRead) markRead.mutate(a.id); }}

@@ -12,3 +12,5 @@ export { mutationCacheHandlers } from './lib/mutationToast';
 export { getVnErrorMessage } from './lib/errorMessages';
 export { viShared, createT, interpolate } from './lib/vi';
 export type { TranslationDict, TranslateParams } from './lib/vi';
+export { enumLabels, labelFor } from './lib/enumLabels';
+export type { EnumLabelType } from './lib/enumLabels';

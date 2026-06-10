@@ -59,7 +59,10 @@ Forms: admin Login, resident Login, resident Change Password, resident Book Amen
 **Done in cluster 4:**
 - ContractorsPage (#10 Create Contractor, #11 Edit Contractor) — code landed 888aa4a, **AWAITING browser-verify**. No new ErrorCodes. Diagnosis: `reports/cluster4-contractors-diagnosis.md`. BE: 5/5 pass. FE: tsc+vite clean.
 
-**Next item:** cluster 5 = admin ParkingPage #13 (Assign Parking) + #14 (End Assignment) per `reports/form-feedback-survey.md`
+**Done in cluster 5:**
+- ParkingPage (#13 Assign Parking Slot, #14 End Parking Assignment) — code landed b726f90, **AWAITING browser-verify**. Diagnosis: `reports/cluster5-parking-admin-diagnosis.md`. #13: added `meta.successMessage` + VN inline error; #14: added `skipErrorToast: true` + inline error via `endError` state (success path untouched). tsc + vite build clean.
+
+**Next item:** cluster 6 = admin TicketDetailPage + TicketsPage forms #15–#17 per `reports/form-feedback-survey.md`
 
 **Admin toast position fixed (0da5f4c):** `Toaster` gained optional `position` prop (`"center"` default | `"top-right"`). Admin passes `position="top-right"`; resident unchanged. Both tsc+vite builds pass. Browser-verify deferred to CTO.
 

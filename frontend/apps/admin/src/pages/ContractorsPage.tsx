@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { getVnErrorMessage } from '@gemek/ui';
 import { useContractors, useCreateContractor, useUpdateContractor } from '../api/hooks';
 
 const SPECIALTIES = ['CLEANING','SECURITY','ELEVATOR','FIRE_SAFETY','LANDSCAPING','PEST_CONTROL','ELECTRICAL','PLUMBING','OTHER'];
@@ -19,12 +20,12 @@ export function ContractorsPage() {
     setFormError('');
     const fd = new FormData(e.target as HTMLFormElement);
     const payload = { companyName: fd.get('companyName'), contactPerson: fd.get('contactPerson'), phone: fd.get('phone'), email: fd.get('email'), specialty: fd.get('specialty'), address: fd.get('address'), taxCode: fd.get('taxCode') || null, notes: fd.get('notes') || null };
-    if (!payload.companyName) { setFormError('Company name is required'); return; }
+    if (!payload.companyName) { setFormError('Tên công ty là bắt buộc.'); return; }
     try {
       if (isEdit) await updateContractor.mutateAsync({ id: modal.id, data: payload });
       else await createContractor.mutateAsync(payload);
       setModal(null);
-    } catch (err: any) { setFormError(err?.response?.data?.message ?? 'Failed'); }
+    } catch (err: any) { setFormError(getVnErrorMessage(err?.response?.data?.error)); }
   };
 
   return (

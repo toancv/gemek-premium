@@ -97,7 +97,7 @@ export const useCreateContractor = () => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (data: unknown) => post('/contractors', data),
-    meta: { skipErrorToast: true },
+    meta: { skipErrorToast: true, successMessage: 'Thêm nhà thầu thành công' },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['contractors'] }),
   });
 };
@@ -106,7 +106,7 @@ export const useUpdateContractor = () => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ id, data }: { id: string; data: unknown }) => put(`/contractors/${id}`, data),
-    meta: { skipErrorToast: true },
+    meta: { skipErrorToast: true, successMessage: 'Cập nhật nhà thầu thành công' },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['contractors'] }),
   });
 };

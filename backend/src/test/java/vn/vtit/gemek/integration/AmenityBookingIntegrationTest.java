@@ -81,19 +81,19 @@ class AmenityBookingIntegrationTest {
     /** Fixed booking date: today + 7 days, always within the 14-day advance window. */
     private static final LocalDate BOOKING_DATE = LocalDate.now().plusDays(7);
 
-    private static final String ADMIN_EMAIL    = "admin@gemek.vn";
-    private static final String ADMIN_PASSWORD = "Admin@123456";
+    private static final String ADMIN_PHONE    = "0900000000";
+    private static final String ADMIN_PASSWORD = "GemekAdmin2026";
 
     @BeforeEach
     void setUp() throws Exception {
-        adminToken = login(ADMIN_EMAIL, ADMIN_PASSWORD);
+        adminToken = login(ADMIN_PHONE, ADMIN_PASSWORD);
 
         String uid    = UUID.randomUUID().toString().replace("-", "").substring(0, 8);
-        String email  = "res.ab." + uid + "@test.com";
+        String phone  = phoneFromUid(uid);
         UUID blockId  = createBlock("ABBlock-" + uid);
         UUID aptId    = createApartment(blockId, "AB-" + uid);
-        assignResident(email, aptId);
-        residentToken = login(email, "Password@123456");
+        assignResident(phone, aptId);
+        residentToken = login(phone, "Password@123456");
 
         // Create a fresh amenity per test — unique UUID name means no cross-run slot conflicts.
         bbqAmenityId = createAmenity("BBQ-" + uid, true, (short) 1);
@@ -167,11 +167,11 @@ class AmenityBookingIntegrationTest {
 
         // Create a second resident with a different apartment.
         String uid2    = UUID.randomUUID().toString().replace("-", "").substring(0, 8);
-        String emailB  = "res.ab2." + uid2 + "@test.com";
+        String phoneB  = phoneFromUid(uid2);
         UUID blockId2  = createBlock("ABBlock2-" + uid2);
         UUID aptId2    = createApartment(blockId2, "AB2-" + uid2);
-        assignResident(emailB, aptId2);
-        String tokenB  = login(emailB, "Password@123456");
+        assignResident(phoneB, aptId2);
+        String tokenB  = login(phoneB, "Password@123456");
 
         // Resident B attempts the same slot — must conflict.
         CreateBookingRequest reqB = buildBookingRequest(
@@ -244,8 +244,13 @@ class AmenityBookingIntegrationTest {
     // Helpers
     // =========================================================================
 
-    private String login(String email, String password) throws Exception {
-        LoginRequest req = new LoginRequest(email, password);
+    private static String phoneFromUid(String uid) {
+        long num = Long.parseLong(uid.substring(0, 7), 16) % 9_000_000L + 1_000_000L;
+        return "090" + num;
+    }
+
+    private String login(String phone, String password) throws Exception {
+        LoginRequest req = new LoginRequest(phone, password);
         MvcResult result = mockMvc.perform(post("/api/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(req)))
@@ -292,10 +297,11 @@ class AmenityBookingIntegrationTest {
         return UUID.fromString((String) body.get("id"));
     }
 
-    private void assignResident(String email, UUID apartmentId) throws Exception {
+    private void assignResident(String phone, UUID apartmentId) throws Exception {
         Map<String, Object> req = new HashMap<>();
         req.put("fullName", "Test Resident");
-        req.put("email", email);
+        req.put("phone", phone);
+        req.put("dateOfBirth", "1990-01-01");
         req.put("password", "Password@123456");
         req.put("apartmentId", apartmentId.toString());
         req.put("type", "OWNER");

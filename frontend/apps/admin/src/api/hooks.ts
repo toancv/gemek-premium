@@ -188,7 +188,7 @@ export const useCreateParkingAssignment = () => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (data: any) => post(`/parking/slots/${data.parkingSlotId}/assign`, data),
-    meta: { skipErrorToast: true },
+    meta: { skipErrorToast: true, successMessage: 'Đã phân công chỗ đậu xe.' },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['parking-slots'] }),
   });
 };
@@ -198,7 +198,7 @@ export const useEndParkingAssignment = () => {
   return useMutation({
     // id must be the SLOT UUID (not assignment UUID); BE: POST /parking/slots/{id}/unassign
     mutationFn: ({ id, data }: { id: string; data: unknown }) => post(`/parking/slots/${id}/unassign`, data),
-    meta: { successMessage: 'Đã kết thúc phân công chỗ đậu xe' },
+    meta: { skipErrorToast: true, successMessage: 'Đã kết thúc phân công chỗ đậu xe' },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['parking-slots'] }),
   });
 };

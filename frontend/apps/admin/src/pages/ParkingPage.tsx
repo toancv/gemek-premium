@@ -1,6 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import { useParkingSlots, useGuestVehicles, useCreateParkingAssignment, useEndParkingAssignment } from '../api/hooks';
-import { SearchableSelect } from '@gemek/ui';
+import { SearchableSelect, getVnErrorMessage } from '@gemek/ui';
 import type { SearchableOption } from '@gemek/ui';
 import { apiClient } from '../api/client';
 
@@ -16,6 +16,7 @@ export function ParkingPage() {
   const [status, setStatus] = useState('');
   const [showAssign, setShowAssign] = useState<any>(null);
   const [formError, setFormError] = useState('');
+  const [endError, setEndError] = useState('');
   const [assignApartmentId, setAssignApartmentId] = useState('');
   const [assignVehicleId, setAssignVehicleId] = useState('');
 
@@ -62,7 +63,7 @@ export function ParkingPage() {
     const fd = new FormData(e.target as HTMLFormElement);
     const startDate = fd.get('startDate') as string;
     if (!assignVehicleId || !assignApartmentId || !startDate) {
-      setFormError('Vehicle, Apartment and Start Date are required');
+      setFormError('Vui lòng chọn căn hộ, phương tiện và ngày bắt đầu.');
       return;
     }
     try {
@@ -74,7 +75,17 @@ export function ParkingPage() {
         parkingCardNumber: fd.get('parkingCardNumber') || null,
       });
       closeAssign();
-    } catch (err: any) { setFormError(err?.response?.data?.message ?? 'Failed'); }
+    } catch (err: any) { setFormError(getVnErrorMessage(err?.response?.data?.error)); }
+  };
+
+  const handleEndAssignment = async (slotId: string) => {
+    setEndError('');
+    if (!window.confirm('Kết thúc phân công chỗ đậu xe này?')) return;
+    try {
+      await endAssignment.mutateAsync({ id: slotId, data: { endDate: new Date().toISOString().split('T')[0] } });
+    } catch (err: any) {
+      setEndError(getVnErrorMessage(err?.response?.data?.error));
+    }
   };
 
   return (
@@ -103,6 +114,7 @@ export function ParkingPage() {
               <option value="RESERVED">Reserved</option>
             </select>
           </div>
+          {endError && <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded mb-3">{endError}</p>}
           <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
             <table className="w-full text-sm">
               <thead className="bg-gray-50 border-b border-gray-200">
@@ -127,7 +139,7 @@ export function ParkingPage() {
                     <td className="px-4 py-3 text-gray-500">{s.currentAssignment ? `${s.currentAssignment.vehicle?.licensePlate} (${s.currentAssignment.apartment?.unitNumber})` : '—'}</td>
                     <td className="px-4 py-3 flex gap-2">
                       {s.status === 'AVAILABLE' && <button onClick={() => { setShowAssign(s); setFormError(''); }} className="text-blue-600 hover:underline text-xs">Assign</button>}
-                      {s.currentAssignment && <button onClick={() => { if (window.confirm('End this assignment?')) endAssignment.mutate({ id: s.id, data: { endDate: new Date().toISOString().split('T')[0] } }); }} className="text-red-600 hover:underline text-xs">Unassign</button>}
+                      {s.currentAssignment && <button onClick={() => handleEndAssignment(s.id)} className="text-red-600 hover:underline text-xs">Unassign</button>}
                     </td>
                   </tr>
                 ))}

@@ -49,12 +49,12 @@ class ApartmentControllerTest {
 
     private String adminToken;
 
-    private static final String ADMIN_EMAIL    = "admin@gemek.vn";
-    private static final String ADMIN_PASSWORD = "Admin@123456";
+    private static final String ADMIN_PHONE    = "0900000000";
+    private static final String ADMIN_PASSWORD = "GemekAdmin2026";
 
     @BeforeEach
     void obtainAdminToken() throws Exception {
-        LoginRequest login = new LoginRequest(ADMIN_EMAIL, ADMIN_PASSWORD);
+        LoginRequest login = new LoginRequest(ADMIN_PHONE, ADMIN_PASSWORD);
         MvcResult result = mockMvc.perform(post("/api/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(login)))
@@ -100,16 +100,21 @@ class ApartmentControllerTest {
     // Helper: create a RESIDENT user and return their access token.
     // -------------------------------------------------------------------------
 
-    private String createResidentAndLogin(String email) throws Exception {
+    private static String phoneFromUid(String uid) {
+        long num = Long.parseLong(uid.substring(0, 7), 16) % 9_000_000L + 1_000_000L;
+        return "090" + num;
+    }
+
+    private String createResidentAndLogin(String phone) throws Exception {
         CreateUserRequest createReq = new CreateUserRequest(
-                email, "Test Resident", "0900000001", UserRole.RESIDENT, "Resident@123456");
+                null, "Test Resident", phone, UserRole.RESIDENT, "Resident@123456");
         mockMvc.perform(post("/api/users")
                         .header("Authorization", "Bearer " + adminToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(createReq)))
                 .andExpect(status().isCreated());
 
-        LoginRequest login = new LoginRequest(email, "Resident@123456");
+        LoginRequest login = new LoginRequest(phone, "Resident@123456");
         MvcResult loginResult = mockMvc.perform(post("/api/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(login)))
@@ -204,7 +209,8 @@ class ApartmentControllerTest {
         UUID apartmentId = createApartment(blockId, "R901");
 
         // Create a RESIDENT user who is not assigned to any apartment.
-        String residentToken = createResidentAndLogin("resident.other." + System.nanoTime() + "@test.com");
+        String uid = UUID.randomUUID().toString().replace("-", "").substring(0, 8);
+        String residentToken = createResidentAndLogin(phoneFromUid(uid));
 
         mockMvc.perform(get("/api/apartments/" + apartmentId)
                         .header("Authorization", "Bearer " + residentToken))

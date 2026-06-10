@@ -63,9 +63,14 @@ Forms: admin Login, resident Login, resident Change Password, resident Book Amen
 - ParkingPage (#13 Assign Parking Slot, #14 End Parking Assignment) — code landed b726f90, CTO smoke-verified on browser — OK. Diagnosis: `reports/cluster5-parking-admin-diagnosis.md`. #13: added `meta.successMessage` + VN inline error; #14: added `skipErrorToast: true` + inline error via `endError` state (success path untouched).
 
 **Done in cluster 6:**
-- TicketDetailPage (#15 Assign Ticket, #16 Update Status) + TicketsPage (#17 Create Ticket) — code landed 31f59b4, **smoke-verify pending**. Diagnosis: `reports/cluster6-tickets-admin-diagnosis.md`. #15: success toast + VN inline error (split `assignError` from shared `actionError` — bug fix: errors were rendering in wrong panel). #16: success toast + VN inline error + English strings removed (`statusError` state added). #17: VN inline error only (redirect on success unchanged). BE HTTP-verified: 12/12 TicketControllerTest pass. tsc + vite build clean.
+- TicketDetailPage (#15 Assign Ticket, #16 Update Status) + TicketsPage (#17 Create Ticket) — code landed 31f59b4, **smoke-verify pending**. Diagnosis: `reports/cluster6-tickets-admin-diagnosis.md`. #15: success toast + VN inline error (split `assignError` from shared `actionError` — bug fix: errors were rendering in wrong panel). #16: success toast + VN inline error + English strings removed. #17: VN inline error only (redirect unchanged). BE HTTP-verified: 12/12 pass.
 
-**Next item:** cluster 7 = admin VehiclesPage #18 per `reports/form-feedback-survey.md`
+**Done in cluster 7:**
+- VehiclesPage (#18 Create Vehicle) — code landed 2741ff0, **smoke-verify pending**. Diagnosis: `reports/cluster7-vehicles-admin-diagnosis.md`. Success toast added; HTTP-409-status hardcode replaced by `getVnErrorMessage(err?.response?.data?.error)` — `LICENSE_PLATE_ALREADY_EXISTS` maps to "Biển số xe đã được đăng ký." via code (not status). BE HTTP-verified: 9/9 VehicleControllerTest pass. tsc + vite build clean.
+
+**Admin form-feedback COMPLETE — forms #1–#18 all standardized.**
+
+**Next item:** cluster 8 = resident remaining forms #20, #22, #23, #24, #25 per `reports/form-feedback-survey.md`
 
 **Admin toast position fixed (0da5f4c):** `Toaster` gained optional `position` prop (`"center"` default | `"top-right"`). Admin passes `position="top-right"`; resident unchanged.
 

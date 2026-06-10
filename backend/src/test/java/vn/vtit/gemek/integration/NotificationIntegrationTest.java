@@ -78,12 +78,13 @@ class NotificationIntegrationTest {
     private String adminToken;
     private UUID adminUserId;
 
+    private static final String ADMIN_PHONE    = "0900000000";
     private static final String ADMIN_EMAIL    = "admin@gemek.vn";
-    private static final String ADMIN_PASSWORD = "Admin@123456";
+    private static final String ADMIN_PASSWORD = "GemekAdmin2026";
 
     @BeforeEach
     void setUp() throws Exception {
-        adminToken = login(ADMIN_EMAIL, ADMIN_PASSWORD);
+        adminToken = login(ADMIN_PHONE, ADMIN_PASSWORD);
         adminUserId = userRepository.findByEmail(ADMIN_EMAIL)
                 .orElseThrow(() -> new IllegalStateException("Seeded admin user not found"))
                 .getId();
@@ -104,9 +105,10 @@ class NotificationIntegrationTest {
         UUID ticketId = createTicket(adminToken, apartmentId, TicketCategory.MAINTENANCE_REPAIR);
 
         // Create a technician user and obtain their token.
-        String techEmail = "tech.ni1." + System.nanoTime() + "@test.com";
-        UUID techId      = createUser(techEmail, UserRole.TECHNICIAN);
-        String techToken = login(techEmail, "Password@123456");
+        String techUid   = UUID.randomUUID().toString().replace("-", "").substring(0, 8);
+        String techPhone = phoneFromUid(techUid);
+        UUID techId      = createUser(techPhone, UserRole.TECHNICIAN);
+        String techToken = login(techPhone, "Password@123456");
 
         // Capture technician's unread count before assignment.
         long unreadBefore = notificationRepository.countUnreadByUserId(techId);
@@ -148,9 +150,10 @@ class NotificationIntegrationTest {
     @DisplayName("3 unread notifications → POST /read-all → unread-count = 0")
     void markAllRead_decrementsUnreadCount() throws Exception {
         // Create a dedicated user so other tests' notifications don't interfere.
-        String userEmail = "notif.all." + System.nanoTime() + "@test.com";
-        UUID userId      = createUser(userEmail, UserRole.TECHNICIAN);
-        String userToken = login(userEmail, "Password@123456");
+        String userUid   = UUID.randomUUID().toString().replace("-", "").substring(0, 8);
+        String userPhone = phoneFromUid(userUid);
+        UUID userId      = createUser(userPhone, UserRole.TECHNICIAN);
+        String userToken = login(userPhone, "Password@123456");
 
         // Inject exactly 3 unread notifications via service.
         notificationService.createNotification(userId, "Notif A", null, NotificationType.GENERAL, null, null);
@@ -187,9 +190,10 @@ class NotificationIntegrationTest {
     @DisplayName("2 unread notifications → mark one by ID → unread-count = 1, that notification isRead=true")
     void markSingleRead() throws Exception {
         // Create isolated user.
-        String userEmail = "notif.single." + System.nanoTime() + "@test.com";
-        UUID userId      = createUser(userEmail, UserRole.TECHNICIAN);
-        String userToken = login(userEmail, "Password@123456");
+        String userUid2  = UUID.randomUUID().toString().replace("-", "").substring(0, 8);
+        String userPhone2 = phoneFromUid(userUid2);
+        UUID userId      = createUser(userPhone2, UserRole.TECHNICIAN);
+        String userToken = login(userPhone2, "Password@123456");
 
         // Inject 2 unread notifications.
         String titleA = "SingleA-" + System.nanoTime();
@@ -246,8 +250,13 @@ class NotificationIntegrationTest {
     // Helpers
     // =========================================================================
 
-    private String login(String email, String password) throws Exception {
-        LoginRequest req = new LoginRequest(email, password);
+    private static String phoneFromUid(String uid) {
+        long num = Long.parseLong(uid.substring(0, 7), 16) % 9_000_000L + 1_000_000L;
+        return "090" + num;
+    }
+
+    private String login(String phone, String password) throws Exception {
+        LoginRequest req = new LoginRequest(phone, password);
         MvcResult result = mockMvc.perform(post("/api/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(req)))
@@ -281,9 +290,9 @@ class NotificationIntegrationTest {
         return UUID.fromString((String) body.get("id"));
     }
 
-    private UUID createUser(String email, UserRole role) throws Exception {
+    private UUID createUser(String phone, UserRole role) throws Exception {
         CreateUserRequest req = new CreateUserRequest(
-                email, "Test User", "0900000001", role, "Password@123456");
+                null, "Test User", phone, role, "Password@123456");
         MvcResult result = mockMvc.perform(post("/api/users")
                         .header("Authorization", "Bearer " + adminToken)
                         .contentType(MediaType.APPLICATION_JSON)

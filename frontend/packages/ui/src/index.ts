@@ -10,3 +10,5 @@ export type { SearchableOption } from './components/SearchableSelect';
 export { Toaster, toast } from './components/Toast';
 export { mutationCacheHandlers } from './lib/mutationToast';
 export { getVnErrorMessage } from './lib/errorMessages';
+export { viShared, createT, interpolate } from './lib/vi';
+export type { TranslationDict, TranslateParams } from './lib/vi';

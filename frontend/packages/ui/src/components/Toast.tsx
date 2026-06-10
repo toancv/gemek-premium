@@ -16,7 +16,14 @@ export const toast = {
   error: (message: string) => emit('error', message),
 };
 
-export function Toaster() {
+type ToasterPosition = 'center' | 'top-right';
+
+const POSITION_CLASSES: Record<ToasterPosition, string> = {
+  center: 'fixed top-4 left-1/2 -translate-x-1/2 w-[calc(100%-2rem)] max-w-sm',
+  'top-right': 'fixed top-4 right-4 w-72',
+};
+
+export function Toaster({ position = 'center' }: { position?: ToasterPosition }) {
   const [items, setItems] = useState<ToastItem[]>([]);
 
   useEffect(() => {
@@ -34,7 +41,7 @@ export function Toaster() {
   if (!items.length) return null;
 
   return (
-    <div className="fixed top-4 left-1/2 -translate-x-1/2 w-[calc(100%-2rem)] max-w-sm z-[200] flex flex-col gap-2 pointer-events-none">
+    <div className={`${POSITION_CLASSES[position]} z-[200] flex flex-col gap-2 pointer-events-none`}>
       {items.map((item) => (
         <div
           key={item.id}

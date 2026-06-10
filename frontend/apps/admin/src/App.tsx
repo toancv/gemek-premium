@@ -67,7 +67,7 @@ export default function App() {
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>
     </BrowserRouter>
-    <Toaster />
+    <Toaster position="top-right" />
     </>
   );
 }

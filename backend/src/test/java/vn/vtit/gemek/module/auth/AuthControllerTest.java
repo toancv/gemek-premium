@@ -43,10 +43,10 @@ class AuthControllerTest {
     @Autowired
     private ObjectMapper objectMapper;
 
-    /** Seeded by AdminSeeder: phone 0900000000, email admin@gemek.vn, password Admin@123456. */
+    /** Seeded by AdminSeeder: phone 0900000000, email admin@gemek.vn, password GemekAdmin2026. */
     private static final String ADMIN_PHONE    = "0900000000";
     private static final String ADMIN_EMAIL    = "admin@gemek.vn";
-    private static final String ADMIN_PASSWORD = "Admin@123456";
+    private static final String ADMIN_PASSWORD = "GemekAdmin2026";
 
     // -------------------------------------------------------------------------
     // POST /api/auth/login
@@ -71,7 +71,7 @@ class AuthControllerTest {
     @Test
     @DisplayName("POST /api/auth/login — wrong password returns 401")
     void login_wrongPassword_returns401() throws Exception {
-        LoginRequest request = new LoginRequest(ADMIN_EMAIL, "WrongPassword!");
+        LoginRequest request = new LoginRequest(ADMIN_PHONE, "WrongPassword!");
 
         mockMvc.perform(post("/api/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)

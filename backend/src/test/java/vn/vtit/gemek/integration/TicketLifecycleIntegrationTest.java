@@ -89,13 +89,13 @@ class TicketLifecycleIntegrationTest {
 
     private String adminToken;
 
-    private static final String ADMIN_EMAIL    = "admin@gemek.vn";
-    private static final String ADMIN_PASSWORD = "Admin@123456";
+    private static final String ADMIN_PHONE    = "0900000000";
+    private static final String ADMIN_PASSWORD = "GemekAdmin2026";
 
     @BeforeEach
     void setUp() throws Exception {
         when(fileStorageService.presign(anyString())).thenReturn("http://minio/presigned-url");
-        adminToken = login(ADMIN_EMAIL, ADMIN_PASSWORD);
+        adminToken = login(ADMIN_PHONE, ADMIN_PASSWORD);
     }
 
     // =========================================================================
@@ -105,18 +105,19 @@ class TicketLifecycleIntegrationTest {
     @Test
     @DisplayName("Full lifecycle: resident creates → admin assigns technician → IN_PROGRESS → DONE → resident rates; status=DONE, rating persisted")
     void createAndAssignTicket_fullLifecycle() throws Exception {
-        UUID blockId     = createBlock("LC1-" + System.nanoTime());
+        String uid1      = UUID.randomUUID().toString().replace("-", "").substring(0, 8);
+        UUID blockId     = createBlock("LC1-" + uid1);
         UUID apartmentId = createApartment(blockId, "LC101");
-        String email     = "res.lc1." + System.nanoTime() + "@test.com";
-        assignResident(email, apartmentId);
-        String residentToken = login(email, "Password@123456");
+        String phone1    = phoneFromUid(uid1);
+        assignResident(phone1, apartmentId);
+        String residentToken = login(phone1, "Password@123456");
 
         // Resident creates ticket.
         UUID ticketId = createTicket(residentToken, apartmentId, TicketCategory.COMPLAINT);
 
         // Admin assigns to technician.
-        String techEmail = "tech.lc1." + System.nanoTime() + "@test.com";
-        UUID techId = createUser(techEmail, UserRole.TECHNICIAN);
+        String techUid = UUID.randomUUID().toString().replace("-", "").substring(0, 8);
+        UUID techId = createUser(phoneFromUid(techUid), UserRole.TECHNICIAN);
         assignToUser(ticketId, techId);
 
         // Move to IN_PROGRESS.
@@ -148,11 +149,12 @@ class TicketLifecycleIntegrationTest {
     @Test
     @DisplayName("MAINTENANCE_REPAIR assigned to contractor → DONE → resident rates → contractor.rating recalculated")
     void maintenanceTicket_assignedToContractor_fullLifecycle() throws Exception {
-        UUID blockId     = createBlock("LC2-" + System.nanoTime());
+        String uid2      = UUID.randomUUID().toString().replace("-", "").substring(0, 8);
+        UUID blockId     = createBlock("LC2-" + uid2);
         UUID apartmentId = createApartment(blockId, "LC201");
-        String email     = "res.lc2." + System.nanoTime() + "@test.com";
-        assignResident(email, apartmentId);
-        String residentToken = login(email, "Password@123456");
+        String phone2    = phoneFromUid(uid2);
+        assignResident(phone2, apartmentId);
+        String residentToken = login(phone2, "Password@123456");
 
         // Create contractor.
         UUID contractorId = createContractor("FixIt Corp " + System.nanoTime());
@@ -264,12 +266,13 @@ class TicketLifecycleIntegrationTest {
         UUID aptA    = createApartment(blockId, "LC5A");
         UUID aptB    = createApartment(blockId, "LC5B");
 
-        String emailA = "res.lc5a." + System.nanoTime() + "@test.com";
-        assignResident(emailA, aptA);
-        String tokenA = login(emailA, "Password@123456");
+        String uidA = UUID.randomUUID().toString().replace("-", "").substring(0, 8);
+        String phoneA = phoneFromUid(uidA);
+        assignResident(phoneA, aptA);
+        String tokenA = login(phoneA, "Password@123456");
 
-        String emailB = "res.lc5b." + System.nanoTime() + "@test.com";
-        assignResident(emailB, aptB);
+        String uidB = UUID.randomUUID().toString().replace("-", "").substring(0, 8);
+        assignResident(phoneFromUid(uidB), aptB);
 
         // Create one ticket per apartment.
         UUID ticketA = createTicket(tokenA, aptA, TicketCategory.COMPLAINT);
@@ -303,8 +306,13 @@ class TicketLifecycleIntegrationTest {
     // Helpers
     // =========================================================================
 
-    private String login(String email, String password) throws Exception {
-        LoginRequest req = new LoginRequest(email, password);
+    private static String phoneFromUid(String uid) {
+        long num = Long.parseLong(uid.substring(0, 7), 16) % 9_000_000L + 1_000_000L;
+        return "090" + num;
+    }
+
+    private String login(String phone, String password) throws Exception {
+        LoginRequest req = new LoginRequest(phone, password);
         MvcResult result = mockMvc.perform(post("/api/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(req)))
@@ -338,9 +346,9 @@ class TicketLifecycleIntegrationTest {
         return UUID.fromString((String) body.get("id"));
     }
 
-    private UUID createUser(String email, UserRole role) throws Exception {
+    private UUID createUser(String phone, UserRole role) throws Exception {
         CreateUserRequest req = new CreateUserRequest(
-                email, "Test User", "0900000001", role, "Password@123456");
+                null, "Test User", phone, role, "Password@123456");
         MvcResult result = mockMvc.perform(post("/api/users")
                         .header("Authorization", "Bearer " + adminToken)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -351,10 +359,11 @@ class TicketLifecycleIntegrationTest {
         return UUID.fromString((String) body.get("id"));
     }
 
-    private void assignResident(String email, UUID apartmentId) throws Exception {
+    private void assignResident(String phone, UUID apartmentId) throws Exception {
         Map<String, Object> req = new HashMap<>();
         req.put("fullName", "Test Resident");
-        req.put("email", email);
+        req.put("phone", phone);
+        req.put("dateOfBirth", "1990-01-01");
         req.put("password", "Password@123456");
         req.put("apartmentId", apartmentId.toString());
         req.put("type", "OWNER");

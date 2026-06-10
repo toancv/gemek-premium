@@ -29,8 +29,11 @@ export const viShared: TranslationDict = {
     next: 'Sau',
     actions: 'Thao tác',
     status: 'Trạng thái',
-    // Generic empty-state pattern: t('common.empty', { item: 'thông báo' })
-    empty: 'Không có {item}',
+    // Empty-state patterns — VN distinguishes two cases:
+    // nothing exists yet: t('common.emptyYet', { item: 'phản ánh' })
+    emptyYet: 'Chưa có {item} nào',
+    // no results after search/filter: t('common.emptyFound', { item: 'căn hộ' })
+    emptyFound: 'Không tìm thấy {item}',
   },
 };
 

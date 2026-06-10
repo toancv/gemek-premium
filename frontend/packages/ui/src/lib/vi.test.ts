@@ -47,7 +47,11 @@ describe('createT', () => {
     expect(t('nav.missing')).toBe('nav.missing');
   });
 
-  it('supports the shared empty-state pattern', () => {
-    expect(t('common.empty', { item: 'thông báo' })).toBe('Không có thông báo');
+  it('supports the nothing-exists-yet empty-state pattern', () => {
+    expect(t('common.emptyYet', { item: 'phản ánh' })).toBe('Chưa có phản ánh nào');
+  });
+
+  it('supports the no-search-results empty-state pattern', () => {
+    expect(t('common.emptyFound', { item: 'căn hộ' })).toBe('Không tìm thấy căn hộ');
   });
 });

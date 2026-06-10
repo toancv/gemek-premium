@@ -52,12 +52,12 @@ class ContractorControllerTest {
 
     private String adminToken;
 
-    private static final String ADMIN_EMAIL    = "admin@gemek.vn";
-    private static final String ADMIN_PASSWORD = "Admin@123456";
+    private static final String ADMIN_PHONE    = "0900000000";
+    private static final String ADMIN_PASSWORD = "GemekAdmin2026";
 
     @BeforeEach
     void obtainAdminToken() throws Exception {
-        LoginRequest login = new LoginRequest(ADMIN_EMAIL, ADMIN_PASSWORD);
+        LoginRequest login = new LoginRequest(ADMIN_PHONE, ADMIN_PASSWORD);
         MvcResult result = mockMvc.perform(post("/api/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(login)))

@@ -21,7 +21,7 @@ export const useCreateApartment = () => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (data: unknown) => post('/apartments', data),
-    meta: { successMessage: 'Thêm căn hộ thành công' },
+    meta: { skipErrorToast: true, successMessage: 'Thêm căn hộ thành công' },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['apartments'] }),
   });
 };
@@ -30,7 +30,7 @@ export const useUpdateApartment = () => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ id, data }: { id: string; data: unknown }) => put(`/apartments/${id}`, data),
-    meta: { successMessage: 'Cập nhật căn hộ thành công' },
+    meta: { skipErrorToast: true, successMessage: 'Cập nhật căn hộ thành công' },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['apartments'] }),
   });
 };

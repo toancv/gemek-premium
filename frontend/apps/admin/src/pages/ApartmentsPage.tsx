@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { SearchableSelect } from '@gemek/ui';
+import { SearchableSelect, getVnErrorMessage } from '@gemek/ui';
 import type { SearchableOption } from '@gemek/ui';
 import { useApartments, useBlocks, useCreateApartment, useUpdateApartment } from '../api/hooks';
 import { apiClient } from '../api/client';
@@ -13,6 +13,8 @@ export function ApartmentsPage() {
   const [showCreate, setShowCreate] = useState(false);
   const [newBlockId, setNewBlockId] = useState('');
   const [blockError, setBlockError] = useState('');
+  const [createError, setCreateError] = useState('');
+  const [editError, setEditError] = useState('');
 
   const params = { page, size: 20, ...(search && { search }), ...(status && { status }), ...(blockId && { blockId }) };
   const { data, isLoading, isError } = useApartments(params);
@@ -36,6 +38,7 @@ export function ApartmentsPage() {
   function openCreate() {
     setNewBlockId('');
     setBlockError('');
+    setCreateError('');
     setShowCreate(true);
   }
 
@@ -95,7 +98,7 @@ export function ApartmentsPage() {
                 </td>
                 <td className="px-4 py-3">{apt.primaryContact?.fullName ?? '—'}</td>
                 <td className="px-4 py-3">
-                  <button onClick={() => setEditApt(apt)} className="text-blue-600 hover:underline text-xs">Edit</button>
+                  <button onClick={() => { setEditApt(apt); setEditError(''); }} className="text-blue-600 hover:underline text-xs">Edit</button>
                 </td>
               </tr>
             ))}
@@ -122,16 +125,21 @@ export function ApartmentsPage() {
               e.preventDefault();
               if (!newBlockId) { setBlockError('Vui lòng chọn block.'); return; }
               setBlockError('');
+              setCreateError('');
               const fd = new FormData(e.target as HTMLFormElement);
-              await createApt.mutateAsync({
-                blockId: newBlockId,
-                floor: Number(fd.get('floor')),
-                unitNumber: fd.get('unitNumber') as string,
-                areaSqm: Number(fd.get('areaSqm')),
-                notes: (fd.get('notes') as string) || undefined,
-              });
-              setShowCreate(false);
-              setNewBlockId('');
+              try {
+                await createApt.mutateAsync({
+                  blockId: newBlockId,
+                  floor: Number(fd.get('floor')),
+                  unitNumber: fd.get('unitNumber') as string,
+                  areaSqm: Number(fd.get('areaSqm')),
+                  notes: (fd.get('notes') as string) || undefined,
+                });
+                setShowCreate(false);
+                setNewBlockId('');
+              } catch (err: any) {
+                setCreateError(getVnErrorMessage(err?.response?.data?.error));
+              }
             }} className="space-y-3">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Block <span className="text-red-500">*</span></label>
@@ -159,6 +167,7 @@ export function ApartmentsPage() {
                 <label className="block text-sm font-medium text-gray-700 mb-1">Ghi chú</label>
                 <textarea name="notes" className="block w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" rows={2} />
               </div>
+              {createError && <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded">{createError}</p>}
               <div className="flex gap-2 justify-end pt-2">
                 <button type="button" onClick={() => setShowCreate(false)} className="px-4 py-2 text-sm border border-gray-300 rounded-md hover:bg-gray-50">Hủy</button>
                 <button type="submit" disabled={createApt.isPending} className="px-4 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50">
@@ -177,15 +186,20 @@ export function ApartmentsPage() {
             <h2 className="text-lg font-semibold mb-4">Edit Apartment {editApt.unitNumber}</h2>
             <form onSubmit={async (e) => {
               e.preventDefault();
+              setEditError('');
               const fd = new FormData(e.target as HTMLFormElement);
-              await updateApt.mutateAsync({ id: editApt.id, data: {
-                floor: Number(fd.get('floor')),
-                unitNumber: fd.get('unitNumber') as string,
-                areaSqm: Number(fd.get('areaSqm')),
-                status: fd.get('status') as string,
-                notes: fd.get('notes') as string,
-              }});
-              setEditApt(null);
+              try {
+                await updateApt.mutateAsync({ id: editApt.id, data: {
+                  floor: Number(fd.get('floor')),
+                  unitNumber: fd.get('unitNumber') as string,
+                  areaSqm: Number(fd.get('areaSqm')),
+                  status: fd.get('status') as string,
+                  notes: fd.get('notes') as string,
+                }});
+                setEditApt(null);
+              } catch (err: any) {
+                setEditError(getVnErrorMessage(err?.response?.data?.error));
+              }
             }} className="space-y-3">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Block</label>
@@ -217,6 +231,7 @@ export function ApartmentsPage() {
                 <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
                 <textarea name="notes" defaultValue={editApt.notes ?? ''} className="block w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" rows={2} />
               </div>
+              {editError && <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded">{editError}</p>}
               <div className="flex gap-2 justify-end pt-2">
                 <button type="button" onClick={() => setEditApt(null)} className="px-4 py-2 text-sm border border-gray-300 rounded-md hover:bg-gray-50">Cancel</button>
                 <button type="submit" disabled={updateApt.isPending} className="px-4 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50">

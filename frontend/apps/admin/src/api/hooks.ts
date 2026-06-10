@@ -211,7 +211,7 @@ export const useCreateVehicle = () => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (data: unknown) => post('/vehicles', data),
-    meta: { skipErrorToast: true },
+    meta: { skipErrorToast: true, successMessage: 'Đã thêm phương tiện.' },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['vehicles'] }),
   });
 };

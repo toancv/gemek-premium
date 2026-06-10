@@ -1,6 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import { useVehicles, useCreateVehicle } from '../api/hooks';
-import { SearchableSelect } from '@gemek/ui';
+import { SearchableSelect, getVnErrorMessage } from '@gemek/ui';
 import { apiClient } from '../api/client';
 
 const VEHICLE_TYPES = ['CAR', 'MOTORBIKE', 'BICYCLE', 'OTHER'];
@@ -75,11 +75,7 @@ export function VehiclesPage() {
       setShowCreate(false);
       resetForm();
     } catch (err: any) {
-      if (err?.response?.status === 409) {
-        setFormError('Biển số đã được đăng ký');
-      } else {
-        setFormError(err?.response?.data?.message ?? 'Không thể tạo phương tiện');
-      }
+      setFormError(getVnErrorMessage(err?.response?.data?.error));
     }
   };
 

@@ -509,6 +509,18 @@ Step 4 changes (e1e2d14 feat + bb4fe47 test):
 
 ---
 
+## 2026-06-10 | i18n terminology: user-facing "Ticket" = "Phản ánh" (CTO decision, both apps)
+
+**Decision:** Every visible occurrence of "Ticket" translates to "Phản ánh" — both apps, all current and future i18n work. DISPLAY TEXT ONLY: route paths (`/tickets`), variable names, object keys, enum values, file names, and API fields stay unchanged.
+
+**Why:** "Phản ánh" is the natural Vietnamese term residents use for reporting building issues; "Yêu cầu" (used briefly in the pilot) is generic. CTO fixed the term globally to prevent per-page drift.
+
+**How to apply:** New translations use "phản ánh" for ticket nouns (e.g. 'Phản ánh của tôi', 'Tạo phản ánh', 'Chưa có phản ánh nào'). Pre-existing already-VN strings saying "yêu cầu" (e.g. MyTicketsPage 'Gửi yêu cầu' / 'Loại yêu cầu', TicketDetailPage 'Không thể tải yêu cầu hỗ trợ.') were NOT touched this pass — flagged for a later terminology-sweep step with CTO sign-off.
+
+Also: viShared empty-state refined into two keys — `common.emptyYet` ('Chưa có {item} nào', nothing exists yet) vs `common.emptyFound` ('Không tìm thấy {item}', no results after search/filter). Old generic `common.empty` removed (was unused outside tests).
+
+---
+
 ## CTO Overrides
 _(record when CTO overrides agent decision)_
 

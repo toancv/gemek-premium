@@ -160,9 +160,17 @@ All 16 classes fixed. Fix pattern: `ADMIN_EMAIL` → `ADMIN_PHONE = "0900000000"
 
 ---
 
-## ⏸ IN PROGRESS — i18n Phase 2: Translation (Step 1 pilot DONE, awaiting CTO pattern review)
+## ⏸ IN PROGRESS — i18n Phase 2: Translation (pilot + resident cluster 1 DONE)
 
-**Resume pointer (fresh session):** Read `reports/i18n-inventory.md` for full string list. Architecture locked in DECISIONS.md (2026-06-10 i18n entry).
+**Resume pointer (fresh session):** Read `reports/i18n-inventory.md` for full string list. Architecture locked in DECISIONS.md (2026-06-10 i18n entry). Terminology: user-facing "Ticket" = "Phản ánh", display only (DECISIONS.md 2026-06-10).
+
+**Resident cluster 1 COMPLETE (2026-06-10):**
+- viShared empty-state refined: `common.emptyYet` / `common.emptyFound` replace `common.empty`; 11 ui tests green. Commit 24aff81.
+- Translated: MyTicketsPage ('Phản ánh của tôi', '+ Tạo mới', emptyYet, 'Tạo phản ánh đầu tiên', modal 'Tạo phản ánh'), MyBookingsPage ('Lượt đặt của tôi', emptyYet), TicketDetailPage (back/labels/Photos→Hình ảnh/Timeline→Lịch sử/'Khởi tạo' fallback/rating block), ProfilePage ('Trang cá nhân', 'Vai trò:', 'Đăng nhập gần nhất:', 'Đổi mật khẩu' form, 'Đăng xuất'). nav.tickets + home.activeTickets switched 'Yêu cầu'→'Phản ánh'. Commit cbd99c0.
+- Verified: 11/11 ui tests + `tsc --noEmit` + `vite build` green (resident). NOT browser-verified — CTO step.
+- Flagged, NOT changed (already-VN, old "yêu cầu" wording): MyTicketsPage 'Gửi yêu cầu' + 'Loại yêu cầu', TicketDetailPage error 'Không thể tải yêu cầu hỗ trợ.' — needs CTO terminology-sweep decision.
+
+**NEXT: resident cluster 2 — AnnouncementsPage, AmenitiesPage (TEMP_HIDDEN_DEFERRED), ParkingPage (TEMP_HIDDEN_DEFERRED). Then enum display-maps (separate step), then admin app.**
 
 **Step 1 pilot COMPLETE (2026-06-10):**
 - `packages/ui/src/lib/vi.ts` — `viShared` dict (Hủy/Lưu/Sửa/Đang tải.../Trước/Sau/Thao tác/Trạng thái + `common.empty` = 'Không có {item}') + `createT(...dicts)` factory + `interpolate()`; exported from `packages/ui/src/index.ts`. 10 unit tests green (`vi.test.ts`). Commit 39dc7a9.

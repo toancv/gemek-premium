@@ -19,7 +19,7 @@ export function AnnouncementsPage() {
       {!isLoading && !data?.data?.length && (
         <div className="text-center py-12 text-gray-400">
           <p className="text-4xl mb-2">📢</p>
-          <p>{t('common.emptyYet', { item: 'thông báo' })}</p>
+          <p>{t('common.emptyYet', { item: 'tin tức' })}</p>
         </div>
       )}
       {/* markRead is intentionally fire-and-forget: read-marking is best-effort UX, not a user action that needs feedback */}

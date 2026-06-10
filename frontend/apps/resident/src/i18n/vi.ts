@@ -59,7 +59,9 @@ export const vi: TranslationDict = {
     submitRating: 'Gửi đánh giá',
   },
   announcements: {
-    title: 'Thông báo',
+    // Terminology (CTO 2026-06-10): announcements feature = "Tin tức";
+    // notification bell/panel = "Thông báo". Never swap.
+    title: 'Tin tức',
     everyone: 'Tất cả',
   },
   amenities: {

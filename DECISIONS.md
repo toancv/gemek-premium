@@ -48,6 +48,18 @@ Format: Date | Decision | Reasoning | Alternatives
 
 ---
 
+## 2026-06-10 | Defer Module 10 notification dispatch to dedicated sprint
+
+**Decision:** Do NOT implement announcement-to-notification dispatch now. Record as deferred tech debt.
+
+**Why:** `AnnouncementServiceImpl.publishAnnouncement()` was intentionally stubbed ("Module 10"). Wiring it during form-feedback cluster work would be scope creep. CTO must approve scope before implementation — three interconnected breaks (dispatch, bell unread count, announcement body render + per-user isRead) make it a proper feature sprint, not a one-liner.
+
+**Full trace:** `reports/publish-notification-trace.md`
+
+**Publish toast corrected (2065821):** Changed `usePublishAnnouncement` `meta.successMessage` from "Đã đăng thông báo tới cư dân." to "Đã đăng thông báo." — must not claim residents were notified until dispatch is implemented.
+
+---
+
 ## 2026-06-09 | Form-feedback standard + distinct dup-code finding
 
 **Decision:** All forms in both apps follow one standard: validation/server errors → VN inline message below field; success → toast. No mixed patterns.

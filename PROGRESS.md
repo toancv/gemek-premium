@@ -35,10 +35,25 @@ Forms: admin Login, resident Login, resident Change Password, resident Book Amen
 3. **Toast positioning:** Toast container uses `fixed left-1/2 -translate-x-1/2` (viewport-centered). Do NOT revert to `fixed right-4` (viewport-right) — breaks resident narrow column. Do NOT add `position:relative` wrapper — fixed ignores it.
 4. **Login success = navigate only.** No toast on successful login. All other mutations: success → toast.
 
+## ⚠️ DEFERRED — Module 10 notification dispatch
+
+**Full trace:** `reports/publish-notification-trace.md`
+
+`AnnouncementServiceImpl.publishAnnouncement()` does NOT create notification rows — dispatch is a stub (class-level Javadoc: "full dispatch wired in Module 10"). `NotificationService.createNotification()` is fully implemented but never called from the publish path.
+
+**Three secondary breaks that also need fixing in the same sprint:**
+1. Bell unread badge: `useNotifications()` returns `PageResponse` (no `unreadCount`); `/notifications/unread-count` endpoint exists but is never called by resident Layout.
+2. Announcement content not rendered: `AnnouncementsPage` (resident) shows title only — `a.content` not in JSX; no detail route.
+3. Per-user `isRead` missing from `AnnouncementResponse`: DTO has `readByCount` (aggregate) but no individual `isRead`; unread highlight always fires.
+
+**CTO decision required before implementation.** Options in trace report (Option A full fix ~4h, B partial, C defer).
+
+---
+
 ### Cluster 2 — IN PROGRESS (2026-06-10)
 
 **Authoritative plan:** `reports/form-feedback-survey.md`
-**Next item:** next form after AnnouncementsPage in `reports/form-feedback-survey.md`
+**Next item:** cluster 3 — open `reports/form-feedback-survey.md`, work through remaining deviating forms in priority order after cluster 2
 
 **Admin toast position fixed (0da5f4c):** `Toaster` gained optional `position` prop (`"center"` default | `"top-right"`). Admin passes `position="top-right"`; resident unchanged. Both tsc+vite builds pass. Browser-verify deferred to CTO.
 

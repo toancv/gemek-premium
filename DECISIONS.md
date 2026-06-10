@@ -479,6 +479,16 @@ Step 4 changes (e1e2d14 feat + bb4fe47 test):
 
 ---
 
+## 2026-06-10 | #20 Mark Announcement Read — intentional silent (no success/error toast)
+
+**Decision:** `useMarkAnnouncementRead` keeps `meta: { skipSuccessToast: true }` and no `skipErrorToast`. No component-level error handling added. A comment was added to `AnnouncementsPage.tsx` at the call site to document intent.
+
+**Why:** Read-marking is a best-effort background UX action — it happens on tap/click as a side effect of viewing. Showing a "marked as read" toast would be intrusive noise. If it silently fails (network error), the visual unread indicator remains and the user can re-tap. The global error toast (from MutationCache) is acceptable as a rare edge-case signal; no inline try/catch needed.
+
+**How to apply:** Any future "background UX" mutation (e.g. auto-save draft, implicit tracking) should follow this pattern: fire-and-forget, no success toast, global error toast only, comment at call site.
+
+---
+
 ## CTO Overrides
 _(record when CTO overrides agent decision)_
 

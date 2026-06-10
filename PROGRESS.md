@@ -1,6 +1,6 @@
 # PROGRESS — Apartment Management System
 
-## 🔄 IN PROGRESS — Form-Feedback Standardization (2026-06-09)
+## ✅ COMPLETE — Form-Feedback Standardization (2026-06-10)
 
 **Standard:** All forms → errors = VN inline by BE error CODE (never raw serverMsg); success = toast.
 
@@ -70,7 +70,15 @@ Forms: admin Login, resident Login, resident Change Password, resident Book Amen
 
 **Admin form-feedback COMPLETE — forms #1–#18 all standardized.**
 
-**Next item:** cluster 8 = resident remaining forms #20, #22, #23, #24, #25 per `reports/form-feedback-survey.md`
+**Done in cluster 8 (2026-06-10):**
+- AnnouncementsPage (#20 Mark Read) — intentional-silent comment added; no functional change (fire-and-forget UX, silent by design).
+- MyBookingsPage (#22 Cancel Booking) — `getVnErrorMessage` inline error added; `handleCancel` async with VN confirm; success toast was already working via `meta.successMessage: 'Đã hủy đặt chỗ'`.
+- MyTicketsPage (#23 Create Ticket) — `meta.successMessage: 'Đã gửi yêu cầu.'` added to hook; catch fixed to `getVnErrorMessage(err?.response?.data?.error)`.
+- MyVehiclesPage (#24 Register Vehicle) — `meta.successMessage: 'Đã đăng ký phương tiện.'` added to hook; HTTP-409-status hardcode replaced with `getVnErrorMessage(err?.response?.data?.error)`.
+- ParkingPage (#25 Log Guest Vehicle) — `meta.successMessage: 'Đã ghi nhận xe khách.'` added; catch + validation error → `getVnErrorMessage`; all English form strings translated to VN.
+- Commit: 77b9cae. BE tests: 8/8 (ParkingControllerTest). Resident tsc+vite build clean.
+
+**ALL 27 FORMS COMPLETE. Form-feedback standardization DONE.**
 
 **Admin toast position fixed (0da5f4c):** `Toaster` gained optional `position` prop (`"center"` default | `"top-right"`). Admin passes `position="top-right"`; resident unchanged.
 
@@ -90,6 +98,8 @@ Generic codes reused for context-specific cases — surfacing as less-specific V
 | assignSlot (parking) | `CONFLICT` | slot status ≠ AVAILABLE | `SLOT_NOT_AVAILABLE` |
 | assignSlot (parking) | `CONFLICT` | slot already has active assignment | `SLOT_ALREADY_ASSIGNED` |
 | assignTicket | `VALIDATION_ERROR` | both assignedToUserId + assignedToContractorId set | `BOTH_ASSIGNEES_SET` |
+| cancelBooking | `CONFLICT` | booking status ≠ PENDING | `BOOKING_NOT_CANCELLABLE` |
+| cancelBooking | `CONFLICT` | booking date is in the past | `BOOKING_DATE_PAST` |
 
 ---
 
@@ -97,7 +107,7 @@ Generic codes reused for context-specific cases — surfacing as less-specific V
 
 Apply per-form: `getVnErrorMessage(err?.response?.data?.error)` for errors; `meta: { successMessage: 'VN msg' }` for success; remove raw `.message` echoing; remove English fallback strings.
 
-**Resume pointer:** Open `reports/form-feedback-survey.md` → cluster 7 = admin VehiclesPage #18.
+**Resume pointer:** Form-feedback standardization COMPLETE (all 27 forms). Next on-deck: DEFERRED items (Module 10 notification dispatch, TEMP_HIDDEN_DEFERRED guards, code-split candidates above). CTO browser smoke-verify pending for clusters 6, 7, 8 (`docker compose up -d --build nginx`).
 
 ---
 

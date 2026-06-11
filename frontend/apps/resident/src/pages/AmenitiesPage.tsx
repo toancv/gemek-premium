@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { toast, getVnErrorMessage } from '@gemek/ui';
+import { toast, getVnErrorMessage, VNDatePicker } from '@gemek/ui';
 import { useAmenities, useCreateBooking } from '../api/hooks';
 import { t } from '../i18n/vi';
 
@@ -9,13 +9,15 @@ export function AmenitiesPage() {
   const [selected, setSelected] = useState<any>(null);
   const [formError, setFormError] = useState('');
   const [success, setSuccess] = useState(false);
+  // ISO yyyy-mm-dd state — VNDatePicker shows dd/mm but the payload stays ISO
+  const [bookingDate, setBookingDate] = useState('');
 
   const handleBook = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormError('');
     setSuccess(false);
     const fd = new FormData(e.target as HTMLFormElement);
-    const bookingDate = fd.get('bookingDate') as string;
+    // bookingDate now comes from controlled ISO state (VNDatePicker), not FormData
     const startTime = fd.get('startTime') as string;
     const endTime = fd.get('endTime') as string;
     if (!bookingDate || !startTime || !endTime) { setFormError('Vui lòng chọn ngày, giờ bắt đầu và giờ kết thúc'); return; }
@@ -42,7 +44,7 @@ export function AmenitiesPage() {
                 <p className="text-xs text-gray-500 mt-1">{t('amenities.capacity')} {a.capacity} • {a.openingTime} - {a.closingTime}</p>
                 {a.requiresApproval && <p className="text-xs text-orange-500 mt-0.5">{t('amenities.requiresApproval')}</p>}
               </div>
-              <button onClick={() => { setSelected(a); setFormError(''); setSuccess(false); }}
+              <button onClick={() => { setSelected(a); setBookingDate(''); setFormError(''); setSuccess(false); }}
                 className="bg-blue-600 text-white px-3 py-1.5 rounded-lg text-sm font-medium flex-shrink-0">{t('amenities.book')}</button>
             </div>
           </div>
@@ -63,7 +65,7 @@ export function AmenitiesPage() {
             ) : (
               <form onSubmit={handleBook} className="space-y-3">
                 <div><label className="block text-sm font-medium text-gray-700 mb-1">{t('amenities.date')} <span className="text-red-500">*</span></label>
-                  <input name="bookingDate" type="date" min={new Date().toISOString().split('T')[0]} className="block w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm" /></div>
+                  <VNDatePicker value={bookingDate} onChange={setBookingDate} min={new Date().toISOString().split('T')[0]} /></div>
                 <div className="grid grid-cols-2 gap-3">
                   <div><label className="block text-sm font-medium text-gray-700 mb-1">{t('amenities.start')} <span className="text-red-500">*</span></label>
                     <input name="startTime" type="time" min={selected.openingTime} max={selected.closingTime} className="block w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm" /></div>

@@ -1,6 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import { useParkingSlots, useGuestVehicles, useCreateParkingAssignment, useEndParkingAssignment } from '../api/hooks';
-import { SearchableSelect, getVnErrorMessage, labelFor, formatVNDateTime } from '@gemek/ui';
+import { SearchableSelect, getVnErrorMessage, labelFor, formatVNDateTime, VNDatePicker } from '@gemek/ui';
 import type { SearchableOption } from '@gemek/ui';
 import { apiClient } from '../api/client';
 import { t } from '../i18n/vi';
@@ -20,6 +20,8 @@ export function ParkingPage() {
   const [endError, setEndError] = useState('');
   const [assignApartmentId, setAssignApartmentId] = useState('');
   const [assignVehicleId, setAssignVehicleId] = useState('');
+  // ISO yyyy-mm-dd state — VNDatePicker shows dd/mm but the payload stays ISO
+  const [startDate, setStartDate] = useState('');
 
   const { data: slotsData, isLoading } = useParkingSlots({ size: 50, ...(type && { type }), ...(status && { status }) });
   const { data: guestsData, isLoading: gLoading } = useGuestVehicles({ size: 50 });
@@ -30,6 +32,7 @@ export function ParkingPage() {
     setShowAssign(null);
     setAssignApartmentId('');
     setAssignVehicleId('');
+    setStartDate('');
     setFormError('');
   };
 
@@ -62,7 +65,7 @@ export function ParkingPage() {
     e.preventDefault();
     setFormError('');
     const fd = new FormData(e.target as HTMLFormElement);
-    const startDate = fd.get('startDate') as string;
+    // startDate now comes from controlled ISO state (VNDatePicker), not FormData
     if (!assignVehicleId || !assignApartmentId || !startDate) {
       setFormError('Vui lòng chọn căn hộ, phương tiện và ngày bắt đầu.');
       return;
@@ -207,7 +210,7 @@ export function ParkingPage() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">{t('parking.startDate')} <span className="text-red-500">*</span></label>
-                <input name="startDate" type="date" className="block w-full border border-gray-300 rounded-md px-3 py-2 text-sm" />
+                <VNDatePicker value={startDate} onChange={setStartDate} />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">{t('parking.cardNumber')}</label>

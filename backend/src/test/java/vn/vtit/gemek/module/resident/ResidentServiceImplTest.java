@@ -23,6 +23,7 @@ import vn.vtit.gemek.module.resident.dto.ResidentResponse;
 import vn.vtit.gemek.module.resident.entity.Resident;
 import vn.vtit.gemek.module.resident.entity.ResidentType;
 import vn.vtit.gemek.module.resident.mapper.ResidentMapper;
+import vn.vtit.gemek.module.notification.repository.NotificationRepository;
 import vn.vtit.gemek.module.resident.repository.ResidentHistoryRepository;
 import vn.vtit.gemek.module.resident.repository.ResidentRepository;
 import vn.vtit.gemek.module.user.entity.User;
@@ -58,6 +59,7 @@ class ResidentServiceImplTest {
     @Mock private UserRepository userRepository;
     @Mock private ResidentMapper residentMapper;
     @Mock private PasswordEncoder passwordEncoder;
+    @Mock private NotificationRepository notificationRepository;
 
     private ResidentServiceImpl service;
 
@@ -73,7 +75,7 @@ class ResidentServiceImplTest {
         service = new ResidentServiceImpl(
                 residentRepository, historyRepository,
                 apartmentRepository, userRepository,
-                residentMapper, passwordEncoder);
+                residentMapper, passwordEncoder, notificationRepository);
 
         userId = UUID.randomUUID();
         apartmentId = UUID.randomUUID();

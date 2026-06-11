@@ -25,12 +25,17 @@ import vn.vtit.gemek.module.announcement.repository.AnnouncementRepository;
 import vn.vtit.gemek.module.apartment.entity.Apartment;
 import vn.vtit.gemek.module.apartment.entity.Block;
 import vn.vtit.gemek.module.apartment.repository.BlockRepository;
+import vn.vtit.gemek.module.notification.entity.Notification;
+import vn.vtit.gemek.module.notification.entity.NotificationType;
+import vn.vtit.gemek.module.notification.repository.NotificationRepository;
 import vn.vtit.gemek.module.resident.entity.Resident;
 import vn.vtit.gemek.module.resident.repository.ResidentRepository;
 import vn.vtit.gemek.module.user.entity.User;
 import vn.vtit.gemek.module.user.repository.UserRepository;
 
 import java.time.OffsetDateTime;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -53,6 +58,7 @@ public class AnnouncementServiceImpl implements AnnouncementService {
     private final BlockRepository blockRepository;
     private final UserRepository userRepository;
     private final ResidentRepository residentRepository;
+    private final NotificationRepository notificationRepository;
 
     /**
      * Constructs the service with all required dependencies via constructor injection.
@@ -62,17 +68,20 @@ public class AnnouncementServiceImpl implements AnnouncementService {
      * @param blockRepository            the block JPA repository.
      * @param userRepository             the user JPA repository.
      * @param residentRepository         the resident JPA repository.
+     * @param notificationRepository     the notification JPA repository for publish dispatch.
      */
     public AnnouncementServiceImpl(AnnouncementRepository announcementRepository,
                                    AnnouncementReadRepository announcementReadRepository,
                                    BlockRepository blockRepository,
                                    UserRepository userRepository,
-                                   ResidentRepository residentRepository) {
+                                   ResidentRepository residentRepository,
+                                   NotificationRepository notificationRepository) {
         this.announcementRepository = announcementRepository;
         this.announcementReadRepository = announcementReadRepository;
         this.blockRepository = blockRepository;
         this.userRepository = userRepository;
         this.residentRepository = residentRepository;
+        this.notificationRepository = notificationRepository;
     }
 
     // =========================================================================
@@ -251,8 +260,13 @@ public class AnnouncementServiceImpl implements AnnouncementService {
     /**
      * {@inheritDoc}
      *
-     * <p>Sets {@code publishedAt} to now. Full notification dispatch is deferred to Module 10;
-     * this method logs the intent at INFO level as a stub.
+     * <p>Publishes via an atomic compare-and-set on {@code publishedAt}, then creates
+     * in-app notification rows for all scoped recipients inside the same transaction —
+     * a publish either fully happened (visible in feed AND rows exist) or rolled back.
+     * Already-published (or concurrently published) announcements yield 409 CONFLICT.
+     * External push/email/SMS delivery remains stubbed (logged at INFO only).
+     *
+     * @throws AppException CONFLICT when the announcement is already published.
      */
     @Override
     @Transactional
@@ -261,21 +275,26 @@ public class AnnouncementServiceImpl implements AnnouncementService {
 
         Announcement announcement = requireAnnouncement(id);
 
-        // Idempotent: already published announcements are returned without error.
-        if (announcement.getPublishedAt() != null) {
-            log.debug("publishAnnouncement — id={} already published, returning as-is.", id);
-            return toResponse(announcement);
+        // Single CAS guard: only the request that flips publishedAt NULL→now may dispatch.
+        // Row-count 0 means already published or lost a concurrent race — both are 409.
+        OffsetDateTime now = OffsetDateTime.now();
+        int won = announcementRepository.publishIfDraft(id, now);
+        if (won == 0) {
+            throw new AppException(ErrorCode.CONFLICT, "Announcement already published.");
         }
 
-        announcement.setPublishedAt(OffsetDateTime.now());
-        Announcement saved = announcementRepository.save(announcement);
+        // The CAS update bypasses the persistence context — sync the managed entity
+        // with the same timestamp instead of re-reading the row.
+        announcement.setPublishedAt(now);
 
-        // Stub: log delivery intent. Full push/email/SMS dispatch wired in Module 10.
+        dispatchInAppNotifications(announcement);
+
+        // Stub: log external delivery intent. Push/email/SMS dispatch is a future sprint.
         log.info("Announcement {} published by {}. Delivery channels — push={}, email={}, sms={}.",
-                saved.getId(), principalId,
-                saved.isSendPush(), saved.isSendEmail(), saved.isSendSms());
+                announcement.getId(), principalId,
+                announcement.isSendPush(), announcement.isSendEmail(), announcement.isSendSms());
 
-        return toResponse(saved);
+        return toResponse(announcement);
     }
 
     /**
@@ -348,6 +367,43 @@ public class AnnouncementServiceImpl implements AnnouncementService {
     // =========================================================================
     // Private helpers
     // =========================================================================
+
+    /**
+     * Creates one in-app notification row per scoped recipient in a single batched insert.
+     *
+     * <p>Recipients come from {@code ResidentRepository.findRecipientUserIds} — the single
+     * source of the ALL/BLOCK/FLOOR audience rule (mirrors the resident feed predicate,
+     * guarded by {@code AnnouncementRecipientConsistencyTest}). User FKs are attached via
+     * {@code getReferenceById} so no per-recipient SELECT is issued; {@code saveAll} flushes
+     * as batched INSERTs ({@code hibernate.jdbc.batch_size}).
+     *
+     * @param announcement the just-published announcement (publishedAt already set).
+     */
+    private void dispatchInAppNotifications(Announcement announcement) {
+        UUID targetBlockId = announcement.getTargetBlock() != null
+                ? announcement.getTargetBlock().getId()
+                : null;
+
+        List<UUID> recipientIds = residentRepository.findRecipientUserIds(
+                announcement.getScope(), targetBlockId, announcement.getTargetFloor());
+
+        List<Notification> batch = new ArrayList<>(recipientIds.size());
+        // Build the full batch in memory, then one saveAll — no logging or I/O in the loop.
+        for (UUID userId : recipientIds) {
+            Notification notification = new Notification();
+            notification.setUser(userRepository.getReferenceById(userId));
+            notification.setTitle(announcement.getTitle());
+            notification.setBody("Có thông báo mới: " + announcement.getTitle());
+            notification.setType(NotificationType.ANNOUNCEMENT_PUBLISHED);
+            notification.setReferenceId(announcement.getId());
+            notification.setReferenceType("Announcement");
+            batch.add(notification);
+        }
+        notificationRepository.saveAll(batch);
+
+        log.info("Announcement {} dispatched as in-app notifications to {} recipients.",
+                announcement.getId(), batch.size());
+    }
 
     /**
      * Loads an announcement by ID or throws NOT_FOUND.

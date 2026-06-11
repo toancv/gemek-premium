@@ -34,6 +34,9 @@ spring:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
         format_sql: false
+        jdbc:
+          batch_size: 50
+        order_inserts: true
         type:
           preferred_enum_jdbc_type: NAMED_ENUM
     show-sql: false

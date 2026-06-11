@@ -8,11 +8,13 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import vn.vtit.gemek.module.announcement.entity.Announcement;
 
+import java.time.OffsetDateTime;
 import java.util.UUID;
 
 /**
@@ -52,4 +54,20 @@ public interface AnnouncementRepository extends JpaRepository<Announcement, UUID
             @Param("blockId") UUID blockId,
             @Param("floor") short floor,
             Pageable pageable);
+
+    /**
+     * Atomically publishes a draft announcement (compare-and-set on {@code publishedAt}).
+     *
+     * <p>Returns 1 only for the single request that transitions the row from draft to
+     * published; any concurrent or repeated call sees 0 because the row no longer matches
+     * {@code publishedAt IS NULL}. This row-count is the sole already-published / race
+     * guard for the publish endpoint — callers map 0 to 409 CONFLICT.
+     *
+     * @param id  the announcement UUID to publish.
+     * @param now the publish timestamp to set.
+     * @return number of rows updated — 1 if this call won the publish, 0 otherwise.
+     */
+    @Modifying
+    @Query("UPDATE Announcement a SET a.publishedAt = :now WHERE a.id = :id AND a.publishedAt IS NULL")
+    int publishIfDraft(@Param("id") UUID id, @Param("now") OffsetDateTime now);
 }

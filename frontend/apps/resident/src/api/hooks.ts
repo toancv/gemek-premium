@@ -94,7 +94,7 @@ export const useNotifications = () =>
 export const useMarkAllRead = () => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: () => put('/notifications/read-all'),
+    mutationFn: () => post('/notifications/read-all'),
     meta: { skipSuccessToast: true },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['notifications'] }),
   });

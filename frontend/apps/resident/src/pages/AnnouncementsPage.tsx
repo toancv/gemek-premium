@@ -1,7 +1,7 @@
 import React from 'react';
 import { useAnnouncements, useMarkAnnouncementRead } from '../api/hooks';
 import { t } from '../i18n/vi';
-import { labelFor } from '@gemek/ui';
+import { labelFor, formatVNDate } from '@gemek/ui';
 
 const TYPE_COLORS: Record<string, string> = {
   GENERAL: 'bg-blue-100 text-blue-700', URGENT: 'bg-red-100 text-red-700',
@@ -34,7 +34,7 @@ export function AnnouncementsPage() {
             </div>
             <div className="flex items-center justify-between text-xs text-gray-400">
               <span>{a.targetScope === 'ALL' ? t('announcements.everyone') : `${a.targetScope}${a.targetBlock ? ': ' + a.targetBlock.name : ''}`}</span>
-              <span>{a.publishedAt ? new Date(a.publishedAt).toLocaleDateString() : ''}</span>
+              <span>{a.publishedAt ? formatVNDate(a.publishedAt) : ''}</span>
             </div>
             {!a.isRead && <div className="w-2 h-2 rounded-full bg-blue-600 absolute top-4 left-4" />}
           </div>

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useParkingAssignments } from '../api/hooks';
 import { apiClient } from '../api/client';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { getVnErrorMessage, labelFor } from '@gemek/ui';
+import { getVnErrorMessage, labelFor, formatVNDate } from '@gemek/ui';
 import { t } from '../i18n/vi';
 
 export function ParkingPage() {
@@ -47,7 +47,7 @@ export function ParkingPage() {
                 <p>{t('parking.zone')} {a.parkingSlot?.zone ?? '—'} • {t('parking.type')} {a.parkingSlot?.type ? labelFor('VehicleType', a.parkingSlot.type) : '—'}</p>
                 <p>{t('parking.vehicle')} {a.vehicle?.licensePlate ?? '—'}</p>
                 <p>{t('parking.card')} {a.parkingCardNumber ?? '—'}</p>
-                <p>{t('parking.since')} {a.startDate}</p>
+                <p>{t('parking.since')} {formatVNDate(a.startDate)}</p>
               </div>
             </div>
           ))}

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useMyBookings, useCancelBooking } from '../api/hooks';
-import { getVnErrorMessage, labelFor } from '@gemek/ui';
+import { getVnErrorMessage, labelFor, formatVNDate } from '@gemek/ui';
 import { t } from '../i18n/vi';
 
 const STATUS_BG: Record<string, string> = {
@@ -41,7 +41,7 @@ export function MyBookingsPage() {
             <div className="flex items-start justify-between gap-2">
               <div>
                 <p className="font-semibold text-gray-900">{b.amenity?.name}</p>
-                <p className="text-sm text-gray-500 mt-0.5">{b.bookingDate} • {b.startTime} - {b.endTime}</p>
+                <p className="text-sm text-gray-500 mt-0.5">{formatVNDate(b.bookingDate)} • {b.startTime} - {b.endTime}</p>
               </div>
               <span className={`flex-shrink-0 text-xs px-2 py-0.5 rounded-full ${STATUS_BG[b.status] ?? 'bg-gray-100 text-gray-700'}`}>{labelFor('BookingStatus', b.status)}</span>
             </div>

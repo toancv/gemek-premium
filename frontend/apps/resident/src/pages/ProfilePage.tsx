@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { getVnErrorMessage } from '@gemek/ui';
+import { getVnErrorMessage, formatVNDateTime } from '@gemek/ui';
 import { useAuthStore } from '../store/authStore';
 import { useMe, useChangePassword } from '../api/hooks';
 import { t } from '../i18n/vi';
@@ -47,7 +47,7 @@ export function ProfilePage() {
           <div className="flex gap-2"><span className="text-gray-500 w-20">{t('profile.role')}</span><span className="font-medium">{user?.role}</span></div>
           {me?.phone && <div className="flex gap-2"><span className="text-gray-500 w-20">Số điện thoại:</span><span>{me.phone}</span></div>}
           {me?.email && <div className="flex gap-2"><span className="text-gray-500 w-20">Email:</span><span>{me.email}</span></div>}
-          {me?.lastLoginAt && <div className="flex gap-2"><span className="text-gray-500 w-20">{t('profile.lastLogin')}</span><span>{new Date(me.lastLoginAt).toLocaleString()}</span></div>}
+          {me?.lastLoginAt && <div className="flex gap-2"><span className="text-gray-500 w-20">{t('profile.lastLogin')}</span><span>{formatVNDateTime(me.lastLoginAt)}</span></div>}
         </div>
       </div>
 

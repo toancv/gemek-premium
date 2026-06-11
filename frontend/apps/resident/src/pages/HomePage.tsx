@@ -4,7 +4,7 @@ import { useAuthStore } from '../store/authStore';
 // TEMP_HIDDEN_DEFERRED: useMyBookings removed from import — bookings feature deferred, see PROGRESS.md
 import { useMyTickets, useAnnouncements, useMe } from '../api/hooks';
 import { t } from '../i18n/vi';
-import { labelFor } from '@gemek/ui';
+import { labelFor, formatVNDate } from '@gemek/ui';
 
 export function HomePage() {
   const user = useAuthStore((s) => s.user);
@@ -51,7 +51,7 @@ export function HomePage() {
                 <p className="font-medium text-gray-900 text-sm">{a.title}</p>
                 <span className={`flex-shrink-0 text-xs px-2 py-0.5 rounded-full ${a.type === 'URGENT' ? 'bg-red-100 text-red-600' : 'bg-blue-100 text-blue-600'}`}>{labelFor('AnnouncementType', a.type)}</span>
               </div>
-              <p className="text-xs text-gray-400 mt-1">{a.publishedAt ? new Date(a.publishedAt).toLocaleDateString() : ''}</p>
+              <p className="text-xs text-gray-400 mt-1">{a.publishedAt ? formatVNDate(a.publishedAt) : ''}</p>
             </Link>
           ))}
         </div>

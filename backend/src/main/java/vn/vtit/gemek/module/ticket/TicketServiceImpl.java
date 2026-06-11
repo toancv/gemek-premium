@@ -76,6 +76,15 @@ public class TicketServiceImpl implements TicketService {
     /** Reference-type label for ticket notifications and thread subscriptions. */
     private static final String TICKET_REFERENCE_TYPE = "Ticket";
 
+    /** List-visibility filter value: caller's own household tickets only (default). */
+    private static final String VISIBILITY_MINE = "mine";
+
+    /** List-visibility filter value: public (community) tickets only. */
+    private static final String VISIBILITY_COMMUNITY = "community";
+
+    /** Placeholder shown instead of the submitter's name on redacted public views (G8). */
+    private static final String REDACTED_SUBMITTER_LABEL = "Cư dân";
+
     /** Maximum number of files allowed per upload request. */
     private static final int MAX_FILES_PER_UPLOAD = 5;
 
@@ -177,15 +186,36 @@ public class TicketServiceImpl implements TicketService {
      */
     @Override
     public PageResponse<TicketSummaryResponse> listTickets(UUID principalId, String role,
+                                                           String visibility,
                                                            List<TicketStatus> statuses,
                                                            TicketCategory category,
                                                            TicketPriority priority,
                                                            UUID apartmentId,
                                                            Pageable pageable) {
-        log.debug("listTickets — role={}, statuses={}, category={}", role, statuses, category);
+        log.debug("listTickets — role={}, visibility={}, statuses={}, category={}",
+                role, visibility, statuses, category);
 
-        Specification<Ticket> spec = buildScopeSpec(principalId, role)
+        // Reject unknown visibility values early; null defaults to "mine" semantics.
+        if (visibility != null && !VISIBILITY_MINE.equals(visibility)
+                && !VISIBILITY_COMMUNITY.equals(visibility)) {
+            throw new AppException(ErrorCode.VALIDATION_ERROR,
+                    "visibility must be 'mine' or 'community'.");
+        }
+
+        Specification<Ticket> spec = buildScopeSpec(principalId, role, visibility)
                 .and(buildFilterSpec(statuses, category, priority, apartmentId));
+
+        // RESIDENT rows outside the caller's own household can only be public tickets;
+        // their summaries are redacted (G8) so the list cannot leak what the detail hides.
+        if ("RESIDENT".equals(role)) {
+            UUID myApartmentId = residentRepository.findActiveByUserId(principalId)
+                    .map(resident -> resident.getApartment().getId())
+                    .orElse(null);
+            Page<TicketSummaryResponse> page = ticketRepository.findAll(spec, pageable)
+                    .map(ticket -> ticket.getApartment().getId().equals(myApartmentId)
+                            ? toSummary(ticket) : toRedactedSummary(ticket));
+            return PageResponse.of(page);
+        }
 
         Page<TicketSummaryResponse> page = ticketRepository.findAll(spec, pageable)
                 .map(this::toSummary);
@@ -201,6 +231,12 @@ public class TicketServiceImpl implements TicketService {
 
         Ticket ticket = requireTicket(id);
         enforceReadAccess(ticket, principalId, role);
+
+        // G8: a resident outside the ticket's household can only be here because the
+        // ticket is public — they get the redacted view, never the full mapping.
+        if ("RESIDENT".equals(role) && !isHouseholdMember(ticket, principalId)) {
+            return toRedactedDetail(ticket);
+        }
 
         // SEC-03/SEC-08: strip submitter phone for roles without PII entitlement.
         boolean includePhone = !"TECHNICIAN".equals(role) && !"BOARD_MEMBER".equals(role);
@@ -327,6 +363,8 @@ public class TicketServiceImpl implements TicketService {
         ticket.setDescription(req.getDescription());
         ticket.setStatus(TicketStatus.NEW);
         ticket.setPriority(req.getPriority() != null ? req.getPriority() : TicketPriority.MEDIUM);
+        // G3: community visibility is chosen once at creation and immutable afterwards.
+        ticket.setPublic(Boolean.TRUE.equals(req.getIsPublic()));
 
         // Compute SLA deadline from category; SUGGESTION_FEEDBACK has no SLA.
         Integer slaHours = SLA_HOURS.get(req.getCategory());
@@ -716,7 +754,10 @@ public class TicketServiceImpl implements TicketService {
         TicketPhoto photo = photoRepository.findByFileUrl(fileUrl)
                 .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND,
                         "No photo record found for the requested key."));
-        enforceReadAccess(photo.getTicket(), principalId, role);
+        // F-05 gate: photos keep the strict household/staff rule. Deliberately NOT
+        // delegating to enforceReadAccess — its public-ticket bypass must never
+        // widen the presign surface (G8).
+        enforcePhotoAccess(photo.getTicket(), principalId, role);
     }
 
     // =========================================================================
@@ -748,6 +789,10 @@ public class TicketServiceImpl implements TicketService {
      */
     private void enforceReadAccess(Ticket ticket, UUID principalId, String role) {
         if ("RESIDENT".equals(role)) {
+            // Public tickets are readable by every resident (redacted upstream, G8).
+            if (ticket.isPublic()) {
+                return;
+            }
             Resident activeResident = residentRepository.findActiveByUserId(principalId)
                     .orElseThrow(() -> new AppException(ErrorCode.FORBIDDEN,
                             "No active resident record for this user."));
@@ -768,19 +813,69 @@ public class TicketServiceImpl implements TicketService {
     }
 
     /**
+     * Enforces photo (presign) access with the strict pre-P5 rule: RESIDENT must
+     * belong to the ticket's household — a public flag grants NO photo access.
+     *
+     * <p>Kept separate from {@link #enforceReadAccess} on purpose: photos can show
+     * the inside of a home, and the presign surface must not widen before F-05
+     * (IDOR hardening) lands. Do not merge these two methods.
+     *
+     * @param ticket      the ticket owning the photo.
+     * @param principalId the caller's UUID.
+     * @param role        the caller's role string.
+     */
+    private void enforcePhotoAccess(Ticket ticket, UUID principalId, String role) {
+        if ("RESIDENT".equals(role)) {
+            Resident activeResident = residentRepository.findActiveByUserId(principalId)
+                    .orElseThrow(() -> new AppException(ErrorCode.FORBIDDEN,
+                            "No active resident record for this user."));
+            if (!activeResident.getApartment().getId().equals(ticket.getApartment().getId())) {
+                throw new AppException(ErrorCode.FORBIDDEN,
+                        "Access denied to this ticket.");
+            }
+        } else if ("TECHNICIAN".equals(role)) {
+            boolean isAssigned = ticket.getAssignedToUser() != null
+                    && ticket.getAssignedToUser().getId().equals(principalId);
+            boolean isNew = ticket.getStatus() == TicketStatus.NEW;
+            if (!isAssigned && !isNew) {
+                throw new AppException(ErrorCode.FORBIDDEN,
+                        "Technicians may only view tickets assigned to them or with NEW status.");
+            }
+        }
+        // ADMIN and BOARD_MEMBER: no restriction.
+    }
+
+    /**
+     * Returns whether the caller is an active resident of the ticket's apartment.
+     *
+     * @param ticket      the ticket to check.
+     * @param principalId the caller's UUID.
+     * @return {@code true} when the caller's active residency matches the ticket's apartment.
+     */
+    private boolean isHouseholdMember(Ticket ticket, UUID principalId) {
+        return residentRepository.findActiveByUserId(principalId)
+                .map(resident -> resident.getApartment().getId()
+                        .equals(ticket.getApartment().getId()))
+                .orElse(false);
+    }
+
+    /**
      * Builds a role-scoped {@link Specification} that restricts the visible ticket set.
      *
      * <ul>
-     *   <li>ADMIN / BOARD_MEMBER — no scope restriction.</li>
-     *   <li>TECHNICIAN — assigned to principal OR status is NEW.</li>
-     *   <li>RESIDENT — apartment matches the principal's active apartment.</li>
+     *   <li>ADMIN / BOARD_MEMBER — no scope restriction; {@code visibility} ignored.</li>
+     *   <li>TECHNICIAN — assigned to principal OR status is NEW; {@code visibility} ignored.</li>
+     *   <li>RESIDENT — {@code null}/"mine": apartment matches the principal's active
+     *       apartment (pre-P5 behavior, keeps the existing FE unchanged);
+     *       "community": public tickets only.</li>
      * </ul>
      *
      * @param principalId the caller's UUID.
      * @param role        the caller's role string.
+     * @param visibility  optional list filter ("mine" | "community"); validated by the caller.
      * @return the scope specification.
      */
-    private Specification<Ticket> buildScopeSpec(UUID principalId, String role) {
+    private Specification<Ticket> buildScopeSpec(UUID principalId, String role, String visibility) {
         if ("TECHNICIAN".equals(role)) {
             return (root, query, cb) -> cb.or(
                     cb.equal(root.get("assignedToUser").get("id"), principalId),
@@ -788,7 +883,11 @@ public class TicketServiceImpl implements TicketService {
             );
         }
         if ("RESIDENT".equals(role)) {
-            // Resolve active apartment once; if none exists scope to an impossible condition.
+            // Community tab: every public ticket, regardless of household.
+            if (VISIBILITY_COMMUNITY.equals(visibility)) {
+                return (root, query, cb) -> cb.isTrue(root.get("isPublic"));
+            }
+            // Default ("mine"): own household only — identical to pre-P5 scoping.
             return (root, query, cb) -> {
                 java.util.Optional<Resident> residentOpt =
                         residentRepository.findActiveByUserId(principalId);
@@ -914,6 +1013,38 @@ public class TicketServiceImpl implements TicketService {
                 .slaDeadline(ticket.getSlaDeadline())
                 .slaBreached(isSlaBreached(ticket))
                 .rating(ticket.getRating())
+                .isPublic(ticket.isPublic())
+                .createdAt(ticket.getCreatedAt())
+                .updatedAt(ticket.getUpdatedAt())
+                .build();
+    }
+
+    /**
+     * Maps a public ticket to a redacted {@link TicketSummaryResponse} for residents
+     * outside the ticket's household (G8): submitter shown as the «Cư dân» placeholder,
+     * apartment reduced to the block name, assignee identities hidden.
+     *
+     * @param ticket the public ticket entity.
+     * @return the redacted summary DTO.
+     */
+    private TicketSummaryResponse toRedactedSummary(Ticket ticket) {
+        return TicketSummaryResponse.builder()
+                .id(ticket.getId())
+                .apartment(TicketSummaryResponse.ApartmentRef.builder()
+                        .block(TicketSummaryResponse.BlockRef.builder()
+                                .name(ticket.getApartment().getBlock().getName())
+                                .build())
+                        .build())
+                .submittedBy(TicketSummaryResponse.UserRef.builder()
+                        .fullName(REDACTED_SUBMITTER_LABEL)
+                        .build())
+                .category(ticket.getCategory())
+                .title(ticket.getTitle())
+                .status(ticket.getStatus())
+                .priority(ticket.getPriority())
+                .slaDeadline(ticket.getSlaDeadline())
+                .slaBreached(isSlaBreached(ticket))
+                .isPublic(ticket.isPublic())
                 .createdAt(ticket.getCreatedAt())
                 .updatedAt(ticket.getUpdatedAt())
                 .build();
@@ -992,10 +1123,61 @@ public class TicketServiceImpl implements TicketService {
                 .rating(ticket.getRating())
                 .ratingComment(ticket.getRatingComment())
                 .resolutionNotes(ticket.getResolutionNotes())
+                .isPublic(ticket.isPublic())
                 .photos(photos)
                 .statusHistory(history)
                 .createdAt(ticket.getCreatedAt())
                 .updatedAt(ticket.getUpdatedAt())
+                .build();
+    }
+
+    /**
+     * Maps a public ticket to the redacted {@link TicketDetailResponse} returned to
+     * residents outside the ticket's household (G8).
+     *
+     * <p>Visible: title, description, category, status, priority, block name,
+     * createdAt, status-history timestamps + statuses, resolution notes.
+     * Hidden: submitter identity (placeholder «Cư dân», no phone), apartment unit
+     * number, assignee identities, photos (F-05 gate — never presigned here),
+     * status-history changedBy + notes, rating and its comment.
+     *
+     * @param ticket the public ticket entity.
+     * @return the redacted detail DTO.
+     */
+    private TicketDetailResponse toRedactedDetail(Ticket ticket) {
+        // History keeps only timestamps and statuses — no staff names, no notes.
+        List<TicketDetailResponse.StatusHistoryResponse> history = historyRepository
+                .findByTicketIdOrderByChangedAtAsc(ticket.getId())
+                .stream()
+                .map(h -> TicketDetailResponse.StatusHistoryResponse.builder()
+                        .id(h.getId())
+                        .oldStatus(h.getOldStatus())
+                        .newStatus(h.getNewStatus())
+                        .changedAt(h.getChangedAt())
+                        .build())
+                .toList();
+
+        return TicketDetailResponse.builder()
+                .id(ticket.getId())
+                .apartment(TicketDetailResponse.ApartmentRef.builder()
+                        .block(TicketDetailResponse.BlockRef.builder()
+                                .name(ticket.getApartment().getBlock().getName())
+                                .build())
+                        .build())
+                .submittedBy(TicketDetailResponse.SubmitterRef.builder()
+                        .fullName(REDACTED_SUBMITTER_LABEL)
+                        .build())
+                .category(ticket.getCategory())
+                .title(ticket.getTitle())
+                .description(ticket.getDescription())
+                .status(ticket.getStatus())
+                .priority(ticket.getPriority())
+                .slaBreached(isSlaBreached(ticket))
+                .resolutionNotes(ticket.getResolutionNotes())
+                .isPublic(ticket.isPublic())
+                .photos(List.of())
+                .statusHistory(history)
+                .createdAt(ticket.getCreatedAt())
                 .build();
     }
 

@@ -35,6 +35,9 @@ public interface TicketService {
      *
      * @param principalId UUID of the authenticated caller.
      * @param role        role string of the caller (e.g. {@code "ADMIN"}, {@code "RESIDENT"}).
+     * @param visibility  optional RESIDENT list filter: {@code null}/"mine" = own household
+     *                    (pre-P5 behavior), "community" = public tickets only (redacted rows
+     *                    outside the caller's household). Ignored for other roles.
      * @param statuses    optional status filter; {@code null} or empty list matches all statuses.
      * @param category    optional category filter.
      * @param priority    optional priority filter.
@@ -43,6 +46,7 @@ public interface TicketService {
      * @return paginated summary responses.
      */
     PageResponse<TicketSummaryResponse> listTickets(UUID principalId, String role,
+                                                    String visibility,
                                                     List<TicketStatus> statuses,
                                                     TicketCategory category,
                                                     TicketPriority priority,
@@ -143,9 +147,10 @@ public interface TicketService {
     /**
      * Asserts that the caller has read access to the ticket that owns the given photo key.
      *
-     * <p>Applies the same gate as {@code getTicketDetail}: RESIDENT may only access photos
-     * belonging to their own apartment's tickets; TECHNICIAN must be assigned or the ticket
-     * must be NEW; ADMIN and BOARD_MEMBER are unrestricted.
+     * <p>Strict household/staff rule: RESIDENT may only access photos belonging to their
+     * own apartment's tickets — a public ticket grants NO photo access (F-05 gate, G8);
+     * TECHNICIAN must be assigned or the ticket must be NEW; ADMIN and BOARD_MEMBER are
+     * unrestricted. Deliberately stricter than {@code getTicketDetail} read access.
      *
      * <p>Throws {@link vn.vtit.gemek.common.exception.AppException} with
      * {@link vn.vtit.gemek.common.exception.ErrorCode#FORBIDDEN} if access is denied,

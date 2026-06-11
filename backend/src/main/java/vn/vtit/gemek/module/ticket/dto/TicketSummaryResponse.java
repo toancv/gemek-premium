@@ -66,6 +66,9 @@ public class TicketSummaryResponse {
     /** Resident rating (1–5) after completion, or {@code null} if not yet rated. */
     private Short rating;
 
+    /** Creator-chosen community visibility flag (N3 P5). */
+    private Boolean isPublic;
+
     /** Record creation timestamp. */
     private OffsetDateTime createdAt;
 

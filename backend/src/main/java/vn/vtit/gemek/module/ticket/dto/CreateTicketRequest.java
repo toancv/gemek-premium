@@ -49,4 +49,11 @@ public class CreateTicketRequest {
      */
     @Builder.Default
     private TicketPriority priority = TicketPriority.MEDIUM;
+
+    /**
+     * Creator-chosen community visibility. Optional; {@code null} means private.
+     * Set once at creation — the flag is immutable afterwards (G3).
+     */
+    @Builder.Default
+    private Boolean isPublic = Boolean.FALSE;
 }

@@ -145,6 +145,14 @@ public class Ticket {
     @Column(name = "resolution_notes", columnDefinition = "TEXT")
     private String resolutionNotes;
 
+    /**
+     * Creator-chosen community visibility flag. Immutable after create (G3) —
+     * no service path mutates it post-persist. Public tickets are readable by
+     * all residents in redacted form; photos stay household/staff-only (F-05 gate).
+     */
+    @Column(name = "is_public", nullable = false)
+    private boolean isPublic = false;
+
     /** Record creation timestamp. Set at persist time; never updated by JPA. */
     @Column(name = "created_at", nullable = false, updatable = false)
     private OffsetDateTime createdAt;

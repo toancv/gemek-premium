@@ -86,6 +86,7 @@ public class TicketController {
      * (e.g. {@code ?status=NEW&status=ASSIGNED}). An invalid value yields 400 VALIDATION_ERROR.
      *
      * @param status      optional status filter; may be repeated for multi-value IN filtering.
+     * @param visibility  optional RESIDENT filter: "mine" (default) or "community" (public tickets).
      * @param category    optional category filter.
      * @param priority    optional priority filter.
      * @param apartmentId optional apartment UUID filter (ADMIN/BOARD_MEMBER).
@@ -99,6 +100,7 @@ public class TicketController {
     @Operation(summary = "List tickets (role-scoped)")
     public ResponseEntity<PageResponse<TicketSummaryResponse>> listTickets(
             @RequestParam(required = false) List<TicketStatus> status,
+            @RequestParam(required = false) String visibility,
             @RequestParam(required = false) TicketCategory category,
             @RequestParam(required = false) TicketPriority priority,
             @RequestParam(required = false) UUID apartmentId,
@@ -111,7 +113,8 @@ public class TicketController {
                 Sort.by(Sort.Order.desc("createdAt"), Sort.Order.asc("id")));
         String role = extractRole(principal);
         return ResponseEntity.ok(ticketService.listTickets(
-                principal.getId(), role, status, category, priority, apartmentId, pageable));
+                principal.getId(), role, visibility, status, category, priority, apartmentId,
+                pageable));
     }
 
     // =========================================================================

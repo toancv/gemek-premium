@@ -83,6 +83,9 @@ public class TicketDetailResponse {
     /** Staff-provided resolution notes, or {@code null}. */
     private String resolutionNotes;
 
+    /** Creator-chosen community visibility flag (N3 P5). */
+    private Boolean isPublic;
+
     /** Ordered list of photos attached to this ticket. */
     private List<PhotoResponse> photos;
 

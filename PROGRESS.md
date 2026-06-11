@@ -228,10 +228,16 @@ All 16 classes fixed. Fix pattern: `ADMIN_EMAIL` → `ADMIN_PHONE = "0900000000"
 
 **✅ PUSHED 2026-06-11 — i18n + date-format work COMPLETE and on origin/deploy/local (HEAD 00a8cd2):** two verified pushes — b6078ba/3ce90c9 (work + docs) then 00a8cd2 (chore: gitignore node_modules/ + dist/, none were ever tracked). Pre-push verification green both times — ui 65/65, admin + resident tsc+vite builds green, backend full suite 244/244 (Java 21 via backend\mvnw.cmd — plain `mvn` NOT on PATH, use the wrapper).
 
+**⏸ IN PROGRESS — Module 10 notification dispatch (2026-06-11). Authoritative plan: `reports/module10-dispatch-design.md` (design proposal + P1–P7 breakdown + "P1 findings" note).**
+- Design proposal committed 96f9fa9; CTO approved P1 scope.
+- **P1 DONE:** `ResidentRepository.findRecipientUserIds(scope, blockId, floor)` — typed default method → String-scoped backing `@Query` (Hibernate 6.5 enum-param anchoring limitation, see report P1-findings). Commit 221813b. Contract test `AnnouncementRecipientConsistencyTest` (4 tests, feed↔dispatch invariant per scope, edge cases moved-out/deactivated/no-apartment) commit a671c70. Suite 248/248 green.
+- **NEXT: P2** — wire dispatch into `publishAnnouncement()` (await CTO go; checkpoint after P1). Open CTO questions in report §G (TX boundary §C, 409 vs idempotent §D, CAS guard, unreadCount direction, E-3 scope, E-2 variant, E-4 direction, audience, body content).
+- ⚠ Multiple residencies: impossible — `uq_residents_active_user` partial unique index (V4:22).
+
 **NEXT — remaining major items:**
 1. ~~Date-format mm/dd→dd/mm~~ DONE 2026-06-11: formatVNDate/formatVNDateTime in @gemek/ui (commit b1db38b, ui 58/58 green) + 18 display spots wired (resident 9 = 195ff8e, admin 9 = 75f5c87); both builds green. Timezone decision (local-time render, intended) + KIND-B native-input limitation recorded in DECISIONS.md 2026-06-11. KIND-C wire ISO untouched. Inventory: reports/date-format-diagnosis.md. NOT browser-verified — CTO step (ports 80/81).
 2. TEMP_HIDDEN_DEFERRED removal (hidden nav/features).
-3. Module 10 notification dispatch (deferred).
+3. Module 10 notification dispatch — IN PROGRESS, see section above.
 4. Vietnamese user guide.
 5. Hardening sprint: F-04, F-05, SEC-20.
 

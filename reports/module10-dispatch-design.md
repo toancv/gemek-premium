@@ -162,6 +162,14 @@ Sequence rationale: P1–P3 are BE-only and land before any FE work; each leaves
 
 ---
 
+## P1 findings (2026-06-11, post-approval implementation note)
+
+- **§B [TODO: kiểm tra] multiple active residencies — RESOLVED:** `uq_residents_active_user` partial unique index (`V4__create_residents_vehicles.sql:22`, `ON residents (user_id) WHERE move_out_date IS NULL`) — DB enforces at most ONE active residency per user. `DISTINCT` in the recipient query is belt-and-braces only.
+- **Implementation deviation (mechanical):** Hibernate 6.5 cannot type-anchor an enum `:scope` parameter compared only against enum literals (no Announcement attribute in the query) — `Could not determine ValueMapping for SqmParameter`. Resolved: typed `findRecipientUserIds(AnnouncementScope, UUID, Short)` is a default method delegating to a String-named backing `@Query` (`:scope = 'ALL' | 'BLOCK' | 'FLOOR'`). Still one query, same predicate, same signature for P2 callers.
+- Contract test: `AnnouncementRecipientConsistencyTest` — 4 tests, invariant per scope + DISTINCT check; fixture covers moved-out, deactivated-user, no-apartment edges. Suite 248/248 green.
+
+---
+
 ## G. Open questions for CTO
 
 1. **Transaction boundary (§C):** approve Option 1 (in-app rows inside publish TX, INSERT…SELECT) with Option 2 reserved for future external channels? Or mandate async now?

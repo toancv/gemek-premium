@@ -91,11 +91,17 @@ export const useChangePassword = () =>
 export const useNotifications = () =>
   useQuery({ queryKey: ['notifications'], queryFn: () => get('/notifications', { size: 20 }) });
 
+export const useUnreadCount = () =>
+  useQuery({ queryKey: ['unread-count'], queryFn: () => get('/notifications/unread-count') });
+
 export const useMarkAllRead = () => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: () => post('/notifications/read-all'),
     meta: { skipSuccessToast: true },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['notifications'] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['notifications'] });
+      qc.invalidateQueries({ queryKey: ['unread-count'] });
+    },
   });
 };

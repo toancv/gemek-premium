@@ -168,6 +168,10 @@ Sequence rationale: P1–P3 are BE-only and land before any FE work; each leaves
 - **Implementation deviation (mechanical):** Hibernate 6.5 cannot type-anchor an enum `:scope` parameter compared only against enum literals (no Announcement attribute in the query) — `Could not determine ValueMapping for SqmParameter`. Resolved: typed `findRecipientUserIds(AnnouncementScope, UUID, Short)` is a default method delegating to a String-named backing `@Query` (`:scope = 'ALL' | 'BLOCK' | 'FLOOR'`). Still one query, same predicate, same signature for P2 callers.
 - Contract test: `AnnouncementRecipientConsistencyTest` — 4 tests, invariant per scope + DISTINCT check; fixture covers moved-out, deactivated-user, no-apartment edges. Suite 248/248 green.
 
+### P1 contract-test limitation
+
+The recipient query filters `user.active = true` but `findPublishedForApartment` (feed) does NOT check `u.active`. The consistency test hides this asymmetry by hardcoding `feedSees=false` for the deactivated fixture user (justified operationally — deactivated users can't authenticate), rather than asserting it via the real feed query. Net: recipient behavior is correct (deactivated excluded, per CTO §G#8), but the test does NOT guard predicate drift on the `u.active` dimension — only on the scope/block/floor dimensions. Future edits touching `u.active` on either query are not caught by this test.
+
 ---
 
 ## G. Open questions for CTO

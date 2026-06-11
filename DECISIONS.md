@@ -569,6 +569,16 @@ Also 2026-06-11: TicketDetail (admin) update-status select switched from hardcod
 
 ---
 
+## 2026-06-11 | Module 10 P4: per-user isRead on AnnouncementResponse — batched read-state query; toResponse default-false overload
+
+**What:** `AnnouncementResponse` gains `@JsonProperty("isRead") boolean isRead` (naming mirrors `NotificationResponse`). List endpoints compute it with ONE query per page (`AnnouncementReadRepository.findReadAnnouncementIds(userId, pageIds)` → in-memory `Set` membership) instead of per-row `exists()` — avoids 20-queries-per-page N+1 at near-zero extra code. Detail endpoint uses the single `existsByAnnouncementIdAndUserId` (degenerate 1-row case).
+
+**toResponse signature:** kept `toResponse(Announcement)` as an overload delegating to `toResponse(Announcement, boolean)` with `isRead=false`. Mutation paths (create/update/publish) use the false-default: a draft can never be read (`markRead` rejects drafts) and a just-published announcement cannot have a read row for the caller within the same TX. Alternatives considered: threading principalId into every toResponse call site (extra exists() queries for values provably false) — rejected.
+
+**Admin list path:** also computes real isRead for the requesting admin (markRead has no role gate) — keeps one rule, no role branch in mapping.
+
+---
+
 ## CTO Overrides
 _(record when CTO overrides agent decision)_
 

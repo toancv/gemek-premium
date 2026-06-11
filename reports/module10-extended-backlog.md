@@ -37,3 +37,4 @@ Photo/video upload on tickets (before/during/after processing stages) + comment 
 
 - ~~Resident AnnouncementsPage item type is `any`~~ — PAID in N1 (`api/types.ts`).
 - External channels (FCM/SMTP/SMS) still stubbed.
+- **Shared dev-DB test pollution** — part of the suite writes committed rows to the Docker dev DB (249 garbage tickets, 209 bookings observed 2026-06-11; caused the P2 backfill-gap misreading, the amenity list flake — de-flaked d90f98c — and the still-latent parking phone-collision flake). Fix direction: migrate Docker-required tests to testcontainers or per-run schema reset. Own session, not mixed into N3.

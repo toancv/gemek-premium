@@ -11,6 +11,9 @@ describe('labelFor', () => {
     expect(labelFor('VehicleType', 'MOTORBIKE')).toBe('Xe máy');
     expect(labelFor('ParkingSlotStatus', 'RESERVED')).toBe('Đã đặt trước');
     expect(labelFor('ActiveStatus', 'INACTIVE')).toBe('Ngừng');
+    expect(labelFor('ContractStatus', 'ACTIVE')).toBe('Hiệu lực');
+    expect(labelFor('ContractStatus', 'EXPIRED')).toBe('Đã hết hạn');
+    expect(labelFor('ResidentType', 'OWNER')).toBe('Chủ sở hữu');
   });
 
   it('falls back to the raw key for unmapped values', () => {

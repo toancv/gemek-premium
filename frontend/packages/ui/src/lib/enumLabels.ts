@@ -58,6 +58,19 @@ export const enumLabels = {
     OCCUPIED: 'Đã sử dụng',
     RESERVED: 'Đã đặt trước',
   },
+  // Contract lifecycle (vn.vtit.gemek.module.contractor.entity.ContractStatus)
+  // — distinct from ActiveStatus: contracts read 'Hiệu lực', not 'Hoạt động'
+  ContractStatus: {
+    PENDING: 'Chờ hiệu lực',
+    ACTIVE: 'Hiệu lực',
+    EXPIRED: 'Đã hết hạn',
+    TERMINATED: 'Đã chấm dứt',
+  },
+  // Labels match the admin create-resident form options (ResidentsPage)
+  ResidentType: {
+    OWNER: 'Chủ sở hữu',
+    TENANT: 'Người thuê',
+  },
   // Generic active flag used by contractor/vehicle status displays
   ActiveStatus: {
     ACTIVE: 'Hoạt động',

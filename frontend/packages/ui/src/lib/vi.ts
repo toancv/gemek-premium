@@ -29,6 +29,9 @@ export const viShared: TranslationDict = {
     next: 'Sau',
     actions: 'Thao tác',
     status: 'Trạng thái',
+    saving: 'Đang lưu...',
+    // Pagination footer prefix: "Tổng: 42"
+    total: 'Tổng:',
     // Empty-state patterns — VN distinguishes two cases:
     // nothing exists yet: t('common.emptyYet', { item: 'phản ánh' })
     emptyYet: 'Chưa có {item} nào',

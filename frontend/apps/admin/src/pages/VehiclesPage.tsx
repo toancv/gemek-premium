@@ -116,7 +116,7 @@ export function VehiclesPage() {
               <th className="text-left px-4 py-3 font-medium text-gray-500">{t('vehicles.color')}</th>
               <th className="text-left px-4 py-3 font-medium text-gray-500">{t('vehicles.resident')}</th>
               <th className="text-left px-4 py-3 font-medium text-gray-500">{t('vehicles.apartment')}</th>
-              <th className="text-left px-4 py-3 font-medium text-gray-500">{t('status')}</th>
+              <th className="text-left px-4 py-3 font-medium text-gray-500">{t('common.status')}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">

@@ -123,7 +123,7 @@ export function ParkingPage() {
                   <th className="text-left px-4 py-3 font-medium text-gray-500">{t('parking.slot')}</th>
                   <th className="text-left px-4 py-3 font-medium text-gray-500">{t('parking.zone')}</th>
                   <th className="text-left px-4 py-3 font-medium text-gray-500">{t('parking.type')}</th>
-                  <th className="text-left px-4 py-3 font-medium text-gray-500">{t('status')}</th>
+                  <th className="text-left px-4 py-3 font-medium text-gray-500">{t('common.status')}</th>
                   <th className="text-left px-4 py-3 font-medium text-gray-500">{t('parking.assignedTo')}</th>
                   <th className="text-left px-4 py-3 font-medium text-gray-500">{t('actions')}</th>
                 </tr>

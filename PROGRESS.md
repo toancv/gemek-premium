@@ -218,7 +218,7 @@ All 16 classes fixed. Fix pattern: `ADMIN_EMAIL` → `ADMIN_PHONE = "0900000000"
 - "System Administrator" CTO ruling still pending (see admin leftover cleanup above).
 
 **NEXT — remaining major items:**
-1. Date-format mm/dd→dd/mm — OWN session, needs diagnosis first.
+1. Date-format mm/dd→dd/mm — IN PROGRESS. Diagnosis DONE (commit b483a5d): authoritative plan = `reports/date-format-diagnosis.md` — 18 KIND-A display spots (12 date, 6 datetime; 5 raw-ISO renders), 6 KIND-B native date inputs (leave — OS-locale rendered), 5 KIND-C wire spots (DO NOT TOUCH, ISO required). Next step: feat(ui) formatVNDate/formatVNDateTime + tests → wire 18 display spots (resident 9, admin 9) → builds green → docs(context).
 2. TEMP_HIDDEN_DEFERRED removal (hidden nav/features).
 3. Module 10 notification dispatch (deferred).
 4. Vietnamese user guide.

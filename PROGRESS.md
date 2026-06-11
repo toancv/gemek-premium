@@ -174,7 +174,15 @@ All 16 classes fixed. Fix pattern: `ADMIN_EMAIL` → `ADMIN_PHONE = "0900000000"
 - `@gemek/ui` `lib/enumLabels.ts`: 7 groups + `labelFor(enumType, key)` (raw-key fallback, null→''). Display only — raw enum keys stay in `value=`/filters/comparisons. 51/51 ui tests green. Commit 0c9e8d3.
 - Wiring happens per-page during admin translation. Resident pages still render raw enums in a few spots (e.g. TicketDetail status/priority, MyTickets/MyBookings status chips, Parking type) — later cleanup pass adopts labelFor there.
 
-**NEXT: admin app i18n (~247 strings) — cluster A1 = Layout + DashboardPage + ReportsPage per reports/i18n-inventory.md. Create admin `src/i18n/vi.ts` (same pattern as resident: createT(vi, viShared)). Wire labelFor where enums display. Terminology: Ticket→'Phản ánh', Announcements→'Tin tức', bell→'Thông báo'.**
+**Admin cluster A1 COMPLETE (2026-06-11):**
+- `apps/admin/src/i18n/vi.ts` created (nav/layout/dashboard/reports; `t = createT(vi, viShared)`). Layout + DashboardPage + ReportsPage fully VN. Commit a212a9f.
+- labelFor wired (first adoption): Dashboard + Reports 'Phản ánh theo loại' category labels via labelFor('TicketCategory', cat) — replaced `cat.replace(/_/g,' ')`; Reports contracts Status chip via labelFor('ActiveStatus', c.status). Raw keys untouched in keys/logic/filters.
+- TicketCategory group added to @gemek/ui enumLabels (5 keys, wording copied from resident create-form options). Commit cf29cb9 (extra feat(ui) commit, not in CTO list — kept package-commit separation).
+- DashboardPage local `const t = data?.tickets` renamed → `tk` (shadowed i18n t(); internal var only, no display/API change).
+- Verified: 51/51 ui tests + tsc + vite build green BOTH apps. NOT browser-verified — CTO step (port 80).
+- Wording flag: contracts Status chip uses ActiveStatus map → ACTIVE shows 'Hoạt động'; for contracts 'Hiệu lực' may read better (summary card says 'Hợp đồng hiệu lực'). If CTO prefers, add ContractStatus group later.
+
+**NEXT: admin cluster A2 — ApartmentsPage + ResidentsPage + ContractorsPage per reports/i18n-inventory.md. Wire labelFor (ApartmentStatus, ContractorSpecialty, ActiveStatus) for display labels; keep filter `value=` raw.**
 
 **Resident cluster 1 COMPLETE (2026-06-10):**
 - viShared empty-state refined: `common.emptyYet` / `common.emptyFound` replace `common.empty`; 11 ui tests green. Commit 24aff81.

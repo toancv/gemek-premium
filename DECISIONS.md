@@ -595,6 +595,8 @@ Also 2026-06-11: TicketDetail (admin) update-status select switched from hardcod
 
 **P1 implementation note:** V13 contains ONLY `ALTER TYPE notification_type ADD VALUE` statements (PG: added values unusable in the defining transaction — no seed rows/DDL may share the file). Java constants inserted into the ticket group of `NotificationType` (string-mapped enum — Java order need not match PG enum order). Round-trip test (`NotificationTypeRoundTripTest`, parameterized over the 4 values, flush + context-clear + reload) proves the `NAMED_ENUM` mapping accepts them.
 
+**P3 note (2026-06-11):** `TicketStatusLabels` (BE) mirrors the locked FE map `frontend/packages/ui/src/lib/enumLabels.ts` TicketStatus section VERBATIM — any future label change must update both files together. C3 recipients = thread snapshot taken BEFORE the assignee subscribes (assignee gets C2 only, never C2+C3). De-flake side-fix shipped with P3 (separate commit d90f98c): `AmenityControllerTest.listBookings_adminSeesAllBookings` asserted page membership in an UNSORTED list on the shared dev DB (209+ committed bookings → page-100 lottery); now asserts via per-amenity filtered calls — deterministic, intent (admin sees other residents' bookings) preserved.
+
 ---
 
 ## CTO Overrides

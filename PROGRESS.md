@@ -217,6 +217,12 @@ All 16 classes fixed. Fix pattern: `ADMIN_EMAIL` → `ADMIN_PHONE = "0900000000"
 - ~~Leftover: admin AnnouncementsPage type options raw~~ FIXED 2026-06-11: type options via labelFor('AnnouncementType'); new AnnouncementScope map in @gemek/ui (ALL/BLOCK/FLOOR → Toàn bộ/Theo tòa/Theo tầng, BE-verified, commit fb42ae4, ui 51/51 green) wired to scope options + list "Phạm vi" column (was raw targetScope) — 'Theo block'→'Theo tòa' done via map. Commit 330aee0; admin build green. i18n fully COMPLETE both apps incl. dynamic form enums. NOT browser-verified — CTO step (port 80).
 - "System Administrator" CTO ruling still pending (see admin leftover cleanup above).
 
+**⏸ IN PROGRESS — date-INPUT picker rollout (KIND B → VNDatePicker), PILOT DONE 2 of 6, awaiting CTO pattern approval:**
+- react-day-picker 9.7.0 (exact) added to @gemek/ui via corepack pnpm (pnpm 11.5.2; plain `pnpm` NOT on PATH — use `corepack pnpm`; npm install inside the pnpm tree FAILS, do not mix).
+- `VNDatePicker` in @gemek/ui (commit c2cfe0a): value/onChange = ISO yyyy-mm-dd always; dd/mm/yyyy display; local-safe parseISODateLocal/toISODateLocal in dateFormat.ts (no UTC round-trip → no off-by-one); props min/disabled/placeholder/className; ui tests 65/65 green incl. month/year-boundary cases.
+- Pilot (commit 8c4b8e7): admin Reports 'from' (controlled — value/onChange wired straight to existing ISO state; query param unchanged) + admin Residents moveInDate (was uncontrolled FormData → now controlled ISO state; payload key/shape/value format unchanged). Admin build green. NOT browser-verified — CTO step (port 80): check dd/mm display, Reports filter correctness, resident create saves moveInDate without off-by-one.
+- ⏸ STOPPED for CTO pattern review. Remaining 4 inputs AFTER approval: Reports 'to', admin ParkingPage startDate (uncontrolled), admin ResidentsPage dateOfBirth (controlled), resident AmenitiesPage bookingDate (uncontrolled + min=today).
+
 **NEXT — remaining major items:**
 1. ~~Date-format mm/dd→dd/mm~~ DONE 2026-06-11: formatVNDate/formatVNDateTime in @gemek/ui (commit b1db38b, ui 58/58 green) + 18 display spots wired (resident 9 = 195ff8e, admin 9 = 75f5c87); both builds green. Timezone decision (local-time render, intended) + KIND-B native-input limitation recorded in DECISIONS.md 2026-06-11. KIND-C wire ISO untouched. Inventory: reports/date-format-diagnosis.md. NOT browser-verified — CTO step (ports 80/81).
 2. TEMP_HIDDEN_DEFERRED removal (hidden nav/features).

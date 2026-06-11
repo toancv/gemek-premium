@@ -750,6 +750,34 @@ public class TicketServiceImpl implements TicketService {
      * {@inheritDoc}
      */
     @Override
+    @Transactional
+    public void followTicket(UUID id, UUID principalId) {
+        log.debug("followTicket — ticketId={}", id);
+
+        Ticket ticket = requireVisibleToResident(id, principalId);
+        // Joining the thread is all that is needed — P3 dispatch reads participantUserIds.
+        subscriptionService.subscribe(principalId, TICKET_REFERENCE_TYPE, ticket.getId(),
+                SubscriptionJoinedVia.FOLLOWER);
+        log.info("Ticket {} — follower subscribed.", ticket.getId());
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    @Transactional
+    public void unfollowTicket(UUID id, UUID principalId) {
+        log.debug("unfollowTicket — ticketId={}", id);
+
+        Ticket ticket = requireVisibleToResident(id, principalId);
+        subscriptionService.unsubscribe(principalId, TICKET_REFERENCE_TYPE, ticket.getId());
+        log.info("Ticket {} — follower unsubscribed.", ticket.getId());
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
     public void assertPresignAccess(String fileUrl, UUID principalId, String role) {
         TicketPhoto photo = photoRepository.findByFileUrl(fileUrl)
                 .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND,
@@ -774,6 +802,25 @@ public class TicketServiceImpl implements TicketService {
         return ticketRepository.findById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND,
                         "Ticket not found: " + id));
+    }
+
+    /**
+     * Loads a ticket for a resident's follow/unfollow request, hiding invisible tickets.
+     *
+     * <p>A private ticket outside the caller's household throws the same NOT_FOUND as a
+     * missing ID — a resident must not be able to probe whether a ticket exists.
+     *
+     * @param id          the ticket UUID.
+     * @param principalId the calling resident's UUID.
+     * @return the visible ticket entity.
+     */
+    private Ticket requireVisibleToResident(UUID id, UUID principalId) {
+        Ticket ticket = requireTicket(id);
+        // Visible = public, or the caller's own household.
+        if (!ticket.isPublic() && !isHouseholdMember(ticket, principalId)) {
+            throw new AppException(ErrorCode.NOT_FOUND, "Ticket not found: " + id);
+        }
+        return ticket;
     }
 
     /**

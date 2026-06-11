@@ -283,6 +283,50 @@ public class TicketController {
     }
 
     // =========================================================================
+    // Follow / unfollow (N3 P5)
+    // =========================================================================
+
+    /**
+     * Subscribes the calling resident to the ticket's notification thread.
+     *
+     * <p>Idempotent. A private ticket the caller cannot see yields 404 — no existence leak.
+     *
+     * @param id        the ticket UUID path variable.
+     * @param principal the authenticated resident.
+     * @return 204 No Content.
+     */
+    @PostMapping("/{id}/follow")
+    @PreAuthorize("hasRole('RESIDENT')")
+    @Operation(summary = "Follow a ticket's notification thread")
+    public ResponseEntity<Void> followTicket(
+            @PathVariable UUID id,
+            @AuthenticationPrincipal UserPrincipal principal) {
+
+        ticketService.followTicket(id, principal.getId());
+        return ResponseEntity.noContent().build();
+    }
+
+    /**
+     * Removes the calling resident's follow subscription from the ticket's thread.
+     *
+     * <p>Idempotent — unfollowing a never-followed ticket is a no-op.
+     *
+     * @param id        the ticket UUID path variable.
+     * @param principal the authenticated resident.
+     * @return 204 No Content.
+     */
+    @DeleteMapping("/{id}/follow")
+    @PreAuthorize("hasRole('RESIDENT')")
+    @Operation(summary = "Unfollow a ticket's notification thread")
+    public ResponseEntity<Void> unfollowTicket(
+            @PathVariable UUID id,
+            @AuthenticationPrincipal UserPrincipal principal) {
+
+        ticketService.unfollowTicket(id, principal.getId());
+        return ResponseEntity.noContent().build();
+    }
+
+    // =========================================================================
     // Rate
     // =========================================================================
 

@@ -145,6 +145,28 @@ public interface TicketService {
     SlaReportResponse getSlaReport(LocalDate from, LocalDate to, TicketCategory category);
 
     /**
+     * Subscribes the calling resident to the ticket's notification thread as a FOLLOWER.
+     *
+     * <p>The ticket must be visible to the caller (public, or own household). A private
+     * ticket the caller cannot see behaves as NOT_FOUND — no existence leak. Idempotent.
+     *
+     * @param id          the ticket UUID.
+     * @param principalId UUID of the authenticated resident.
+     */
+    void followTicket(UUID id, UUID principalId);
+
+    /**
+     * Removes the calling resident's subscription row for the ticket's thread.
+     *
+     * <p>Same visibility rule as {@link #followTicket(UUID, UUID)}. Idempotent —
+     * unfollowing a ticket that was never followed is a no-op.
+     *
+     * @param id          the ticket UUID.
+     * @param principalId UUID of the authenticated resident.
+     */
+    void unfollowTicket(UUID id, UUID principalId);
+
+    /**
      * Asserts that the caller has read access to the ticket that owns the given photo key.
      *
      * <p>Strict household/staff rule: RESIDENT may only access photos belonging to their

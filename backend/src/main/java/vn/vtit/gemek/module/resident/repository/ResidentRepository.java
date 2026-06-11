@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+import vn.vtit.gemek.module.announcement.entity.AnnouncementScope;
 import vn.vtit.gemek.module.resident.entity.Resident;
 
 import java.util.List;
@@ -119,4 +120,53 @@ public interface ResidentRepository extends JpaRepository<Resident, UUID>, JpaSp
               AND (CAST(:blockId AS UUID) IS NULL OR a.block_id = CAST(:blockId AS UUID))
             """, nativeQuery = true)
     List<Object[]> getResidentDemographics(@Param("blockId") UUID blockId);
+
+    /**
+     * Resolves the announcement-notification recipient set: distinct user IDs of all
+     * ACTIVE residents (no move-out date, active user account) matching the given
+     * announcement scope.
+     *
+     * <p>The WHERE clause is the textual mirror of
+     * {@code AnnouncementRepository.findPublishedForApartment} — the single source of
+     * the ALL/BLOCK/FLOOR visibility rule. Any change to either predicate must keep the
+     * two consistent; this is enforced by the feed↔dispatch consistency contract test
+     * ({@code AnnouncementRecipientConsistencyTest}).
+     *
+     * <p>Staff roles (ADMIN, TECHNICIAN, BOARD_MEMBER) are never resident rows, so they
+     * are excluded by construction. Duplicate residencies are collapsed by DISTINCT
+     * (additionally prevented by the {@code uq_residents_active_user} partial unique index).
+     *
+     * @param scope   the announcement scope (ALL, BLOCK, or FLOOR).
+     * @param blockId the target block UUID; required for BLOCK and FLOOR scope, null for ALL.
+     * @param floor   the target floor; required for FLOOR scope, null otherwise.
+     * @return distinct user IDs of recipients.
+     */
+    default List<UUID> findRecipientUserIds(AnnouncementScope scope, UUID blockId, Short floor) {
+        // Delegate with the enum NAME — Hibernate 6 cannot type-anchor an enum parameter
+        // that never compares against an entity attribute (no Announcement in this query).
+        return findRecipientUserIdsByScopeName(scope.name(), blockId, floor);
+    }
+
+    /**
+     * String-typed backing query for {@link #findRecipientUserIds}. Do not call directly;
+     * use the typed default method.
+     *
+     * @param scope   the announcement scope name ("ALL", "BLOCK", or "FLOOR").
+     * @param blockId the target block UUID; null for ALL scope.
+     * @param floor   the target floor; null unless FLOOR scope.
+     * @return distinct user IDs of recipients.
+     */
+    @Query("""
+            SELECT DISTINCT u.id FROM Resident r
+            JOIN r.user u
+            JOIN r.apartment a
+            WHERE r.moveOutDate IS NULL
+              AND u.active = true
+              AND (:scope = 'ALL'
+                OR (:scope = 'BLOCK' AND a.block.id = :blockId)
+                OR (:scope = 'FLOOR' AND a.block.id = :blockId AND a.floor = :floor))
+            """)
+    List<UUID> findRecipientUserIdsByScopeName(@Param("scope") String scope,
+                                               @Param("blockId") UUID blockId,
+                                               @Param("floor") Short floor);
 }

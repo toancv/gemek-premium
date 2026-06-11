@@ -12,6 +12,9 @@ package vn.vtit.gemek.module.notification.entity;
  */
 public enum NotificationType {
 
+    /** A new support ticket has been created. */
+    TICKET_CREATED,
+
     /** A support ticket has been assigned to a technician. */
     TICKET_ASSIGNED,
 
@@ -20,6 +23,12 @@ public enum NotificationType {
 
     /** A support ticket has received a resident rating. */
     TICKET_RATED,
+
+    /** A completed support ticket awaits the submitter's rating. */
+    TICKET_RATING_REQUESTED,
+
+    /** A support ticket is approaching its SLA deadline. */
+    TICKET_SLA_WARNING,
 
     /** A support ticket has breached its SLA deadline. */
     TICKET_SLA_BREACHED,
@@ -35,6 +44,9 @@ public enum NotificationType {
 
     /** A new announcement has been published. */
     ANNOUNCEMENT_PUBLISHED,
+
+    /** A new resident has been added to the household's apartment. */
+    HOUSEHOLD_MEMBER_ADDED,
 
     /** A contractor contract is approaching its expiry date. */
     CONTRACT_EXPIRING,

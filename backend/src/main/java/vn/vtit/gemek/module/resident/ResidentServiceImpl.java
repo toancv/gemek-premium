@@ -32,6 +32,9 @@ import vn.vtit.gemek.module.resident.mapper.ResidentMapper;
 import vn.vtit.gemek.module.resident.repository.ResidentHistoryRepository;
 import vn.vtit.gemek.module.resident.repository.ResidentRepository;
 import vn.vtit.gemek.common.util.PhoneUtils;
+import vn.vtit.gemek.module.notification.entity.Notification;
+import vn.vtit.gemek.module.notification.entity.NotificationType;
+import vn.vtit.gemek.module.notification.repository.NotificationRepository;
 import vn.vtit.gemek.module.user.entity.User;
 import vn.vtit.gemek.module.user.entity.UserRole;
 import vn.vtit.gemek.module.user.repository.UserRepository;
@@ -61,29 +64,33 @@ public class ResidentServiceImpl implements ResidentService {
     private final UserRepository userRepository;
     private final ResidentMapper residentMapper;
     private final PasswordEncoder passwordEncoder;
+    private final NotificationRepository notificationRepository;
 
     /**
      * Constructs the service with its required dependencies.
      *
-     * @param residentRepository  the resident JPA repository.
-     * @param historyRepository   the resident history JPA repository.
-     * @param apartmentRepository the apartment JPA repository.
-     * @param userRepository      the user JPA repository.
-     * @param residentMapper      the MapStruct resident mapper.
-     * @param passwordEncoder     the BCrypt password encoder.
+     * @param residentRepository     the resident JPA repository.
+     * @param historyRepository      the resident history JPA repository.
+     * @param apartmentRepository    the apartment JPA repository.
+     * @param userRepository         the user JPA repository.
+     * @param residentMapper         the MapStruct resident mapper.
+     * @param passwordEncoder        the BCrypt password encoder.
+     * @param notificationRepository the notification JPA repository for household dispatch (N3 C9).
      */
     public ResidentServiceImpl(ResidentRepository residentRepository,
                                ResidentHistoryRepository historyRepository,
                                ApartmentRepository apartmentRepository,
                                UserRepository userRepository,
                                ResidentMapper residentMapper,
-                               PasswordEncoder passwordEncoder) {
+                               PasswordEncoder passwordEncoder,
+                               NotificationRepository notificationRepository) {
         this.residentRepository = residentRepository;
         this.historyRepository = historyRepository;
         this.apartmentRepository = apartmentRepository;
         this.userRepository = userRepository;
         this.residentMapper = residentMapper;
         this.passwordEncoder = passwordEncoder;
+        this.notificationRepository = notificationRepository;
     }
 
     /**
@@ -173,6 +180,10 @@ public class ResidentServiceImpl implements ResidentService {
         if (req.isPrimaryContact()) {
             appendHistory(saved, "PRIMARY_CONTACT_SET", req.getMoveInDate(), principalId, null);
         }
+
+        // C9 (N3): tell the existing household about the new member. Excludes the
+        // new user (their own arrival) and the actor (uniform actor-exclusion rule).
+        dispatchHouseholdNotifications(saved, savedUser, apartment, principalId);
 
         log.info("Resident created — id={}, userId={}", saved.getId(), savedUser.getId());
         return residentMapper.toResponse(saved);
@@ -356,6 +367,51 @@ public class ResidentServiceImpl implements ResidentService {
 
             return cb.and(predicates.toArray(new Predicate[0]));
         };
+    }
+
+    /**
+     * C9 (N3): creates one {@code HOUSEHOLD_MEMBER_ADDED} notification row per existing
+     * active household member of the apartment, in a single batched insert.
+     *
+     * <p>Same pattern as the announcement/ticket dispatch: user FKs attached via
+     * {@code getReferenceById}, one {@code saveAll}, no logging or I/O in the loop,
+     * all inside the calling create transaction. Excluded: the newly created user and
+     * the acting user. An empty recipient set (first resident of an empty apartment)
+     * is a no-op — no {@code saveAll} call.
+     *
+     * @param resident    the just-created resident row (notification reference).
+     * @param newUser     the newly created user (excluded recipient, body name source).
+     * @param apartment   the apartment (body unit-number source).
+     * @param principalId the acting user's UUID (excluded recipient).
+     */
+    private void dispatchHouseholdNotifications(Resident resident, User newUser,
+                                                Apartment apartment, UUID principalId) {
+        List<UUID> recipientIds = residentRepository.findActiveByApartmentId(apartment.getId())
+                .stream()
+                .map(member -> member.getUser().getId())
+                .filter(userId -> !userId.equals(newUser.getId()) && !userId.equals(principalId))
+                .distinct()
+                .toList();
+        if (recipientIds.isEmpty()) {
+            return;
+        }
+
+        List<Notification> batch = new ArrayList<>(recipientIds.size());
+        // Build the full batch in memory, then one saveAll.
+        for (UUID userId : recipientIds) {
+            Notification notification = new Notification();
+            notification.setUser(userRepository.getReferenceById(userId));
+            notification.setTitle("Thành viên mới");
+            notification.setBody("Cư dân " + newUser.getFullName() + " đã được thêm vào căn hộ "
+                    + apartment.getUnitNumber() + ".");
+            notification.setType(NotificationType.HOUSEHOLD_MEMBER_ADDED);
+            notification.setReferenceId(resident.getId());
+            notification.setReferenceType("Resident");
+            batch.add(notification);
+        }
+        notificationRepository.saveAll(batch);
+        log.info("Resident {} — household notice dispatched to {} recipients.",
+                resident.getId(), batch.size());
     }
 
     /**

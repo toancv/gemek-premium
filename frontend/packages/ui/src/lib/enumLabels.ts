@@ -71,6 +71,22 @@ export const enumLabels = {
     OWNER: 'Chủ sở hữu',
     TENANT: 'Người thuê',
   },
+  // vn.vtit.gemek.module.announcement.entity.AnnouncementType
+  AnnouncementType: {
+    GENERAL: 'Chung',
+    URGENT: 'Khẩn cấp',
+    MAINTENANCE: 'Bảo trì',
+    AMENITY: 'Tiện ích',
+    EVENT: 'Sự kiện',
+  },
+  // vn.vtit.gemek.module.amenity.entity.BookingStatus
+  BookingStatus: {
+    PENDING: 'Chờ duyệt',
+    APPROVED: 'Đã duyệt',
+    REJECTED: 'Bị từ chối',
+    CANCELLED: 'Đã hủy',
+    COMPLETED: 'Hoàn tất',
+  },
   // Generic active flag used by contractor/vehicle status displays
   ActiveStatus: {
     ACTIVE: 'Hoạt động',

@@ -14,6 +14,10 @@ describe('labelFor', () => {
     expect(labelFor('ContractStatus', 'ACTIVE')).toBe('Hiệu lực');
     expect(labelFor('ContractStatus', 'EXPIRED')).toBe('Đã hết hạn');
     expect(labelFor('ResidentType', 'OWNER')).toBe('Chủ sở hữu');
+    expect(labelFor('AnnouncementType', 'EVENT')).toBe('Sự kiện');
+    expect(labelFor('AnnouncementType', 'URGENT')).toBe('Khẩn cấp');
+    expect(labelFor('BookingStatus', 'PENDING')).toBe('Chờ duyệt');
+    expect(labelFor('BookingStatus', 'COMPLETED')).toBe('Hoàn tất');
   });
 
   it('falls back to the raw key for unmapped values', () => {

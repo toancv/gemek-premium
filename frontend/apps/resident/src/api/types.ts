@@ -23,3 +23,17 @@ export interface AnnouncementItem {
   /** Per-user read state computed by the BE for the requesting user. */
   isRead: boolean;
 }
+
+/** Mirrors BE NotificationResponse (module.notification.dto.NotificationResponse). */
+export interface NotificationItem {
+  id: string;
+  title: string;
+  body: string | null;
+  type: string;
+  /** UUID of the related entity, paired with referenceType. */
+  referenceId: string | null;
+  /** Entity-type label (e.g. "Announcement") — drives bell deep-link routing. */
+  referenceType: string | null;
+  isRead: boolean;
+  createdAt: string;
+}

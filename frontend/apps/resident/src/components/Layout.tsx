@@ -1,8 +1,14 @@
 import React, { useState } from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
-import { useNotifications, useMarkAllRead, useUnreadCount } from '../api/hooks';
+import { useNotifications, useMarkAllRead, useUnreadCount, useMarkNotificationRead } from '../api/hooks';
+import type { NotificationItem } from '../api/types';
 import { t } from '../i18n/vi';
+
+// referenceType → route builder for bell deep-links. N3 event types extend this map.
+const NOTIF_ROUTES: Record<string, (referenceId: string) => string> = {
+  Announcement: (referenceId) => `/announcements/${referenceId}`,
+};
 
 export function Layout() {
   const user = useAuthStore((s) => s.user);
@@ -12,8 +18,16 @@ export function Layout() {
   const { data: notifData } = useNotifications();
   const { data: unreadData } = useUnreadCount();
   const markAllRead = useMarkAllRead();
+  const markNotifRead = useMarkNotificationRead();
 
   const handleLogout = async () => { await logout(); navigate('/login'); };
+
+  const handleNotifClick = (n: NotificationItem) => {
+    if (!n.isRead) markNotifRead.mutate(n.id);
+    // Unknown referenceType → mark read only, no navigation.
+    const route = n.referenceId ? NOTIF_ROUTES[n.referenceType ?? '']?.(n.referenceId) : undefined;
+    if (route) { setNotifOpen(false); navigate(route); }
+  };
 
   const navLinks = [
     { to: '/', label: t('nav.home'), icon: 'H', end: true },
@@ -55,8 +69,9 @@ export function Layout() {
                 </div>
                 <div className="max-h-64 overflow-y-auto">
                   {(!notifData?.data?.length) && <p className="text-center text-gray-400 text-sm py-4">{t('layout.noNotifications')}</p>}
-                  {notifData?.data?.map((n: any) => (
-                    <div key={n.id} className={'px-4 py-3 border-b border-gray-50 ' + (!n.isRead ? 'bg-blue-50' : '')}>
+                  {notifData?.data?.map((n: NotificationItem) => (
+                    <div key={n.id} onClick={() => handleNotifClick(n)}
+                      className={'px-4 py-3 border-b border-gray-50 cursor-pointer hover:bg-gray-50 ' + (!n.isRead ? 'bg-blue-50' : '')}>
                       <p className="text-sm font-medium text-gray-800">{n.title}</p>
                       <p className="text-xs text-gray-500 mt-0.5">{n.body}</p>
                     </div>

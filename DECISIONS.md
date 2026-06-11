@@ -533,6 +533,18 @@ Also: enum display-label maps built in `@gemek/ui` (`packages/ui/src/lib/enumLab
 
 ---
 
+## 2026-06-11 | i18n terminology: block = "Tòa" (CTO decision, both apps)
+
+**Decision:** The building-block concept displays as "Tòa" everywhere (labels, headers, placeholders, validation text). Variable/field names (`blockId`, `block.name`) and API fields stay unchanged.
+
+**Why:** A2 introduced 'Tòa' for headers while older VN strings said "block" ('Chọn block...', 'Vui lòng chọn block.') — mixed wording for one concept.
+
+**How to apply:** Swept 2026-06-11 (commit 9b2de7b): ApartmentsPage placeholder+validation, AnnouncementsPage label+option+validation. Grep for display "block" in admin src returns 0. Future i18n work uses "Tòa".
+
+Also 2026-06-11: TicketDetail (admin) update-status select switched from hardcoded VN ('Hoàn thành') to labelFor('TicketStatus') — DONE now displays 'Hoàn tất' per the locked TicketStatus map.
+
+---
+
 ## CTO Overrides
 _(record when CTO overrides agent decision)_
 

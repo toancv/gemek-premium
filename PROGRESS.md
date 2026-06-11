@@ -190,7 +190,13 @@ All 16 classes fixed. Fix pattern: `ADMIN_EMAIL` → `ADMIN_PHONE = "0900000000"
 - Verified: 51/51 ui tests + tsc + vite build green BOTH apps. NOT browser-verified — CTO step (port 80).
 - Wording flags: ApartmentsPage pre-existing VN strings still say "block" ('Chọn block...', 'Vui lòng chọn block.') vs new 'Tòa' — needs terminology-sweep ruling. AddApartment create modal was already VN ('Thêm căn hộ mới', 'Tạo mới') — left as-is.
 
-**NEXT: admin cluster A3 — TicketsPage + TicketDetailPage (heavy 'Phản ánh' + TicketStatus/TicketPriority enum wiring) per reports/i18n-inventory.md.**
+**Admin cluster A3 COMPLETE (2026-06-11):**
+- TicketsPage: title 'Phản ánh', '+ Gửi phản ánh', filters (Tất cả loại/trạng thái + options via labelFor), headers Mã/Tiêu đề/Loại/Trạng thái/Phụ trách/Hạn SLA, chips via labelFor('TicketCategory'/'TicketStatus'), emptyFound 'phản ánh', modal 'Gửi phản ánh' (category/priority selects via labelFor, 'Đang gửi...'/'Gửi'). TicketCategory map already covered page keys — no ui commit needed.
+- TicketDetailPage: loadError/back/labels VN, category/priority/status via labelFor, Photos→'Hình ảnh', Status History→'Lịch sử trạng thái', 'Created'→'Khởi tạo', 'by'→'bởi', '(chỉ MAINTENANCE_REPAIR)' hint→labelFor, update-status select switched to labelFor (DONE 'Hoàn thành'→'Hoàn tất' per locked map — flagged).
+- block→'Tòa' sweep: ApartmentsPage (placeholder, validation), AnnouncementsPage (label, option, validation). Display-"block" grep in admin src = 0. Decision recorded in DECISIONS.md.
+- Commit 9b2de7b. Verified: tsc + vite build green (admin). NOT browser-verified — CTO step (port 80).
+
+**NEXT: admin cluster A4 (FINAL admin cluster) — ParkingPage + VehiclesPage + AmenitiesPage (both TEMP_HIDDEN_DEFERRED pages translate anyway) per reports/i18n-inventory.md. Wire labelFor (VehicleType, ParkingSlotStatus, ActiveStatus). Then i18n Phase 2 DONE → final sweep + report.**
 
 **Resident cluster 1 COMPLETE (2026-06-10):**
 - viShared empty-state refined: `common.emptyYet` / `common.emptyFound` replace `common.empty`; 11 ui tests green. Commit 24aff81.

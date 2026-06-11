@@ -29,4 +29,25 @@ Tôi sẽ upload các file ngữ cảnh của dự án. Đọc chúng trước k
 ---
 FOR CLAUDE CODE:
 -
-Read NEW-SESSION.md and follow it: load context from the files it lists, then give me the short status confirmation it asks for, and wait for my instruction.
+New session. Resume an in-progress project. Do NOT start work until you've reloaded context and confirmed state.
+
+STEP 1 — Reload context in order (per NEW-SESSION.md):
+1. Read PROGRESS.md — note the "IN PROGRESS" section(s), especially "form-feedback standardization".
+2. Read DECISIONS.md — recent entries (phone-as-login is COMPLETE; form-feedback standard; distinct dup error codes).
+3. Read SECURITY_AUDIT_PROGRESS.md and CLAUDE.md as usual.
+4. Read the resume-pointer report named in PROGRESS.md (reports/form-feedback-survey.md) for the form-feedback plan.
+
+STEP 2 — Verify actual state (trust git/files, not summaries):
+- Run git log --oneline (recent) and git status to see what's committed and whether anything is uncommitted.
+- ls reports/ and confirm form-feedback-survey.md exists and how complete it is.
+- Confirm the backend already emits PHONE_ALREADY_EXISTS vs EMAIL_ALREADY_EXISTS (grep the ErrorCode enum / service) — this was found last session; verify it's真 in code.
+
+STEP 3 — Report back SHORT and WAIT (do not start):
+- Current state: phone-as-login COMPLETE; form-feedback IN PROGRESS.
+- What's done vs remaining for form-feedback (FE map codes→VN inline on resident form; finish survey; later: other deviating forms).
+- Any discrepancy between PROGRESS.md and what git/code actually show.
+- Then: "awaiting instruction."
+
+Operating rules for the session (from NEW-SESSION.md / CLAUDE.md): write results to files not chat; one task per turn; JAVA_HOME must point to Java 21 before mvn (path in NEW-SESSION.md); tests green before commit; commits grouped (feat/fix/test/docs never mixed, stage only relevant files); end each step by updating PROGRESS.md (+DECISIONS.md if a decision) as a separate docs(context) commit with a resume pointer; respect approval gates — do not self-approve. Do not boot/deploy unless asked.
+
+Reply with the STEP 3 summary only. Wait for my task.

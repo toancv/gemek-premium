@@ -22,6 +22,14 @@ export const enumLabels = {
     DONE: 'Hoàn tất',
     CANCELLED: 'Đã hủy',
   },
+  // Labels match the resident create-ticket form options (MyTicketsPage)
+  TicketCategory: {
+    MAINTENANCE_REPAIR: 'Sửa chữa & Bảo trì',
+    COMPLAINT: 'Khiếu nại',
+    ADMINISTRATIVE: 'Hành chính',
+    SUGGESTION_FEEDBACK: 'Góp ý & Phản hồi',
+    OTHER: 'Khác',
+  },
   TicketPriority: {
     LOW: 'Thấp',
     MEDIUM: 'Trung bình',

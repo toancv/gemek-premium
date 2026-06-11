@@ -6,6 +6,7 @@ describe('labelFor', () => {
     expect(labelFor('ApartmentStatus', 'OCCUPIED')).toBe('Đã ở');
     expect(labelFor('TicketStatus', 'IN_PROGRESS')).toBe('Đang xử lý');
     expect(labelFor('TicketPriority', 'URGENT')).toBe('Khẩn cấp');
+    expect(labelFor('TicketCategory', 'MAINTENANCE_REPAIR')).toBe('Sửa chữa & Bảo trì');
     expect(labelFor('ContractorSpecialty', 'FIRE_SAFETY')).toBe('Phòng cháy');
     expect(labelFor('VehicleType', 'MOTORBIKE')).toBe('Xe máy');
     expect(labelFor('ParkingSlotStatus', 'RESERVED')).toBe('Đã đặt trước');

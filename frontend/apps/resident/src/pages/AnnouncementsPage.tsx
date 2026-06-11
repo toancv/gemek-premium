@@ -1,6 +1,7 @@
 import React from 'react';
 import { useAnnouncements, useMarkAnnouncementRead } from '../api/hooks';
 import { t } from '../i18n/vi';
+import { labelFor } from '@gemek/ui';
 
 const TYPE_COLORS: Record<string, string> = {
   GENERAL: 'bg-blue-100 text-blue-700', URGENT: 'bg-red-100 text-red-700',
@@ -29,7 +30,7 @@ export function AnnouncementsPage() {
             className={`bg-white rounded-xl border p-4 cursor-pointer transition-colors ${!a.isRead ? 'border-blue-300 bg-blue-50' : 'border-gray-200'}`}>
             <div className="flex items-start justify-between gap-2 mb-2">
               <h3 className="font-semibold text-gray-900 text-sm">{a.title}</h3>
-              <span className={`flex-shrink-0 text-xs px-2 py-0.5 rounded-full ${TYPE_COLORS[a.type] ?? 'bg-gray-100 text-gray-700'}`}>{a.type}</span>
+              <span className={`flex-shrink-0 text-xs px-2 py-0.5 rounded-full ${TYPE_COLORS[a.type] ?? 'bg-gray-100 text-gray-700'}`}>{labelFor('AnnouncementType', a.type)}</span>
             </div>
             <div className="flex items-center justify-between text-xs text-gray-400">
               <span>{a.targetScope === 'ALL' ? t('announcements.everyone') : `${a.targetScope}${a.targetBlock ? ': ' + a.targetBlock.name : ''}`}</span>

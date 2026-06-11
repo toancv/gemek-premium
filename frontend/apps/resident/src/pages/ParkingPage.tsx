@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useParkingAssignments } from '../api/hooks';
 import { apiClient } from '../api/client';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { getVnErrorMessage } from '@gemek/ui';
+import { getVnErrorMessage, labelFor } from '@gemek/ui';
 import { t } from '../i18n/vi';
 
 export function ParkingPage() {
@@ -44,7 +44,7 @@ export function ParkingPage() {
             <div key={a.id} className="bg-white rounded-xl border border-gray-200 p-4">
               <p className="font-semibold text-gray-900">{a.parkingSlot?.slotNumber ?? t('parking.slotFallback')}</p>
               <div className="text-sm text-gray-500 mt-1 space-y-0.5">
-                <p>{t('parking.zone')} {a.parkingSlot?.zone ?? '—'} • {t('parking.type')} {a.parkingSlot?.type ?? '—'}</p>
+                <p>{t('parking.zone')} {a.parkingSlot?.zone ?? '—'} • {t('parking.type')} {a.parkingSlot?.type ? labelFor('VehicleType', a.parkingSlot.type) : '—'}</p>
                 <p>{t('parking.vehicle')} {a.vehicle?.licensePlate ?? '—'}</p>
                 <p>{t('parking.card')} {a.parkingCardNumber ?? '—'}</p>
                 <p>{t('parking.since')} {a.startDate}</p>

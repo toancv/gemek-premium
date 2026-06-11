@@ -4,6 +4,7 @@ import { useAuthStore } from '../store/authStore';
 // TEMP_HIDDEN_DEFERRED: useMyBookings removed from import — bookings feature deferred, see PROGRESS.md
 import { useMyTickets, useAnnouncements, useMe } from '../api/hooks';
 import { t } from '../i18n/vi';
+import { labelFor } from '@gemek/ui';
 
 export function HomePage() {
   const user = useAuthStore((s) => s.user);
@@ -48,7 +49,7 @@ export function HomePage() {
             <Link to="/announcements" key={a.id} className="block bg-white rounded-xl border border-gray-200 p-4 hover:border-blue-300 transition-colors">
               <div className="flex items-start justify-between gap-2">
                 <p className="font-medium text-gray-900 text-sm">{a.title}</p>
-                <span className={`flex-shrink-0 text-xs px-2 py-0.5 rounded-full ${a.type === 'URGENT' ? 'bg-red-100 text-red-600' : 'bg-blue-100 text-blue-600'}`}>{a.type}</span>
+                <span className={`flex-shrink-0 text-xs px-2 py-0.5 rounded-full ${a.type === 'URGENT' ? 'bg-red-100 text-red-600' : 'bg-blue-100 text-blue-600'}`}>{labelFor('AnnouncementType', a.type)}</span>
               </div>
               <p className="text-xs text-gray-400 mt-1">{a.publishedAt ? new Date(a.publishedAt).toLocaleDateString() : ''}</p>
             </Link>

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useMyTickets, useCreateTicket, useMyResident } from '../api/hooks';
-import { getVnErrorMessage } from '@gemek/ui';
+import { getVnErrorMessage, labelFor } from '@gemek/ui';
 import { t } from '../i18n/vi';
 
 const STATUS_BG: Record<string, string> = {
@@ -59,9 +59,9 @@ export function MyTicketsPage() {
           <Link to={`/tickets/${t.id}`} key={t.id} className="block bg-white rounded-xl border border-gray-200 p-4 hover:border-blue-300 transition-colors">
             <div className="flex items-start justify-between gap-2">
               <p className="font-medium text-gray-900 text-sm flex-1">{t.title}</p>
-              <span className={`flex-shrink-0 text-xs px-2 py-0.5 rounded-full ${STATUS_BG[t.status] ?? 'bg-gray-100 text-gray-700'}`}>{t.status.replace('_', ' ')}</span>
+              <span className={`flex-shrink-0 text-xs px-2 py-0.5 rounded-full ${STATUS_BG[t.status] ?? 'bg-gray-100 text-gray-700'}`}>{labelFor('TicketStatus', t.status)}</span>
             </div>
-            <p className="text-xs text-gray-400 mt-1">{t.category.replace(/_/g, ' ')} • {new Date(t.createdAt).toLocaleDateString()}</p>
+            <p className="text-xs text-gray-400 mt-1">{labelFor('TicketCategory', t.category)} • {new Date(t.createdAt).toLocaleDateString()}</p>
           </Link>
         ))}
       </div>

@@ -47,6 +47,7 @@ export const vi: TranslationDict = {
     priority: 'Mức ưu tiên:',
     submitted: 'Ngày gửi:',
     assignedTo: 'Phụ trách:',
+    sla: 'Hạn hoàn thành:',
     breached: '(Quá hạn)',
     yourRating: 'Đánh giá của bạn:',
     photos: 'Hình ảnh',

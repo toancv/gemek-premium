@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { toast, getVnErrorMessage } from '@gemek/ui';
+import { toast, getVnErrorMessage, labelFor } from '@gemek/ui';
 import { useTicket, useRateTicket } from '../api/hooks';
 import { t } from '../i18n/vi';
 
@@ -41,14 +41,14 @@ export function TicketDetailPage() {
       <div className="bg-white rounded-xl border border-gray-200 p-4">
         <div className="flex items-start justify-between gap-2 mb-3">
           <h1 className="font-semibold text-gray-900">{ticket.title}</h1>
-          <span className={`flex-shrink-0 text-xs px-2 py-0.5 rounded-full ${STATUS_BG[ticket.status] ?? 'bg-gray-100 text-gray-700'}`}>{ticket.status}</span>
+          <span className={`flex-shrink-0 text-xs px-2 py-0.5 rounded-full ${STATUS_BG[ticket.status] ?? 'bg-gray-100 text-gray-700'}`}>{labelFor('TicketStatus', ticket.status)}</span>
         </div>
         <div className="space-y-1 text-sm">
-          <div className="flex gap-2"><span className="text-gray-500">{t('ticketDetail.category')}</span><span>{ticket.category?.replace(/_/g, ' ')}</span></div>
-          <div className="flex gap-2"><span className="text-gray-500">{t('ticketDetail.priority')}</span><span>{ticket.priority}</span></div>
+          <div className="flex gap-2"><span className="text-gray-500">{t('ticketDetail.category')}</span><span>{labelFor('TicketCategory', ticket.category)}</span></div>
+          <div className="flex gap-2"><span className="text-gray-500">{t('ticketDetail.priority')}</span><span>{labelFor('TicketPriority', ticket.priority)}</span></div>
           <div className="flex gap-2"><span className="text-gray-500">{t('ticketDetail.submitted')}</span><span>{new Date(ticket.createdAt).toLocaleDateString()}</span></div>
           {ticket.assignedToUser && <div className="flex gap-2"><span className="text-gray-500">{t('ticketDetail.assignedTo')}</span><span>{ticket.assignedToUser.fullName}</span></div>}
-          {ticket.slaDeadline && <div className="flex gap-2"><span className="text-gray-500">SLA:</span><span className={ticket.slaBreached ? 'text-red-600 font-medium' : ''}>{new Date(ticket.slaDeadline).toLocaleDateString()}{ticket.slaBreached ? ' ' + t('ticketDetail.breached') : ''}</span></div>}
+          {ticket.slaDeadline && <div className="flex gap-2"><span className="text-gray-500">{t('ticketDetail.sla')}</span><span className={ticket.slaBreached ? 'text-red-600 font-medium' : ''}>{new Date(ticket.slaDeadline).toLocaleDateString()}{ticket.slaBreached ? ' ' + t('ticketDetail.breached') : ''}</span></div>}
         </div>
         {ticket.description && <p className="mt-3 text-sm text-gray-600 bg-gray-50 p-3 rounded-lg">{ticket.description}</p>}
         {ticket.rating && (
@@ -81,7 +81,7 @@ export function TicketDetailPage() {
             <div key={h.id} className="flex gap-3 text-sm">
               <div className="w-2 h-2 rounded-full bg-blue-500 mt-1.5 flex-shrink-0" />
               <div>
-                <p className="font-medium">{h.oldStatus ?? t('ticketDetail.created')} → {h.newStatus}</p>
+                <p className="font-medium">{h.oldStatus ? labelFor('TicketStatus', h.oldStatus) : t('ticketDetail.created')} → {labelFor('TicketStatus', h.newStatus)}</p>
                 <p className="text-xs text-gray-400">{h.changedBy?.fullName} • {new Date(h.changedAt).toLocaleString()}</p>
                 {h.notes && <p className="text-xs text-gray-500 mt-0.5">{h.notes}</p>}
               </div>

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useMyResident, useCreateVehicle } from '../api/hooks';
-import { getVnErrorMessage } from '@gemek/ui';
+import { getVnErrorMessage, labelFor } from '@gemek/ui';
 
 const VEHICLE_TYPES = ['CAR', 'MOTORBIKE', 'BICYCLE', 'OTHER'];
 
@@ -88,7 +88,7 @@ export function MyVehiclesPage() {
                   Loại phương tiện <span className="text-red-500">*</span>
                 </label>
                 <select name="type" className="block w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-                  {VEHICLE_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+                  {VEHICLE_TYPES.map((vt) => <option key={vt} value={vt}>{labelFor('VehicleType', vt)}</option>)}
                 </select>
               </div>
               <div>

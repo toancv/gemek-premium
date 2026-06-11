@@ -203,6 +203,13 @@ All 16 classes fixed. Fix pattern: `ADMIN_EMAIL` → `ADMIN_PHONE = "0900000000"
 - No new enum keys needed (CAR/MOTORBIKE/BICYCLE/OTHER + AVAILABLE/OCCUPIED/RESERVED + ACTIVE/INACTIVE already mapped) — no feat(ui) commit. Enum value=/filters/logic untouched.
 - Commit 0a66bfe. Verified: tsc + vite build green (admin); leftover-English grep on 3 pages = 0. NOT browser-verified — CTO step (port 80; Parking/Vehicles/Amenities may be TEMP_HIDDEN_DEFERRED — verify via direct URL).
 
+**Admin leftover cleanup COMPLETE (2026-06-11):**
+- `t('status')` key miss fixed (key is `common.status` → fallback rendered literal "status"): VehiclesPage:119 + ParkingPage:126 headers → `t('common.status')` = 'Trạng thái'.
+- SLA wording (CTO-approved set): tickets.slaDeadline → 'Hạn hoàn thành'; dashboard.slaBreached + reports.slaBreachedCol → 'Trễ hạn'; reports.slaBreachRate → 'Tỷ lệ trễ hạn'; admin TicketDetailPage hardcoded 'SLA:' → new key ticketDetail.sla = 'Hạn hoàn thành:'. Grep 'SLA' in admin src = 0 displayed leftovers.
+- "System Administrator" (top-right header + bottom-left sidebar of admin layout): NOT a static string — it is `user.fullName` from API (seeded admin account, backend AdminSeeder.java:91). Shows logged-in user identity → NOT removed. ⏸ CTO ruling pending (options: leave as-is / change seed fullName to VN / DB update of admin account). No FE change made for this item.
+- Commit e7b945b. Verified: tsc + vite build green (admin). NOT browser-verified — CTO step (port 80).
+- Date-format task (mm/dd→dd/mm) still pending — its OWN later session, untouched here.
+
 **NEXT: FINAL i18n step — resident enum-cleanup pass: adopt labelFor in resident TicketDetail status/priority, MyTickets/MyBookings status chips, Parking type (the earlier-flagged raw enums per tech-debt note above). Then i18n Phase 2 DONE → final sweep + report.**
 
 **Resident cluster 1 COMPLETE (2026-06-10):**

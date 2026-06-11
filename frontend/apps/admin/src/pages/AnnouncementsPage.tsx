@@ -94,7 +94,7 @@ export function AnnouncementsPage() {
             {data?.data?.map((a: any) => (
               <tr key={a.id} className="hover:bg-gray-50">
                 <td className="px-4 py-3 font-medium max-w-xs truncate">{a.title}</td>
-                <td className="px-4 py-3"><span className="inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700">{a.type}</span></td>
+                <td className="px-4 py-3"><span className="inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700">{labelFor('AnnouncementType', a.type)}</span></td>
                 <td className="px-4 py-3">{labelFor('AnnouncementScope', a.targetScope)}{a.targetBlock ? ` - ${a.targetBlock.name}` : ''}</td>
                 <td className="px-4 py-3 text-gray-500">{a.publishedAt ? formatVNDate(a.publishedAt) : '—'}</td>
                 <td className="px-4 py-3"><span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${a.publishedAt ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>{a.publishedAt ? 'Đã đăng' : 'Nháp'}</span></td>

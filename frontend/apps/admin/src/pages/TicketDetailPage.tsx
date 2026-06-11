@@ -1,8 +1,9 @@
 import React, { useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTicket, useAssignTicket, useUpdateTicketStatus } from '../api/hooks';
-import { SearchableSelect, getVnErrorMessage } from '@gemek/ui';
+import { SearchableSelect, getVnErrorMessage, labelFor } from '@gemek/ui';
 import { apiClient } from '../api/client';
+import { t } from '../i18n/vi';
 
 const STATUS_COLORS: Record<string, string> = {
   NEW: 'bg-blue-100 text-blue-700', ASSIGNED: 'bg-purple-100 text-purple-700',
@@ -112,14 +113,14 @@ export function TicketDetailPage() {
   };
 
   if (isLoading) return <div className="flex items-center justify-center h-64"><svg className="animate-spin h-8 w-8 text-blue-600" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg></div>;
-  if (isError) return <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-700">Failed to load ticket.</div>;
+  if (isError) return <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-700">{t('ticketDetail.loadError')}</div>;
 
   const isMaintenanceRepair = ticket.category === 'MAINTENANCE_REPAIR';
 
   return (
     <div className="max-w-4xl">
       <button onClick={() => navigate(-1)} className="text-sm text-blue-600 hover:underline mb-4 flex items-center gap-1">
-        &larr; Back to Tickets
+        {t('ticketDetail.back')}
       </button>
       <div className="bg-white rounded-lg border border-gray-200 p-6 mb-4">
         <div className="flex items-start justify-between mb-4">
@@ -127,24 +128,24 @@ export function TicketDetailPage() {
             <h1 className="text-xl font-bold text-gray-900">{ticket.title}</h1>
             <p className="text-xs text-gray-400 mt-1 font-mono">{ticket.id}</p>
           </div>
-          <span className={`inline-flex px-3 py-1 rounded-full text-sm font-medium ${STATUS_COLORS[ticket.status] ?? 'bg-gray-100 text-gray-700'}`}>{ticket.status}</span>
+          <span className={`inline-flex px-3 py-1 rounded-full text-sm font-medium ${STATUS_COLORS[ticket.status] ?? 'bg-gray-100 text-gray-700'}`}>{labelFor('TicketStatus', ticket.status)}</span>
         </div>
         <div className="grid grid-cols-3 gap-4 text-sm mb-4">
-          <div><span className="text-gray-500">Category:</span> <span className="font-medium">{ticket.category}</span></div>
-          <div><span className="text-gray-500">Priority:</span> <span className="font-medium">{ticket.priority}</span></div>
-          <div><span className="text-gray-500">Apartment:</span> <span className="font-medium">{ticket.apartment?.unitNumber} - {ticket.apartment?.block?.name}</span></div>
-          <div><span className="text-gray-500">Submitted by:</span> <span className="font-medium">{ticket.submittedBy?.fullName}</span></div>
-          <div><span className="text-gray-500">Assignee:</span> <span className="font-medium">{ticket.assignedToUser?.fullName ?? ticket.assignedToContractor?.companyName ?? '—'}</span></div>
+          <div><span className="text-gray-500">{t('ticketDetail.category')}</span> <span className="font-medium">{labelFor('TicketCategory', ticket.category)}</span></div>
+          <div><span className="text-gray-500">{t('ticketDetail.priority')}</span> <span className="font-medium">{labelFor('TicketPriority', ticket.priority)}</span></div>
+          <div><span className="text-gray-500">{t('ticketDetail.apartment')}</span> <span className="font-medium">{ticket.apartment?.unitNumber} - {ticket.apartment?.block?.name}</span></div>
+          <div><span className="text-gray-500">{t('ticketDetail.submittedBy')}</span> <span className="font-medium">{ticket.submittedBy?.fullName}</span></div>
+          <div><span className="text-gray-500">{t('ticketDetail.assignee')}</span> <span className="font-medium">{ticket.assignedToUser?.fullName ?? ticket.assignedToContractor?.companyName ?? '—'}</span></div>
           <div><span className="text-gray-500">SLA:</span> <span className={`font-medium ${ticket.slaBreached ? 'text-red-600' : ''}`}>{ticket.slaDeadline ? new Date(ticket.slaDeadline).toLocaleString() : '—'}{ticket.slaBreached && ' ⚠'}</span></div>
         </div>
         {ticket.description && <div className="bg-gray-50 rounded-md p-4 text-sm text-gray-700 mb-4">{ticket.description}</div>}
-        {ticket.rating && <div className="text-sm"><span className="text-gray-500">Rating:</span> <span className="font-medium">{'★'.repeat(ticket.rating)}{'☆'.repeat(5 - ticket.rating)}</span> {ticket.ratingComment && <span className="text-gray-500 ml-2">"{ticket.ratingComment}"</span>}</div>}
+        {ticket.rating && <div className="text-sm"><span className="text-gray-500">{t('ticketDetail.rating')}</span> <span className="font-medium">{'★'.repeat(ticket.rating)}{'☆'.repeat(5 - ticket.rating)}</span> {ticket.ratingComment && <span className="text-gray-500 ml-2">"{ticket.ratingComment}"</span>}</div>}
       </div>
 
       {/* Photos */}
       {ticket.photos?.length > 0 && (
         <div className="bg-white rounded-lg border border-gray-200 p-6 mb-4">
-          <h2 className="text-base font-semibold mb-3">Photos</h2>
+          <h2 className="text-base font-semibold mb-3">{t('ticketDetail.photos')}</h2>
           <div className="grid grid-cols-3 gap-3">
             {ticket.photos.map((p: any) => (
               <div key={p.id} className="rounded-lg overflow-hidden border border-gray-200">
@@ -158,14 +159,14 @@ export function TicketDetailPage() {
 
       {/* Status History */}
       <div className="bg-white rounded-lg border border-gray-200 p-6 mb-4">
-        <h2 className="text-base font-semibold mb-3">Status History</h2>
+        <h2 className="text-base font-semibold mb-3">{t('ticketDetail.statusHistory')}</h2>
         <div className="space-y-3">
           {ticket.statusHistory?.map((h: any) => (
             <div key={h.id} className="flex items-start gap-3 text-sm">
               <div className="w-2 h-2 rounded-full bg-blue-500 mt-1.5 flex-shrink-0" />
               <div>
-                <span className="font-medium">{h.oldStatus ?? 'Created'} → {h.newStatus}</span>
-                <span className="text-gray-400 ml-2">by {h.changedBy?.fullName}</span>
+                <span className="font-medium">{h.oldStatus ? labelFor('TicketStatus', h.oldStatus) : t('ticketDetail.created')} → {labelFor('TicketStatus', h.newStatus)}</span>
+                <span className="text-gray-400 ml-2">{t('ticketDetail.by')} {h.changedBy?.fullName}</span>
                 <span className="text-gray-400 ml-2">{new Date(h.changedAt).toLocaleString()}</span>
                 {h.notes && <p className="text-gray-500 mt-0.5">{h.notes}</p>}
               </div>
@@ -190,7 +191,7 @@ export function TicketDetailPage() {
             </div>
             {isMaintenanceRepair && (
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Nhà thầu <span className="text-xs text-gray-400">(chỉ MAINTENANCE_REPAIR)</span></label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Nhà thầu <span className="text-xs text-gray-400">(chỉ {labelFor('TicketCategory', 'MAINTENANCE_REPAIR')})</span></label>
                 <SearchableSelect
                   value={assignedContractorId}
                   onChange={handleContractorChange}
@@ -219,9 +220,9 @@ export function TicketDetailPage() {
             <div><label className="block text-sm font-medium text-gray-700 mb-1">Trạng thái mới</label>
               <select value={newStatus} onChange={(e) => setNewStatus(e.target.value)} className="block w-full border border-gray-300 rounded-md px-3 py-2 text-sm bg-white">
                 <option value="">Chọn trạng thái...</option>
-                <option value="IN_PROGRESS">Đang xử lý</option>
-                <option value="DONE">Hoàn thành</option>
-                <option value="CANCELLED">Đã hủy</option>
+                <option value="IN_PROGRESS">{labelFor('TicketStatus', 'IN_PROGRESS')}</option>
+                <option value="DONE">{labelFor('TicketStatus', 'DONE')}</option>
+                <option value="CANCELLED">{labelFor('TicketStatus', 'CANCELLED')}</option>
               </select></div>
             <div><label className="block text-sm font-medium text-gray-700 mb-1">Ghi chú</label>
               <textarea value={statusNotes} onChange={(e) => setStatusNotes(e.target.value)} rows={2} className="block w-full border border-gray-300 rounded-md px-3 py-2 text-sm" /></div>

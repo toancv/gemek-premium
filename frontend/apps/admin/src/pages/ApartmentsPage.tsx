@@ -124,7 +124,7 @@ export function ApartmentsPage() {
             <h2 className="text-lg font-semibold mb-4">Thêm căn hộ mới</h2>
             <form onSubmit={async (e) => {
               e.preventDefault();
-              if (!newBlockId) { setBlockError('Vui lòng chọn block.'); return; }
+              if (!newBlockId) { setBlockError('Vui lòng chọn tòa.'); return; }
               setBlockError('');
               setCreateError('');
               const fd = new FormData(e.target as HTMLFormElement);
@@ -148,7 +148,7 @@ export function ApartmentsPage() {
                   loadOptions={loadBlockOptions}
                   value={newBlockId}
                   onChange={(v) => { setNewBlockId(v); setBlockError(''); }}
-                  placeholder="Chọn block..."
+                  placeholder="Chọn tòa..."
                   error={blockError}
                 />
               </div>

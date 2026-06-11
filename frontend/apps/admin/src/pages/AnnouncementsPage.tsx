@@ -29,7 +29,7 @@ export function AnnouncementsPage() {
     const content = (fd.get('content') as string).trim();
     const shouldPublish = fd.get('publishNow') === 'true';
     if (!title || !content) { setFormError('Tiêu đề và nội dung là bắt buộc.'); return; }
-    if (scope !== 'ALL' && !blockId) { setFormError('Vui lòng chọn block.'); return; }
+    if (scope !== 'ALL' && !blockId) { setFormError('Vui lòng chọn tòa.'); return; }
     if (scope === 'FLOOR' && !floor.trim()) { setFormError('Vui lòng nhập số tầng.'); return; }
     try {
       const created: any = await create.mutateAsync({
@@ -145,9 +145,9 @@ export function AnnouncementsPage() {
                   </select></div>
               </div>
               {scope !== 'ALL' && (
-                <div><label className="block text-sm font-medium text-gray-700 mb-1">Block <span className="text-red-500">*</span></label>
+                <div><label className="block text-sm font-medium text-gray-700 mb-1">Tòa <span className="text-red-500">*</span></label>
                   <select value={blockId} onChange={(e) => setBlockId(e.target.value)} className="block w-full border border-gray-300 rounded-md px-3 py-2 text-sm bg-white">
-                    <option value="">-- Chọn block --</option>
+                    <option value="">-- Chọn tòa --</option>
                     {blocksData?.data?.map((b: any) => (
                       <option key={b.id} value={b.id}>{b.name}</option>
                     ))}

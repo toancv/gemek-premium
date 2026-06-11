@@ -1,8 +1,9 @@
 import React, { useState, useCallback } from 'react';
-import { SearchableSelect } from '@gemek/ui';
+import { SearchableSelect, labelFor } from '@gemek/ui';
 import type { SearchableOption } from '@gemek/ui';
 import { useResidents, useCreateResident } from '../api/hooks';
 import { apiClient } from '../api/client';
+import { t } from '../i18n/vi';
 
 interface ResidentItem {
   id: string;
@@ -129,34 +130,34 @@ export function ResidentsPage() {
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Residents</h1>
+        <h1 className="text-2xl font-bold text-gray-900">{t('residents.title')}</h1>
         <button onClick={openCreate} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium">
-          Add Resident
+          {t('residents.add')}
         </button>
       </div>
 
       <div className="bg-white rounded-lg border border-gray-200 p-4 mb-4">
         <input value={search} onChange={(e) => { setSearch(e.target.value); setPage(0); }}
-          placeholder="Search by name or email..." className="border border-gray-300 rounded-md px-3 py-2 text-sm w-80 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+          placeholder={t('residents.searchPlaceholder')} className="border border-gray-300 rounded-md px-3 py-2 text-sm w-80 focus:outline-none focus:ring-2 focus:ring-blue-500" />
       </div>
 
-      {isError && <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-700 mb-4">Failed to load residents.</div>}
+      {isError && <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-700 mb-4">{t('residents.loadError')}</div>}
 
       <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
         <table className="w-full text-sm">
           <thead className="bg-gray-50 border-b border-gray-200">
             <tr>
-              <th className="text-left px-4 py-3 font-medium text-gray-500">Name</th>
+              <th className="text-left px-4 py-3 font-medium text-gray-500">{t('residents.name')}</th>
               <th className="text-left px-4 py-3 font-medium text-gray-500">Số điện thoại</th>
               <th className="text-left px-4 py-3 font-medium text-gray-500">Email</th>
-              <th className="text-left px-4 py-3 font-medium text-gray-500">Apartment</th>
-              <th className="text-left px-4 py-3 font-medium text-gray-500">Type</th>
-              <th className="text-left px-4 py-3 font-medium text-gray-500">Move-in Date</th>
+              <th className="text-left px-4 py-3 font-medium text-gray-500">{t('residents.apartment')}</th>
+              <th className="text-left px-4 py-3 font-medium text-gray-500">{t('residents.type')}</th>
+              <th className="text-left px-4 py-3 font-medium text-gray-500">{t('residents.moveInDate')}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
-            {isLoading && <tr><td colSpan={6} className="text-center py-8 text-gray-400">Loading...</td></tr>}
-            {!isLoading && !data?.data?.length && <tr><td colSpan={6} className="text-center py-8 text-gray-400">No residents found</td></tr>}
+            {isLoading && <tr><td colSpan={6} className="text-center py-8 text-gray-400">{t('common.loading')}</td></tr>}
+            {!isLoading && !data?.data?.length && <tr><td colSpan={6} className="text-center py-8 text-gray-400">{t('common.emptyFound', { item: 'cư dân' })}</td></tr>}
             {data?.data?.map((r: ResidentItem) => (
               <tr key={r.id} className="hover:bg-gray-50">
                 <td className="px-4 py-3 font-medium">{r.user?.fullName}</td>
@@ -164,7 +165,7 @@ export function ResidentsPage() {
                 <td className="px-4 py-3 text-gray-500">{r.user?.email ?? '—'}</td>
                 <td className="px-4 py-3">{r.apartment?.unitNumber}</td>
                 <td className="px-4 py-3">
-                  <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${r.type === 'OWNER' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'}`}>{r.type}</span>
+                  <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${r.type === 'OWNER' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'}`}>{labelFor('ResidentType', r.type)}</span>
                 </td>
                 <td className="px-4 py-3">{r.moveInDate}</td>
               </tr>
@@ -172,11 +173,11 @@ export function ResidentsPage() {
           </tbody>
         </table>
         <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200">
-          <span className="text-xs text-gray-500">Total: {data?.total ?? 0}</span>
+          <span className="text-xs text-gray-500">{t('common.total')} {data?.total ?? 0}</span>
           <div className="flex gap-2">
-            <button onClick={() => setPage((p) => Math.max(0, p - 1))} disabled={page === 0} className="px-3 py-1 text-xs border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-40">Prev</button>
+            <button onClick={() => setPage((p) => Math.max(0, p - 1))} disabled={page === 0} className="px-3 py-1 text-xs border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-40">{t('common.prev')}</button>
             <span className="px-3 py-1 text-xs">{page + 1} / {data?.totalPages ?? 1}</span>
-            <button onClick={() => setPage((p) => p + 1)} disabled={page + 1 >= (data?.totalPages ?? 1)} className="px-3 py-1 text-xs border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-40">Next</button>
+            <button onClick={() => setPage((p) => p + 1)} disabled={page + 1 >= (data?.totalPages ?? 1)} className="px-3 py-1 text-xs border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-40">{t('common.next')}</button>
           </div>
         </div>
       </div>

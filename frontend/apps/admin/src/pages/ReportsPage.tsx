@@ -182,7 +182,7 @@ export function ReportsPage() {
                       <td className="px-4 py-3">{c.endDate}</td>
                       <td className="px-4 py-3"><span className={`font-medium ${c.daysToExpiry <= 30 ? 'text-red-600' : 'text-yellow-600'}`}>{t('reports.nDays', { n: c.daysToExpiry })}</span></td>
                       <td className="px-4 py-3">{c.contractValue?.toLocaleString('vi-VN')}</td>
-                      <td className="px-4 py-3"><span className="inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">{labelFor('ActiveStatus', c.status)}</span></td>
+                      <td className="px-4 py-3"><span className="inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">{labelFor('ContractStatus', c.status)}</span></td>
                     </tr>
                   ))}
                 </tbody>

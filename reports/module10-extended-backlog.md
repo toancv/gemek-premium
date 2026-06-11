@@ -9,9 +9,9 @@ Announcement→notification dispatch core: atomic in-publish-TX dispatch (saveAl
 
 Commits: P1 221813b/a671c70 · P2 22114b8/8880499 · P4 0070727/3b5b725 · P5 dcfc42b/732beac/32bda65.
 
-## N1 — Notification deep-link + news detail route (NEXT, small)
+## N1 — Notification deep-link + news detail route — ✅ DONE (2026-06-11)
 
-Bell notification rows currently not clickable. Add: click → navigate by referenceType ("Announcement" → /announcements/:id). New resident detail route/page rendering full content (BE GET /api/announcements/{id} already exists). Mark announcement read on detail view. Replaces the expand-in-card as the primary read surface (expand may stay or go — implementer proposes).
+Delivered: bell rows clickable (mark-read via `useMarkNotificationRead` + deep-link by `NOTIF_ROUTES` referenceType map — N3 types extend the map; unknown type → mark-read only); resident `/announcements/:id` detail page (full content, mark-read on first load, single read surface — P5 expand-in-card REMOVED); `any` debt paid (`api/types.ts`: AnnouncementItem + NotificationItem). Admin bell deferred to N3 (admins receive no dispatch rows until then). Commits e26a965 / d5e6b4f / b34628c.
 
 ## N2 — Rich content in announcements (CTO DECIDED: rich-text editor with embedded images/video)
 
@@ -35,5 +35,5 @@ Photo/video upload on tickets (before/during/after processing stages) + comment 
 
 ## Known tech-debt carried
 
-- Resident AnnouncementsPage item type is `any` — `a.isRead`/`a.content` unchecked at compile time; give it a real type (good moment: N1 detail page work).
+- ~~Resident AnnouncementsPage item type is `any`~~ — PAID in N1 (`api/types.ts`).
 - External channels (FCM/SMTP/SMS) still stubbed.

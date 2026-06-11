@@ -592,13 +592,23 @@ class AmenityControllerTest {
         String bBookingId = (String) objectMapper.readValue(
                 bResult.getResponse().getContentAsString(), Map.class).get("id");
 
-        // ADMIN lists bookings — must see both.
+        // ADMIN lists bookings — must see both residents' bookings. Filtered per
+        // amenity: the unfiltered list is unsorted and the shared dev DB accumulates
+        // committed bookings across runs, so page membership of a fresh booking is
+        // not deterministic (de-flaked 2026-06-11; was a page-100 lottery).
         mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
                         .get("/api/amenity-bookings")
+                        .param("amenityId", gymAmenityId.toString())
                         .param("size", "100")
                         .header("Authorization", "Bearer " + adminToken))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data[?(@.id == '" + aBookingId + "')]").exists())
+                .andExpect(jsonPath("$.data[?(@.id == '" + aBookingId + "')]").exists());
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .get("/api/amenity-bookings")
+                        .param("amenityId", bbqAmenityId.toString())
+                        .param("size", "100")
+                        .header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data[?(@.id == '" + bBookingId + "')]").exists());
     }
 

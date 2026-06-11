@@ -210,7 +210,19 @@ All 16 classes fixed. Fix pattern: `ADMIN_EMAIL` → `ADMIN_PHONE = "0900000000"
 - Commit e7b945b. Verified: tsc + vite build green (admin). NOT browser-verified — CTO step (port 80).
 - Date-format task (mm/dd→dd/mm) still pending — its OWN later session, untouched here.
 
-**NEXT: FINAL i18n step — resident enum-cleanup pass: adopt labelFor in resident TicketDetail status/priority, MyTickets/MyBookings status chips, Parking type (the earlier-flagged raw enums per tech-debt note above). Then i18n Phase 2 DONE → final sweep + report.**
+**Resident enum-cleanup COMPLETE (2026-06-11) → i18n Phase 2 COMPLETE (both apps fully VN, enum labels consistent):**
+- New maps in @gemek/ui enumLabels: AnnouncementType (GENERAL/URGENT/MAINTENANCE/AMENITY/EVENT → Chung/Khẩn cấp/Bảo trì/Tiện ích/Sự kiện), BookingStatus (PENDING/APPROVED/REJECTED/CANCELLED/COMPLETED → Chờ duyệt/Đã duyệt/Bị từ chối/Đã hủy/Hoàn tất) + tests. Commit 649e8c9; ui 51/51 tests green.
+- labelFor wired (display only; value=/chip-color keys/comparisons stay raw BE keys): HomePage + AnnouncementsPage announcement-type chips, MyBookingsPage status chip, MyTicketsPage status chip + category line (replace() hacks removed), TicketDetailPage status chip/category/priority + status-timeline old→new, ParkingPage slot type, MyVehiclesPage type options (map param t→vt, shadowed i18n t). Bonus leftover fixed: resident TicketDetail hardcoded 'SLA:' → ticketDetail.sla='Hạn hoàn thành:' (approved SLA mapping). Commit 3793983. tsc + vite build green (resident). NOT browser-verified — CTO step (port 81).
+- Earlier resident raw-enum tech-debt note: CLEARED.
+- ⚠ Leftover found outside scope: admin AnnouncementsPage:138 type `<option>` labels render raw enum keys (GENERAL...) — one-line labelFor('AnnouncementType') fix, map now exists. Queue for next admin touch.
+- "System Administrator" CTO ruling still pending (see admin leftover cleanup above).
+
+**NEXT — remaining major items:**
+1. Date-format mm/dd→dd/mm — OWN session, needs diagnosis first.
+2. TEMP_HIDDEN_DEFERRED removal (hidden nav/features).
+3. Module 10 notification dispatch (deferred).
+4. Vietnamese user guide.
+5. Hardening sprint: F-04, F-05, SEC-20.
 
 **Resident cluster 1 COMPLETE (2026-06-10):**
 - viShared empty-state refined: `common.emptyYet` / `common.emptyFound` replace `common.empty`; 11 ui tests green. Commit 24aff81.

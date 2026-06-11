@@ -17,6 +17,8 @@ describe('labelFor', () => {
     expect(labelFor('AnnouncementType', 'EVENT')).toBe('Sự kiện');
     expect(labelFor('AnnouncementType', 'URGENT')).toBe('Khẩn cấp');
     expect(labelFor('BookingStatus', 'PENDING')).toBe('Chờ duyệt');
+    expect(labelFor('AnnouncementScope', 'BLOCK')).toBe('Theo tòa');
+    expect(labelFor('AnnouncementScope', 'ALL')).toBe('Toàn bộ');
     expect(labelFor('BookingStatus', 'COMPLETED')).toBe('Hoàn tất');
   });
 

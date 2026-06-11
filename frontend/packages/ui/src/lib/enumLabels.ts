@@ -79,6 +79,12 @@ export const enumLabels = {
     AMENITY: 'Tiện ích',
     EVENT: 'Sự kiện',
   },
+  // vn.vtit.gemek.module.announcement.entity.AnnouncementScope
+  AnnouncementScope: {
+    ALL: 'Toàn bộ',
+    BLOCK: 'Theo tòa',
+    FLOOR: 'Theo tầng',
+  },
   // vn.vtit.gemek.module.amenity.entity.BookingStatus
   BookingStatus: {
     PENDING: 'Chờ duyệt',

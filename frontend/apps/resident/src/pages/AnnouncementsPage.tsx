@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useAnnouncements, useMarkAnnouncementRead } from '../api/hooks';
 import { t } from '../i18n/vi';
 import { labelFor, formatVNDate } from '@gemek/ui';
@@ -12,6 +12,8 @@ const TYPE_COLORS: Record<string, string> = {
 export function AnnouncementsPage() {
   const { data, isLoading } = useAnnouncements({ size: 30, isPublished: true });
   const markRead = useMarkAnnouncementRead();
+  // E-2: id of the single card currently expanded to show its full body, null = all collapsed
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   return (
     <div className="p-4">
@@ -26,12 +28,15 @@ export function AnnouncementsPage() {
       {/* markRead is intentionally fire-and-forget: read-marking is best-effort UX, not a user action that needs feedback */}
       <div className="space-y-3">
         {data?.data?.map((a: any) => (
-          <div key={a.id} onClick={() => { if (!a.isRead) markRead.mutate(a.id); }}
+          <div key={a.id} onClick={() => { setExpandedId((cur) => (cur === a.id ? null : a.id)); if (!a.isRead) markRead.mutate(a.id); }}
             className={`bg-white rounded-xl border p-4 cursor-pointer transition-colors ${!a.isRead ? 'border-blue-300 bg-blue-50' : 'border-gray-200'}`}>
             <div className="flex items-start justify-between gap-2 mb-2">
               <h3 className="font-semibold text-gray-900 text-sm">{a.title}</h3>
               <span className={`flex-shrink-0 text-xs px-2 py-0.5 rounded-full ${TYPE_COLORS[a.type] ?? 'bg-gray-100 text-gray-700'}`}>{labelFor('AnnouncementType', a.type)}</span>
             </div>
+            {expandedId === a.id && (
+              <p className="text-sm text-gray-700 mb-2 whitespace-pre-line">{a.content}</p>
+            )}
             <div className="flex items-center justify-between text-xs text-gray-400">
               <span>{a.targetScope === 'ALL' ? t('announcements.everyone') : `${a.targetScope}${a.targetBlock ? ': ' + a.targetBlock.name : ''}`}</span>
               <span>{a.publishedAt ? formatVNDate(a.publishedAt) : ''}</span>

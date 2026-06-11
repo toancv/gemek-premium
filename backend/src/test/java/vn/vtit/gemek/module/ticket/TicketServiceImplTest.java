@@ -20,6 +20,8 @@ import vn.vtit.gemek.module.apartment.entity.Block;
 import vn.vtit.gemek.module.apartment.repository.ApartmentRepository;
 import vn.vtit.gemek.module.contractor.repository.ContractorRepository;
 import vn.vtit.gemek.module.notification.NotificationService;
+import vn.vtit.gemek.module.notification.SubscriptionService;
+import vn.vtit.gemek.module.notification.repository.NotificationRepository;
 import vn.vtit.gemek.module.resident.entity.Resident;
 import vn.vtit.gemek.module.resident.repository.ResidentRepository;
 import vn.vtit.gemek.module.ticket.dto.RateTicketRequest;
@@ -59,6 +61,8 @@ class TicketServiceImplTest {
     @Mock private ContractorRepository contractorRepository;
     @Mock private FileStorageService fileStorageService;
     @Mock private NotificationService notificationService;
+    @Mock private NotificationRepository notificationRepository;
+    @Mock private SubscriptionService subscriptionService;
 
     private TicketServiceImpl service;
 
@@ -72,7 +76,8 @@ class TicketServiceImplTest {
         service = new TicketServiceImpl(
                 ticketRepository, photoRepository, historyRepository,
                 apartmentRepository, userRepository, residentRepository,
-                contractorRepository, fileStorageService, notificationService);
+                contractorRepository, fileStorageService, notificationService,
+                notificationRepository, subscriptionService);
 
         ticketId = UUID.randomUUID();
         Block block = new Block();

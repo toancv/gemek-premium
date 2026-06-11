@@ -557,6 +557,18 @@ Also 2026-06-11: TicketDetail (admin) update-status select switched from hardcod
 
 ---
 
+## 2026-06-11 | Module 10 P2: in-app dispatch atomic inside publish TX; publish→409 via CAS; JDBC batch inserts
+
+**Decision (CTO-approved, design §C Option 1 + §D D-1 + CAS):** `publishAnnouncement()` creates in-app notification rows INSIDE the publish transaction — a publish either fully happens (feed-visible AND rows exist) or rolls back. Recipients from P1 `findRecipientUserIds` (single scope-rule source). Rows built with `getReferenceById` (no per-recipient SELECT) + one `saveAll` batch. The 2026-05-29 "fire-and-forget" decision governs external FCM/SMTP/SMS only ("in-app record always created") — external channels remain stubbed (INFO log) for a future sprint, where they MUST be after-commit/async.
+
+**Publish contract change:** already-published publish now returns **409 CONFLICT** (was idempotent-200) — aligned to API-SPEC. Sole guard = atomic CAS `UPDATE … SET published_at = :now WHERE id = :id AND published_at IS NULL` (`AnnouncementRepository.publishIfDraft`); row-count 0 → 409. Same CAS kills the read-then-write race → no duplicate dispatch on double-click/concurrent publish (notifications table has no unique constraint, so this is the only protection).
+
+**Config:** `hibernate.jdbc.batch_size: 50` + `order_inserts: true` added — without it `saveAll` of an ALL-scope dispatch (~1–2k rows @ 1000 apartments) is one INSERT round-trip per row.
+
+**Notification body (§G#9):** short VN string `"Có thông báo mới: " + title` — full content read on announcement page, keeps table small.
+
+---
+
 ## CTO Overrides
 _(record when CTO overrides agent decision)_
 

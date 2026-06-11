@@ -231,7 +231,8 @@ All 16 classes fixed. Fix pattern: `ADMIN_EMAIL` → `ADMIN_PHONE = "0900000000"
 **⏸ IN PROGRESS — Module 10 notification dispatch (2026-06-11). Authoritative plan: `reports/module10-dispatch-design.md` (design proposal + P1–P7 breakdown + "P1 findings" note).**
 - Design proposal committed 96f9fa9; CTO approved P1 scope.
 - **P1 DONE:** `ResidentRepository.findRecipientUserIds(scope, blockId, floor)` — typed default method → String-scoped backing `@Query` (Hibernate 6.5 enum-param anchoring limitation, see report P1-findings). Commit 221813b. Contract test `AnnouncementRecipientConsistencyTest` (4 tests, feed↔dispatch invariant per scope, edge cases moved-out/deactivated/no-apartment) commit a671c70. Suite 248/248 green.
-- **NEXT: P2** — wire dispatch into `publishAnnouncement()` (await CTO go; checkpoint after P1). Open CTO questions in report §G (TX boundary §C, 409 vs idempotent §D, CAS guard, unreadCount direction, E-3 scope, E-2 variant, E-4 direction, audience, body content).
+- **P2 DONE (2026-06-11):** dispatch wired into `publishAnnouncement()` — CAS `publishIfDraft` (409 on already-published, race-safe, replaces idempotent-200), in-TX batch dispatch via `NotificationRepository.saveAll` + `getReferenceById` (no per-row SELECT), body "Có thông báo mới: {title}", `batch_size: 50` config. Commits: feat 22114b8, test 8880499 (`AnnouncementPublishDispatchTest` 5 tests: per-scope row counts, field checks, 409+no-duplicate, unread increment). Suite 253/253 green. DECISIONS.md entry 2026-06-11 Module 10 P2.
+- **NEXT: P4/P5 (FE: E-4 PUT→POST fix, E-1 unread badge, E-2 body render) + E-3 per-user isRead — await CTO checkpoint.** Remaining §G questions: Q4 unreadCount direction, Q5 E-3 scope, Q6 E-2 variant, Q7 E-4 direction.
 - ⚠ Multiple residencies: impossible — `uq_residents_active_user` partial unique index (V4:22).
 
 **NEXT — remaining major items:**

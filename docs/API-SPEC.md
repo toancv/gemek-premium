@@ -1982,7 +1982,7 @@ Response `200 OK`:
 Query params: `isRead` (bool), `type`
 Default sort: `createdAt desc`
 
-Response `200 OK` — paginated with unread count:
+Response `200 OK` — paginated:
 ```json
 {
   "data": [
@@ -1997,10 +1997,11 @@ Response `200 OK` — paginated with unread count:
       "createdAt": "ISO8601"
     }
   ],
-  "page": 0, "size": 20, "total": 10, "totalPages": 1,
-  "unreadCount": 3
+  "page": 0, "size": 20, "total": 10, "totalPages": 1
 }
 ```
+
+Note: the unread count is NOT part of this page response — clients fetch it from `GET /api/notifications/unread-count`.
 
 ---
 

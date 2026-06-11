@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { SearchableSelect, labelFor } from '@gemek/ui';
+import { SearchableSelect, labelFor, formatVNDate } from '@gemek/ui';
 import type { SearchableOption } from '@gemek/ui';
 import { useResidents, useCreateResident } from '../api/hooks';
 import { apiClient } from '../api/client';
@@ -167,7 +167,7 @@ export function ResidentsPage() {
                 <td className="px-4 py-3">
                   <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${r.type === 'OWNER' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'}`}>{labelFor('ResidentType', r.type)}</span>
                 </td>
-                <td className="px-4 py-3">{r.moveInDate}</td>
+                <td className="px-4 py-3">{formatVNDate(r.moveInDate)}</td>
               </tr>
             ))}
           </tbody>

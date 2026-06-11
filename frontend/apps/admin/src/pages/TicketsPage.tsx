@@ -1,6 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { SearchableSelect, getVnErrorMessage, labelFor } from '@gemek/ui';
+import { SearchableSelect, getVnErrorMessage, labelFor, formatVNDate } from '@gemek/ui';
 import type { SearchableOption } from '@gemek/ui';
 import { useTickets, useCreateTicket } from '../api/hooks';
 import { apiClient } from '../api/client';
@@ -122,7 +122,7 @@ export function TicketsPage() {
                 <td className="px-4 py-3 text-gray-500">{t.assignedToUser?.fullName ?? t.assignedToContractor?.companyName ?? '—'}</td>
                 <td className="px-4 py-3">
                   <span className={t.slaBreached ? 'text-red-600 font-medium' : 'text-gray-500'}>
-                    {t.slaDeadline ? new Date(t.slaDeadline).toLocaleDateString() : '—'}
+                    {t.slaDeadline ? formatVNDate(t.slaDeadline) : '—'}
                     {t.slaBreached && ' ⚠'}
                   </span>
                 </td>

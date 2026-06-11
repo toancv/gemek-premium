@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTicket, useAssignTicket, useUpdateTicketStatus } from '../api/hooks';
-import { SearchableSelect, getVnErrorMessage, labelFor } from '@gemek/ui';
+import { SearchableSelect, getVnErrorMessage, labelFor, formatVNDateTime } from '@gemek/ui';
 import { apiClient } from '../api/client';
 import { t } from '../i18n/vi';
 
@@ -136,7 +136,7 @@ export function TicketDetailPage() {
           <div><span className="text-gray-500">{t('ticketDetail.apartment')}</span> <span className="font-medium">{ticket.apartment?.unitNumber} - {ticket.apartment?.block?.name}</span></div>
           <div><span className="text-gray-500">{t('ticketDetail.submittedBy')}</span> <span className="font-medium">{ticket.submittedBy?.fullName}</span></div>
           <div><span className="text-gray-500">{t('ticketDetail.assignee')}</span> <span className="font-medium">{ticket.assignedToUser?.fullName ?? ticket.assignedToContractor?.companyName ?? '—'}</span></div>
-          <div><span className="text-gray-500">{t('ticketDetail.sla')}</span> <span className={`font-medium ${ticket.slaBreached ? 'text-red-600' : ''}`}>{ticket.slaDeadline ? new Date(ticket.slaDeadline).toLocaleString() : '—'}{ticket.slaBreached && ' ⚠'}</span></div>
+          <div><span className="text-gray-500">{t('ticketDetail.sla')}</span> <span className={`font-medium ${ticket.slaBreached ? 'text-red-600' : ''}`}>{ticket.slaDeadline ? formatVNDateTime(ticket.slaDeadline) : '—'}{ticket.slaBreached && ' ⚠'}</span></div>
         </div>
         {ticket.description && <div className="bg-gray-50 rounded-md p-4 text-sm text-gray-700 mb-4">{ticket.description}</div>}
         {ticket.rating && <div className="text-sm"><span className="text-gray-500">{t('ticketDetail.rating')}</span> <span className="font-medium">{'★'.repeat(ticket.rating)}{'☆'.repeat(5 - ticket.rating)}</span> {ticket.ratingComment && <span className="text-gray-500 ml-2">"{ticket.ratingComment}"</span>}</div>}
@@ -167,7 +167,7 @@ export function TicketDetailPage() {
               <div>
                 <span className="font-medium">{h.oldStatus ? labelFor('TicketStatus', h.oldStatus) : t('ticketDetail.created')} → {labelFor('TicketStatus', h.newStatus)}</span>
                 <span className="text-gray-400 ml-2">{t('ticketDetail.by')} {h.changedBy?.fullName}</span>
-                <span className="text-gray-400 ml-2">{new Date(h.changedAt).toLocaleString()}</span>
+                <span className="text-gray-400 ml-2">{formatVNDateTime(h.changedAt)}</span>
                 {h.notes && <p className="text-gray-500 mt-0.5">{h.notes}</p>}
               </div>
             </div>

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useAnnouncements, useCreateAnnouncement, usePublishAnnouncement, useBlocks } from '../api/hooks';
-import { getVnErrorMessage, labelFor } from '@gemek/ui';
+import { getVnErrorMessage, labelFor, formatVNDate } from '@gemek/ui';
 
 const TYPES = ['GENERAL','URGENT','MAINTENANCE','AMENITY','EVENT'];
 
@@ -96,7 +96,7 @@ export function AnnouncementsPage() {
                 <td className="px-4 py-3 font-medium max-w-xs truncate">{a.title}</td>
                 <td className="px-4 py-3"><span className="inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700">{a.type}</span></td>
                 <td className="px-4 py-3">{labelFor('AnnouncementScope', a.targetScope)}{a.targetBlock ? ` - ${a.targetBlock.name}` : ''}</td>
-                <td className="px-4 py-3 text-gray-500">{a.publishedAt ? new Date(a.publishedAt).toLocaleDateString('vi-VN') : '—'}</td>
+                <td className="px-4 py-3 text-gray-500">{a.publishedAt ? formatVNDate(a.publishedAt) : '—'}</td>
                 <td className="px-4 py-3"><span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${a.publishedAt ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>{a.publishedAt ? 'Đã đăng' : 'Nháp'}</span></td>
                 <td className="px-4 py-3">
                   {!a.publishedAt && (

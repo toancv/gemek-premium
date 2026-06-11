@@ -1,6 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import { useParkingSlots, useGuestVehicles, useCreateParkingAssignment, useEndParkingAssignment } from '../api/hooks';
-import { SearchableSelect, getVnErrorMessage, labelFor } from '@gemek/ui';
+import { SearchableSelect, getVnErrorMessage, labelFor, formatVNDateTime } from '@gemek/ui';
 import type { SearchableOption } from '@gemek/ui';
 import { apiClient } from '../api/client';
 import { t } from '../i18n/vi';
@@ -171,8 +171,8 @@ export function ParkingPage() {
                   <td className="px-4 py-3 font-medium">{g.licensePlate}</td>
                   <td className="px-4 py-3">{g.ownerName ?? '—'}</td>
                   <td className="px-4 py-3">{g.hostApartment?.unitNumber}</td>
-                  <td className="px-4 py-3">{g.entryTime ? new Date(g.entryTime).toLocaleString() : '—'}</td>
-                  <td className="px-4 py-3">{g.exitTime ? new Date(g.exitTime).toLocaleString() : <span className="text-green-600">{t('parking.stillInside')}</span>}</td>
+                  <td className="px-4 py-3">{g.entryTime ? formatVNDateTime(g.entryTime) : '—'}</td>
+                  <td className="px-4 py-3">{g.exitTime ? formatVNDateTime(g.exitTime) : <span className="text-green-600">{t('parking.stillInside')}</span>}</td>
                   <td className="px-4 py-3 text-gray-500">{g.purpose ?? '—'}</td>
                 </tr>
               ))}

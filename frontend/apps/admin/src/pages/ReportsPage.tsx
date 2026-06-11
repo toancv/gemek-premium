@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { labelFor } from '@gemek/ui';
+import { labelFor, formatVNDate } from '@gemek/ui';
 import { useDashboard, useTicketReport, useAmenityReport, useContractsExpiringReport } from '../api/hooks';
 import { t } from '../i18n/vi';
 
@@ -179,7 +179,7 @@ export function ReportsPage() {
                     <tr key={c.id} className={c.daysToExpiry <= 30 ? 'bg-red-50' : ''}>
                       <td className="px-4 py-3 font-medium">{c.title}</td>
                       <td className="px-4 py-3">{c.contractor?.companyName}</td>
-                      <td className="px-4 py-3">{c.endDate}</td>
+                      <td className="px-4 py-3">{formatVNDate(c.endDate)}</td>
                       <td className="px-4 py-3"><span className={`font-medium ${c.daysToExpiry <= 30 ? 'text-red-600' : 'text-yellow-600'}`}>{t('reports.nDays', { n: c.daysToExpiry })}</span></td>
                       <td className="px-4 py-3">{c.contractValue?.toLocaleString('vi-VN')}</td>
                       <td className="px-4 py-3"><span className="inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">{labelFor('ContractStatus', c.status)}</span></td>

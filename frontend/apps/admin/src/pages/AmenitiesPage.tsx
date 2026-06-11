@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { getVnErrorMessage } from '@gemek/ui';
+import { getVnErrorMessage, formatVNDate } from '@gemek/ui';
 import { useAmenities, useAmenityBookings, useApproveBooking, useRejectBooking, useCreateAmenity, useUpdateAmenity } from '../api/hooks';
 import { t } from '../i18n/vi';
 
@@ -123,7 +123,7 @@ export function AmenitiesPage() {
                     <td className="px-4 py-3 font-medium">{b.amenity?.name}</td>
                     <td className="px-4 py-3">{b.resident?.user?.fullName}</td>
                     <td className="px-4 py-3">{b.apartment?.unitNumber}</td>
-                    <td className="px-4 py-3">{b.bookingDate}</td>
+                    <td className="px-4 py-3">{formatVNDate(b.bookingDate)}</td>
                     <td className="px-4 py-3">{b.startTime} - {b.endTime}</td>
                     <td className="px-4 py-3 flex gap-2">
                       <button onClick={() => handleApprove(b.id)} disabled={approve.isPending} className="text-green-600 hover:underline text-xs disabled:opacity-50">{t('amenities.approve')}</button>

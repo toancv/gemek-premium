@@ -545,6 +545,18 @@ Also 2026-06-11: TicketDetail (admin) update-status select switched from hardcod
 
 ---
 
+## 2026-06-11 | Date display = dd/mm/yyyy via formatVNDate/formatVNDateTime; local-time render; native date inputs unchanged
+
+**Decision:** All FE date displays go through `@gemek/ui` `formatVNDate()` ('dd/mm/yyyy', zero-padded) / `formatVNDateTime()` ('dd/mm/yyyy HH:mm', 24h). Built manually from `getDate()/getMonth()+1/getFullYear()` + local-time getters — NOT `toLocaleDateString('vi-VN')` (unpadded, engine-variant). Invalid/null → `''` (callers keep their own '—' fallbacks).
+
+**Timezone (deliberate, not a bug):** BE sends ISO (UTC for datetimes); helpers render with LOCAL getters, so users see browser-local time (UTC+7 for VN users). Do not "fix" by switching to UTC getters.
+
+**KIND B limitation (accepted):** the 6 native `<input type="date">` render per the user's OS locale — JS cannot change their display format. Left as-is; replacing with masked inputs or a picker lib = future CTO decision.
+
+**KIND C untouched:** ISO wire strings (payloads, query params, input value/min) unchanged — required by API contract + HTML spec. Full inventory: `reports/date-format-diagnosis.md`.
+
+---
+
 ## CTO Overrides
 _(record when CTO overrides agent decision)_
 

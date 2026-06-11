@@ -218,7 +218,7 @@ All 16 classes fixed. Fix pattern: `ADMIN_EMAIL` → `ADMIN_PHONE = "0900000000"
 - "System Administrator" CTO ruling still pending (see admin leftover cleanup above).
 
 **NEXT — remaining major items:**
-1. Date-format mm/dd→dd/mm — IN PROGRESS. Diagnosis DONE (commit b483a5d): authoritative plan = `reports/date-format-diagnosis.md` — 18 KIND-A display spots (12 date, 6 datetime; 5 raw-ISO renders), 6 KIND-B native date inputs (leave — OS-locale rendered), 5 KIND-C wire spots (DO NOT TOUCH, ISO required). Next step: feat(ui) formatVNDate/formatVNDateTime + tests → wire 18 display spots (resident 9, admin 9) → builds green → docs(context).
+1. ~~Date-format mm/dd→dd/mm~~ DONE 2026-06-11: formatVNDate/formatVNDateTime in @gemek/ui (commit b1db38b, ui 58/58 green) + 18 display spots wired (resident 9 = 195ff8e, admin 9 = 75f5c87); both builds green. Timezone decision (local-time render, intended) + KIND-B native-input limitation recorded in DECISIONS.md 2026-06-11. KIND-C wire ISO untouched. Inventory: reports/date-format-diagnosis.md. NOT browser-verified — CTO step (ports 80/81).
 2. TEMP_HIDDEN_DEFERRED removal (hidden nav/features).
 3. Module 10 notification dispatch (deferred).
 4. Vietnamese user guide.

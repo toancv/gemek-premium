@@ -632,4 +632,32 @@ class TicketControllerTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error").value("VALIDATION_ERROR"));
     }
+
+    // =========================================================================
+    // Test 13 — G3: rogue isPublic field on status update is ignored (N3 P5)
+    // =========================================================================
+
+    @Test
+    @DisplayName("PUT /api/tickets/{id}/status — rogue isPublic field in body is ignored, flag stays false")
+    void updateStatus_rogueIsPublicField_isIgnored() throws Exception {
+        UUID blockId = createBlock("TBlock13-" + System.nanoTime());
+        UUID aptId = createApartment(blockId, "T13-" + System.nanoTime());
+        UUID ticketId = createTicket(adminToken, aptId, TicketCategory.COMPLAINT);
+
+        // No DTO field maps isPublic on any update path (G3) — the JSON key must be ignored.
+        Map<String, Object> body = new HashMap<>();
+        body.put("status", "CANCELLED");
+        body.put("isPublic", true);
+        mockMvc.perform(put("/api/tickets/" + ticketId + "/status")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(body)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.isPublic").value(false));
+
+        mockMvc.perform(get("/api/tickets/" + ticketId)
+                        .header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.isPublic").value(false));
+    }
 }

@@ -42,8 +42,13 @@ import vn.vtit.gemek.module.ticket.repository.TicketPhotoRepository;
 import vn.vtit.gemek.module.ticket.repository.TicketRepository;
 import vn.vtit.gemek.module.ticket.repository.TicketStatusHistoryRepository;
 import vn.vtit.gemek.module.notification.NotificationService;
+import vn.vtit.gemek.module.notification.SubscriptionService;
+import vn.vtit.gemek.module.notification.entity.Notification;
 import vn.vtit.gemek.module.notification.entity.NotificationType;
+import vn.vtit.gemek.module.notification.entity.SubscriptionJoinedVia;
+import vn.vtit.gemek.module.notification.repository.NotificationRepository;
 import vn.vtit.gemek.module.user.entity.User;
+import vn.vtit.gemek.module.user.entity.UserRole;
 import vn.vtit.gemek.module.user.repository.UserRepository;
 
 import java.time.LocalDate;
@@ -67,6 +72,9 @@ import java.util.UUID;
 public class TicketServiceImpl implements TicketService {
 
     private static final Logger log = LoggerFactory.getLogger(TicketServiceImpl.class);
+
+    /** Reference-type label for ticket notifications and thread subscriptions. */
+    private static final String TICKET_REFERENCE_TYPE = "Ticket";
 
     /** Maximum number of files allowed per upload request. */
     private static final int MAX_FILES_PER_UPLOAD = 5;
@@ -118,19 +126,23 @@ public class TicketServiceImpl implements TicketService {
     private final ContractorRepository contractorRepository;
     private final FileStorageService fileStorageService;
     private final NotificationService notificationService;
+    private final NotificationRepository notificationRepository;
+    private final SubscriptionService subscriptionService;
 
     /**
      * Constructs the service with all required dependencies via explicit constructor injection.
      *
-     * @param ticketRepository     the ticket JPA repository.
-     * @param photoRepository      the ticket photo JPA repository.
-     * @param historyRepository    the ticket status history JPA repository.
-     * @param apartmentRepository  the apartment JPA repository.
-     * @param userRepository       the user JPA repository.
-     * @param residentRepository   the resident JPA repository.
-     * @param contractorRepository the contractor JPA repository.
-     * @param fileStorageService   the MinIO file storage service.
-     * @param notificationService  the notification service for in-app alerts.
+     * @param ticketRepository       the ticket JPA repository.
+     * @param photoRepository        the ticket photo JPA repository.
+     * @param historyRepository      the ticket status history JPA repository.
+     * @param apartmentRepository    the apartment JPA repository.
+     * @param userRepository         the user JPA repository.
+     * @param residentRepository     the resident JPA repository.
+     * @param contractorRepository   the contractor JPA repository.
+     * @param fileStorageService     the MinIO file storage service.
+     * @param notificationService    the notification service for single-recipient alerts.
+     * @param notificationRepository the notification JPA repository for batched dispatch.
+     * @param subscriptionService    the notification-thread membership service (N3).
      */
     public TicketServiceImpl(TicketRepository ticketRepository,
                              TicketPhotoRepository photoRepository,
@@ -140,7 +152,9 @@ public class TicketServiceImpl implements TicketService {
                              ResidentRepository residentRepository,
                              ContractorRepository contractorRepository,
                              FileStorageService fileStorageService,
-                             NotificationService notificationService) {
+                             NotificationService notificationService,
+                             NotificationRepository notificationRepository,
+                             SubscriptionService subscriptionService) {
         this.ticketRepository = ticketRepository;
         this.photoRepository = photoRepository;
         this.historyRepository = historyRepository;
@@ -150,6 +164,8 @@ public class TicketServiceImpl implements TicketService {
         this.contractorRepository = contractorRepository;
         this.fileStorageService = fileStorageService;
         this.notificationService = notificationService;
+        this.notificationRepository = notificationRepository;
+        this.subscriptionService = subscriptionService;
     }
 
     // =========================================================================
@@ -323,6 +339,22 @@ public class TicketServiceImpl implements TicketService {
         // Initial history entry: null → NEW.
         appendHistory(saved, null, TicketStatus.NEW, submitter, null);
 
+        // N3: creator joins the notification thread.
+        subscriptionService.subscribe(principalId, TICKET_REFERENCE_TYPE, saved.getId(),
+                SubscriptionJoinedVia.CREATOR);
+
+        // C1: notify active admins, excluding the actor (an admin creating a ticket
+        // must not self-notify).
+        List<UUID> adminIds = userRepository.findActiveUserIdsByRole(UserRole.ADMIN).stream()
+                .filter(adminId -> !adminId.equals(principalId))
+                .toList();
+        dispatchTicketNotifications(adminIds,
+                "Phản ánh mới",
+                "Phản ánh mới: \"" + saved.getTitle() + "\" — căn hộ " + apartment.getUnitNumber()
+                        + ", tòa " + apartment.getBlock().getName() + ".",
+                NotificationType.TICKET_CREATED,
+                saved.getId());
+
         log.info("Ticket created — id={}, category={}", saved.getId(), saved.getCategory());
         return toDetail(saved);
     }
@@ -387,15 +419,40 @@ public class TicketServiceImpl implements TicketService {
         Ticket saved = ticketRepository.save(ticket);
         log.info("Ticket assigned — id={}, status={}", saved.getId(), saved.getStatus());
 
-        // Notify the assigned technician.
+        // Thread snapshot BEFORE the assignee joins — C3 goes to the existing
+        // participants; the new assignee receives C2 instead, never both.
+        List<UUID> threadBeforeAssign = subscriptionService
+                .participantUserIds(TICKET_REFERENCE_TYPE, saved.getId());
+
+        // Notify the assigned technician (C2) and add them to the thread.
+        // The old assignee's subscription row is intentionally kept on reassign (G4).
         if (saved.getAssignedToUser() != null) {
+            UUID assigneeId = saved.getAssignedToUser().getId();
+            subscriptionService.subscribe(assigneeId, TICKET_REFERENCE_TYPE, saved.getId(),
+                    SubscriptionJoinedVia.ASSIGNEE);
             notificationService.createNotification(
-                    saved.getAssignedToUser().getId(),
+                    assigneeId,
                     "Phản ánh được phân công",
                     "Phản ánh \"" + saved.getTitle() + "\" đã được phân công cho bạn.",
                     NotificationType.TICKET_ASSIGNED,
                     saved.getId(),
-                    "Ticket");
+                    TICKET_REFERENCE_TYPE);
+        }
+
+        // C3: the NEW → ASSIGNED auto-transition tells the thread the ticket was
+        // accepted for processing. Excludes the actor and the just-notified assignee.
+        if (oldStatus == TicketStatus.NEW && saved.getStatus() == TicketStatus.ASSIGNED) {
+            UUID assigneeId = saved.getAssignedToUser() != null
+                    ? saved.getAssignedToUser().getId() : null;
+            List<UUID> recipients = threadBeforeAssign.stream()
+                    .filter(participantId -> !participantId.equals(principalId)
+                            && !participantId.equals(assigneeId))
+                    .toList();
+            dispatchTicketNotifications(recipients,
+                    "Cập nhật phản ánh",
+                    "Phản ánh \"" + saved.getTitle() + "\" đã được tiếp nhận và phân công xử lý.",
+                    NotificationType.TICKET_STATUS_CHANGED,
+                    saved.getId());
         }
 
         return toDetail(saved);
@@ -450,6 +507,31 @@ public class TicketServiceImpl implements TicketService {
 
         Ticket saved = ticketRepository.save(ticket);
         log.info("Ticket status updated — id={}, {} → {}", saved.getId(), currentStatus, targetStatus);
+
+        // C4: tell the thread about the transition, excluding the actor.
+        List<UUID> threadRecipients = subscriptionService
+                .participantUserIds(TICKET_REFERENCE_TYPE, saved.getId()).stream()
+                .filter(participantId -> !participantId.equals(principalId))
+                .toList();
+        dispatchTicketNotifications(threadRecipients,
+                "Cập nhật phản ánh",
+                "Phản ánh \"" + saved.getTitle() + "\" chuyển sang trạng thái: "
+                        + TicketStatusLabels.labelOf(targetStatus) + ".",
+                NotificationType.TICKET_STATUS_CHANGED,
+                saved.getId());
+
+        // C5: completion additionally prompts the submitter to rate (G7 dedicated type).
+        UUID submitterId = saved.getSubmittedBy().getId();
+        if (targetStatus == TicketStatus.DONE && !submitterId.equals(principalId)) {
+            notificationService.createNotification(
+                    submitterId,
+                    "Đánh giá xử lý phản ánh",
+                    "Phản ánh \"" + saved.getTitle() + "\" đã hoàn tất. Vui lòng đánh giá chất lượng xử lý.",
+                    NotificationType.TICKET_RATING_REQUESTED,
+                    saved.getId(),
+                    TICKET_REFERENCE_TYPE);
+        }
+
         return toDetail(saved);
     }
 
@@ -608,6 +690,20 @@ public class TicketServiceImpl implements TicketService {
                     saved.getAssignedToContractor().getId());
         }
 
+        // C6: tell the assigned staff member about the rating (actor is the submitter;
+        // the self-check is defensive for a self-assigned edge case).
+        if (saved.getAssignedToUser() != null
+                && !saved.getAssignedToUser().getId().equals(principalId)) {
+            notificationService.createNotification(
+                    saved.getAssignedToUser().getId(),
+                    "Phản ánh được đánh giá",
+                    "Phản ánh \"" + saved.getTitle() + "\" được cư dân đánh giá "
+                            + saved.getRating() + "/5 sao.",
+                    NotificationType.TICKET_RATED,
+                    saved.getId(),
+                    TICKET_REFERENCE_TYPE);
+        }
+
         log.info("Ticket rated — id={}, rating={}", saved.getId(), saved.getRating());
         return toDetail(saved);
     }
@@ -758,6 +854,42 @@ public class TicketServiceImpl implements TicketService {
         history.setNotes(notes);
         historyRepository.save(history);
         log.debug("Status history appended — ticketId={}, {} → {}", ticket.getId(), oldStatus, newStatus);
+    }
+
+    /**
+     * Creates one in-app notification row per recipient in a single batched insert.
+     *
+     * <p>Same pattern as {@code AnnouncementServiceImpl.dispatchInAppNotifications}:
+     * user FKs attached via {@code getReferenceById} (no per-recipient SELECT),
+     * one {@code saveAll} flushing as batched INSERTs, no logging or I/O in the loop.
+     * Runs inside the calling mutation transaction — dispatch is atomic with the
+     * ticket change. Empty recipient lists are a no-op.
+     *
+     * @param userIds  recipient user IDs (actor exclusion already applied by callers).
+     * @param title    VN notification title.
+     * @param body     VN notification body.
+     * @param type     the notification type.
+     * @param ticketId the ticket UUID used as the reference.
+     */
+    private void dispatchTicketNotifications(List<UUID> userIds, String title, String body,
+                                             NotificationType type, UUID ticketId) {
+        if (userIds.isEmpty()) {
+            return;
+        }
+        List<Notification> batch = new ArrayList<>(userIds.size());
+        // Build the full batch in memory, then one saveAll.
+        for (UUID userId : userIds) {
+            Notification notification = new Notification();
+            notification.setUser(userRepository.getReferenceById(userId));
+            notification.setTitle(title);
+            notification.setBody(body);
+            notification.setType(type);
+            notification.setReferenceId(ticketId);
+            notification.setReferenceType(TICKET_REFERENCE_TYPE);
+            batch.add(notification);
+        }
+        notificationRepository.saveAll(batch);
+        log.info("Ticket {} — {} dispatched to {} recipients.", ticketId, type, batch.size());
     }
 
     /**

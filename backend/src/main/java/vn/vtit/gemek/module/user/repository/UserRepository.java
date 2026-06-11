@@ -8,9 +8,12 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import vn.vtit.gemek.module.user.entity.User;
 import vn.vtit.gemek.module.user.entity.UserRole;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -64,4 +67,17 @@ public interface UserRepository extends JpaRepository<User, UUID>, JpaSpecificat
      * @return {@code true} if at least one user with that role exists.
      */
     boolean existsByRole(UserRole role);
+
+    /**
+     * Returns the IDs of all active users holding the given role.
+     *
+     * <p>ID projection — no entity hydration; same style as
+     * {@code ResidentRepository.findRecipientUserIdsByScopeName}. Used by
+     * N3 dispatch for the admin audience (G5: ADMIN only).
+     *
+     * @param role the role to match.
+     * @return user UUIDs of active users with that role.
+     */
+    @Query("SELECT u.id FROM User u WHERE u.role = :role AND u.active = true")
+    List<UUID> findActiveUserIdsByRole(@Param("role") UserRole role);
 }

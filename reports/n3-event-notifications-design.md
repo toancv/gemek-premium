@@ -1,7 +1,8 @@
 # N3 — Per-User Event Notifications: Design Proposal
 
-Status: **PROPOSAL — every choice below is PENDING CTO APPROVAL unless marked "CTO DECIDED" (from `reports/module10-extended-backlog.md` §N3).**
-Date: 2026-06-11 · Investigated at HEAD `61952ed`. No production code, tests, or migrations in this step.
+Status: **APPROVED by CTO 2026-06-11.** Open questions §G resolved: G1 cuts approved · G2 SLA warning fixed 2h · G3 is_public immutable after create · G4 old-assignee subscription row retained on reassign · G5 TICKET_CREATED + SLA escalations → active ADMINs only · G6 ContractExpiryScheduler marker fix in-scope (P6) · G7 dedicated `TICKET_RATING_REQUESTED` type (4th enum value, supersedes the C5 reuse proposal) · G8 redaction rule as proposed, photos hidden on public tickets until F-05.
+TERMINOLOGY RULE: all BE-generated VN notification bodies use the locked FE enum-label terms — DONE = «Hoàn tất», never «Hoàn thành».
+Date: 2026-06-11 · Investigated at HEAD `61952ed`. P1 (enum migration V13) done at `0187644`/`15a365a`.
 
 CTO DECIDED (inherited, not re-opened here): tickets get creator-chosen public/private flag, DEFAULT PRIVATE; residents browse public tickets and opt-in follow to join the notification thread.
 

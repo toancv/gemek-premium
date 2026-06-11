@@ -579,6 +579,24 @@ Also 2026-06-11: TicketDetail (admin) update-status select switched from hardcod
 
 ---
 
+## 2026-06-11 | N3 design approved (CTO rulings on reports/n3-event-notifications-design.md §G) + P1 enum migration
+
+**CTO rulings (G1–G8):**
+- **G1** — v1 cuts approved: booking events, vehicle-registered, amenity-deactivation notice, move-out notice all OUT of N3 v1.
+- **G2** — SLA warning threshold: fixed **2 hours** before `slaDeadline`, all categories.
+- **G3** — `is_public` is **immutable after create** (no later toggle in v1).
+- **G4** — old assignee's subscription row is **retained** on reassignment (worked the ticket, keeps thread context).
+- **G5** — TICKET_CREATED and SLA escalations (warning + breach) go to **active ADMINs only** (no BOARD_MEMBER).
+- **G6** — ContractExpiryScheduler daily re-notify bug fixed **in-scope** at P6 (same sent-marker pattern).
+- **G7** — dedicated **`TICKET_RATING_REQUESTED`** enum value for the DONE rating prompt (supersedes the C5 reuse-TICKET_STATUS_CHANGED proposal) → V13 adds 4 values, not 3.
+- **G8** — public-ticket redaction rule approved as proposed (§E): submitter identity, unit number, photos, rating comment hidden; **photos stay hidden until F-05 presign hardening lands**.
+
+**Terminology rule (binding for P3+):** all BE-generated Vietnamese notification bodies must use the locked FE enum-label terms — ticket status DONE = «Hoàn tất», never «Hoàn thành».
+
+**P1 implementation note:** V13 contains ONLY `ALTER TYPE notification_type ADD VALUE` statements (PG: added values unusable in the defining transaction — no seed rows/DDL may share the file). Java constants inserted into the ticket group of `NotificationType` (string-mapped enum — Java order need not match PG enum order). Round-trip test (`NotificationTypeRoundTripTest`, parameterized over the 4 values, flush + context-clear + reload) proves the `NAMED_ENUM` mapping accepts them.
+
+---
+
 ## CTO Overrides
 _(record when CTO overrides agent decision)_
 

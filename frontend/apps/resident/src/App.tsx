@@ -14,6 +14,7 @@ import { TicketDetailPage } from './pages/TicketDetailPage';
 // TEMP_HIDDEN_DEFERRED: parking import — feature deferred, see PROGRESS.md
 // import { ParkingPage } from './pages/ParkingPage';
 import { AnnouncementsPage } from './pages/AnnouncementsPage';
+import { AnnouncementDetailPage } from './pages/AnnouncementDetailPage';
 import { ProfilePage } from './pages/ProfilePage';
 import { MyVehiclesPage } from './pages/MyVehiclesPage';
 
@@ -53,6 +54,7 @@ export default function App() {
           <Route path="parking" element={<Navigate to="/" replace />} />
           <Route path="vehicles" element={<MyVehiclesPage />} />
           <Route path="announcements" element={<AnnouncementsPage />} />
+          <Route path="announcements/:id" element={<AnnouncementDetailPage />} />
           <Route path="profile" element={<ProfilePage />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />

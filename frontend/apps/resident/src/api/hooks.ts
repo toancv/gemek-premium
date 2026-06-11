@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from './client';
+import type { AnnouncementItem } from './types';
 
 const get = (url: string, params?: Record<string, unknown>) =>
   apiClient.get(url, { params }).then((r) => r.data);
@@ -66,6 +67,9 @@ export const useParkingAssignments = () =>
 
 export const useAnnouncements = (params?: Record<string, unknown>) =>
   useQuery({ queryKey: ['announcements', params], queryFn: () => get('/announcements', params) });
+
+export const useAnnouncement = (id: string) =>
+  useQuery<AnnouncementItem>({ queryKey: ['announcements', id], queryFn: () => get(`/announcements/${id}`), enabled: !!id });
 
 export const useMarkAnnouncementRead = () => {
   const qc = useQueryClient();

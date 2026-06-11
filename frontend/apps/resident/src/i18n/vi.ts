@@ -64,6 +64,9 @@ export const vi: TranslationDict = {
     // notification bell/panel = "Thông báo". Never swap.
     title: 'Tin tức',
     everyone: 'Tất cả',
+    back: '← Quay lại',
+    publishedOn: 'Ngày đăng:',
+    loadError: 'Không thể tải tin tức.',
   },
   amenities: {
     title: 'Đặt tiện ích',

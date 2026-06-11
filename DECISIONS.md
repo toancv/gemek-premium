@@ -607,3 +607,9 @@ _(record when CTO overrides agent decision)_
 **Reasoning:** Full remediation requires a backend Set-Cookie change on /auth/login and /auth/refresh, which is a post-G4 hardening sprint item. The prior architectural decision (2026-05-29) to store the refresh token in localStorage was made knowingly, with HttpOnly cookie migration tracked explicitly.
 **How to apply:** Do not attempt SEC-20 remediation until the CTO schedules the hardening sprint. The open-items section of G4-testing.html documents the required changes.
 - GET /api/blocks now returns PageResponse (data/page/size/total/totalPages); search via Criteria API (case-insensitive name substring); default size=10, sort=name asc; max size=200. FE callers already read .data — no FE changes.
+
+## N3 P5 — presign deliberately not widened for public tickets (2026-06-11)
+
+**What:** `assertPresignAccess` no longer delegates to `enforceReadAccess`; it uses a dedicated `enforcePhotoAccess` that keeps the strict pre-P5 household/staff rule. A public ticket grants read access (redacted) but NO photo/presign access.
+**Why:** photos can show the inside of a home, and F-05 (presign IDOR hardening) is still open — widening the presign surface before F-05 is forbidden (G8). Reusing the widened read rule would have widened presign automatically.
+**Also decided:** list `visibility` param defaults to "mine" (= exact pre-P5 resident scoping) so the existing FE keeps working unchanged; "community" is opt-in for the P7 tab. Resident list rows outside the caller's household are redacted with the same G8 rule as the detail (beyond the plan's letter — otherwise the list would leak submitter name + unit number that the redacted detail hides). Assignee identities also hidden in redacted views for symmetry with hidden changedBy staff names.

@@ -182,7 +182,15 @@ All 16 classes fixed. Fix pattern: `ADMIN_EMAIL` → `ADMIN_PHONE = "0900000000"
 - Verified: 51/51 ui tests + tsc + vite build green BOTH apps. NOT browser-verified — CTO step (port 80).
 - Wording flag: contracts Status chip uses ActiveStatus map → ACTIVE shows 'Hoạt động'; for contracts 'Hiệu lực' may read better (summary card says 'Hợp đồng hiệu lực'). If CTO prefers, add ContractStatus group later.
 
-**NEXT: admin cluster A2 — ApartmentsPage + ResidentsPage + ContractorsPage per reports/i18n-inventory.md. Wire labelFor (ApartmentStatus, ContractorSpecialty, ActiveStatus) for display labels; keep filter `value=` raw.**
+**Admin cluster A2 COMPLETE (2026-06-11):**
+- Translated: ApartmentsPage (title/filters/headers/badge/edit modal; status filter+select labels via labelFor('ApartmentStatus'), value= raw), ResidentsPage (title/search/headers; OWNER/TENANT badge via labelFor('ResidentType')), ContractorsPage (title/search/headers/modal; specialty cell+select via labelFor('ContractorSpecialty'), isActive badge via labelFor('ActiveStatus')). Pagination Tổng:/Trước/Sau via viShared. Commit 6b536fd.
+- New enum groups (commit 567b4d6): ContractStatus uses REAL BE keys PENDING/'Chờ hiệu lực', ACTIVE/'Hiệu lực', EXPIRED/'Đã hết hạn', TERMINATED/'Đã chấm dứt' (CTO's INACTIVE does NOT exist in BE — verified vn.vtit.gemek.module.contractor.entity.ContractStatus); ResidentType OWNER/'Chủ sở hữu', TENANT/'Người thuê' (badge rendered raw, inventory miss). viShared += common.saving 'Đang lưu...', common.total 'Tổng:'.
+- Reports expiring-contracts Status chip switched ActiveStatus→ContractStatus.
+- Also: create-apartment modal 'Diện tích (sqm)'→'(m²)' for unit consistency.
+- Verified: 51/51 ui tests + tsc + vite build green BOTH apps. NOT browser-verified — CTO step (port 80).
+- Wording flags: ApartmentsPage pre-existing VN strings still say "block" ('Chọn block...', 'Vui lòng chọn block.') vs new 'Tòa' — needs terminology-sweep ruling. AddApartment create modal was already VN ('Thêm căn hộ mới', 'Tạo mới') — left as-is.
+
+**NEXT: admin cluster A3 — TicketsPage + TicketDetailPage (heavy 'Phản ánh' + TicketStatus/TicketPriority enum wiring) per reports/i18n-inventory.md.**
 
 **Resident cluster 1 COMPLETE (2026-06-10):**
 - viShared empty-state refined: `common.emptyYet` / `common.emptyFound` replace `common.empty`; 11 ui tests green. Commit 24aff81.

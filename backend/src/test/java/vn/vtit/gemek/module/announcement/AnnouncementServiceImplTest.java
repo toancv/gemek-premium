@@ -22,6 +22,7 @@ import vn.vtit.gemek.module.announcement.entity.AnnouncementType;
 import vn.vtit.gemek.module.announcement.repository.AnnouncementReadRepository;
 import vn.vtit.gemek.module.announcement.repository.AnnouncementRepository;
 import vn.vtit.gemek.module.apartment.repository.BlockRepository;
+import vn.vtit.gemek.module.notification.repository.NotificationRepository;
 import vn.vtit.gemek.module.resident.repository.ResidentRepository;
 import vn.vtit.gemek.module.user.repository.UserRepository;
 
@@ -48,6 +49,7 @@ class AnnouncementServiceImplTest {
     @Mock private BlockRepository blockRepository;
     @Mock private UserRepository userRepository;
     @Mock private ResidentRepository residentRepository;
+    @Mock private NotificationRepository notificationRepository;
 
     private AnnouncementServiceImpl service;
 
@@ -60,7 +62,8 @@ class AnnouncementServiceImplTest {
     void setUp() {
         service = new AnnouncementServiceImpl(
                 announcementRepository, announcementReadRepository,
-                blockRepository, userRepository, residentRepository);
+                blockRepository, userRepository, residentRepository,
+                notificationRepository);
 
         announcementId = UUID.randomUUID();
         principalId = UUID.randomUUID();

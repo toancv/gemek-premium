@@ -391,8 +391,8 @@ public class TicketServiceImpl implements TicketService {
         if (saved.getAssignedToUser() != null) {
             notificationService.createNotification(
                     saved.getAssignedToUser().getId(),
-                    "Ticket Assigned",
-                    "Ticket #" + saved.getId() + " has been assigned to you.",
+                    "Phản ánh được phân công",
+                    "Phản ánh \"" + saved.getTitle() + "\" đã được phân công cho bạn.",
                     NotificationType.TICKET_ASSIGNED,
                     saved.getId(),
                     "Ticket");

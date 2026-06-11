@@ -2,20 +2,21 @@ import React, { useState } from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 import { useNotifications, useMarkAllRead } from '../api/hooks';
+import { t } from '../i18n/vi';
 
 const NAV = [
-  { to: '/dashboard', label: 'Dashboard', roles: ['ADMIN','BOARD_MEMBER','TECHNICIAN'] },
-  { to: '/apartments', label: 'Apartments', roles: ['ADMIN','BOARD_MEMBER'] },
-  { to: '/residents', label: 'Residents', roles: ['ADMIN'] },
-  { to: '/tickets', label: 'Tickets', roles: ['ADMIN','BOARD_MEMBER','TECHNICIAN'] },
-  { to: '/contractors', label: 'Contractors', roles: ['ADMIN','BOARD_MEMBER'] },
-  { to: '/announcements', label: 'Announcements', roles: ['ADMIN'] },
-  { to: '/vehicles', label: 'Vehicles', roles: ['ADMIN'] },
+  { to: '/dashboard', label: t('nav.dashboard'), roles: ['ADMIN','BOARD_MEMBER','TECHNICIAN'] },
+  { to: '/apartments', label: t('nav.apartments'), roles: ['ADMIN','BOARD_MEMBER'] },
+  { to: '/residents', label: t('nav.residents'), roles: ['ADMIN'] },
+  { to: '/tickets', label: t('nav.tickets'), roles: ['ADMIN','BOARD_MEMBER','TECHNICIAN'] },
+  { to: '/contractors', label: t('nav.contractors'), roles: ['ADMIN','BOARD_MEMBER'] },
+  { to: '/announcements', label: t('nav.announcements'), roles: ['ADMIN'] },
+  { to: '/vehicles', label: t('nav.vehicles'), roles: ['ADMIN'] },
   // TEMP_HIDDEN_DEFERRED: amenities nav — feature deferred, see PROGRESS.md
   // { to: '/amenities', label: 'Amenities', roles: ['ADMIN'] },
   // TEMP_HIDDEN_DEFERRED: parking nav — feature deferred, see PROGRESS.md
   // { to: '/parking', label: 'Parking', roles: ['ADMIN'] },
-  { to: '/reports', label: 'Reports', roles: ['ADMIN','BOARD_MEMBER'] },
+  { to: '/reports', label: t('nav.reports'), roles: ['ADMIN','BOARD_MEMBER'] },
 ];
 
 export function Layout() {
@@ -34,7 +35,7 @@ export function Layout() {
       <aside className="w-60 bg-gray-900 flex flex-col flex-shrink-0">
         <div className="px-6 py-5 border-b border-gray-700">
           <h1 className="text-white font-bold text-lg">Gemek Premium</h1>
-          <p className="text-gray-400 text-xs mt-0.5">Admin Portal</p>
+          <p className="text-gray-400 text-xs mt-0.5">{t('layout.adminPortal')}</p>
         </div>
         <nav className="flex-1 py-4 overflow-y-auto">
           {nav.map((n) => (
@@ -47,7 +48,7 @@ export function Layout() {
         <div className="px-6 py-4 border-t border-gray-700">
           <p className="text-gray-300 text-sm font-medium truncate">{user?.fullName}</p>
           <p className="text-gray-500 text-xs">{user?.role}</p>
-          <button onClick={handleLogout} className="mt-2 text-xs text-gray-400 hover:text-white">Sign out</button>
+          <button onClick={handleLogout} className="mt-2 text-xs text-gray-400 hover:text-white">{t('layout.signOut')}</button>
         </div>
       </aside>
       <div className="flex-1 flex flex-col overflow-hidden">
@@ -66,11 +67,11 @@ export function Layout() {
             {notifOpen && (
               <div className="absolute right-0 top-full mt-1 w-80 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
                 <div className="flex items-center justify-between px-4 py-2 border-b border-gray-100">
-                  <span className="font-medium text-sm">Notifications</span>
-                  <button onClick={() => markAllRead.mutate()} className="text-xs text-blue-600 hover:underline">Mark all read</button>
+                  <span className="font-medium text-sm">{t('layout.notifications')}</span>
+                  <button onClick={() => markAllRead.mutate()} className="text-xs text-blue-600 hover:underline">{t('layout.markAllRead')}</button>
                 </div>
                 <div className="max-h-64 overflow-y-auto">
-                  {(!notifData?.data?.length) && <p className="text-center text-gray-400 text-sm py-6">No notifications</p>}
+                  {(!notifData?.data?.length) && <p className="text-center text-gray-400 text-sm py-6">{t('layout.noNotifications')}</p>}
                   {notifData?.data?.map((n: any) => (
                     <div key={n.id} className={'px-4 py-3 border-b border-gray-50 ' + (!n.isRead ? 'bg-blue-50' : '')}>
                       <p className="text-sm font-medium text-gray-800">{n.title}</p>

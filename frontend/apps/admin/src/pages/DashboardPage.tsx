@@ -1,5 +1,7 @@
 import React from 'react';
+import { labelFor } from '@gemek/ui';
 import { useDashboard } from '../api/hooks';
+import { t } from '../i18n/vi';
 
 function StatCard({ title, value, sub, color }: { title: string; value: string | number; sub?: string; color: string }) {
   return (
@@ -25,41 +27,42 @@ export function DashboardPage() {
 
   if (isError) return (
     <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-700">
-      Failed to load dashboard data. Please try again.
+      {t('dashboard.loadError')}
     </div>
   );
 
-  const t = data?.tickets ?? {};
+  // Named tk (not t) to avoid shadowing the i18n t() helper
+  const tk = data?.tickets ?? {};
   const a = data?.apartments ?? {};
   const am = data?.amenities ?? {};
   const c = data?.contracts ?? {};
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">Dashboard</h1>
+      <h1 className="text-2xl font-bold text-gray-900 mb-6">{t('dashboard.title')}</h1>
       <div className="grid grid-cols-3 gap-4 mb-8">
-        <StatCard title="Open Tickets" value={t.openRequests ?? 0} sub={`${t.inProgressRequests ?? 0} in progress`} color="text-blue-600" />
-        <StatCard title="SLA Breached" value={t.overdueRequests ?? 0} sub="Requires immediate action" color="text-red-600" />
+        <StatCard title={t('dashboard.openTickets')} value={tk.openRequests ?? 0} sub={t('dashboard.inProgress', { n: tk.inProgressRequests ?? 0 })} color="text-blue-600" />
+        <StatCard title={t('dashboard.slaBreached')} value={tk.overdueRequests ?? 0} sub={t('dashboard.requiresAction')} color="text-red-600" />
         {/* TEMP_HIDDEN_DEFERRED: amenity bookings dashboard card — feature deferred, see PROGRESS.md */}
         {/* <StatCard title="Bookings This Month" value={am.bookingsThisMonth ?? 0} sub={`${am.pendingApproval ?? 0} pending approval`} color="text-green-600" /> */}
-        <StatCard title="Expiring Contracts" value={c.expiringIn30Days ?? 0} sub={`${c.expiringIn90Days ?? 0} in 90 days`} color="text-yellow-600" />
+        <StatCard title={t('dashboard.expiringContracts')} value={c.expiringIn30Days ?? 0} sub={t('dashboard.in90Days', { n: c.expiringIn90Days ?? 0 })} color="text-yellow-600" />
       </div>
       <div className="grid grid-cols-2 gap-4">
         <div className="bg-white rounded-lg border border-gray-200 p-6">
-          <h2 className="text-base font-semibold text-gray-900 mb-4">Apartments</h2>
+          <h2 className="text-base font-semibold text-gray-900 mb-4">{t('dashboard.apartments')}</h2>
           <div className="space-y-2">
-            <div className="flex justify-between text-sm"><span className="text-gray-500">Total</span><span className="font-medium">{a.total ?? 0}</span></div>
-            <div className="flex justify-between text-sm"><span className="text-gray-500">Occupied</span><span className="font-medium text-green-600">{a.occupied ?? 0}</span></div>
-            <div className="flex justify-between text-sm"><span className="text-gray-500">Available</span><span className="font-medium text-blue-600">{a.available ?? 0}</span></div>
-            <div className="flex justify-between text-sm"><span className="text-gray-500">Occupancy Rate</span><span className="font-medium">{((a.occupancyRate ?? 0) * 100).toFixed(1)}%</span></div>
+            <div className="flex justify-between text-sm"><span className="text-gray-500">{t('dashboard.total')}</span><span className="font-medium">{a.total ?? 0}</span></div>
+            <div className="flex justify-between text-sm"><span className="text-gray-500">{t('dashboard.occupied')}</span><span className="font-medium text-green-600">{a.occupied ?? 0}</span></div>
+            <div className="flex justify-between text-sm"><span className="text-gray-500">{t('dashboard.available')}</span><span className="font-medium text-blue-600">{a.available ?? 0}</span></div>
+            <div className="flex justify-between text-sm"><span className="text-gray-500">{t('dashboard.occupancyRate')}</span><span className="font-medium">{((a.occupancyRate ?? 0) * 100).toFixed(1)}%</span></div>
           </div>
         </div>
         <div className="bg-white rounded-lg border border-gray-200 p-6">
-          <h2 className="text-base font-semibold text-gray-900 mb-4">Tickets by Category</h2>
+          <h2 className="text-base font-semibold text-gray-900 mb-4">{t('dashboard.ticketsByCategory')}</h2>
           <div className="space-y-2">
-            {Object.entries(t.byCategory ?? {}).map(([cat, count]) => (
+            {Object.entries(tk.byCategory ?? {}).map(([cat, count]) => (
               <div key={cat} className="flex justify-between text-sm">
-                <span className="text-gray-500">{cat.replace(/_/g, ' ')}</span>
+                <span className="text-gray-500">{labelFor('TicketCategory', cat)}</span>
                 <span className="font-medium">{count as number}</span>
               </div>
             ))}

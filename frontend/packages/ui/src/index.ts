@@ -14,3 +14,4 @@ export { viShared, createT, interpolate } from './lib/vi';
 export type { TranslationDict, TranslateParams } from './lib/vi';
 export { enumLabels, labelFor } from './lib/enumLabels';
 export type { EnumLabelType } from './lib/enumLabels';
+export { formatVNDate, formatVNDateTime } from './lib/dateFormat';

@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { SearchableSelect, labelFor, formatVNDate } from '@gemek/ui';
+import { SearchableSelect, labelFor, formatVNDate, VNDatePicker } from '@gemek/ui';
 import type { SearchableOption } from '@gemek/ui';
 import { useResidents, useCreateResident } from '../api/hooks';
 import { apiClient } from '../api/client';
@@ -38,6 +38,8 @@ export function ResidentsPage() {
   const [password, setPassword] = useState('');
   const [phone, setPhone] = useState('');
   const [dateOfBirth, setDateOfBirth] = useState('');
+  // ISO yyyy-mm-dd state — VNDatePicker shows dd/mm but the payload stays ISO
+  const [moveInDate, setMoveInDate] = useState('');
   const [generatedPassword, setGeneratedPassword] = useState('');
 
   // Field errors
@@ -65,7 +67,7 @@ export function ResidentsPage() {
   }, []);
 
   function openCreate() {
-    setFullName(''); setEmail(''); setPassword(''); setPhone(''); setDateOfBirth('');
+    setFullName(''); setEmail(''); setPassword(''); setPhone(''); setDateOfBirth(''); setMoveInDate('');
     setGeneratedPassword('');
     setFullNameError(''); setEmailError(''); setPasswordError(''); setPhoneError(''); setDobError('');
     setSelectedApartmentId(''); setAptError('');
@@ -93,7 +95,7 @@ export function ResidentsPage() {
     if (!valid) return;
 
     const fd = new FormData(e.target as HTMLFormElement);
-    const moveInDate = fd.get('moveInDate') as string;
+    // moveInDate now comes from controlled ISO state (VNDatePicker), not FormData
     if (!moveInDate) { setFormError('Vui lòng chọn ngày chuyển vào.'); return; }
 
     try {
@@ -286,7 +288,7 @@ export function ResidentsPage() {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Ngày chuyển vào <span className="text-red-500">*</span></label>
-                <input name="moveInDate" type="date" className="block w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                <VNDatePicker value={moveInDate} onChange={setMoveInDate} />
               </div>
 
               <div>

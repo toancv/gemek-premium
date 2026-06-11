@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { labelFor, formatVNDate } from '@gemek/ui';
+import { labelFor, formatVNDate, VNDatePicker } from '@gemek/ui';
 import { useDashboard, useTicketReport, useAmenityReport, useContractsExpiringReport } from '../api/hooks';
 import { t } from '../i18n/vi';
 
@@ -33,7 +33,7 @@ export function ReportsPage() {
         <div className="flex gap-3 mb-6">
           <div className="flex items-center gap-2 text-sm">
             <label className="text-gray-600">{t('reports.from')}</label>
-            <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="border border-gray-300 rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            <VNDatePicker value={from} onChange={setFrom} className="w-40" />
           </div>
           <div className="flex items-center gap-2 text-sm">
             <label className="text-gray-600">{t('reports.to')}</label>

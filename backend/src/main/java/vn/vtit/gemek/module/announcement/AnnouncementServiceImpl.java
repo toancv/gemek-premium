@@ -35,7 +35,9 @@ import vn.vtit.gemek.module.user.repository.UserRepository;
 
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -113,16 +115,17 @@ public class AnnouncementServiceImpl implements AnnouncementService {
             UUID blockId = apartment.getBlock().getId();
             short floor = apartment.getFloor();
 
-            Page<AnnouncementResponse> page = announcementRepository
-                    .findPublishedForApartment(blockId, floor, pageable)
-                    .map(a -> toResponse(a));
-            return PageResponse.of(page);
+            Page<Announcement> residentPage = announcementRepository
+                    .findPublishedForApartment(blockId, floor, pageable);
+            // One batched read-state query per page — avoids N exists() calls (N+1).
+            Set<UUID> readIds = readAnnouncementIds(principalId, residentPage.getContent());
+            return PageResponse.of(residentPage.map(a -> toResponse(a, readIds.contains(a.getId()))));
         }
 
         // ADMIN, TECHNICIAN, BOARD_MEMBER — all announcements.
-        Page<AnnouncementResponse> page = announcementRepository.findAll(pageable)
-                .map(a -> toResponse(a));
-        return PageResponse.of(page);
+        Page<Announcement> adminPage = announcementRepository.findAll(pageable);
+        Set<UUID> readIds = readAnnouncementIds(principalId, adminPage.getContent());
+        return PageResponse.of(adminPage.map(a -> toResponse(a, readIds.contains(a.getId()))));
     }
 
     /**
@@ -139,7 +142,9 @@ public class AnnouncementServiceImpl implements AnnouncementService {
             throw new AppException(ErrorCode.NOT_FOUND, "Announcement not found: " + id);
         }
 
-        return toResponse(announcement);
+        // Single-row detail — one exists() check is the batched query's degenerate case.
+        boolean isRead = announcementReadRepository.existsByAnnouncementIdAndUserId(id, principalId);
+        return toResponse(announcement, isRead);
     }
 
     // =========================================================================
@@ -441,12 +446,47 @@ public class AnnouncementServiceImpl implements AnnouncementService {
     }
 
     /**
-     * Maps an {@link Announcement} entity to an {@link AnnouncementResponse} DTO.
+     * Returns the subset of the given page's announcement IDs that the user has read.
+     *
+     * <p>One query per page regardless of page size — the per-user {@code isRead}
+     * flag is then resolved in memory by set membership.
+     *
+     * @param userId        the requesting user UUID.
+     * @param announcements the page content.
+     * @return set of announcement IDs read by the user; empty for an empty page.
+     */
+    private Set<UUID> readAnnouncementIds(UUID userId, List<Announcement> announcements) {
+        // Guard the IN clause — Hibernate rejects an empty parameter list.
+        if (announcements.isEmpty()) {
+            return Set.of();
+        }
+        List<UUID> ids = announcements.stream().map(Announcement::getId).toList();
+        return new HashSet<>(announcementReadRepository.findReadAnnouncementIds(userId, ids));
+    }
+
+    /**
+     * Maps an {@link Announcement} entity to an {@link AnnouncementResponse} DTO
+     * with {@code isRead = false}.
+     *
+     * <p>Used by mutation paths (create/update/publish) where no read record can
+     * exist for the caller yet; read paths compute the real per-user flag via
+     * {@link #toResponse(Announcement, boolean)}.
      *
      * @param announcement the entity to map.
      * @return the response DTO.
      */
     private AnnouncementResponse toResponse(Announcement announcement) {
+        return toResponse(announcement, false);
+    }
+
+    /**
+     * Maps an {@link Announcement} entity to an {@link AnnouncementResponse} DTO.
+     *
+     * @param announcement the entity to map.
+     * @param isRead       whether the requesting user has read this announcement.
+     * @return the response DTO.
+     */
+    private AnnouncementResponse toResponse(Announcement announcement, boolean isRead) {
         AnnouncementResponse.BlockRef blockRef = null;
         if (announcement.getTargetBlock() != null) {
             Block block = announcement.getTargetBlock();
@@ -482,6 +522,7 @@ public class AnnouncementServiceImpl implements AnnouncementService {
                 .publishedAt(announcement.getPublishedAt())
                 .createdAt(announcement.getCreatedAt())
                 .readByCount(readByCount)
+                .isRead(isRead)
                 .build();
     }
 }

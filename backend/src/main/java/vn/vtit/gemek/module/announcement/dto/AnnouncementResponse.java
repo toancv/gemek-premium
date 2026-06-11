@@ -4,6 +4,7 @@
  */
 package vn.vtit.gemek.module.announcement.dto;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Builder;
 import lombok.Getter;
 import vn.vtit.gemek.module.announcement.entity.AnnouncementScope;
@@ -75,6 +76,14 @@ public class AnnouncementResponse {
 
     /** Total number of users who have marked this announcement as read. */
     private final long readByCount;
+
+    /**
+     * Whether the requesting user has marked this announcement as read.
+     * Always {@code false} on mutation responses (create/update/publish) — a draft or
+     * just-published announcement cannot yet have a read record for the caller.
+     */
+    @JsonProperty("isRead")
+    private final boolean isRead;
 
     // =========================================================================
     // Nested reference types

@@ -5,9 +5,13 @@
 package vn.vtit.gemek.module.announcement.repository;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import vn.vtit.gemek.module.announcement.entity.AnnouncementRead;
 
+import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -45,4 +49,21 @@ public interface AnnouncementReadRepository extends JpaRepository<AnnouncementRe
      * @return total read count.
      */
     long countByAnnouncementId(UUID announcementId);
+
+    /**
+     * Returns the subset of the given announcement IDs that the user has read.
+     *
+     * <p>Computes per-user {@code isRead} for a whole page in one query instead of
+     * one {@code exists()} call per row.
+     *
+     * @param userId          the requesting user UUID.
+     * @param announcementIds candidate announcement UUIDs (one page of results).
+     * @return announcement IDs from the input that have a read record for this user.
+     */
+    @Query("""
+            SELECT ar.announcement.id FROM AnnouncementRead ar
+            WHERE ar.user.id = :userId AND ar.announcement.id IN :announcementIds
+            """)
+    List<UUID> findReadAnnouncementIds(@Param("userId") UUID userId,
+                                       @Param("announcementIds") Collection<UUID> announcementIds);
 }

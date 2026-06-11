@@ -160,7 +160,7 @@ All 16 classes fixed. Fix pattern: `ADMIN_EMAIL` → `ADMIN_PHONE = "0900000000"
 
 ---
 
-## ⏸ IN PROGRESS — i18n Phase 2: Translation (RESIDENT APP COMPLETE — all pages VN)
+## ⏸ IN PROGRESS — i18n Phase 2: Translation (RESIDENT + ADMIN APPS COMPLETE — all pages VN)
 
 **Resume pointer (fresh session):** Read `reports/i18n-inventory.md` for full string list. Architecture locked in DECISIONS.md (2026-06-10 i18n entry). Terminology: user-facing "Ticket" = "Phản ánh", display only; create/submit verb = "Gửi phản ánh" (DECISIONS.md 2026-06-10).
 
@@ -196,7 +196,14 @@ All 16 classes fixed. Fix pattern: `ADMIN_EMAIL` → `ADMIN_PHONE = "0900000000"
 - block→'Tòa' sweep: ApartmentsPage (placeholder, validation), AnnouncementsPage (label, option, validation). Display-"block" grep in admin src = 0. Decision recorded in DECISIONS.md.
 - Commit 9b2de7b. Verified: tsc + vite build green (admin). NOT browser-verified — CTO step (port 80).
 
-**NEXT: admin cluster A4 (FINAL admin cluster) — ParkingPage + VehiclesPage + AmenitiesPage (both TEMP_HIDDEN_DEFERRED pages translate anyway) per reports/i18n-inventory.md. Wire labelFor (VehicleType, ParkingSlotStatus, ActiveStatus). Then i18n Phase 2 DONE → final sweep + report.**
+**Admin cluster A4 COMPLETE (2026-06-11) — ADMIN APP FULLY VN (all pages):**
+- ParkingPage: 'Bãi xe', tabs 'Chỗ đậu xe'/'Xe khách', filters (Tất cả loại/trạng thái + options via labelFor), slot headers Chỗ/Khu/Loại/Trạng thái/Phân cho/Thao tác, type cell + status chip via labelFor('VehicleType'/'ParkingSlotStatus'), emptyFound 'chỗ đậu xe', 'Phân công'/'Hủy phân công', guest headers Biển số/Chủ xe/Căn hộ tiếp/Giờ vào/Giờ ra/Mục đích, emptyYet 'xe khách', 'Đang trong bãi', assign modal 'Phân chỗ {slotNumber}' (interpolated) + labels/placeholders/'Đang phân...'.
+- VehiclesPage: 'Phương tiện', '+ Thêm phương tiện', filters via labelFor (isActive filter values stay "true"/"false", labels ActiveStatus), headers, type cell + isActive badge via labelFor, emptyFound 'phương tiện', modal 'Thêm phương tiện' + type select labels via labelFor. VEHICLE_TYPES map param `t` renamed → `vt` (would shadow i18n t()).
+- AmenitiesPage: 'Tiện ích', 'Thêm tiện ích', tabs 'Tiện ích'/'Lượt đặt chờ duyệt', headers, emptyFound 'tiện ích', Có/Không badge, booking headers, emptyYet 'lượt đặt', 'Duyệt'/'Từ chối', reject dialog 'Từ chối đặt chỗ'/'Lý do'/'Đang từ chối...', amenity modal 'Sửa tiện ích'/'Thêm tiện ích' + all labels, Hủy/Lưu/Đang lưu... via shared.
+- No new enum keys needed (CAR/MOTORBIKE/BICYCLE/OTHER + AVAILABLE/OCCUPIED/RESERVED + ACTIVE/INACTIVE already mapped) — no feat(ui) commit. Enum value=/filters/logic untouched.
+- Commit 0a66bfe. Verified: tsc + vite build green (admin); leftover-English grep on 3 pages = 0. NOT browser-verified — CTO step (port 80; Parking/Vehicles/Amenities may be TEMP_HIDDEN_DEFERRED — verify via direct URL).
+
+**NEXT: FINAL i18n step — resident enum-cleanup pass: adopt labelFor in resident TicketDetail status/priority, MyTickets/MyBookings status chips, Parking type (the earlier-flagged raw enums per tech-debt note above). Then i18n Phase 2 DONE → final sweep + report.**
 
 **Resident cluster 1 COMPLETE (2026-06-10):**
 - viShared empty-state refined: `common.emptyYet` / `common.emptyFound` replace `common.empty`; 11 ui tests green. Commit 24aff81.

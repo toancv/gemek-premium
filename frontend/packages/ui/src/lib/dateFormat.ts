@@ -21,6 +21,24 @@ export function formatVNDate(iso: string | null | undefined): string {
   return `${pad2(d.getDate())}/${pad2(d.getMonth() + 1)}/${d.getFullYear()}`;
 }
 
+/**
+ * ISO 'yyyy-mm-dd' → Date at LOCAL midnight. undefined for empty/invalid.
+ * Never use new Date(isoString) for date-only values — that parses as UTC
+ * midnight and shifts a day in negative-offset timezones.
+ */
+export function parseISODateLocal(iso: string | null | undefined): Date | undefined {
+  if (!iso) return undefined;
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso);
+  if (!m) return undefined;
+  const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  return isNaN(d.getTime()) ? undefined : d;
+}
+
+/** Date → ISO 'yyyy-mm-dd' from LOCAL components (no UTC round-trip). */
+export function toISODateLocal(date: Date): string {
+  return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}`;
+}
+
 /** ISO datetime string → 'dd/mm/yyyy HH:mm' (24h, local time). Invalid → ''. */
 export function formatVNDateTime(iso: string | null | undefined): string {
   if (!iso) return '';

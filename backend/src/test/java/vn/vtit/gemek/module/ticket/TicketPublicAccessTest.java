@@ -167,6 +167,59 @@ class TicketPublicAccessTest {
     }
 
     // =========================================================================
+    // Viewer flags — redacted + isFollowing (N3 P7)
+    // =========================================================================
+
+    @Test
+    @DisplayName("Viewer flags — outsider on public ticket: redacted=true, isFollowing flips with follow/unfollow")
+    void publicTicket_outsiderFlags_redactedTrue_isFollowingFlips() {
+        TicketDetailResponse ticket = createTicket(true);
+
+        TicketDetailResponse before = ticketService
+                .getTicketDetail(ticket.getId(), outsider.getId(), "RESIDENT");
+        assertThat(before.isRedacted()).isTrue();
+        assertThat(before.getIsFollowing()).isFalse();
+
+        ticketService.followTicket(ticket.getId(), outsider.getId());
+        TicketDetailResponse following = ticketService
+                .getTicketDetail(ticket.getId(), outsider.getId(), "RESIDENT");
+        assertThat(following.getIsFollowing()).isTrue();
+
+        ticketService.unfollowTicket(ticket.getId(), outsider.getId());
+        TicketDetailResponse after = ticketService
+                .getTicketDetail(ticket.getId(), outsider.getId(), "RESIDENT");
+        assertThat(after.getIsFollowing()).isFalse();
+    }
+
+    @Test
+    @DisplayName("Viewer flags — household member: redacted=false; creator's CREATOR row does NOT count as following")
+    void publicTicket_householdFlags_redactedFalse_creatorRowNotFollowing() {
+        TicketDetailResponse ticket = createTicket(true);
+
+        TicketDetailResponse memberView = ticketService
+                .getTicketDetail(ticket.getId(), householdMember.getId(), "RESIDENT");
+        assertThat(memberView.isRedacted()).isFalse();
+        assertThat(memberView.getIsFollowing()).isFalse();
+
+        // The creator holds a CREATOR subscription row — isFollowing must stay false.
+        TicketDetailResponse creatorView = ticketService
+                .getTicketDetail(ticket.getId(), creator.getId(), "RESIDENT");
+        assertThat(creatorView.isRedacted()).isFalse();
+        assertThat(creatorView.getIsFollowing()).isFalse();
+    }
+
+    @Test
+    @DisplayName("Viewer flags — admin view: redacted=false, isFollowing null (no follow semantics)")
+    void publicTicket_adminFlags_redactedFalse_isFollowingNull() {
+        TicketDetailResponse ticket = createTicket(true);
+
+        TicketDetailResponse adminView = ticketService
+                .getTicketDetail(ticket.getId(), admin.getId(), "ADMIN");
+        assertThat(adminView.isRedacted()).isFalse();
+        assertThat(adminView.getIsFollowing()).isNull();
+    }
+
+    // =========================================================================
     // Redaction — field level (G8)
     // =========================================================================
 

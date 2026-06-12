@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import vn.vtit.gemek.module.notification.entity.NotificationSubscription;
+import vn.vtit.gemek.module.notification.entity.SubscriptionJoinedVia;
 
 import java.util.List;
 import java.util.UUID;
@@ -78,4 +79,19 @@ public interface NotificationSubscriptionRepository
                        @Param("entityType") String entityType,
                        @Param("entityId") UUID entityId,
                        @Param("joinedVia") String joinedVia);
+
+    /**
+     * Returns whether a subscription row with the given membership origin exists.
+     *
+     * <p>Used for the {@code isFollowing} viewer flag (N3 P7) — only FOLLOWER rows
+     * count; a CREATOR/ASSIGNEE row must not render an «Bỏ theo dõi» button.
+     *
+     * @param userId     the user UUID.
+     * @param entityType the entity-type label.
+     * @param entityId   the entity UUID.
+     * @param joinedVia  the membership origin to match.
+     * @return whether such a row exists.
+     */
+    boolean existsByUserIdAndEntityTypeAndEntityIdAndJoinedVia(
+            UUID userId, String entityType, UUID entityId, SubscriptionJoinedVia joinedVia);
 }

@@ -48,4 +48,17 @@ public interface SubscriptionService {
      * @return participant user UUIDs; empty when the thread has no members.
      */
     List<UUID> participantUserIds(String entityType, UUID entityId);
+
+    /**
+     * Returns whether the user has a FOLLOWER subscription row on the entity.
+     *
+     * <p>CREATOR/ASSIGNEE rows do not count — the flag drives the resident
+     * follow/unfollow button, which only applies to opt-in followers (N3 P7).
+     *
+     * @param userId     the user UUID.
+     * @param entityType the entity-type label.
+     * @param entityId   the entity UUID.
+     * @return whether a FOLLOWER row exists.
+     */
+    boolean isFollower(UUID userId, String entityType, UUID entityId);
 }

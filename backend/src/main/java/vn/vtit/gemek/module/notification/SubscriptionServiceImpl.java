@@ -78,4 +78,13 @@ public class SubscriptionServiceImpl implements SubscriptionService {
     public List<UUID> participantUserIds(String entityType, UUID entityId) {
         return subscriptionRepository.findParticipantUserIds(entityType, entityId);
     }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public boolean isFollower(UUID userId, String entityType, UUID entityId) {
+        return subscriptionRepository.existsByUserIdAndEntityTypeAndEntityIdAndJoinedVia(
+                userId, entityType, entityId, SubscriptionJoinedVia.FOLLOWER);
+    }
 }

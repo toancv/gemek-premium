@@ -8,6 +8,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 import vn.vtit.gemek.module.ticket.entity.PhotoPhase;
 import vn.vtit.gemek.module.ticket.entity.TicketCategory;
 import vn.vtit.gemek.module.ticket.entity.TicketPriority;
@@ -85,6 +86,21 @@ public class TicketDetailResponse {
 
     /** Creator-chosen community visibility flag (N3 P5). */
     private Boolean isPublic;
+
+    /**
+     * Whether this response was produced by the redacted public-view mapping (G8) —
+     * {@code true} only for a resident outside the ticket's household viewing a
+     * public ticket. The FE keys the follow button off this flag (N3 P7).
+     */
+    private boolean redacted;
+
+    /**
+     * Whether the calling resident has a FOLLOWER subscription row on this ticket.
+     * Set only on the detail GET for RESIDENT callers; {@code null} elsewhere
+     * (mutation responses and staff views have no follow semantics).
+     */
+    @Setter
+    private Boolean isFollowing;
 
     /** Ordered list of photos attached to this ticket. */
     private List<PhotoResponse> photos;

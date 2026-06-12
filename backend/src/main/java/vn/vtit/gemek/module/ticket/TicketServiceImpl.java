@@ -234,13 +234,22 @@ public class TicketServiceImpl implements TicketService {
 
         // G8: a resident outside the ticket's household can only be here because the
         // ticket is public — they get the redacted view, never the full mapping.
+        TicketDetailResponse response;
         if ("RESIDENT".equals(role) && !isHouseholdMember(ticket, principalId)) {
-            return toRedactedDetail(ticket);
+            response = toRedactedDetail(ticket);
+        } else {
+            // SEC-03/SEC-08: strip submitter phone for roles without PII entitlement.
+            boolean includePhone = !"TECHNICIAN".equals(role) && !"BOARD_MEMBER".equals(role);
+            response = toDetail(ticket, includePhone);
         }
 
-        // SEC-03/SEC-08: strip submitter phone for roles without PII entitlement.
-        boolean includePhone = !"TECHNICIAN".equals(role) && !"BOARD_MEMBER".equals(role);
-        return toDetail(ticket, includePhone);
+        // N3 P7 viewer flag: only RESIDENT callers have follow semantics; staff
+        // views and mutation responses leave the flag null.
+        if ("RESIDENT".equals(role)) {
+            response.setIsFollowing(subscriptionService
+                    .isFollower(principalId, TICKET_REFERENCE_TYPE, ticket.getId()));
+        }
+        return response;
     }
 
     /**
@@ -1222,6 +1231,7 @@ public class TicketServiceImpl implements TicketService {
                 .slaBreached(isSlaBreached(ticket))
                 .resolutionNotes(ticket.getResolutionNotes())
                 .isPublic(ticket.isPublic())
+                .redacted(true)
                 .photos(List.of())
                 .statusHistory(history)
                 .createdAt(ticket.getCreatedAt())

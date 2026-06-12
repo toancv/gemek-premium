@@ -645,3 +645,9 @@ Authoritative record for the sprint (proposal: reports/hardening-design.md):
 ## H3 — dual-mode window OPEN (2026-06-12)
 
 Refresh token now travels BOTH channels: response body (legacy, pre-H4 FE) AND httpOnly cookie. The legacy body channel (login-response `refreshToken` field + body-param refresh without header) is removed ONLY at sprint close-out AFTER the H5 browser smoke passes on both apps — never in H4 itself.
+
+## H4 — FE cookie-based session; dev-topology cookie collision (2026-06-12)
+
+**What:** Both apps dropped every `localStorage['gemek_refresh']` read/write. Refresh is cookie-implicit: `POST /auth/refresh` with empty body + `X-Requested-With: XMLHttpRequest` header, `withCredentials: true` on both axios instances and on the raw-axios refresh calls (bootstrap + 401 interceptor). Login ignores the body `refreshToken` (still sent by BE during the dual-mode window). One-time legacy cleanup `localStorage.removeItem('gemek_refresh')` runs at bootstrap — pre-H4 tokens must not linger (that lingering IS F-04). Reload bootstrap no longer short-circuits on missing localStorage token — it always attempts the cookie refresh (httpOnly cookies are invisible to JS, there is nothing to gate on); 401/no-cookie → `unauthenticated` → login screen, no loop (interceptor skip-list covers `/auth/refresh`, bootstrap uses raw axios anyway). Cost: unauthenticated visitors now pay one failing refresh POST per page load — accepted, unavoidable with httpOnly.
+
+**Dev-environment limitation (testing instruction):** cookies are HOST-scoped, not port-scoped. On the dev nginx :80/:81 topology, admin and resident apps share `localhost` — logging into BOTH apps in ONE browser makes each login overwrite the other's refresh cookie (same name, same host, same path `/api/auth`). Dev-only limitation; prod separates domains. **H5 smoke testing must use two browser profiles (or one app per browser).**

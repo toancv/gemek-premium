@@ -146,6 +146,23 @@ public class Ticket {
     private String resolutionNotes;
 
     /**
+     * Sent-marker for the SLA warning notification (N3 P6). {@code null} until the
+     * {@code TICKET_SLA_WARNING} dispatch; set in the same transaction as the
+     * notification insert so a re-scan can never re-notify. Also set without a
+     * warning row when the ticket is first seen already overdue. If a future
+     * feature ever edits {@link #slaDeadline}, it must null both markers.
+     */
+    @Column(name = "sla_warning_notified_at")
+    private OffsetDateTime slaWarningNotifiedAt;
+
+    /**
+     * Sent-marker for the SLA breach notification (N3 P6). {@code null} until the
+     * {@code TICKET_SLA_BREACHED} dispatch; same-transaction rule as the warning marker.
+     */
+    @Column(name = "sla_overdue_notified_at")
+    private OffsetDateTime slaOverdueNotifiedAt;
+
+    /**
      * Creator-chosen community visibility flag. Immutable after create (G3) —
      * no service path mutates it post-persist. Public tickets are readable by
      * all residents in redacted form; photos stay household/staff-only (F-05 gate).

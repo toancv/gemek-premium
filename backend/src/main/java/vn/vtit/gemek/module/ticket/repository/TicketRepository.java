@@ -167,6 +167,50 @@ public interface TicketRepository extends JpaRepository<Ticket, UUID>, JpaSpecif
     List<Object[]> getDashboardTicketKpis(@Param("since30Days") OffsetDateTime since30Days);
 
     /**
+     * Returns active tickets whose SLA deadline has passed and whose breach
+     * notification has not been sent yet (N3 P6 overdue scan).
+     *
+     * <p>The {@code slaOverdueNotifiedAt IS NULL} sent-marker predicate makes the
+     * scan idempotent — the scheduler sets the marker in the same transaction as
+     * the notification insert. SUGGESTION_FEEDBACK tickets carry a {@code null}
+     * deadline and never match.
+     *
+     * @param now the scan timestamp (single snapshot shared with the warning scan).
+     * @return overdue tickets pending their breach notification.
+     */
+    @Query("""
+            SELECT t FROM Ticket t
+            WHERE t.status NOT IN ('DONE', 'CANCELLED')
+              AND t.slaDeadline IS NOT NULL
+              AND t.slaDeadline < :now
+              AND t.slaOverdueNotifiedAt IS NULL
+            """)
+    List<Ticket> findSlaOverdueCandidates(@Param("now") OffsetDateTime now);
+
+    /**
+     * Returns active tickets entering the SLA warning window whose warning
+     * notification has not been sent yet (N3 P6 warning scan).
+     *
+     * <p>The lower bound {@code slaDeadline >= :now} excludes already-overdue
+     * tickets — those are handled exclusively by the overdue scan, which sets BOTH
+     * markers (an "approaching deadline" warning after the breach is pointless).
+     *
+     * @param now           the scan timestamp (single snapshot shared with the overdue scan).
+     * @param warningCutoff {@code now} plus the fixed warning lead time (G2: 2 hours).
+     * @return tickets inside the warning window pending their warning notification.
+     */
+    @Query("""
+            SELECT t FROM Ticket t
+            WHERE t.status NOT IN ('DONE', 'CANCELLED')
+              AND t.slaDeadline IS NOT NULL
+              AND t.slaDeadline >= :now
+              AND t.slaDeadline < :warningCutoff
+              AND t.slaWarningNotifiedAt IS NULL
+            """)
+    List<Ticket> findSlaWarningCandidates(@Param("now") OffsetDateTime now,
+                                          @Param("warningCutoff") OffsetDateTime warningCutoff);
+
+    /**
      * Returns counts of open+in-progress tickets grouped by category for the dashboard.
      *
      * <p>Each row is {@code [categoryText, count]}.

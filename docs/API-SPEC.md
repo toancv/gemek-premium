@@ -2101,7 +2101,7 @@ Thread = all `notification_subscriptions` rows for the ticket (CREATOR + ASSIGNE
 |---|---|
 | Ticket photos (`tickets/…` keys) | Active residents of the ticket's apartment; assigned TECHNICIAN; any TECHNICIAN while the ticket is in `NEW` status (triage rule, E5); ADMIN; BOARD_MEMBER. **Public-ticket visibility grants NO photo access — PERMANENT rule (E4): photos can show home interiors; any future "public photos" needs a per-photo creator-consent feature, not a presign widening.** |
 | Contract attachments (endpoints below — NOT yet implemented) | Staff only (ADMIN/BOARD_MEMBER) when built; MUST route through an `assertPresignAccess`-style ownership check before issuing URLs (R-4). |
-| Announcement images (future N2, `announcements/…` key prefix) | Public-read by design (E3) — announcements are broadcast content; prefix-based routing in the presign check lands in hardening H2. |
+| Announcement images (`announcements/…` key prefix) | Public-read by design (E3) — announcements are broadcast content. **Read path IMPLEMENTED (H2):** any authenticated user may presign these keys; unknown prefixes are denied 403 by default. Upload endpoint + DB row check land with N2. |
 
 Query params: `objectKey` (required)
 

@@ -15,6 +15,8 @@ Delivered: bell rows clickable (mark-read via `useMarkNotificationRead` + deep-l
 
 ## N2 — Rich content in announcements (CTO DECIDED: rich-text editor with embedded images/video)
 
+> **F-05 gate LIFTED (2026-06-12, hardening H2):** the presign read path for `announcements/` keys is live (public-read per E3, commit 6f3dd96) — N2 is no longer blocked on F-05. N2 still owns: upload endpoint, attachment table + row check, editor.
+
 Embedded media in content via editor (e.g. TipTap), MinIO-backed uploads. HARD REQUIREMENTS recorded now: server-side HTML sanitization (XSS), safe render on both apps, video size limits. PREREQUISITE: F-05 (IDOR on file presign) must be fixed before or together with this — expanding upload surface before the presign hardening is forbidden. Design session required before any code.
 
 ## N3 — Per-user event notifications — ✅ DONE (smoke-verified 2026-06-12, all 5 CTO rounds passed)

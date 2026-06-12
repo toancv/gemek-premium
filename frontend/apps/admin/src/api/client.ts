@@ -4,7 +4,8 @@ import { useAuthStore } from '../store/authStore';
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? '/api';
 
-export const apiClient = axios.create({ baseURL: BASE_URL });
+// Refresh token travels as an httpOnly cookie — credentials must ride along.
+export const apiClient = axios.create({ baseURL: BASE_URL, withCredentials: true });
 
 // Attach access token from store to every request
 apiClient.interceptors.request.use((config: InternalAxiosRequestConfig) => {
@@ -43,14 +44,12 @@ apiClient.interceptors.response.use(
       }
       original._retry = true;
       isRefreshing = true;
-      const rt = localStorage.getItem('gemek_refresh');
-      if (!rt) {
-        isRefreshing = false;
-        window.location.href = '/login';
-        return Promise.reject(error);
-      }
       try {
-        const res = await axios.post(`${BASE_URL}/auth/refresh`, { refreshToken: rt });
+        // Cookie-implicit refresh: httpOnly cookie carries the token; X-Requested-With is required by the BE cookie path.
+        const res = await axios.post(`${BASE_URL}/auth/refresh`, {}, {
+          withCredentials: true,
+          headers: { 'X-Requested-With': 'XMLHttpRequest' },
+        });
         const newToken: string = res.data.accessToken;
         // SECURITY-FIX: Call store setter directly instead of window.__gemekSetToken global.
         useAuthStore.getState().setTokenAndUser(newToken, useAuthStore.getState().user!);
@@ -59,7 +58,6 @@ apiClient.interceptors.response.use(
         return apiClient(original);
       } catch (refreshErr) {
         processQueue(refreshErr, null);
-        localStorage.removeItem('gemek_refresh');
         window.location.href = '/login';
         return Promise.reject(refreshErr);
       } finally {

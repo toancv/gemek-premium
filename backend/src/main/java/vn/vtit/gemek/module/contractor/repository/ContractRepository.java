@@ -35,15 +35,24 @@ public interface ContractRepository extends JpaRepository<Contract, UUID>, JpaSp
     List<Contract> findByContractorId(UUID contractorId);
 
     /**
-     * Returns all ACTIVE contracts whose end date falls within the given date range.
+     * Returns all ACTIVE contracts whose end date falls within the given date range
+     * and whose expiry notification has not been sent yet.
      *
      * <p>Used by the daily expiry scheduler to find contracts expiring within 30 days.
+     * The {@code expiryNotifiedAt IS NULL} sent-marker predicate (G6 fix) makes the
+     * daily scan once-only — the scheduler sets the marker in the same transaction
+     * as the notification insert.
      *
      * @param from the start of the look-ahead window (inclusive).
      * @param to   the end of the look-ahead window (inclusive).
-     * @return list of expiring contracts.
+     * @return list of expiring contracts pending their expiry notification.
      */
-    @Query("SELECT c FROM Contract c WHERE c.status = 'ACTIVE' AND c.endDate BETWEEN :from AND :to")
+    @Query("""
+            SELECT c FROM Contract c
+            WHERE c.status = 'ACTIVE'
+              AND c.endDate BETWEEN :from AND :to
+              AND c.expiryNotifiedAt IS NULL
+            """)
     List<Contract> findExpiringBetween(@Param("from") LocalDate from, @Param("to") LocalDate to);
 
     /**

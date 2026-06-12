@@ -8,12 +8,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 import vn.vtit.gemek.module.contractor.entity.Contract;
 import vn.vtit.gemek.module.contractor.repository.ContractRepository;
 import vn.vtit.gemek.module.notification.NotificationService;
 import vn.vtit.gemek.module.notification.entity.NotificationType;
 
 import java.time.LocalDate;
+import java.time.OffsetDateTime;
 import java.util.List;
 
 /**
@@ -23,6 +25,11 @@ import java.util.List;
  * in-app notification for the staff member ({@code createdBy}) linked to each
  * expiring contract. Contracts without a {@code createdBy} user are skipped —
  * they may have been created by a deleted user or a data-migration script.
+ *
+ * <p>Once-only (G6 fix): the scan excludes contracts whose
+ * {@code expiry_notified_at} sent-marker is set, and the marker is written on the
+ * managed entity in the same transaction as the notification insert — each
+ * expiring contract notifies exactly once instead of daily for 30 days.
  */
 @Component
 public class ContractExpiryScheduler {
@@ -48,12 +55,18 @@ public class ContractExpiryScheduler {
     }
 
     /**
-     * Finds all ACTIVE contracts whose end date falls within the next 30 days,
-     * logs the count, and creates a notification for each contract's assigned staff user.
+     * Finds all ACTIVE contracts whose end date falls within the next 30 days and
+     * which have not been notified yet, logs the count, and creates a notification
+     * for each contract's assigned staff user.
+     *
+     * <p>Transactional so the {@code expiryNotifiedAt} sent-marker (set only after a
+     * successful notification insert) flushes atomically with the notification row —
+     * a crash mid-run leaves neither, never one without the other.
      *
      * <p>Cron expression: run at 08:00 every day.
      */
     @Scheduled(cron = "0 0 8 * * *")
+    @Transactional
     public void checkExpiringContracts() {
         LocalDate today = LocalDate.now();
         List<Contract> expiring = contractRepository.findExpiringBetween(today, today.plusDays(LOOK_AHEAD_DAYS));
@@ -74,6 +87,8 @@ public class ContractExpiryScheduler {
                         contract.getId(),
                         "Contract"
                 );
+                // G6 sent-marker — only after a successful insert, same transaction.
+                contract.setExpiryNotifiedAt(OffsetDateTime.now());
             } catch (Exception notifyException) {
                 // Notification failure must not abort the scheduler run for other contracts.
                 log.warn("Failed to create expiry notification for contract {}: {}",

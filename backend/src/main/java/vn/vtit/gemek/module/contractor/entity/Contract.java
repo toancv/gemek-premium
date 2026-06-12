@@ -105,6 +105,14 @@ public class Contract {
     @JoinColumn(name = "created_by_user_id")
     private User createdBy;
 
+    /**
+     * Sent-marker for the expiry notification (G6 once-only fix). {@code null} until
+     * the {@code CONTRACT_EXPIRING} dispatch; set in the same transaction as the
+     * notification insert so the daily scan never re-notifies the same contract.
+     */
+    @Column(name = "expiry_notified_at")
+    private OffsetDateTime expiryNotifiedAt;
+
     /** Record creation timestamp. Set once at persist time; never updated by JPA. */
     @Column(name = "created_at", nullable = false, updatable = false)
     private OffsetDateTime createdAt;

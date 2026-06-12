@@ -8,17 +8,27 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.util.StringUtils;
+import org.springframework.web.bind.annotation.CookieValue;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import vn.vtit.gemek.common.exception.AppException;
+import vn.vtit.gemek.common.exception.ErrorCode;
 import vn.vtit.gemek.common.security.UserPrincipal;
+import vn.vtit.gemek.config.JwtConfig;
+
+import java.time.Duration;
 import vn.vtit.gemek.module.auth.dto.ChangePasswordRequest;
 import vn.vtit.gemek.module.auth.dto.LoginRequest;
 import vn.vtit.gemek.module.auth.dto.LoginResponse;
@@ -41,15 +51,36 @@ public class AuthController {
     /** Bearer token prefix used to extract the raw token from the Authorization header. */
     private static final String BEARER_PREFIX = "Bearer ";
 
+    /** Name of the httpOnly refresh-token cookie (hardening H3). */
+    static final String REFRESH_COOKIE_NAME = "refreshToken";
+
+    /** Cookie Path attribute — matches the served controller mapping exactly. */
+    static final String AUTH_COOKIE_PATH = "/api/auth";
+
+    /** CSRF belt-and-braces header required on the cookie refresh path only. */
+    static final String CSRF_HEADER = "X-Requested-With";
+
     private final AuthService authService;
+    private final JwtConfig jwtConfig;
 
     /**
-     * Constructs the controller with the auth service dependency.
+     * Secure attribute for the refresh cookie. True in prod (https); false in the
+     * http dev/demo deployment — a Secure cookie over http is never sent, which
+     * would lock out every login (see application.yml app.auth.cookie-secure).
+     */
+    @Value("${app.auth.cookie-secure:false}")
+    private boolean cookieSecure;
+
+    /**
+     * Constructs the controller with its dependencies.
      *
      * @param authService the authentication service.
+     * @param jwtConfig   the JWT configuration — cookie Max-Age is read from the same
+     *                    refresh-expiry source as the Redis allow-list TTL (no second 7d).
      */
-    public AuthController(AuthService authService) {
+    public AuthController(AuthService authService, JwtConfig jwtConfig) {
         this.authService = authService;
+        this.jwtConfig = jwtConfig;
     }
 
     /**
@@ -66,22 +97,59 @@ public class AuthController {
     public ResponseEntity<LoginResponse> login(
             @Valid @RequestBody LoginRequest request,
             HttpServletRequest httpRequest) {
-        return ResponseEntity.ok(authService.login(request, httpRequest));
+        LoginResponse response = authService.login(request, httpRequest);
+        // H3 dual-mode: cookie issued alongside the body token — the body field is
+        // removed only after H4 lands and the H5 smoke passes (pre-H4 FE reads it).
+        return ResponseEntity.ok()
+                .header(HttpHeaders.SET_COOKIE, buildRefreshCookie(response.refreshToken()).toString())
+                .body(response);
     }
 
     /**
      * Exchanges a valid refresh token for a new access token.
      *
-     * @param request the refresh token request body.
-     * @return 200 OK with new access token.
+     * <p>H3 dual-mode token resolution: a body token (legacy pre-H4 clients) wins and
+     * needs no extra header; otherwise the httpOnly cookie is used, which additionally
+     * requires the {@value #CSRF_HEADER} header (CSRF belt-and-braces — SameSite=Strict
+     * is the first line). Validation and SEC-05 rate limiting are identical for both
+     * paths (same service call).
+     *
+     * @param request     the refresh token request body; optional since H3 (cookie path sends none).
+     * @param cookieToken the refresh token cookie value, if present.
+     * @param csrfHeader  the X-Requested-With header value, if present.
+     * @param httpRequest the HTTP request (passed to service for IP-based rate limiting).
+     * @return 200 OK with new access token; re-issues the cookie.
      */
     @PostMapping("/refresh")
     @Operation(summary = "Refresh token", description = "Exchange a valid refresh token for a new access token.")
     public ResponseEntity<RefreshTokenResponse> refreshToken(
-            @Valid @RequestBody RefreshTokenRequest request,
+            @RequestBody(required = false) RefreshTokenRequest request,
+            @CookieValue(value = REFRESH_COOKIE_NAME, required = false) String cookieToken,
+            @RequestHeader(value = CSRF_HEADER, required = false) String csrfHeader,
             HttpServletRequest httpRequest) {
+        String bodyToken = request != null ? request.refreshToken() : null;
+        String token;
+        // Legacy body path first — pre-H3 semantics unchanged, no header demanded.
+        if (StringUtils.hasText(bodyToken)) {
+            token = bodyToken;
+        } else if (StringUtils.hasText(cookieToken)) {
+            // Cookie path: reject without the CSRF header.
+            if (!StringUtils.hasText(csrfHeader)) {
+                throw new AppException(ErrorCode.FORBIDDEN,
+                        "Header " + CSRF_HEADER + " is required for cookie-based refresh.");
+            }
+            token = cookieToken;
+        } else {
+            // Mirrors the pre-H3 @NotBlank message (validation moved here because the
+            // body became optional for the cookie path).
+            throw new AppException(ErrorCode.VALIDATION_ERROR, "Refresh token is required.");
+        }
         // SECURITY-FIX: SEC-05 — pass httpRequest for IP-based rate limiting
-        return ResponseEntity.ok(authService.refreshToken(request, httpRequest));
+        RefreshTokenResponse response = authService.refreshToken(new RefreshTokenRequest(token), httpRequest);
+        // Re-issue the cookie (fresh Max-Age; server-side Redis TTL stays authoritative).
+        return ResponseEntity.ok()
+                .header(HttpHeaders.SET_COOKIE, buildRefreshCookie(token).toString())
+                .body(response);
     }
 
     /**
@@ -89,7 +157,7 @@ public class AuthController {
      *
      * @param principal   the authenticated user principal.
      * @param httpRequest the HTTP request (used to extract the raw token).
-     * @return 204 No Content.
+     * @return 204 No Content; clears the refresh cookie.
      */
     @PostMapping("/logout")
     @Operation(summary = "Logout", description = "Invalidate current session tokens.")
@@ -98,7 +166,10 @@ public class AuthController {
             HttpServletRequest httpRequest) {
         String rawToken = extractBearerToken(httpRequest);
         authService.logout(principal, rawToken);
-        return ResponseEntity.noContent().build();
+        // H3: clear the cookie on top of the existing total revocation (untouched).
+        return ResponseEntity.noContent()
+                .header(HttpHeaders.SET_COOKIE, clearedRefreshCookie().toString())
+                .build();
     }
 
     /**
@@ -143,6 +214,40 @@ public class AuthController {
             @Valid @RequestBody UpdateFcmTokenRequest request) {
         authService.updateFcmToken(principal, request);
         return ResponseEntity.noContent().build();
+    }
+
+    /**
+     * Builds the httpOnly refresh cookie (hardening H3, E2=Option 1).
+     *
+     * <p>Max-Age comes from the SAME config value as the Redis allow-list TTL
+     * ({@code jwt.refresh-token-expiry-ms}) — never a second hardcoded duration.
+     *
+     * @param refreshToken the refresh JWT to store.
+     * @return the cookie.
+     */
+    private ResponseCookie buildRefreshCookie(String refreshToken) {
+        return ResponseCookie.from(REFRESH_COOKIE_NAME, refreshToken)
+                .httpOnly(true)
+                .secure(cookieSecure)
+                .sameSite("Strict")
+                .path(AUTH_COOKIE_PATH)
+                .maxAge(Duration.ofMillis(jwtConfig.getRefreshTokenExpiryMs()))
+                .build();
+    }
+
+    /**
+     * Builds the clearing variant of the refresh cookie (Max-Age=0, same attributes).
+     *
+     * @return the expired cookie.
+     */
+    private ResponseCookie clearedRefreshCookie() {
+        return ResponseCookie.from(REFRESH_COOKIE_NAME, "")
+                .httpOnly(true)
+                .secure(cookieSecure)
+                .sameSite("Strict")
+                .path(AUTH_COOKIE_PATH)
+                .maxAge(0)
+                .build();
     }
 
     /**

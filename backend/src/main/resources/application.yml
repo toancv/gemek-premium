@@ -74,6 +74,12 @@ app:
   admin:
     email: ${ADMIN_EMAIL:admin@gemek.vn}
     password: ${ADMIN_PASSWORD:}
+  auth:
+    # Secure attribute on the httpOnly refresh cookie (hardening H3, E2=Option 1).
+    # MUST be true behind https (prod); MUST stay false for the http dev/demo
+    # deployment on :80/:81 — a Secure cookie is never sent over http, which
+    # would lock out every login. Set AUTH_COOKIE_SECURE=true in the prod env.
+    cookie-secure: ${AUTH_COOKIE_SECURE:false}
 
 firebase:
   credentials-path: ${FIREBASE_CREDENTIALS_PATH:}

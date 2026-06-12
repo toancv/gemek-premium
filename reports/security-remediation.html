@@ -527,7 +527,7 @@
     <div class="finding-header">
       <span class="badge med">MEDIUM</span>
       <h3>F-05 — MinIO presign endpoint does not verify per-user file ownership</h3>
-      <span class="badge defer">DEFERRED</span>
+      <span class="badge fixed">&#10003; RESOLVED</span>
     </div>
     <div class="finding-body">
       <div class="finding-col">
@@ -543,6 +543,12 @@
         with a role bypass for ADMIN and TECHNICIAN. The current check significantly reduces
         attack surface (key must exist); full IDOR prevention requires the ownership join.
         Tracked in backlog.</p>
+        <p><strong>RESOLVED 2026-06-12 (Hardening H1):</strong> IDOR core closed by N3 P5
+        <code>enforcePhotoAccess</code> (commit <code>96ae285</code>) — presign now enforces the
+        household/staff rule per key (404 on unknown keys, household match for RESIDENT,
+        assigned-or-NEW for TECHNICIAN). Residuals addressed: expiry 1h&rarr;10min (P-A, commit
+        <code>0c72583</code>); per-surface access matrix (P-C) codified in API-SPEC &sect;13.
+        CTO ratified E1/E3/E4/E5; see DECISIONS.md hardening entry.</p>
       </div>
     </div>
     <div class="finding-footer">
@@ -576,7 +582,7 @@
       <tr><td><strong>F-02</strong></td><td><span class="badge high">HIGH</span></td><td>Auth guard not reactive</td><td style="font-family:monospace;font-size:0.78rem">router/index.ts (both apps)</td><td><span class="cm">ba1c634</span></td><td><span class="badge pass">&#10003; RESOLVED</span></td></tr>
       <tr><td><strong>F-03</strong></td><td><span class="badge med">MED</span></td><td>Vue DevTools in production</td><td style="font-family:monospace;font-size:0.78rem">main.ts (both apps)</td><td><span class="cm">ba1c634</span></td><td><span class="badge pass">&#10003; RESOLVED</span></td></tr>
       <tr><td><strong>F-04</strong></td><td><span class="badge med">MED</span></td><td>Refresh token in localStorage</td><td style="font-family:monospace;font-size:0.78rem">shared/stores/auth.ts</td><td style="color:var(--muted)">—</td><td><span class="badge defer">Hardening Sprint</span></td></tr>
-      <tr><td><strong>F-05</strong></td><td><span class="badge med">MED</span></td><td>MinIO presign — no ownership check</td><td style="font-family:monospace;font-size:0.78rem">FileController.java</td><td><span class="cm">6e43ebf (partial)</span></td><td><span class="badge defer">Hardening Sprint</span></td></tr>
+      <tr><td><strong>F-05</strong></td><td><span class="badge med">MED</span></td><td>MinIO presign — no ownership check</td><td style="font-family:monospace;font-size:0.78rem">FileController.java</td><td><span class="cm">96ae285 + 0c72583</span></td><td><span class="badge fixed">&#10003; RESOLVED (H1)</span></td></tr>
     </tbody>
   </table>
   <div class="note-box">

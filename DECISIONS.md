@@ -631,3 +631,13 @@ _(record when CTO overrides agent decision)_
 ## N3 close-out — CTO-ratified during browser smoke (2026-06-12)
 
 **Ticket visibility is household-shared BY DESIGN:** all active residents of an apartment see and can act on the apartment's tickets (public or private) — pre-existing behavior since the original scoping (design §A.6: RESIDENT scope = own active apartment, never creator-only). Surfaced during the N3 smoke rounds; CTO confirmed intended, no change. The P5 redaction boundary is the HOUSEHOLD, not the creator.
+
+## Hardening sprint rulings — CTO-ratified (2026-06-12, H1)
+
+Authoritative record for the sprint (proposal: reports/hardening-design.md):
+- **F-05 = RESOLVED** (E1): IDOR core closed by N3 P5 `enforcePhotoAccess` (96ae285); residuals shipped in H1 — presign expiry **1h → 10 min** (`FileStorageService.PRESIGN_EXPIRY_SECONDS = 600`, commit 0c72583) + normative file-surface access matrix in API-SPEC §13 (P-C).
+- **Announcement images (N2): public-read-by-design** via `announcements/` key prefix (E3) — prefix routing in the presign check is H2.
+- **Public-ticket photos: PERMANENTLY blocked** from public view (E4); any future exposure requires a per-photo creator-consent feature, never a presign widening.
+- **TECHNICIAN NEW-status presign rule KEPT** (E5) — matches list/detail scoping; restricting it would desync three rules.
+- **F-04 ≡ SEC-20 unified** — one item; the MEDIUM severity (F-04) governs.
+- **F-04 remediation = Option 1, httpOnly refresh cookie** (E2, recorded now, implemented H3/H4): profile-driven `Secure` flag (prod-only — dev/demo runs http on ports 80/81 and would otherwise lock out all logins); `SameSite=Strict`; `Path=/api/auth`; CORS exact origins + allowCredentials; BE keeps the body-param fallback during H3 so H3 can ship before H4. H5 = CTO auth smoke (login / refresh-after-expiry / logout, BOTH apps) before the fallback is ever removed.

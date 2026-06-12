@@ -1428,6 +1428,8 @@ Response `200 OK` — updated contract object.
 
 ### POST /api/contracts/{id}/attachment
 
+> ⚠️ **NOT IMPLEMENTED + security gate (R-4):** this endpoint is spec'd but has no controller code. When built, it MUST validate contract-level access (staff-only) through the presign ownership check before touching MinIO — see the file-surface access matrix in §13.
+
 **Auth:** ADMIN
 **Description:** Upload or replace the PDF attachment for a contract.
 
@@ -1441,6 +1443,8 @@ Response `200 OK`:
 ---
 
 ### GET /api/contracts/{id}/attachment
+
+> ⚠️ **NOT IMPLEMENTED + security gate (R-4):** this endpoint is spec'd but has no controller code. When built, it MUST validate contract-level access (staff-only) through the presign ownership check before touching MinIO — see the file-surface access matrix in §13.
 
 **Auth:** ADMIN, BOARD_MEMBER
 **Description:** Get a short-lived presigned download URL for the contract attachment.
@@ -2089,7 +2093,15 @@ Thread = all `notification_subscriptions` rows for the ticket (CREATOR + ASSIGNE
 ### GET /api/files/presign
 
 **Auth:** Any authenticated role
-**Description:** Get a short-lived presigned GET URL for a MinIO object. The server validates that the requesting user has permission to access the referenced object's parent entity before issuing the URL.
+**Description:** Get a short-lived presigned GET URL for a MinIO object (expiry: **10 minutes** — hardening H1). The server validates that the requesting user has permission to access the referenced object's parent entity before issuing the URL. Unknown keys yield `404`.
+
+**File-surface access matrix (NORMATIVE — hardening H1/P-C, CTO-ratified):**
+
+| Surface | Who may obtain a presigned URL |
+|---|---|
+| Ticket photos (`tickets/…` keys) | Active residents of the ticket's apartment; assigned TECHNICIAN; any TECHNICIAN while the ticket is in `NEW` status (triage rule, E5); ADMIN; BOARD_MEMBER. **Public-ticket visibility grants NO photo access — PERMANENT rule (E4): photos can show home interiors; any future "public photos" needs a per-photo creator-consent feature, not a presign widening.** |
+| Contract attachments (endpoints below — NOT yet implemented) | Staff only (ADMIN/BOARD_MEMBER) when built; MUST route through an `assertPresignAccess`-style ownership check before issuing URLs (R-4). |
+| Announcement images (future N2, `announcements/…` key prefix) | Public-read by design (E3) — announcements are broadcast content; prefix-based routing in the presign check lands in hardening H2. |
 
 Query params: `objectKey` (required)
 

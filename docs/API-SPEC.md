@@ -713,6 +713,7 @@ Query params:
 - `to` — ISO date
 - `slaBreached` — bool (tickets where `sla_deadline < NOW()` and status not terminal)
 - `search` — substring search on `title`
+- `visibility` — **RESIDENT only** (N3 P5): `mine` | `community`. Omitted/`null` = `mine` = the pre-N3 scoping (own apartment) — existing clients keep prior behavior unchanged. `community` = public tickets only (`is_public = true`, any apartment), rows REDACTED for non-household viewers (see GET /api/tickets/{id} redaction rule). Any other value yields `400 VALIDATION_ERROR`. Ignored for staff roles.
 
 Default sort: `createdAt desc`
 
@@ -755,7 +756,8 @@ Request:
   "category": "MAINTENANCE_REPAIR|COMPLAINT|ADMINISTRATIVE|SUGGESTION_FEEDBACK|OTHER",
   "title": "string (max 255)",
   "description": "string|null",
-  "priority": "LOW|MEDIUM|HIGH|URGENT"
+  "priority": "LOW|MEDIUM|HIGH|URGENT",
+  "isPublic": "bool — optional, default false. Creator-chosen community visibility; IMMUTABLE after create (no edit path; rogue isPublic fields in other payloads are ignored)."
 }
 ```
 
@@ -764,7 +766,8 @@ Response `201 Created` — ticket summary object (same shape as list item).
 **Side effects:**
 - `sla_deadline` computed from category default SLA and stored.
 - Status history entry `null → NEW` created.
-- Admin receives an in-app notification of new ticket.
+- All active ADMIN users receive an in-app `TICKET_CREATED` notification, excluding the acting user (see §12 event catalog).
+- Creator joins the ticket notification thread (subscription row `CREATOR`).
 
 ---
 
@@ -792,6 +795,9 @@ Response `200 OK` — full ticket detail:
   "slaDeadline": "2026-05-30T10:00:00Z",
   "slaBreached": false,
   "resolutionNotes": null,
+  "isPublic": false,
+  "isFollowing": null,
+  "redacted": false,
   "photos": [
     {
       "id": "uuid",
@@ -825,6 +831,16 @@ Response `200 OK` — full ticket detail:
   "updatedAt": "ISO8601"
 }
 ```
+
+**Viewer flags (N3 P7):**
+- `isPublic` — the creator-chosen community visibility flag.
+- `isFollowing` — `true` iff the calling RESIDENT holds a FOLLOWER subscription row on this ticket. CREATOR/ASSIGNEE thread rows do NOT count. `null` for staff roles and on mutation responses.
+- `redacted` — `true` iff this response was produced by the redacted public-view mapping below; `false` for household members and staff.
+
+**Redaction rule (N3 P5/G8)** — a RESIDENT outside the ticket's household can read a PUBLIC ticket but receives the REDACTED shape (private tickets stay `403 FORBIDDEN`):
+- **Visible:** title, description, category, status, priority, block name (`apartment.block.name` only), createdAt, status-history timestamps + statuses, resolutionNotes, slaBreached.
+- **Hidden:** submitter identity — `submittedBy.fullName` is the literal placeholder «Cư dân» with no id/phone; apartment `id`/`unitNumber`; assignee identities; `photos` always `[]` (presign also denied — photos stay household/staff-only until F-05 lands); status-history `changedBy` + `notes`; `rating` + `ratingComment`; `scheduledDate`/`completedDate`/`slaDeadline`.
+- Community LIST rows (`visibility=community`) are redacted with the same rule.
 
 ---
 
@@ -928,6 +944,25 @@ Errors: `409 CONFLICT` (already rated, or ticket not in DONE status)
 
 **Side effects:**
 - If ticket was assigned to a contractor, contractor's average `rating` is recalculated.
+
+---
+
+### POST /api/tickets/{id}/follow
+
+**Auth:** RESIDENT
+**Description:** Opt-in follow of a ticket — inserts a FOLLOWER subscription row joining the ticket's notification thread (the caller then receives status-change events, see §12). Idempotent: following an already-followed ticket is a no-op `204`.
+
+Response `204 No Content`
+Errors: `404 NOT_FOUND` — ticket does not exist **or** is a private ticket outside the caller's household (deliberately indistinguishable: existence of invisible tickets must not leak).
+
+---
+
+### DELETE /api/tickets/{id}/follow
+
+**Auth:** RESIDENT
+**Description:** Unfollow — deletes the caller's subscription row. Idempotent: unfollowing a not-followed ticket is a no-op `204`. Same `404` rule for invisible private tickets.
+
+Response `204 No Content`
 
 ---
 
@@ -1067,6 +1102,8 @@ Errors: `409 AMENITY_NAME_EXISTS` (name already taken by another amenity), `404 
 
 **Auth:** ADMIN
 **Description:** Deactivate amenity (`is_active = false`). Cancels any pending future bookings with a system notification to affected residents.
+
+> ⚠️ **Divergence (N3 audit):** the resident cancellation notification is NOT implemented — bookings/amenities are TEMP_HIDDEN on the resident FE; wire the notification when bookings unhide (cut from N3 v1 per CTO ruling G1).
 
 Response `204 No Content`
 
@@ -2005,7 +2042,7 @@ Note: the unread count is NOT part of this page response — clients fetch it fr
 
 ---
 
-### PUT /api/notifications/{id}/read
+### POST /api/notifications/{id}/read
 
 **Auth:** Any authenticated role (own notifications only)
 **Description:** Mark a single notification as read.
@@ -2015,12 +2052,35 @@ Errors: `403 FORBIDDEN` (notification belongs to another user)
 
 ---
 
-### PUT /api/notifications/read-all
+### POST /api/notifications/read-all
 
 **Auth:** Any authenticated role
 **Description:** Mark all of the calling user's notifications as read.
 
 Response `204 No Content`
+
+---
+
+### Notification event catalog (implemented — N3)
+
+Thread = all `notification_subscriptions` rows for the ticket (CREATOR + ASSIGNEEs + FOLLOWERs), always excluding the acting user. All bodies are Vietnamese; ticket status labels use the locked FE terms (DONE = «Hoàn tất»).
+
+| Event | Trigger | Type | Recipients |
+|---|---|---|---|
+| C1 ticket created | `POST /tickets` | `TICKET_CREATED` | active ADMINs (minus actor) |
+| C2 ticket assigned (assignee) | `PUT /tickets/{id}/assign` | `TICKET_ASSIGNED` | assigned staff user |
+| C3 ticket accepted (thread) | assign's NEW→ASSIGNED auto-transition | `TICKET_STATUS_CHANGED` | thread snapshot before assignee joins |
+| C4 status changed | `PUT /tickets/{id}/status` | `TICKET_STATUS_CHANGED` | thread minus actor |
+| C5 rating prompt | status → DONE | `TICKET_RATING_REQUESTED` | submitter only |
+| C6 ticket rated | `POST /tickets/{id}/rate` | `TICKET_RATED` | assigned staff user |
+| C7 SLA approaching | scheduler, every 15 min; deadline < now+2h, once per ticket | `TICKET_SLA_WARNING` | assignee (if any) + active ADMINs, deduped |
+| C8 SLA overdue | same scheduler; deadline < now, once per ticket (a ticket first seen already overdue gets ONLY C8, never C7) | `TICKET_SLA_BREACHED` | assignee (if any) + active ADMINs, deduped |
+| C9 household member added | `POST /residents` | `HOUSEHOLD_MEMBER_ADDED` | active residents of the apartment, minus the new user and the actor |
+| announcement published | `POST /announcements/{id}/publish` | `ANNOUNCEMENT_PUBLISHED` | residents in the announcement scope |
+| contract expiring | daily scheduler, once per contract (sent-marker) | `CONTRACT_EXPIRING` | contract's `createdBy` staff user |
+| maintenance overdue | daily scheduler | `SCHEDULE_DUE` | linked contract's `createdBy` staff user |
+
+`referenceType` values written by the BE: `Ticket`, `Announcement`, `Resident`, `Contract`, `MaintenanceSchedule` — these drive FE bell deep-links; unmapped types are mark-read-only on click.
 
 ---
 

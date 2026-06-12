@@ -627,3 +627,7 @@ _(record when CTO overrides agent decision)_
 **What:** `isFollowing` counts ONLY FOLLOWER subscription rows — a creator (CREATOR row) viewing their own public ticket gets `isFollowing=false`.
 **Why:** the flag drives the «Theo dõi»/«Bỏ theo dõi» button, which renders only on the redacted outsider view; counting CREATOR/ASSIGNEE rows would make an unfollow action delete a structural thread membership. `redacted` is set inside `toRedactedDetail` itself (not by the caller) so the flag can never desync from the mapping path that produced the response. `isFollowing` is null outside resident detail GETs — mutation responses and staff views have no follow semantics; FE only reads it when `redacted===true`.
 **Also:** FE `canRate` gained `!redacted` guard — pre-existing cosmetic hole (outsider saw a rate form the BE would 403). Resident tickets page title 'Phản ánh của tôi' → 'Phản ánh' because the «Của tôi» tab now carries that meaning. 'mine' tab omits the visibility param entirely (relies on the P5 null-default) — sends no new query string, zero behavior change for pre-P7 flows.
+
+## N3 close-out — CTO-ratified during browser smoke (2026-06-12)
+
+**Ticket visibility is household-shared BY DESIGN:** all active residents of an apartment see and can act on the apartment's tickets (public or private) — pre-existing behavior since the original scoping (design §A.6: RESIDENT scope = own active apartment, never creator-only). Surfaced during the N3 smoke rounds; CTO confirmed intended, no change. The P5 redaction boundary is the HOUSEHOLD, not the creator.

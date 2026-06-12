@@ -17,17 +17,9 @@ Delivered: bell rows clickable (mark-read via `useMarkNotificationRead` + deep-l
 
 Embedded media in content via editor (e.g. TipTap), MinIO-backed uploads. HARD REQUIREMENTS recorded now: server-side HTML sanitization (XSS), safe render on both apps, video size limits. PREREQUISITE: F-05 (IDOR on file presign) must be fixed before or together with this — expanding upload surface before the presign hardening is forbidden. Design session required before any code.
 
-## N3 — Per-user event notifications (design-first; investigation session required)
+## N3 — Per-user event notifications — ✅ DONE (smoke-verified 2026-06-12, all 5 CTO rounds passed)
 
-Events: resident assigned to apartment → notify household members; ticket lifecycle (created → admins; assigned → assignee joins thread; status change / SLA-approaching / SLA-overdue → all thread participants); similar for vehicles + bookings.
-
-CTO DECIDED: tickets get a creator-chosen public/private flag (DEFAULT PRIVATE); residents can browse public tickets and opt-in follow (button) to join the notification thread.
-
-Known design work (do NOT improvise during implementation):
-- Participant/follower model (new table, must also serve future comments — N4).
-- SLA scheduler (NEW infrastructure — must be idempotent, sent-marker so re-scans don't re-notify).
-- Public-ticket visibility scope (what other residents see: apartment number? photos? — OPEN, propose in design).
-- Migration for `is_public` + list-query scoping.
+Delivered P1–P8 per the approved design (`reports/n3-event-notifications-design.md`): V13 enum values; V14 `notification_subscriptions` + backfill; ticket lifecycle dispatch C1–C6 (VN bodies, locked terms); C9 household notice; V15 `is_public` + redacted public view + visibility filter + follow/unfollow; V16 SLA scheduler (15-min, 2h warning, sent-markers) + ContractExpiry once-only fix (G6); resident FE (public toggle, «Cộng đồng» tab, follow button, Ticket deep-link); admin FE (bell clickable, Ticket/Contract routes). Viewer flags `isFollowing`/`redacted` added at P7. API-SPEC updated at P9.
 
 ## N4 — Ticket media + comments (BACKLOG, not scheduled)
 
@@ -38,3 +30,11 @@ Photo/video upload on tickets (before/during/after processing stages) + comment 
 - ~~Resident AnnouncementsPage item type is `any`~~ — PAID in N1 (`api/types.ts`).
 - External channels (FCM/SMTP/SMS) still stubbed.
 - **Shared dev-DB test pollution** — part of the suite writes committed rows to the Docker dev DB (249 garbage tickets, 209 bookings observed 2026-06-11; caused the P2 backfill-gap misreading, the amenity list flake — de-flaked d90f98c — and the still-latent parking phone-collision flake). Fix direction: migrate Docker-required tests to testcontainers or per-run schema reset. Own session, not mixed into N3.
+- **Resident FE ticket typing any-debt** — list rows + detail body still untyped (`tk: any`, `TicketDetailItem` index signature); only the P7 viewer flags are typed. Full TicketSummary/Detail FE typing pass deferred.
+
+## New backlog items (CTO, N3 smoke close-out 2026-06-12)
+
+- **(a) Submitter display in NON-redacted ticket views** — should render «{fullName} - {unitNumber}» (household + staff views; redacted view stays «Cư dân»). Small display fix (FE, possibly BE summary DTO field). **Next-turn candidate.**
+- **(b) Ticket assign form appointment-date renders mm/dd/yyyy** — investigate whether it is a native `input type=date` (browser-locale-driven, format CANNOT be forced — would need the existing `VNDatePicker` component, same as the 6-input rollout) vs a formattable input; unify to dd/MM/yyyy. **Next-turn candidate, pairs with (a).**
+- **(c) Staff/non-resident user management module MISSING** — no admin UI to create/manage TECHNICIAN/BOARD_MEMBER/ADMIN accounts. Role overlap (a resident who is also ADMIN or TECHNICIAN) is impossible today: `users.role` is a single-value enum; multi-role requires schema + auth redesign (JWT claims, RequireRole, BE role checks). **Design session required — do NOT improvise.**
+- **(d) Resident move-out flow — UI MISSING** (correction to the smoke note: the BE endpoint EXISTS — `POST /api/residents/{id}/move-out`, ResidentController:172, spec:569). Schema fully supports it (`residents.moveOutDate`; all N3 recipient queries filter on it). Remaining work is admin UI only: an "end residency" action setting moveOutDate (soft), NOT a hard delete.

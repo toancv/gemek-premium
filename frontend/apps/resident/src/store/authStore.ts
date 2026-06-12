@@ -41,44 +41,44 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     if (bootstrapped) return;
     bootstrapped = true;
 
-    const rt = localStorage.getItem('gemek_refresh');
-    if (!rt) {
-      set({ authStatus: 'unauthenticated' });
-      return;
-    }
+    // Legacy cleanup: pre-H4 sessions persisted the refresh token in localStorage (F-04).
+    localStorage.removeItem('gemek_refresh');
+
     try {
+      // Cookie-implicit refresh: the httpOnly cookie carries the token; no body payload.
       // Use raw axios (bypasses apiClient interceptors) to avoid circular refresh loops.
       const base = (apiClient.defaults.baseURL ?? '/api') as string;
-      const refreshRes = await axios.post(`${base}/auth/refresh`, { refreshToken: rt });
-      const { accessToken, refreshToken: newRt } = refreshRes.data;
-      if (newRt) localStorage.setItem('gemek_refresh', newRt);
+      const refreshRes = await axios.post(`${base}/auth/refresh`, {}, {
+        withCredentials: true,
+        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+      });
+      const { accessToken } = refreshRes.data;
       // Set token before /auth/me so the request interceptor includes Authorization header.
       set({ accessToken });
       const meRes = await apiClient.get('/auth/me');
       set({ user: meRes.data, authStatus: 'authenticated' });
     } catch {
-      localStorage.removeItem('gemek_refresh');
+      // No cookie or expired/revoked token — land on login, no loop (interceptor skips /auth/refresh).
       set({ accessToken: null, authStatus: 'unauthenticated' });
     }
   },
 
   login: async (phone, password) => {
     const res = await apiClient.post('/auth/login', { phone, password });
-    const { accessToken, refreshToken, user } = res.data;
-    localStorage.setItem('gemek_refresh', refreshToken);
+    // Body still carries refreshToken until sprint close-out — deliberately ignored; cookie is the channel.
+    const { accessToken, user } = res.data;
     set({ accessToken, user, authStatus: 'authenticated' });
   },
 
   logout: async () => {
     try { await apiClient.post('/auth/logout'); } catch { /* ignore */ }
-    localStorage.removeItem('gemek_refresh');
     set({ accessToken: null, user: null, authStatus: 'unauthenticated' });
   },
 
   refreshToken: async () => {
-    const rt = localStorage.getItem('gemek_refresh');
-    if (!rt) throw new Error('No refresh token');
-    const res = await apiClient.post('/auth/refresh', { refreshToken: rt });
+    const res = await apiClient.post('/auth/refresh', {}, {
+      headers: { 'X-Requested-With': 'XMLHttpRequest' },
+    });
     set((state) => ({ ...state, accessToken: res.data.accessToken }));
   },
 }));

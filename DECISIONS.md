@@ -641,3 +641,7 @@ Authoritative record for the sprint (proposal: reports/hardening-design.md):
 - **TECHNICIAN NEW-status presign rule KEPT** (E5) — matches list/detail scoping; restricting it would desync three rules.
 - **F-04 ≡ SEC-20 unified** — one item; the MEDIUM severity (F-04) governs.
 - **F-04 remediation = Option 1, httpOnly refresh cookie** (E2, recorded now, implemented H3/H4): profile-driven `Secure` flag (prod-only — dev/demo runs http on ports 80/81 and would otherwise lock out all logins); `SameSite=Strict`; `Path=/api/auth`; CORS exact origins + allowCredentials; BE keeps the body-param fallback during H3 so H3 can ship before H4. H5 = CTO auth smoke (login / refresh-after-expiry / logout, BOTH apps) before the fallback is ever removed.
+
+## H3 — dual-mode window OPEN (2026-06-12)
+
+Refresh token now travels BOTH channels: response body (legacy, pre-H4 FE) AND httpOnly cookie. The legacy body channel (login-response `refreshToken` field + body-param refresh without header) is removed ONLY at sprint close-out AFTER the H5 browser smoke passes on both apps — never in H4 itself.

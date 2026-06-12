@@ -134,7 +134,7 @@ export function TicketDetailPage() {
           <div><span className="text-gray-500">{t('ticketDetail.category')}</span> <span className="font-medium">{labelFor('TicketCategory', ticket.category)}</span></div>
           <div><span className="text-gray-500">{t('ticketDetail.priority')}</span> <span className="font-medium">{labelFor('TicketPriority', ticket.priority)}</span></div>
           <div><span className="text-gray-500">{t('ticketDetail.apartment')}</span> <span className="font-medium">{ticket.apartment?.unitNumber} - {ticket.apartment?.block?.name}</span></div>
-          <div><span className="text-gray-500">{t('ticketDetail.submittedBy')}</span> <span className="font-medium">{ticket.submittedBy?.fullName}</span></div>
+          <div><span className="text-gray-500">{t('ticketDetail.submittedBy')}</span> <span className="font-medium">{ticket.submittedBy?.fullName}{ticket.apartment?.unitNumber ? ` - ${ticket.apartment.unitNumber}` : ''}</span></div>
           <div><span className="text-gray-500">{t('ticketDetail.assignee')}</span> <span className="font-medium">{ticket.assignedToUser?.fullName ?? ticket.assignedToContractor?.companyName ?? '—'}</span></div>
           <div><span className="text-gray-500">{t('ticketDetail.sla')}</span> <span className={`font-medium ${ticket.slaBreached ? 'text-red-600' : ''}`}>{ticket.slaDeadline ? formatVNDateTime(ticket.slaDeadline) : '—'}{ticket.slaBreached && ' ⚠'}</span></div>
         </div>

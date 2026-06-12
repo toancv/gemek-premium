@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTicket, useAssignTicket, useUpdateTicketStatus } from '../api/hooks';
-import { SearchableSelect, getVnErrorMessage, labelFor, formatVNDateTime } from '@gemek/ui';
+import { SearchableSelect, VNDatePicker, getVnErrorMessage, labelFor, formatVNDateTime } from '@gemek/ui';
 import { apiClient } from '../api/client';
 import { t } from '../i18n/vi';
 
@@ -202,7 +202,10 @@ export function TicketDetailPage() {
             )}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Ngày hẹn</label>
-              <input type="datetime-local" value={scheduledDate} onChange={(e) => setScheduledDate(e.target.value)} className="block w-full border border-gray-300 rounded-md px-3 py-2 text-sm" />
+              {/* BE AssignTicketRequest.scheduledDate is LocalDate (date-only) — the old
+                  datetime-local sent a time component AND rendered browser-locale mm/dd.
+                  VNDatePicker: dd/MM/yyyy display, ISO yyyy-mm-dd value (rollout pattern). */}
+              <VNDatePicker value={scheduledDate} onChange={setScheduledDate} />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Ghi chú</label>

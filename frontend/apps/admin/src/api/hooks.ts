@@ -244,3 +244,15 @@ export const useMarkAllRead = () => {
     },
   });
 };
+
+export const useMarkNotificationRead = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => post(`/notifications/${id}/read`),
+    meta: { skipSuccessToast: true },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['notifications'] });
+      qc.invalidateQueries({ queryKey: ['unread-count'] });
+    },
+  });
+};

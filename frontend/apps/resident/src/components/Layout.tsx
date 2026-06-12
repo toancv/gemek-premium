@@ -8,6 +8,8 @@ import { t } from '../i18n/vi';
 // referenceType → route builder for bell deep-links. N3 event types extend this map.
 const NOTIF_ROUTES: Record<string, (referenceId: string) => string> = {
   Announcement: (referenceId) => `/announcements/${referenceId}`,
+  Ticket: (referenceId) => `/tickets/${referenceId}`,
+  // "Resident" (HOUSEHOLD_MEMBER_ADDED) intentionally unmapped — mark-read only (no detail route v1).
 };
 
 export function Layout() {

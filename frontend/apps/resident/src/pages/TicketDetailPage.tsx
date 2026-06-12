@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { toast, getVnErrorMessage, labelFor, formatVNDate, formatVNDateTime } from '@gemek/ui';
-import { useTicket, useRateTicket } from '../api/hooks';
+import { useTicket, useRateTicket, useFollowTicket, useUnfollowTicket } from '../api/hooks';
 import { t } from '../i18n/vi';
 
 const STATUS_BG: Record<string, string> = {
@@ -15,14 +15,23 @@ export function TicketDetailPage() {
   const navigate = useNavigate();
   const { data: ticket, isLoading, isError } = useTicket(id!);
   const rate = useRateTicket();
+  const follow = useFollowTicket();
+  const unfollow = useUnfollowTicket();
   const [rating, setRating] = useState(0);
   const [comment, setComment] = useState('');
   const [rateError, setRateError] = useState('');
 
   if (isLoading) return <div className="flex items-center justify-center h-64"><svg className="animate-spin h-8 w-8 text-blue-600" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg></div>;
-  if (isError) return <div className="p-4 bg-red-50 text-red-700 m-4 rounded-xl">Không thể tải phản ánh.</div>;
+  if (isError || !ticket) return <div className="p-4 bg-red-50 text-red-700 m-4 rounded-xl">Không thể tải phản ánh.</div>;
 
-  const canRate = ticket.status === 'DONE' && !ticket.rating;
+  // Redacted (non-household) viewers never rate — BE forbids; don't render the form.
+  const canRate = !ticket.redacted && ticket.status === 'DONE' && !ticket.rating;
+
+  const handleFollowToggle = () => {
+    if (follow.isPending || unfollow.isPending) return;
+    if (ticket.isFollowing) unfollow.mutate(id!);
+    else follow.mutate(id!);
+  };
 
   const handleRate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -57,6 +66,17 @@ export function TicketDetailPage() {
             {ticket.ratingComment && <p className="text-xs text-gray-500 mt-1">"{ticket.ratingComment}"</p>}
           </div>
         )}
+        {/* Follow button only on the redacted public view (§E) — household members
+            are in the thread already, staff have no follow semantics. */}
+        {ticket.redacted && (
+          <button
+            onClick={handleFollowToggle}
+            disabled={follow.isPending || unfollow.isPending}
+            className={`mt-3 w-full py-2.5 text-sm rounded-lg font-medium disabled:opacity-50 ${ticket.isFollowing ? 'border border-gray-300 text-gray-700 hover:bg-gray-50' : 'bg-blue-600 text-white hover:bg-blue-700'}`}
+          >
+            {ticket.isFollowing ? t('ticketDetail.unfollow') : t('ticketDetail.follow')}
+          </button>
+        )}
       </div>
 
       {ticket.photos?.length > 0 && (
@@ -82,7 +102,8 @@ export function TicketDetailPage() {
               <div className="w-2 h-2 rounded-full bg-blue-500 mt-1.5 flex-shrink-0" />
               <div>
                 <p className="font-medium">{h.oldStatus ? labelFor('TicketStatus', h.oldStatus) : t('ticketDetail.created')} → {labelFor('TicketStatus', h.newStatus)}</p>
-                <p className="text-xs text-gray-400">{h.changedBy?.fullName} • {formatVNDateTime(h.changedAt)}</p>
+                {/* Redacted history has no changedBy — omit the name and separator, keep the timestamp. */}
+                <p className="text-xs text-gray-400">{h.changedBy?.fullName ? `${h.changedBy.fullName} • ` : ''}{formatVNDateTime(h.changedAt)}</p>
                 {h.notes && <p className="text-xs text-gray-500 mt-0.5">{h.notes}</p>}
               </div>
             </div>

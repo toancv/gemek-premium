@@ -1,11 +1,12 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from './client';
-import type { AnnouncementItem } from './types';
+import type { AnnouncementItem, TicketDetailItem } from './types';
 
 const get = (url: string, params?: Record<string, unknown>) =>
   apiClient.get(url, { params }).then((r) => r.data);
 const post = (url: string, data?: unknown) => apiClient.post(url, data).then((r) => r.data);
 const put = (url: string, data?: unknown) => apiClient.put(url, data).then((r) => r.data);
+const del = (url: string) => apiClient.delete(url).then((r) => r.data);
 
 export const useMe = () =>
   useQuery({ queryKey: ['me'], queryFn: () => get('/auth/me') });
@@ -17,7 +18,25 @@ export const useMyResident = () =>
   useQuery({ queryKey: ['my-resident'], queryFn: () => get('/residents/me') });
 
 export const useTicket = (id: string) =>
-  useQuery({ queryKey: ['tickets', id], queryFn: () => get(`/tickets/${id}`), enabled: !!id });
+  useQuery<TicketDetailItem>({ queryKey: ['tickets', id], queryFn: () => get(`/tickets/${id}`), enabled: !!id });
+
+export const useFollowTicket = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => post(`/tickets/${id}/follow`),
+    meta: { skipErrorToast: true, successMessage: 'Đã theo dõi phản ánh.' },
+    onSuccess: (_d, id) => qc.invalidateQueries({ queryKey: ['tickets', id] }),
+  });
+};
+
+export const useUnfollowTicket = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => del(`/tickets/${id}/follow`),
+    meta: { skipErrorToast: true, successMessage: 'Đã bỏ theo dõi phản ánh.' },
+    onSuccess: (_d, id) => qc.invalidateQueries({ queryKey: ['tickets', id] }),
+  });
+};
 
 export const useCreateTicket = () => {
   const qc = useQueryClient();

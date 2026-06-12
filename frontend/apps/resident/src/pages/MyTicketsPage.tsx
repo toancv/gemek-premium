@@ -11,7 +11,10 @@ const STATUS_BG: Record<string, string> = {
 };
 
 export function MyTicketsPage() {
-  const { data, isLoading } = useMyTickets({ size: 20 });
+  // P5 server-side visibility param: omitted = "mine" (pre-P5 scoping), "community" = public tickets.
+  const [tab, setTab] = useState<'mine' | 'community'>('mine');
+  const { data, isLoading } = useMyTickets(
+    tab === 'community' ? { size: 20, visibility: 'community' } : { size: 20 });
   const { data: resident, isLoading: aptLoading } = useMyResident();
   const apartment = resident?.apartment ?? null;
   const create = useCreateTicket();
@@ -34,6 +37,8 @@ export function MyTicketsPage() {
         title,
         description: fd.get('description') || null,
         priority: 'MEDIUM',
+        // G3: creator-chosen at create time, immutable afterwards. Default OFF.
+        isPublic: fd.get('isPublic') === 'on',
       });
       setShowForm(false);
     } catch (err: any) { setFormError(getVnErrorMessage(err?.response?.data?.error)); }
@@ -46,22 +51,42 @@ export function MyTicketsPage() {
         <button onClick={() => { setShowForm(true); setFormError(''); }} className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium">{t('tickets.new')}</button>
       </div>
 
+      <div className="flex gap-1 mb-4 bg-gray-100 rounded-lg p-1">
+        {(['mine', 'community'] as const).map((tabKey) => (
+          <button
+            key={tabKey}
+            onClick={() => setTab(tabKey)}
+            className={`flex-1 py-1.5 text-sm rounded-md transition-colors ${tab === tabKey ? 'bg-white shadow font-medium text-gray-900' : 'text-gray-500'}`}
+          >
+            {tabKey === 'mine' ? t('tickets.tabMine') : t('tickets.tabCommunity')}
+          </button>
+        ))}
+      </div>
+
       {isLoading && <div className="text-center py-8 text-gray-400">{t('common.loading')}</div>}
       {!isLoading && !data?.data?.length && (
         <div className="text-center py-12 text-gray-400">
           <p className="text-4xl mb-2">🎫</p>
-          <p>{t('common.emptyYet', { item: 'phản ánh' })}</p>
-          <button onClick={() => setShowForm(true)} className="mt-3 text-blue-600 text-sm">{t('tickets.createFirst')}</button>
+          <p>{t('common.emptyYet', { item: tab === 'community' ? 'phản ánh cộng đồng' : 'phản ánh' })}</p>
+          {tab === 'mine' && <button onClick={() => setShowForm(true)} className="mt-3 text-blue-600 text-sm">{t('tickets.createFirst')}</button>}
         </div>
       )}
       <div className="space-y-3">
-        {data?.data?.map((t: any) => (
-          <Link to={`/tickets/${t.id}`} key={t.id} className="block bg-white rounded-xl border border-gray-200 p-4 hover:border-blue-300 transition-colors">
+        {/* Map param named tk — `t` would shadow the i18n t(). Community rows arrive
+            REDACTED from the BE (submitter = «Cư dân», block only) — render with
+            optional chaining only, no FE hiding logic. */}
+        {data?.data?.map((tk: any) => (
+          <Link to={`/tickets/${tk.id}`} key={tk.id} className="block bg-white rounded-xl border border-gray-200 p-4 hover:border-blue-300 transition-colors">
             <div className="flex items-start justify-between gap-2">
-              <p className="font-medium text-gray-900 text-sm flex-1">{t.title}</p>
-              <span className={`flex-shrink-0 text-xs px-2 py-0.5 rounded-full ${STATUS_BG[t.status] ?? 'bg-gray-100 text-gray-700'}`}>{labelFor('TicketStatus', t.status)}</span>
+              <p className="font-medium text-gray-900 text-sm flex-1">{tk.title}</p>
+              <span className={`flex-shrink-0 text-xs px-2 py-0.5 rounded-full ${STATUS_BG[tk.status] ?? 'bg-gray-100 text-gray-700'}`}>{labelFor('TicketStatus', tk.status)}</span>
             </div>
-            <p className="text-xs text-gray-400 mt-1">{labelFor('TicketCategory', t.category)} • {formatVNDate(t.createdAt)}</p>
+            <p className="text-xs text-gray-400 mt-1">{labelFor('TicketCategory', tk.category)} • {formatVNDate(tk.createdAt)}</p>
+            {tab === 'community' && (
+              <p className="text-xs text-gray-400 mt-0.5">
+                {tk.submittedBy?.fullName}{tk.apartment?.block?.name ? ` • Tòa ${tk.apartment.block.name}` : ''}
+              </p>
+            )}
           </Link>
         ))}
       </div>
@@ -102,6 +127,10 @@ export function MyTicketsPage() {
                 <label className="block text-sm font-medium text-gray-700 mb-1">Mô tả chi tiết</label>
                 <textarea name="description" rows={3} className="block w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm resize-none" />
               </div>
+              <label className="flex items-start gap-2 text-sm text-gray-700">
+                <input type="checkbox" name="isPublic" className="mt-0.5 rounded border-gray-300" />
+                <span>{t('tickets.publicToggle')}</span>
+              </label>
               {formError && <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg">{formError}</p>}
               <div className="flex gap-2 pt-1">
                 <button type="button" onClick={() => setShowForm(false)} className="flex-1 py-2.5 text-sm border border-gray-300 rounded-lg hover:bg-gray-50">Hủy</button>

@@ -24,6 +24,22 @@ export interface AnnouncementItem {
   isRead: boolean;
 }
 
+/**
+ * PARTIAL mirror of BE TicketDetailResponse — only the N3 P7 viewer-flag fields
+ * are typed; the rest of the detail shape is still untyped any-debt (tracked in
+ * PROGRESS.md). The index signature keeps existing untyped page access compiling.
+ */
+export interface TicketDetailItem {
+  id: string;
+  /** Creator-chosen community visibility flag. */
+  isPublic: boolean | null;
+  /** FOLLOWER-row flag for the calling resident; null on staff/mutation responses. */
+  isFollowing: boolean | null;
+  /** True only when the BE produced the redacted public view (G8). */
+  redacted: boolean;
+  [key: string]: any;
+}
+
 /** Mirrors BE NotificationResponse (module.notification.dto.NotificationResponse). */
 export interface NotificationItem {
   id: string;

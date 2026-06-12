@@ -32,11 +32,15 @@ export const vi: TranslationDict = {
     noAnnouncements: 'Chưa có tin tức nào',
   },
   tickets: {
-    title: 'Phản ánh của tôi',
+    title: 'Phản ánh',
     new: '+ Tạo mới',
     createFirst: 'Tạo phản ánh đầu tiên',
     // Verb consistency (CTO 2026-06-10): create/submit action = "Gửi phản ánh"
     modalTitle: 'Gửi phản ánh',
+    // N3 P7 — community tickets (design §E FE touchpoints)
+    tabMine: 'Của tôi',
+    tabCommunity: 'Cộng đồng',
+    publicToggle: 'Công khai phản ánh để cư dân khác theo dõi',
   },
   bookings: {
     title: 'Lượt đặt của tôi',
@@ -58,6 +62,9 @@ export const vi: TranslationDict = {
     commentPlaceholder: 'Nhận xét (không bắt buộc)...',
     submitting: 'Đang gửi...',
     submitRating: 'Gửi đánh giá',
+    // N3 P7 — follow button on redacted public-ticket view only
+    follow: 'Theo dõi',
+    unfollow: 'Bỏ theo dõi',
   },
   announcements: {
     // Terminology (CTO 2026-06-10): announcements feature = "Tin tức";

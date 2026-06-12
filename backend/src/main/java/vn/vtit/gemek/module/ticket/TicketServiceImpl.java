@@ -76,6 +76,12 @@ public class TicketServiceImpl implements TicketService {
     /** Reference-type label for ticket notifications and thread subscriptions. */
     private static final String TICKET_REFERENCE_TYPE = "Ticket";
 
+    /** MinIO key prefix for ticket photos — matches the upload key generator. */
+    private static final String TICKET_KEY_PREFIX = "tickets/";
+
+    /** MinIO key prefix for announcement images (N2) — public-read surface per E3. */
+    private static final String ANNOUNCEMENT_KEY_PREFIX = "announcements/";
+
     /** List-visibility filter value: caller's own household tickets only (default). */
     private static final String VISIBILITY_MINE = "mine";
 
@@ -788,13 +794,26 @@ public class TicketServiceImpl implements TicketService {
      */
     @Override
     public void assertPresignAccess(String fileUrl, UUID principalId, String role) {
-        TicketPhoto photo = photoRepository.findByFileUrl(fileUrl)
-                .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND,
-                        "No photo record found for the requested key."));
-        // F-05 gate: photos keep the strict household/staff rule. Deliberately NOT
-        // delegating to enforceReadAccess — its public-ticket bypass must never
-        // widen the presign surface (G8).
-        enforcePhotoAccess(photo.getTicket(), principalId, role);
+        // H2: prefix-routed per-surface rules (API-SPEC §13 access matrix, ruling E3).
+        // Explicit dispatch: known prefix → its rule; anything else → deny-by-default.
+        if (fileUrl != null && fileUrl.startsWith(TICKET_KEY_PREFIX)) {
+            TicketPhoto photo = photoRepository.findByFileUrl(fileUrl)
+                    .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND,
+                            "No photo record found for the requested key."));
+            // F-05 gate: photos keep the strict household/staff rule. Deliberately NOT
+            // delegating to enforceReadAccess — its public-ticket bypass must never
+            // widen the presign surface (G8).
+            enforcePhotoAccess(photo.getTicket(), principalId, role);
+            return;
+        }
+        if (fileUrl != null && fileUrl.startsWith(ANNOUNCEMENT_KEY_PREFIX)) {
+            // E3: announcements are broadcast content — any authenticated user may
+            // presign. Intentionally no DB-row requirement yet: keys are random UUIDs
+            // and a nonexistent key simply 404s at MinIO; N2 adds a row check when
+            // its attachment table exists.
+            return;
+        }
+        throw new AppException(ErrorCode.FORBIDDEN, "Unknown file surface.");
     }
 
     // =========================================================================

@@ -43,7 +43,7 @@ public class FileController {
     }
 
     /**
-     * Returns a presigned GET URL valid for 1 hour for the given object key.
+     * Returns a short-lived presigned GET URL (10 minutes, hardening H1) for the given object key.
      *
      * <p>The caller must have read access to the ticket that owns the photo.
      * RESIDENT may only access their own apartment's photos; TECHNICIAN must be assigned

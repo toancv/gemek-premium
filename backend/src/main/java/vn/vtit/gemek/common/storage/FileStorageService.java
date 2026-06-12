@@ -23,13 +23,21 @@ import java.util.concurrent.TimeUnit;
  * Service for storing and retrieving files via MinIO.
  *
  * <p>All object keys are stored in the database (not full URLs). Presigned URLs
- * are generated on demand with a 1-hour expiry so the bucket URL can change
+ * are generated on demand with a short expiry so the bucket URL can change
  * without requiring any DB migration.
  */
 @Service
 public class FileStorageService {
 
     private static final Logger log = LoggerFactory.getLogger(FileStorageService.class);
+
+    /**
+     * Presigned-URL expiry in seconds (hardening H1, P-A). A leaked presigned URL
+     * is fetchable by anyone until it expires — keep this window short. Photos are
+     * fetched immediately on detail render; clients refetch on focus, so a long
+     * window buys nothing. Was 1 hour pre-hardening.
+     */
+    static final int PRESIGN_EXPIRY_SECONDS = 600;
 
     private final MinioClient minioClient;
     private final MinioConfig minioConfig;
@@ -72,7 +80,7 @@ public class FileStorageService {
     }
 
     /**
-     * Generates a presigned GET URL valid for 1 hour.
+     * Generates a presigned GET URL valid for {@link #PRESIGN_EXPIRY_SECONDS} seconds.
      *
      * @param objectKey the MinIO object key.
      * @return presigned URL string.
@@ -84,7 +92,7 @@ public class FileStorageService {
                     .bucket(minioConfig.getBucket())
                     .object(objectKey)
                     .method(Method.GET)
-                    .expiry(1, TimeUnit.HOURS)
+                    .expiry(PRESIGN_EXPIRY_SECONDS, TimeUnit.SECONDS)
                     .build());
         } catch (Exception e) {
             log.error("MinIO presign failed for key {}: {}", objectKey, e.getMessage(), e);

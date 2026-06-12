@@ -191,7 +191,7 @@ public class TicketDetailResponse {
     }
 
     /**
-     * Photo attachment with a presigned download URL valid for 1 hour.
+     * Photo attachment with a short-lived presigned download URL (10 minutes).
      */
     @Getter
     @Builder
@@ -202,7 +202,7 @@ public class TicketDetailResponse {
         private UUID id;
         /** Work phase this photo documents. */
         private PhotoPhase phase;
-        /** Presigned MinIO GET URL, valid for 1 hour. */
+        /** Presigned MinIO GET URL, valid for 10 minutes. */
         private String presignedUrl;
         /** Original file name. */
         private String fileName;

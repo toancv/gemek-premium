@@ -27,6 +27,10 @@ interface AuthState {
 // Module-level guard: prevents React 18 StrictMode double-invocation from firing two refresh calls.
 let bootstrapped = false;
 
+// Roles this portal serves. A shared host-scoped refresh cookie can restore a session belonging to
+// the wrong portal (e.g. a RESIDENT on the admin host), so the role must be validated client-side.
+const ALLOWED_ROLES = ['ADMIN', 'BOARD_MEMBER'];
+
 export const useAuthStore = create<AuthState>((set, get) => ({
   user: null,
   accessToken: null,
@@ -56,6 +60,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       // Set token before /auth/me so the request interceptor includes Authorization header.
       set({ accessToken });
       const meRes = await apiClient.get('/auth/me');
+      // Role-gate the restored session. On mismatch, drop LOCAL state only — do NOT call /auth/logout:
+      // that revokes the user's refresh tokens and would kill their legitimate session in the other portal/tab.
+      if (!ALLOWED_ROLES.includes(meRes.data?.role)) {
+        set({ accessToken: null, user: null, authStatus: 'unauthenticated' });
+        return;
+      }
       set({ user: meRes.data, authStatus: 'authenticated' });
     } catch {
       // No cookie or expired/revoked token — land on login, no loop (interceptor skips /auth/refresh).
@@ -67,6 +77,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     const res = await apiClient.post('/auth/login', { phone, password });
     // Body still carries refreshToken until sprint close-out — deliberately ignored; cookie is the channel.
     const { accessToken, user } = res.data;
+    // Role-gate the login. On mismatch, drop LOCAL state only (no /auth/logout — see bootstrap) and
+    // surface a Vietnamese message via the WRONG_PORTAL error code the LoginPage already maps.
+    if (!user || !ALLOWED_ROLES.includes(user.role)) {
+      set({ accessToken: null, user: null, authStatus: 'unauthenticated' });
+      const err: any = new Error('WRONG_PORTAL');
+      err.response = { data: { error: 'WRONG_PORTAL' } };
+      throw err;
+    }
     set({ accessToken, user, authStatus: 'authenticated' });
   },
 

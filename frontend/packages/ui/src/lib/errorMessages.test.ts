@@ -32,6 +32,10 @@ describe('getVnErrorMessage', () => {
     expect(getVnErrorMessage('FORBIDDEN')).toBe('Bạn không có quyền thực hiện thao tác này.');
   });
 
+  it('maps WRONG_PORTAL', () => {
+    expect(getVnErrorMessage('WRONG_PORTAL')).toBe('Tài khoản không có quyền truy cập cổng này.');
+  });
+
   it('maps NOT_FOUND', () => {
     expect(getVnErrorMessage('NOT_FOUND')).toBe('Không tìm thấy dữ liệu.');
   });

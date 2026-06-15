@@ -16,6 +16,7 @@ const ERROR_MESSAGES: Record<string, string> = {
 
   // Authorization
   FORBIDDEN: 'Bạn không có quyền thực hiện thao tác này.',
+  WRONG_PORTAL: 'Tài khoản không có quyền truy cập cổng này.',
 
   // Uniqueness
   PHONE_ALREADY_EXISTS: 'Số điện thoại đã được sử dụng.',

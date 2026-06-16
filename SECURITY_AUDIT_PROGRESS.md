@@ -22,7 +22,7 @@ Each finding checked by reading the file at the stated location — not from cha
 | SEC-15 | LOW      | FIXED     | pom.xml:15                                                               | `spring-boot-starter-parent` bumped 3.3.5 → 3.3.8                   |
 | SEC-16 | LOW      | FIXED     | pom.xml:29                                                               | `jjwt.version` bumped 0.12.3 → 0.12.6                               |
 | SEC-17 | LOW      | FIXED     | SecurityConfig.java:99                                                   | Only /actuator/health permitted; /actuator/info not in permit list    |
-| SEC-20 | INFO     | NOT-FIXED | frontend (localStorage)                                                  | Deferred by design — no backend change possible; documented           |
+| SEC-20 | MEDIUM   | FIXED     | AuthController.java + both FE authStores                                 | ≡ F-04 (one item; MEDIUM governs — INFO/MEDIUM split reconciled). Refresh token moved out of localStorage into an httpOnly, SameSite=Strict cookie (H3 BE + H4 FE); body dual-mode channel removed at close-out (cookie-only). |
 | SEC-21 | LOW      | FIXED     | SecurityConfig.java (corsConfigurationSource)                            | Explicit CorsConfigurationSource bean + .cors(...) in filter chain    |
 | SEC-22 | MEDIUM   | FIXED     | AmenityServiceImpl.java:308                                              | `isBefore(today)` past-date rejection guard present                   |
 
@@ -30,10 +30,17 @@ Each finding checked by reading the file at the stated location — not from cha
 
 | Status    | Count |
 |-----------|-------|
-| FIXED     | 19    |
-| NOT-FIXED | 1     |
+| FIXED     | 20    |
+| NOT-FIXED | 0     |
 | **Total** | **20** |
 
 ## NOT-FIXED items remaining
 
-- **SEC-20** (INFO): Refresh token in localStorage — frontend architectural decision, deferred
+- None. All 20 findings resolved.
+
+## Hardening-sprint reconciliation (2026-06-16)
+
+The hardening sprint (`reports/hardening-design.md`) tracked two findings under its own F-numbering that map onto this SEC list:
+
+- **F-04 ≡ SEC-20** — the SAME finding (refresh token in localStorage), double-logged at different severities (F-04 MEDIUM, SEC-20 INFO). Unified as ONE item; the MEDIUM severity governs. **FIXED** via the httpOnly refresh cookie: H3 (BE dual-mode cookie), H4 (FE both apps cookie-based), close-out (body-param channel removed — refresh is cookie-only). See DECISIONS.md "Hardening sprint rulings" + the H3/H4/close-out entries.
+- **F-05** — IDOR on file presign — **RESOLVED** in H1 (presign access enforced via `enforcePhotoAccess`, expiry 1h→10min) and H2 (prefix-routing). Reflected in `reports/security-remediation.html`.

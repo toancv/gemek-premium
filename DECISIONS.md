@@ -665,3 +665,15 @@ Refresh token now travels BOTH channels: response body (legacy, pre-H4 FE) AND h
 **Root fix still pending CTO topology decision:** cross-portal simultaneous login in one browser on the SAME host remains impossible — the two portals share one refresh-cookie name/host/path, so the second login still overwrites the first's cookie. The role-gate makes that collision FAIL SAFE (wrong-portal tab → login screen) instead of failing silently (identity adoption). If production ever serves both portals from one host, the durable fix is **per-portal cookie-name separation** (e.g. distinct cookie names or distinct sub-paths/domains); deferred pending the CTO's production-topology decision.
 
 **Commits:** resident a2521e4, admin fe22555 (this docs commit separate).
+
+## Hardening sprint CLOSE-OUT — cookie-only refresh + topology ruling (2026-06-16)
+
+**Supersedes the "dev-only cookie limitation" framing in the H4 and H5 entries above.** Those entries treated the single-browser same-host cookie overwrite as the headline issue; the accurate, CTO-ratified ruling is:
+
+- **Simultaneous two-portal use is DESIRED behavior, not a problem to design around.** In production the two portals are served from **separate subdomains** — `admin.<domain>` and `resident.<domain>` are distinct hosts with **independent cookie jars**, so an admin session and a resident session coexist in one browser with zero interference. The single-browser, same-host cookie overwrite observed in dev is purely a **DEV-ONLY artifact** of running both apps on `localhost:80/:81` (one host).
+- **NEVER set a shared cookie `Domain` (e.g. `.<domain>`).** Cookies stay per-subdomain (host-only). A shared parent-domain cookie would re-introduce the cross-portal overwrite in production — exactly what the subdomain split avoids.
+- **Production requires `app.auth.cookie-secure=true` (https).** The `Secure`-over-http lockout trap (dev/demo http) is why the flag is profile-driven and defaults false; prod MUST set it true.
+- **The FE role-gate (H5 point-6 fix) is defense-in-depth that stays valid in production**, independent of cookie topology: a portal must never run a session whose role it does not serve. It blocks wrong-portal login regardless of how cookies are scoped.
+- **Refresh is cookie-only as of this commit.** The H3 dual-mode body channel is removed: `/auth/login` and `/auth/refresh` no longer return `refreshToken` in the JSON body (`@JsonIgnore` on `LoginResponse.refreshToken`, kept only so the controller can build the cookie), and `/auth/refresh` accepts the httpOnly cookie as the sole token source (no cookie → 401; cookie without `X-Requested-With` → 403). Test-enforced in `AuthControllerTest` / `AuthCookieTest`.
+
+**Audit reconciliation:** **F-04 ≡ SEC-20** are the SAME finding (double-logged MEDIUM/INFO); unified as one item, MEDIUM governs, status **FIXED** (httpOnly cookie, H3/H4/close-out). **F-05** RESOLVED in H1/H2. Both `SECURITY_AUDIT_PROGRESS.md` and `reports/security-remediation.html` updated. **Hardening sprint H1–H5 COMPLETE.**

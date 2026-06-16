@@ -80,8 +80,9 @@
   <div class="verdict-text">
     <strong>Final Verdict — PASS WITH NOTES</strong>
     <p>All Critical and High findings remediated across 3 fix commits.
-    2 Medium items deferred to the hardening sprint (refresh token storage, MinIO per-user ownership).
-    No Critical or High finding remains open.</p>
+    The 2 Medium items once deferred to the hardening sprint are now CLOSED:
+    refresh token storage (F-04 &equiv; SEC-20 &rarr; httpOnly cookie, cookie-only) and
+    MinIO per-user ownership (F-05 &rarr; H1/H2). No Critical, High, or Medium finding remains open.</p>
   </div>
 </div>
 
@@ -496,8 +497,8 @@
   <div class="finding">
     <div class="finding-header">
       <span class="badge med">MEDIUM</span>
-      <h3>F-04 — Refresh token stored in <code>localStorage</code> — readable by XSS</h3>
-      <span class="badge defer">DEFERRED</span>
+      <h3>F-04 &equiv; SEC-20 — Refresh token stored in <code>localStorage</code> — readable by XSS</h3>
+      <span class="badge fixed">&#10003; RESOLVED</span>
     </div>
     <div class="finding-body">
       <div class="finding-col">
@@ -505,21 +506,24 @@
         <p>The refresh token is persisted in <code>localStorage</code>.
         Any XSS vulnerability in the SPA, including from third-party scripts,
         can read <code>localStorage</code> and exfiltrate the refresh token,
-        enabling long-lived account takeover even after session close.</p>
+        enabling long-lived account takeover even after session close.
+        <em>Same finding as SEC-20 (logged INFO); double-counted — unified here, MEDIUM governs.</em></p>
       </div>
       <div class="finding-col">
-        <div class="col-label">Remediation Plan (Hardening Sprint)</div>
-        <p>Full fix requires backend changes: <code>/auth/login</code> and
-        <code>/auth/refresh</code> must respond with
-        <code>Set-Cookie: refreshToken=...; HttpOnly; Secure; SameSite=Strict</code>.
-        Frontend removes all <code>localStorage</code> reads/writes of the refresh token.
-        Tracked in backlog.</p>
+        <div class="col-label">Remediation (Hardening Sprint — DONE)</div>
+        <p><strong>H3 (BE):</strong> <code>/auth/login</code> and <code>/auth/refresh</code> set
+        <code>Set-Cookie: refreshToken=...; HttpOnly; SameSite=Strict; Path=/api/auth</code>
+        (<code>Secure</code> profile-driven via <code>app.auth.cookie-secure</code>, true in prod).
+        <strong>H4 (FE):</strong> both apps removed every <code>localStorage</code> read/write of the
+        refresh token; refresh is cookie-implicit (empty body + <code>X-Requested-With</code>).
+        <strong>Close-out:</strong> the dual-mode body channel removed — refresh token is
+        <em>cookie-only</em>, no longer present in any JSON response body (test-enforced).</p>
       </div>
     </div>
     <div class="finding-footer">
-      <span class="loc">frontend/packages/shared/src/stores/auth.ts</span>
-      <span class="commit">no fix commit — deferred</span>
-      <span class="badge defer">Hardening Sprint</span>
+      <span class="loc">AuthController.java + both FE authStores</span>
+      <span class="commit">0090241 + 1e8ce69 + d4e931c + ba4c0b7</span>
+      <span class="badge fixed">&#10003; RESOLVED (H3/H4/close-out)</span>
     </div>
   </div>
 
@@ -581,7 +585,7 @@
       <tr><td><strong>F-01</strong></td><td><span class="badge high">HIGH</span></td><td>window globals expose auth state</td><td style="font-family:monospace;font-size:0.78rem">auth store modules</td><td><span class="cm">ba1c634</span></td><td><span class="badge pass">&#10003; RESOLVED</span></td></tr>
       <tr><td><strong>F-02</strong></td><td><span class="badge high">HIGH</span></td><td>Auth guard not reactive</td><td style="font-family:monospace;font-size:0.78rem">router/index.ts (both apps)</td><td><span class="cm">ba1c634</span></td><td><span class="badge pass">&#10003; RESOLVED</span></td></tr>
       <tr><td><strong>F-03</strong></td><td><span class="badge med">MED</span></td><td>Vue DevTools in production</td><td style="font-family:monospace;font-size:0.78rem">main.ts (both apps)</td><td><span class="cm">ba1c634</span></td><td><span class="badge pass">&#10003; RESOLVED</span></td></tr>
-      <tr><td><strong>F-04</strong></td><td><span class="badge med">MED</span></td><td>Refresh token in localStorage</td><td style="font-family:monospace;font-size:0.78rem">shared/stores/auth.ts</td><td style="color:var(--muted)">—</td><td><span class="badge defer">Hardening Sprint</span></td></tr>
+      <tr><td><strong>F-04 &equiv; SEC-20</strong></td><td><span class="badge med">MED</span></td><td>Refresh token in localStorage</td><td style="font-family:monospace;font-size:0.78rem">AuthController + FE authStores</td><td><span class="cm">0090241 + 1e8ce69 + d4e931c + ba4c0b7</span></td><td><span class="badge fixed">&#10003; RESOLVED (H3/H4/close-out)</span></td></tr>
       <tr><td><strong>F-05</strong></td><td><span class="badge med">MED</span></td><td>MinIO presign — no ownership check</td><td style="font-family:monospace;font-size:0.78rem">FileController.java</td><td><span class="cm">96ae285 + 0c72583</span></td><td><span class="badge fixed">&#10003; RESOLVED (H1)</span></td></tr>
     </tbody>
   </table>
@@ -589,9 +593,10 @@
     <strong>Final re-scan verdict: PASS WITH NOTES</strong> —
     All 3 Critical and 7 High findings resolved (backend: <span class="cm">6e43ebf</span> + <span class="cm">6519fa7</span>;
     frontend: <span class="cm">ba1c634</span>).
-    3 Medium findings resolved. 2 Medium findings (F-04, F-05) deferred with documented remediation plans —
-    neither poses an immediate Critical/High risk given current mitigations.
-    No Critical or High finding remains open. System is cleared for G4 approval.
+    All Medium findings resolved. The two formerly-deferred Mediums are now closed by the hardening sprint:
+    <strong>F-04 &equiv; SEC-20</strong> (refresh token in localStorage) &rarr; httpOnly cookie, cookie-only after close-out (H3/H4/close-out);
+    <strong>F-05</strong> (MinIO presign ownership) &rarr; RESOLVED in H1/H2.
+    No Critical, High, or Medium finding remains open. System is cleared for G4 approval.
   </div>
 </div>
 

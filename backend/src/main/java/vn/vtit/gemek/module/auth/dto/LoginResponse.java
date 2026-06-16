@@ -4,6 +4,7 @@
  */
 package vn.vtit.gemek.module.auth.dto;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import vn.vtit.gemek.module.user.entity.UserRole;
 
 import java.util.UUID;
@@ -12,13 +13,16 @@ import java.util.UUID;
  * Response body for {@code POST /api/auth/login}.
  *
  * @param accessToken  signed JWT access token (15-minute expiry).
- * @param refreshToken signed JWT refresh token (7-day expiry).
+ * @param refreshToken signed JWT refresh token (7-day expiry). NOT serialized into the
+ *                     JSON body ({@link JsonIgnore}) — since the hardening close-out the
+ *                     refresh token travels ONLY as the httpOnly cookie. The field is
+ *                     retained so the controller can read it to build that cookie.
  * @param expiresIn    access token lifetime in seconds (900).
  * @param user         summary of the authenticated user.
  */
 public record LoginResponse(
         String accessToken,
-        String refreshToken,
+        @JsonIgnore String refreshToken,
         long expiresIn,
         UserSummary user
 ) {

@@ -75,7 +75,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   login: async (phone, password) => {
     const res = await apiClient.post('/auth/login', { phone, password });
-    // Body still carries refreshToken until sprint close-out — deliberately ignored; cookie is the channel.
+    // Refresh token is cookie-only (httpOnly) — the login body carries no refreshToken.
     const { accessToken, user } = res.data;
     // Role-gate the login. On mismatch, drop LOCAL state only (no /auth/logout — see bootstrap) and
     // surface a Vietnamese message via the WRONG_PORTAL error code the LoginPage already maps.

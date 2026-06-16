@@ -98,57 +98,48 @@ public class AuthController {
             @Valid @RequestBody LoginRequest request,
             HttpServletRequest httpRequest) {
         LoginResponse response = authService.login(request, httpRequest);
-        // H3 dual-mode: cookie issued alongside the body token — the body field is
-        // removed only after H4 lands and the H5 smoke passes (pre-H4 FE reads it).
+        // Cookie-only since the hardening close-out: the refresh token is delivered solely
+        // as the httpOnly cookie. The service still returns it on the LoginResponse record
+        // so we can build the cookie here; @JsonIgnore keeps it off the JSON body.
         return ResponseEntity.ok()
                 .header(HttpHeaders.SET_COOKIE, buildRefreshCookie(response.refreshToken()).toString())
                 .body(response);
     }
 
     /**
-     * Exchanges a valid refresh token for a new access token.
+     * Exchanges the refresh-token cookie for a new access token.
      *
-     * <p>H3 dual-mode token resolution: a body token (legacy pre-H4 clients) wins and
-     * needs no extra header; otherwise the httpOnly cookie is used, which additionally
-     * requires the {@value #CSRF_HEADER} header (CSRF belt-and-braces — SameSite=Strict
-     * is the first line). Validation and SEC-05 rate limiting are identical for both
-     * paths (same service call).
+     * <p>Cookie-only since the hardening close-out (the H3 body-param fallback is gone):
+     * the httpOnly {@value #REFRESH_COOKIE_NAME} cookie is the sole accepted source, and it
+     * additionally requires the {@value #CSRF_HEADER} header (CSRF belt-and-braces —
+     * SameSite=Strict is the first line). A missing cookie is a 401 (no session to refresh);
+     * a present cookie without the header is a 403.
      *
-     * @param request     the refresh token request body; optional since H3 (cookie path sends none).
      * @param cookieToken the refresh token cookie value, if present.
      * @param csrfHeader  the X-Requested-With header value, if present.
      * @param httpRequest the HTTP request (passed to service for IP-based rate limiting).
      * @return 200 OK with new access token; re-issues the cookie.
      */
     @PostMapping("/refresh")
-    @Operation(summary = "Refresh token", description = "Exchange a valid refresh token for a new access token.")
+    @Operation(summary = "Refresh token", description = "Exchange the refresh-token cookie for a new access token.")
     public ResponseEntity<RefreshTokenResponse> refreshToken(
-            @RequestBody(required = false) RefreshTokenRequest request,
             @CookieValue(value = REFRESH_COOKIE_NAME, required = false) String cookieToken,
             @RequestHeader(value = CSRF_HEADER, required = false) String csrfHeader,
             HttpServletRequest httpRequest) {
-        String bodyToken = request != null ? request.refreshToken() : null;
-        String token;
-        // Legacy body path first — pre-H3 semantics unchanged, no header demanded.
-        if (StringUtils.hasText(bodyToken)) {
-            token = bodyToken;
-        } else if (StringUtils.hasText(cookieToken)) {
-            // Cookie path: reject without the CSRF header.
-            if (!StringUtils.hasText(csrfHeader)) {
-                throw new AppException(ErrorCode.FORBIDDEN,
-                        "Header " + CSRF_HEADER + " is required for cookie-based refresh.");
-            }
-            token = cookieToken;
-        } else {
-            // Mirrors the pre-H3 @NotBlank message (validation moved here because the
-            // body became optional for the cookie path).
-            throw new AppException(ErrorCode.VALIDATION_ERROR, "Refresh token is required.");
+        // No cookie → no session to refresh.
+        if (!StringUtils.hasText(cookieToken)) {
+            throw new AppException(ErrorCode.UNAUTHORIZED, "Refresh token cookie is required.");
+        }
+        // Cookie present but the CSRF belt-and-braces header is missing → reject.
+        if (!StringUtils.hasText(csrfHeader)) {
+            throw new AppException(ErrorCode.FORBIDDEN,
+                    "Header " + CSRF_HEADER + " is required for cookie-based refresh.");
         }
         // SECURITY-FIX: SEC-05 — pass httpRequest for IP-based rate limiting
-        RefreshTokenResponse response = authService.refreshToken(new RefreshTokenRequest(token), httpRequest);
+        RefreshTokenResponse response = authService.refreshToken(new RefreshTokenRequest(cookieToken), httpRequest);
         // Re-issue the cookie (fresh Max-Age; server-side Redis TTL stays authoritative).
         return ResponseEntity.ok()
-                .header(HttpHeaders.SET_COOKIE, buildRefreshCookie(token).toString())
+                .header(HttpHeaders.SET_COOKIE, buildRefreshCookie(cookieToken).toString())
                 .body(response);
     }
 

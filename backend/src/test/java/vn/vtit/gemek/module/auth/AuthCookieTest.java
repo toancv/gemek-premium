@@ -25,14 +25,14 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * Hardening H3 — httpOnly refresh-cookie tests, dual-mode (cookie-secure=false context,
- * the dev/demo default; the Secure-present state is asserted in
- * {@link AuthCookieSecureFlagTest} — both states matter, Secure-over-http is the
+ * Hardening — httpOnly refresh-cookie tests, cookie-only after the close-out
+ * (cookie-secure=false context, the dev/demo default; the Secure-present state is asserted
+ * in {@link AuthCookieSecureFlagTest} — both states matter, Secure-over-http is the
  * lockout trap).
  *
- * <p>Covers: cookie attributes on login, refresh from cookie alone (with the
- * X-Requested-With belt-and-braces header), cookie path rejected without the header,
- * legacy body path unchanged (no header needed), cookie re-issue on refresh, logout
+ * <p>Covers: cookie attributes on login, login body carrying NO refresh token, refresh from
+ * the cookie (with the X-Requested-With belt-and-braces header), cookie path rejected
+ * without the header (403), no cookie rejected (401), cookie re-issue on refresh, logout
  * clearing + total revocation regression.
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
@@ -66,21 +66,23 @@ class AuthCookieTest {
         // The lockout trap: Secure MUST be absent when app.auth.cookie-secure=false.
         assertThat(setCookie).doesNotContain("Secure");
 
-        // Dual-mode: the body still carries the refresh token for the pre-H4 FE.
+        // Cookie-only: the login JSON body must NOT carry the refresh token.
         Map<?, ?> body = objectMapper.readValue(result.getResponse().getContentAsString(), Map.class);
-        assertThat((String) body.get("refreshToken")).isNotEmpty();
+        assertThat(body.containsKey("refreshToken")).isFalse();
     }
 
     @Test
-    @DisplayName("refresh — cookie alone + X-Requested-With succeeds and re-issues the cookie")
+    @DisplayName("refresh — cookie + X-Requested-With succeeds, re-issues the cookie, body carries NO refresh token")
     void refresh_fromCookieWithHeader_succeeds() throws Exception {
-        String refreshToken = loginRefreshToken();
+        String refreshToken = loginRefreshCookie();
 
         MvcResult result = mockMvc.perform(post("/api/auth/refresh")
                         .cookie(new jakarta.servlet.http.Cookie("refreshToken", refreshToken))
                         .header("X-Requested-With", "XMLHttpRequest"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.accessToken").isNotEmpty())
+                // Cookie-only: refresh response body must NOT carry the refresh token.
+                .andExpect(jsonPath("$.refreshToken").doesNotExist())
                 .andReturn();
 
         String setCookie = result.getResponse().getHeader("Set-Cookie");
@@ -91,7 +93,7 @@ class AuthCookieTest {
     @Test
     @DisplayName("refresh — cookie WITHOUT X-Requested-With rejected 403")
     void refresh_fromCookieWithoutHeader_isForbidden() throws Exception {
-        String refreshToken = loginRefreshToken();
+        String refreshToken = loginRefreshCookie();
 
         mockMvc.perform(post("/api/auth/refresh")
                         .cookie(new jakarta.servlet.http.Cookie("refreshToken", refreshToken)))
@@ -100,24 +102,27 @@ class AuthCookieTest {
     }
 
     @Test
-    @DisplayName("refresh — legacy body param without any header still succeeds (pre-H4 regression)")
-    void refresh_bodyParamWithoutHeader_stillSucceeds() throws Exception {
-        String refreshToken = loginRefreshToken();
-
+    @DisplayName("refresh — no cookie → 401 UNAUTHORIZED (no session to refresh; body path removed)")
+    void refresh_noCookie_isUnauthorized() throws Exception {
         mockMvc.perform(post("/api/auth/refresh")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(new RefreshTokenRequest(refreshToken))))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.accessToken").isNotEmpty());
+                        .header("X-Requested-With", "XMLHttpRequest"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.error").value("UNAUTHORIZED"));
     }
 
     @Test
-    @DisplayName("refresh — neither cookie nor body token → 400 VALIDATION_ERROR (pre-H3 parity)")
-    void refresh_noTokenAnywhere_isValidationError() throws Exception {
+    @DisplayName("refresh — legacy body-param path is gone: body token alone (no cookie) → 401")
+    void refresh_bodyParamAlone_isUnauthorized() throws Exception {
+        String refreshToken = loginRefreshCookie();
+
+        // The old dual-mode body fallback no longer exists — a JSON body with a refresh
+        // token but no cookie must NOT authenticate. No cookie → 401 before the body is read.
         mockMvc.perform(post("/api/auth/refresh")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new RefreshTokenRequest(refreshToken)))
                         .header("X-Requested-With", "XMLHttpRequest"))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error").value("VALIDATION_ERROR"));
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.error").value("UNAUTHORIZED"));
     }
 
     @Test
@@ -126,7 +131,8 @@ class AuthCookieTest {
         MvcResult loginResult = login();
         Map<?, ?> body = objectMapper.readValue(loginResult.getResponse().getContentAsString(), Map.class);
         String accessToken = (String) body.get("accessToken");
-        String refreshToken = (String) body.get("refreshToken");
+        // Cookie-only: the refresh token comes from the Set-Cookie header, not the body.
+        String refreshToken = parseRefreshCookie(loginResult.getResponse().getHeader("Set-Cookie"));
 
         MvcResult logoutResult = mockMvc.perform(post("/api/auth/logout")
                         .header("Authorization", "Bearer " + accessToken))
@@ -162,14 +168,31 @@ class AuthCookieTest {
     }
 
     /**
-     * Logs in and extracts the refresh token from the response body.
+     * Logs in and extracts the refresh token from the Set-Cookie header.
+     *
+     * <p>The token is cookie-only — it is no longer in the response body — so tests that need
+     * to replay it read it from the cookie the server just set (the realistic browser flow).
      *
      * @return the refresh token JWT.
      * @throws Exception on MockMvc failure.
      */
-    private String loginRefreshToken() throws Exception {
-        Map<?, ?> body = objectMapper.readValue(
-                login().getResponse().getContentAsString(), Map.class);
-        return (String) body.get("refreshToken");
+    private String loginRefreshCookie() throws Exception {
+        return parseRefreshCookie(login().getResponse().getHeader("Set-Cookie"));
+    }
+
+    /**
+     * Parses the refresh-token value out of a {@code Set-Cookie} header string.
+     *
+     * <p>The controller emits the cookie as a raw header (ResponseCookie), so MockMvc does not
+     * expose it via {@code getCookie} — the value must be sliced from the header text. The value
+     * sits between {@code refreshToken=} and the first attribute delimiter {@code ;}.
+     *
+     * @param setCookie the Set-Cookie header value.
+     * @return the refresh token JWT.
+     */
+    private String parseRefreshCookie(String setCookie) {
+        int start = "refreshToken=".length();
+        int end = setCookie.indexOf(';');
+        return setCookie.substring(start, end);
     }
 }

@@ -16,8 +16,6 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import vn.vtit.gemek.module.auth.dto.LoginRequest;
 
-import java.util.Map;
-
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -63,8 +61,9 @@ class AuthCookieSecureFlagTest {
     @Test
     @DisplayName("SEC-05 regression — cookie refresh path is rate limited (limit 3 → 4th request 429)")
     void refresh_cookiePath_isRateLimited() throws Exception {
-        String refreshToken = (String) objectMapper.readValue(
-                login(syntheticIp()).getResponse().getContentAsString(), Map.class).get("refreshToken");
+        // Cookie-only: the refresh token comes from the Set-Cookie header, not the body.
+        String setCookie = login(syntheticIp()).getResponse().getHeader("Set-Cookie");
+        String refreshToken = setCookie.substring("refreshToken=".length(), setCookie.indexOf(';'));
 
         String refreshIp = syntheticIp();
         // Requests 1–3 within the limit succeed on the cookie path.

@@ -16,7 +16,6 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import vn.vtit.gemek.module.auth.dto.LoginRequest;
-import vn.vtit.gemek.module.auth.dto.RefreshTokenRequest;
 
 import java.util.Map;
 
@@ -62,7 +61,8 @@ class AuthControllerTest {
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.accessToken").isNotEmpty())
-                .andExpect(jsonPath("$.refreshToken").isNotEmpty())
+                // Cookie-only since the hardening close-out: no refresh token in the JSON body.
+                .andExpect(jsonPath("$.refreshToken").doesNotExist())
                 .andExpect(jsonPath("$.expiresIn").value(900))
                 .andExpect(jsonPath("$.user.phone").value(ADMIN_PHONE))
                 .andExpect(jsonPath("$.user.role").value("ADMIN"));
@@ -107,15 +107,14 @@ class AuthControllerTest {
                 .andExpect(status().isOk())
                 .andReturn();
 
-        String responseBody = loginResult.getResponse().getContentAsString();
-        Map<?, ?> loginResponse = objectMapper.readValue(responseBody, Map.class);
-        String refreshToken = (String) loginResponse.get("refreshToken");
+        // Cookie-only: the refresh token is delivered as the httpOnly cookie, not the body.
+        String setCookie = loginResult.getResponse().getHeader("Set-Cookie");
+        String refreshToken = setCookie.substring("refreshToken=".length(), setCookie.indexOf(';'));
 
-        // Exchange refresh token for new access token.
-        RefreshTokenRequest refreshRequest = new RefreshTokenRequest(refreshToken);
+        // Exchange the cookie (with the required CSRF header) for a new access token.
         mockMvc.perform(post("/api/auth/refresh")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(refreshRequest)))
+                        .cookie(new jakarta.servlet.http.Cookie("refreshToken", refreshToken))
+                        .header("X-Requested-With", "XMLHttpRequest"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.accessToken").isNotEmpty())
                 .andExpect(jsonPath("$.expiresIn").value(900));

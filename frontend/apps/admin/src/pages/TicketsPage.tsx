@@ -44,6 +44,17 @@ function SlaCountCard({ onClick }: { onClick: () => void }) {
   return <StatCard title={t('dashboard.slaBreached')} value={value} color="text-red-600" onClick={onClick} />;
 }
 
+// Assigned-to-me card (backlog (c) P2.8 FE): sourced the SAME way as the other cards — the
+// role-scoped list total with ?mine=true (P2.8 server-derived filter: assigned_to_user_id =
+// the caller's own principal id; IDOR-safe, no client id sent). Visible to ALL admin roles;
+// because mine is server-derived, each caller's card shows THEIR own assigned count with no
+// FE role-branching. On error shows '—', never a fabricated 0.
+function MineCountCard({ onClick }: { onClick: () => void }) {
+  const { data, isLoading, isError } = useTicketCount({ mine: true });
+  const value = isError ? '—' : isLoading ? '…' : data ?? 0;
+  return <StatCard title={t('dashboard.assignedToMe')} value={value} color="text-indigo-600" onClick={onClick} />;
+}
+
 function CategoryCountRow({ category, onClick }: { category: string; onClick: () => void }) {
   const { data, isLoading } = useTicketCount({ category });
   return (
@@ -57,11 +68,12 @@ function CategoryCountRow({ category, onClick }: { category: string; onClick: ()
 function TicketStats({ onDrill }: { onDrill: (patch: Record<string, string>) => void }) {
   return (
     <div className="mb-6">
-      <div className="grid grid-cols-5 gap-4 mb-4">
+      <div className="grid grid-cols-6 gap-4 mb-4">
         {STAT_STATUSES.map((s) => (
           <StatusCountCard key={s.status} status={s.status} color={s.color} onClick={() => onDrill({ status: s.status })} />
         ))}
         <SlaCountCard onClick={() => onDrill({ overdue: 'true' })} />
+        <MineCountCard onClick={() => onDrill({ mine: 'true' })} />
       </div>
       <div className="bg-white rounded-lg border border-gray-200 p-6">
         <h2 className="text-base font-semibold text-gray-900 mb-4">{t('dashboard.ticketsByCategory')}</h2>
@@ -95,6 +107,7 @@ export function TicketsPage() {
   const category = searchParams.get('category') ?? '';
   const status = searchParams.get('status') ?? '';
   const overdue = searchParams.get('overdue') === 'true';
+  const mine = searchParams.get('mine') === 'true';
   const page = Math.max(0, Number(searchParams.get('page') ?? '0') || 0);
 
   // Merge a filter change into the URL, resetting pagination. Falsy value clears the key.
@@ -122,7 +135,11 @@ export function TicketsPage() {
     });
   };
 
-  const params = { page, size: 20, ...(category && { category }), ...(status && { status }), ...(overdue && { overdue: true }) };
+  // mine and overdue coexist: both are URL-driven non-dropdown filters, each included in the
+  // list query independently, so ?mine=true&overdue=true honors both. Each has its own clearable
+  // chip that clears only its own key (setFilter preserves the others); only stat-card drillDown
+  // REPLACES all filters (so a card's count == its single-filter list length).
+  const params = { page, size: 20, ...(category && { category }), ...(status && { status }), ...(overdue && { overdue: true }), ...(mine && { mine: true }) };
   const { data, isLoading, isError } = useTickets(params);
 
   return (
@@ -161,6 +178,14 @@ export function TicketsPage() {
           <button type="button" onClick={() => setFilter({ overdue: '' })}
             className="inline-flex items-center gap-1 px-3 py-2 text-sm rounded-md bg-red-50 text-red-700 border border-red-200 hover:bg-red-100">
             {t('dashboard.slaBreached')} ✕
+          </button>
+        )}
+        {/* mine has no dropdown (like overdue); when active via drill-down or direct URL it is
+            honored by the list query and shown as a clearable chip — clears only the mine key. */}
+        {mine && (
+          <button type="button" onClick={() => setFilter({ mine: '' })}
+            className="inline-flex items-center gap-1 px-3 py-2 text-sm rounded-md bg-indigo-50 text-indigo-700 border border-indigo-200 hover:bg-indigo-100">
+            {t('dashboard.assignedToMe')} ✕
           </button>
         )}
       </div>

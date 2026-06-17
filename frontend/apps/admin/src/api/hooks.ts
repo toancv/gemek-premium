@@ -108,15 +108,6 @@ export const useTicketCount = (filter: Record<string, unknown>) =>
 export const useTicket = (id: string) =>
   useQuery({ queryKey: ['tickets', id], queryFn: () => get(`/tickets/${id}`), enabled: !!id });
 
-export const useCreateTicket = () => {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: (data: unknown) => post('/tickets', data),
-    meta: { skipErrorToast: true },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['tickets'] }),
-  });
-};
-
 export const useAssignTicket = () => {
   const qc = useQueryClient();
   return useMutation({

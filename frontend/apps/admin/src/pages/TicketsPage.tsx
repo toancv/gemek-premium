@@ -1,10 +1,7 @@
-import React, { useState, useCallback } from 'react';
+import React from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { SearchableSelect, getVnErrorMessage, labelFor, formatVNDate } from '@gemek/ui';
-import type { SearchableOption } from '@gemek/ui';
-import { useTickets, useCreateTicket, useTicketCount } from '../api/hooks';
-import { apiClient } from '../api/client';
-import { useAuthStore } from '../store/authStore';
+import { labelFor, formatVNDate } from '@gemek/ui';
+import { useTickets, useTicketCount } from '../api/hooks';
 import { t } from '../i18n/vi';
 
 // Ticket-stats block (backlog (c) P2.5 + P2.7): mirrors the dashboard's ticket semantics on the
@@ -91,9 +88,6 @@ const CAT_COLORS: Record<string, string> = {
 
 export function TicketsPage() {
   const navigate = useNavigate();
-  // Ticket creation is ADMIN+RESIDENT on the BE (POST /api/tickets) — a TECHNICIAN would 403.
-  // Hide the create control from TECHNICIAN; the stat cards/drill-down/list below are role-neutral.
-  const isTechnician = useAuthStore((s) => s.user?.role) === 'TECHNICIAN';
   // URL search params are the single source of truth for list filters (P2.7) — stat-card
   // drill-downs (which set the URL) and the in-page dropdowns derive from the same place, and
   // landing on /tickets?overdue=true or ?status=NEW applies the filter immediately on mount.
@@ -102,9 +96,6 @@ export function TicketsPage() {
   const status = searchParams.get('status') ?? '';
   const overdue = searchParams.get('overdue') === 'true';
   const page = Math.max(0, Number(searchParams.get('page') ?? '0') || 0);
-  const [showCreate, setShowCreate] = useState(false);
-  const [apartmentId, setApartmentId] = useState('');
-  const [formError, setFormError] = useState('');
 
   // Merge a filter change into the URL, resetting pagination. Falsy value clears the key.
   // Used by the in-page dropdowns + the clearable overdue chip (preserves the other filters).
@@ -133,53 +124,14 @@ export function TicketsPage() {
 
   const params = { page, size: 20, ...(category && { category }), ...(status && { status }), ...(overdue && { overdue: true }) };
   const { data, isLoading, isError } = useTickets(params);
-  const createTicket = useCreateTicket();
-
-  const loadApartmentOptions = useCallback(async (query: string): Promise<SearchableOption[]> => {
-    const params: Record<string, unknown> = { size: 10, sort: 'unitNumber', direction: 'asc' };
-    if (query) params.search = query;
-    const res = await apiClient.get('/apartments', { params });
-    return (res.data?.data ?? []).map((a: any) => ({
-      value: a.id,
-      label: `${a.block?.name ?? ''} - ${a.unitNumber}`,
-    }));
-  }, []);
-
-  const handleCreate = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setFormError('');
-    const fd = new FormData(e.target as HTMLFormElement);
-    const title = (fd.get('title') as string).trim();
-    if (!apartmentId) { setFormError('Vui lòng chọn căn hộ'); return; }
-    if (!title) { setFormError('Tiêu đề không được để trống'); return; }
-    try {
-      const created: any = await createTicket.mutateAsync({
-        apartmentId,
-        category: fd.get('category'),
-        title,
-        description: fd.get('description') || null,
-        priority: fd.get('priority') || 'MEDIUM',
-      });
-      setShowCreate(false);
-      setApartmentId('');
-      navigate(`/tickets/${created.id}`);
-    } catch (err: any) {
-      setFormError(getVnErrorMessage(err?.response?.data?.error));
-    }
-  };
 
   return (
     <div>
+      {/* No create-ticket affordance in the admin app (any role): admins only PROCESS tickets;
+          residents create them via the resident app. The BE create endpoint is left intact for
+          the resident app. Removed for all roles — supersedes the P2 STEP B technician-only guard. */}
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold text-gray-900">{t('tickets.title')}</h1>
-        {!isTechnician && (
-          <button
-            onClick={() => { setShowCreate(true); setApartmentId(''); setFormError(''); }}
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700"
-          >
-            {t('tickets.new')}
-          </button>
-        )}
       </div>
 
       <TicketStats onDrill={drillDown} />
@@ -256,60 +208,6 @@ export function TicketsPage() {
           </div>
         </div>
       </div>
-
-      {showCreate && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/50" onClick={() => setShowCreate(false)} />
-          <div className="relative bg-white rounded-lg shadow-xl w-full max-w-md p-6">
-            <h2 className="text-lg font-semibold mb-4">{t('tickets.modalTitle')}</h2>
-            <form onSubmit={handleCreate} className="space-y-3">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Căn hộ <span className="text-red-500">*</span></label>
-                <SearchableSelect
-                  loadOptions={loadApartmentOptions}
-                  value={apartmentId}
-                  onChange={setApartmentId}
-                  placeholder="Chọn căn hộ..."
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">{t('tickets.category')}</label>
-                <select name="category" className="block w-full border border-gray-300 rounded-md px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
-                  <option value="MAINTENANCE_REPAIR">{labelFor('TicketCategory', 'MAINTENANCE_REPAIR')}</option>
-                  <option value="COMPLAINT">{labelFor('TicketCategory', 'COMPLAINT')}</option>
-                  <option value="ADMINISTRATIVE">{labelFor('TicketCategory', 'ADMINISTRATIVE')}</option>
-                  <option value="SUGGESTION_FEEDBACK">{labelFor('TicketCategory', 'SUGGESTION_FEEDBACK')}</option>
-                  <option value="OTHER">{labelFor('TicketCategory', 'OTHER')}</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">{t('tickets.priority')}</label>
-                <select name="priority" className="block w-full border border-gray-300 rounded-md px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
-                  <option value="LOW">{labelFor('TicketPriority', 'LOW')}</option>
-                  <option value="MEDIUM">{labelFor('TicketPriority', 'MEDIUM')}</option>
-                  <option value="HIGH">{labelFor('TicketPriority', 'HIGH')}</option>
-                  <option value="URGENT">{labelFor('TicketPriority', 'URGENT')}</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">{t('tickets.titleCol')} <span className="text-red-500">*</span></label>
-                <input name="title" maxLength={255} className="block w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">{t('tickets.description')}</label>
-                <textarea name="description" rows={3} className="block w-full border border-gray-300 rounded-md px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-500" />
-              </div>
-              {formError && <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded">{formError}</p>}
-              <div className="flex gap-2 justify-end pt-2">
-                <button type="button" onClick={() => setShowCreate(false)} className="px-4 py-2 text-sm border border-gray-300 rounded-md hover:bg-gray-50">{t('common.cancel')}</button>
-                <button type="submit" disabled={createTicket.isPending} className="px-4 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50">
-                  {createTicket.isPending ? t('tickets.creating') : t('tickets.create')}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

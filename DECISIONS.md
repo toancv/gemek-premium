@@ -710,3 +710,15 @@ Decision after `reports/c-reports-investigation.md` established a BE change is r
 - **Null-safety:** Criteria API (`cb.isNotNull` + `cb.lessThan`), never a JPQL nullable-param comparison (Hibernate 6 / PostgreSQL learning). NULL deadline never matches `overdue=true`.
 - **Verified:** suite 314/314; dev-DB canonical count 459 overdue-open / 603 total; integration test proves the real HTTP path; live :80 literal-459 deferred to the gated docker redeploy. Evidence: `reports/c-p2.6-overdue-filter.md`.
 - **FE consumption = P2.7** (not started): SLA-breached card via `useTicketCount({overdue:true})` + `?overdue=true` drill-down. Cách 2 confirmed — ruling 3 (technician UI = TICKETS ONLY) preserved.
+
+### Backlog (c) — P2.8: server-derived `mine` filter on GET /api/tickets (2026-06-17)
+
+Decision after `reports/c-assignee-filter-investigation.md` established the assignee filter does NOT exist; a gated BE change is required before the FE «Phân công cho tôi» card. Mirrors the P2.6 `overdue` pattern.
+
+- **`mine` Boolean filter added to GET /api/tickets** (same LIST endpoint, admits all roles, already role-scoped). `@PreAuthorize` and `buildScopeSpec` UNCHANGED — filter on top of scope, exposes no new data.
+- **Server-derived, NOT a client-supplied `assigneeId`.** Target = `principalId` (the same caller id `buildScopeSpec` uses). The FE passes no user id → nothing to forge. An `assigneeId=<id>` param was rejected: it would let any admin enumerate another staff member's workload (IDOR) and is YAGNI for this card. `principalId` is now also threaded into `buildFilterSpec`.
+- **`mine=false` semantics = NO-OP** (no assignee filtering, identical to absent). Only `mine=true` is active. **This INTENTIONALLY DIVERGES from P2.6's `overdue=false`=complement.** Rationale: "not assigned to me" is not a product need, would muddy the «Phân công cho tôi ✕» chip, and YAGNI (per investigation §4). Guarded with `Boolean.TRUE.equals(mine)` so both `false` and absent skip the predicate — existing behavior byte-for-byte unchanged.
+- **Null-safety:** Criteria API `cb.and(cb.isNotNull(assignedToUser.id), cb.equal(assignedToUser.id, principalId))` — never a JPQL nullable comparison. An UNASSIGNED ticket (assignee NULL) can never match `mine=true` (the `assignedToUser.id` path also forces an INNER join that independently drops nulls; the explicit `isNotNull` documents intent).
+- **Scope composition:** ANDed on top of `buildScopeSpec`. TECHNICIAN `(assigned-to-me OR NEW) AND mine` collapses to assigned-to-me (strict subset, no bypass). Composable with `overdue` (AND).
+- **Verified:** suite 319/319; dev-DB canonical admin-assigned 23 / 705 total; integration tests prove the real HTTP path; live :80 literal-23 deferred to the gated docker redeploy (running container is old image). Evidence: `reports/c-p2.8-mine-filter.md`.
+- **FE card phase = NEXT** (not started): «Phân công cho tôi» StatCard via `useTicketCount({mine:true})` + `?mine=true` drill-down + «Phân công cho tôi ✕» clearable chip.

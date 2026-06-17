@@ -18,6 +18,7 @@ import { AnnouncementsPage } from './pages/AnnouncementsPage';
 // import { ParkingPage } from './pages/ParkingPage';
 import { ReportsPage } from './pages/ReportsPage';
 import { VehiclesPage } from './pages/VehiclesPage';
+import { homePathFor } from './lib/homePathFor';
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const authStatus = useAuthStore((s) => s.authStatus);
@@ -36,8 +37,18 @@ function RequireAuth({ children }: { children: React.ReactNode }) {
 
 function RequireRole({ roles, children }: { roles: string[]; children: React.ReactNode }) {
   const user = useAuthStore((s) => s.user);
-  if (!user || !roles.includes(user.role)) return <Navigate to="/dashboard" replace />;
+  // Forbidden-role fallback is role-aware: a TECHNICIAN hitting an admin-only route lands on
+  // /tickets (not the guarded /dashboard) — otherwise the fallback would bounce them to a route
+  // they also cannot reach. user is always set here (RequireAuth holds render until authenticated).
+  if (!user || !roles.includes(user.role)) return <Navigate to={homePathFor(user?.role)} replace />;
   return <>{children}</>;
+}
+
+// Role-aware landing redirect for the index, catch-all, and deferred-page routes that previously
+// hardcoded /dashboard. Reads the authenticated role and sends TECHNICIAN to /tickets.
+function HomeRedirect() {
+  const user = useAuthStore((s) => s.user);
+  return <Navigate to={homePathFor(user?.role)} replace />;
 }
 
 export default function App() {
@@ -50,23 +61,23 @@ export default function App() {
       <Routes>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/" element={<RequireAuth><Layout /></RequireAuth>}>
-          <Route index element={<Navigate to="/dashboard" replace />} />
-          <Route path="dashboard" element={<DashboardPage />} />
+          <Route index element={<HomeRedirect />} />
+          <Route path="dashboard" element={<RequireRole roles={['ADMIN','BOARD_MEMBER']}><DashboardPage /></RequireRole>} />
           <Route path="apartments" element={<RequireRole roles={['ADMIN','BOARD_MEMBER']}><ApartmentsPage /></RequireRole>} />
           <Route path="residents" element={<RequireRole roles={['ADMIN']}><ResidentsPage /></RequireRole>} />
           <Route path="users" element={<RequireRole roles={['ADMIN']}><UsersPage /></RequireRole>} />
-          <Route path="tickets" element={<TicketsPage />} />
-          <Route path="tickets/:id" element={<TicketDetailPage />} />
+          <Route path="tickets" element={<RequireRole roles={['ADMIN','BOARD_MEMBER','TECHNICIAN']}><TicketsPage /></RequireRole>} />
+          <Route path="tickets/:id" element={<RequireRole roles={['ADMIN','BOARD_MEMBER','TECHNICIAN']}><TicketDetailPage /></RequireRole>} />
           <Route path="contractors" element={<RequireRole roles={['ADMIN','BOARD_MEMBER']}><ContractorsPage /></RequireRole>} />
           <Route path="announcements" element={<RequireRole roles={['ADMIN']}><AnnouncementsPage /></RequireRole>} />
           {/* TEMP_HIDDEN_DEFERRED: amenities route — feature deferred, see PROGRESS.md */}
-          <Route path="amenities" element={<Navigate to="/dashboard" replace />} />
+          <Route path="amenities" element={<HomeRedirect />} />
           {/* TEMP_HIDDEN_DEFERRED: parking route — feature deferred, see PROGRESS.md */}
-          <Route path="parking" element={<Navigate to="/dashboard" replace />} />
+          <Route path="parking" element={<HomeRedirect />} />
           <Route path="vehicles" element={<RequireRole roles={['ADMIN']}><VehiclesPage /></RequireRole>} />
           <Route path="reports" element={<RequireRole roles={['ADMIN','BOARD_MEMBER']}><ReportsPage /></RequireRole>} />
         </Route>
-        <Route path="*" element={<Navigate to="/dashboard" replace />} />
+        <Route path="*" element={<HomeRedirect />} />
       </Routes>
     </BrowserRouter>
     <Toaster position="top-right" />

@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useTicket, useAssignTicket, useUpdateTicketStatus } from '../api/hooks';
 import { SearchableSelect, VNDatePicker, getVnErrorMessage, labelFor, formatVNDateTime } from '@gemek/ui';
 import { apiClient } from '../api/client';
+import { useAuthStore } from '../store/authStore';
 import { t } from '../i18n/vi';
 
 const STATUS_COLORS: Record<string, string> = {
@@ -23,6 +24,10 @@ export function TicketDetailPage() {
   const { data: ticket, isLoading, isError } = useTicket(id!);
   const assignTicket = useAssignTicket();
   const updateStatus = useUpdateTicketStatus();
+  // Assign (Phân công) is ADMIN-only on the BE (PUT /{id}/assign → hasRole ADMIN) — a TECHNICIAN
+  // would 403. Hide the assign card from TECHNICIAN. Status update is ADMIN+TECHNICIAN (core
+  // technician work) so it stays visible. ADMIN/BOARD_MEMBER views are unchanged.
+  const isTechnician = useAuthStore((s) => s.user?.role) === 'TECHNICIAN';
 
   const [assignedUserId, setAssignedUserId] = useState('');
   const [assignedContractorId, setAssignedContractorId] = useState('');
@@ -177,6 +182,8 @@ export function TicketDetailPage() {
 
       {/* Admin Actions */}
       <div className="grid grid-cols-2 gap-4">
+        {/* Assign (Phân công): ADMIN-only on BE — hidden from TECHNICIAN (see isTechnician above). */}
+        {!isTechnician && (
         <div className="bg-white rounded-lg border border-gray-200 p-6">
           <h2 className="text-base font-semibold mb-3">Phân công</h2>
           <form onSubmit={handleAssign} className="space-y-3">
@@ -217,6 +224,7 @@ export function TicketDetailPage() {
             </button>
           </form>
         </div>
+        )}
         <div className="bg-white rounded-lg border border-gray-200 p-6">
           <h2 className="text-base font-semibold mb-3">Cập nhật trạng thái</h2>
           <form onSubmit={handleStatusUpdate} className="space-y-3">

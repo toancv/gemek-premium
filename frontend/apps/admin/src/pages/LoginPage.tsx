@@ -2,19 +2,22 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getVnErrorMessage } from '@gemek/ui';
 import { useAuthStore } from '../store/authStore';
+import { homePathFor } from '../lib/homePathFor';
 
 const VN_PHONE_RE = /^(\+?84|0)[3-9]\d{8}$/;
 
 export function LoginPage() {
   const login = useAuthStore((s) => s.login);
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const user = useAuthStore((s) => s.user);
   const navigate = useNavigate();
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  if (isAuthenticated()) { navigate('/dashboard', { replace: true }); return null; }
+  // Already-authenticated bounce: role-aware landing (TECHNICIAN → /tickets, else /dashboard).
+  if (isAuthenticated()) { navigate(homePathFor(user?.role), { replace: true }); return null; }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -25,7 +28,8 @@ export function LoginPage() {
     setLoading(true);
     try {
       await login(phone.trim(), password);
-      navigate('/dashboard', { replace: true });
+      // Role-aware post-login landing: read the role login() just set on the store (TECHNICIAN → /tickets).
+      navigate(homePathFor(useAuthStore.getState().user?.role), { replace: true });
     } catch (err: any) {
       setError(getVnErrorMessage(err?.response?.data?.error));
     } finally {

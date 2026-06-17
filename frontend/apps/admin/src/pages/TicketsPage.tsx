@@ -4,6 +4,7 @@ import { SearchableSelect, getVnErrorMessage, labelFor, formatVNDate } from '@ge
 import type { SearchableOption } from '@gemek/ui';
 import { useTickets, useCreateTicket, useTicketCount } from '../api/hooks';
 import { apiClient } from '../api/client';
+import { useAuthStore } from '../store/authStore';
 import { t } from '../i18n/vi';
 
 // Ticket-stats block (backlog (c) P2.5 + P2.7): mirrors the dashboard's ticket semantics on the
@@ -90,6 +91,9 @@ const CAT_COLORS: Record<string, string> = {
 
 export function TicketsPage() {
   const navigate = useNavigate();
+  // Ticket creation is ADMIN+RESIDENT on the BE (POST /api/tickets) — a TECHNICIAN would 403.
+  // Hide the create control from TECHNICIAN; the stat cards/drill-down/list below are role-neutral.
+  const isTechnician = useAuthStore((s) => s.user?.role) === 'TECHNICIAN';
   // URL search params are the single source of truth for list filters (P2.7) — stat-card
   // drill-downs (which set the URL) and the in-page dropdowns derive from the same place, and
   // landing on /tickets?overdue=true or ?status=NEW applies the filter immediately on mount.
@@ -168,12 +172,14 @@ export function TicketsPage() {
     <div>
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold text-gray-900">{t('tickets.title')}</h1>
-        <button
-          onClick={() => { setShowCreate(true); setApartmentId(''); setFormError(''); }}
-          className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700"
-        >
-          {t('tickets.new')}
-        </button>
+        {!isTechnician && (
+          <button
+            onClick={() => { setShowCreate(true); setApartmentId(''); setFormError(''); }}
+            className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700"
+          >
+            {t('tickets.new')}
+          </button>
+        )}
       </div>
 
       <TicketStats onDrill={drillDown} />

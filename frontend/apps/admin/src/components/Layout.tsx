@@ -15,7 +15,9 @@ const NOTIF_ROUTES: Record<string, (referenceId: string) => string> = {
 };
 
 const NAV = [
-  { to: '/dashboard', label: t('nav.dashboard'), roles: ['ADMIN','BOARD_MEMBER','TECHNICIAN'] },
+  // Dashboard is [ADMIN, BOARD_MEMBER] only (P2 STEP B, Option 2): it bundles contract-expiry +
+  // occupancy business data outside the technician's tickets-only scope. TECHNICIAN dropped here.
+  { to: '/dashboard', label: t('nav.dashboard'), roles: ['ADMIN','BOARD_MEMBER'] },
   { to: '/apartments', label: t('nav.apartments'), roles: ['ADMIN','BOARD_MEMBER'] },
   { to: '/residents', label: t('nav.residents'), roles: ['ADMIN'] },
   { to: '/users', label: t('nav.users'), roles: ['ADMIN'] },

@@ -303,8 +303,144 @@ class TicketLifecycleIntegrationTest {
     }
 
     // =========================================================================
+    // Test 6 — overdue filter (P2.6): GET /api/tickets?overdue=true returns only
+    //          breached-open tickets, mirroring the canonical SLA-breach predicate
+    //          (sla_deadline < now AND status NOT IN (DONE,CANCELLED)).
+    // =========================================================================
+
+    @Test
+    @DisplayName("GET /api/tickets?overdue=true returns only tickets with past sla_deadline AND status NOT IN (DONE,CANCELLED); DONE, NULL-deadline and future-deadline tickets excluded")
+    void overdueTrue_returnsOnlyBreachedOpenTickets() throws Exception {
+        UUID blockId     = createBlock("OF1-" + System.nanoTime());
+        UUID apartmentId = createApartment(blockId, "OF101");
+
+        // Four tickets in one apartment — apartmentId filter isolates the assertion
+        // from shared-DB pollution. Deadlines/statuses set directly via repo (same
+        // backdate pattern as Test 3) to build exact fixtures without the state machine.
+        UUID tOverdue = createTicket(adminToken, apartmentId, TicketCategory.MAINTENANCE_REPAIR);
+        UUID tDone    = createTicket(adminToken, apartmentId, TicketCategory.MAINTENANCE_REPAIR);
+        UUID tNull    = createTicket(adminToken, apartmentId, TicketCategory.MAINTENANCE_REPAIR);
+        UUID tFuture  = createTicket(adminToken, apartmentId, TicketCategory.MAINTENANCE_REPAIR);
+
+        setDeadlineAndStatus(tOverdue, OffsetDateTime.now().minusHours(48), TicketStatus.NEW);
+        // Past deadline but DONE → closed → must be EXCLUDED.
+        setDeadlineAndStatus(tDone, OffsetDateTime.now().minusHours(48), TicketStatus.DONE);
+        // NULL deadline → never overdue → must be EXCLUDED.
+        setDeadlineAndStatus(tNull, null, TicketStatus.NEW);
+        // Future deadline → not yet overdue → must be EXCLUDED.
+        setDeadlineAndStatus(tFuture, OffsetDateTime.now().plusHours(48), TicketStatus.NEW);
+
+        MvcResult result = mockMvc.perform(get("/api/tickets")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .param("apartmentId", apartmentId.toString())
+                        .param("overdue", "true"))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        Map<?, ?> body = objectMapper.readValue(result.getResponse().getContentAsString(), Map.class);
+        List<?> data   = (List<?>) body.get("data");
+        List<String> ids = data.stream().map(i -> (String) ((Map<?, ?>) i).get("id")).toList();
+
+        assertEquals(1, ids.size(), "Only the breached-open ticket must match overdue=true; was: " + ids);
+        assertTrue(ids.contains(tOverdue.toString()), "Breached-open ticket must be present");
+        assertTrue(!ids.contains(tDone.toString()), "DONE ticket past deadline must be excluded");
+        assertTrue(!ids.contains(tNull.toString()), "NULL-deadline ticket must be excluded");
+        assertTrue(!ids.contains(tFuture.toString()), "Future-deadline ticket must be excluded");
+        // total (whole-dataset count) must agree with the single matched row.
+        assertEquals(1, ((Number) body.get("total")).intValue(), "total must equal the matched-row count");
+    }
+
+    @Test
+    @DisplayName("GET /api/tickets with overdue absent returns all tickets regardless of deadline/status (regression guard — unchanged behavior)")
+    void overdueAbsent_returnsAll_unchangedBehavior() throws Exception {
+        UUID blockId     = createBlock("OF2-" + System.nanoTime());
+        UUID apartmentId = createApartment(blockId, "OF201");
+
+        UUID tOverdue = createTicket(adminToken, apartmentId, TicketCategory.MAINTENANCE_REPAIR);
+        UUID tDone    = createTicket(adminToken, apartmentId, TicketCategory.MAINTENANCE_REPAIR);
+        UUID tNull    = createTicket(adminToken, apartmentId, TicketCategory.MAINTENANCE_REPAIR);
+        UUID tFuture  = createTicket(adminToken, apartmentId, TicketCategory.MAINTENANCE_REPAIR);
+
+        setDeadlineAndStatus(tOverdue, OffsetDateTime.now().minusHours(48), TicketStatus.NEW);
+        setDeadlineAndStatus(tDone, OffsetDateTime.now().minusHours(48), TicketStatus.DONE);
+        setDeadlineAndStatus(tNull, null, TicketStatus.NEW);
+        setDeadlineAndStatus(tFuture, OffsetDateTime.now().plusHours(48), TicketStatus.NEW);
+
+        // No overdue param → existing behavior: all four returned.
+        MvcResult result = mockMvc.perform(get("/api/tickets")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .param("apartmentId", apartmentId.toString()))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        Map<?, ?> body = objectMapper.readValue(result.getResponse().getContentAsString(), Map.class);
+        assertEquals(4, ((Number) body.get("total")).intValue(),
+                "overdue absent must not filter — all four tickets returned");
+    }
+
+    @Test
+    @DisplayName("GET /api/tickets?overdue=true as TECHNICIAN keeps role-scope: sees own-assigned overdue ticket, not another technician's overdue ticket")
+    void overdueTrue_respectsTechnicianRoleScope() throws Exception {
+        UUID blockId     = createBlock("OF3-" + System.nanoTime());
+        UUID apartmentId = createApartment(blockId, "OF301");
+
+        String tech1Uid = UUID.randomUUID().toString().replace("-", "").substring(0, 8);
+        UUID tech1Id    = createUser(phoneFromUid(tech1Uid), UserRole.TECHNICIAN);
+        String tech1Token = login(phoneFromUid(tech1Uid), "Password@123456");
+
+        String tech2Uid = UUID.randomUUID().toString().replace("-", "").substring(0, 8);
+        UUID tech2Id    = createUser(phoneFromUid(tech2Uid), UserRole.TECHNICIAN);
+
+        // In-scope: assigned to tech1 (status → ASSIGNED), then backdated overdue.
+        UUID inScope = createTicket(adminToken, apartmentId, TicketCategory.MAINTENANCE_REPAIR);
+        assignToUser(inScope, tech1Id);
+        // Out-of-scope for tech1: assigned to tech2 (ASSIGNED, not NEW), also overdue.
+        UUID outScope = createTicket(adminToken, apartmentId, TicketCategory.MAINTENANCE_REPAIR);
+        assignToUser(outScope, tech2Id);
+
+        // Backdate deadlines only — preserve the ASSIGNED status set by assignment.
+        ticketRepository.findById(inScope).ifPresent(t -> {
+            t.setSlaDeadline(OffsetDateTime.now().minusHours(48));
+            ticketRepository.save(t);
+        });
+        ticketRepository.findById(outScope).ifPresent(t -> {
+            t.setSlaDeadline(OffsetDateTime.now().minusHours(48));
+            ticketRepository.save(t);
+        });
+
+        MvcResult result = mockMvc.perform(get("/api/tickets")
+                        .header("Authorization", "Bearer " + tech1Token)
+                        .param("apartmentId", apartmentId.toString())
+                        .param("overdue", "true"))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        Map<?, ?> body = objectMapper.readValue(result.getResponse().getContentAsString(), Map.class);
+        List<?> data   = (List<?>) body.get("data");
+        List<String> ids = data.stream().map(i -> (String) ((Map<?, ?>) i).get("id")).toList();
+
+        assertTrue(ids.contains(inScope.toString()),
+                "Technician must see their own assigned overdue ticket");
+        assertTrue(!ids.contains(outScope.toString()),
+                "Technician must NOT see another technician's overdue ticket — role-scope preserved under overdue=true");
+    }
+
+    // =========================================================================
     // Helpers
     // =========================================================================
+
+    /**
+     * Sets a ticket's SLA deadline and status directly via the repository, bypassing
+     * the status state machine to build exact overdue/closed fixtures (same backdate
+     * approach as Test 3). A {@code null} deadline clears the SLA deadline.
+     */
+    private void setDeadlineAndStatus(UUID ticketId, OffsetDateTime deadline, TicketStatus status) {
+        ticketRepository.findById(ticketId).ifPresent(ticket -> {
+            ticket.setSlaDeadline(deadline);
+            ticket.setStatus(status);
+            ticketRepository.save(ticket);
+        });
+    }
 
     private static String phoneFromUid(String uid) {
         long num = Long.parseLong(uid.substring(0, 7), 16) % 9_000_000L + 1_000_000L;

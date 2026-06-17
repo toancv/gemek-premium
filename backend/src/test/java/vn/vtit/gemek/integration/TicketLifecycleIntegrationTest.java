@@ -34,6 +34,7 @@ import vn.vtit.gemek.module.ticket.entity.TicketStatus;
 import vn.vtit.gemek.module.ticket.repository.TicketRepository;
 import vn.vtit.gemek.module.user.dto.CreateUserRequest;
 import vn.vtit.gemek.module.user.entity.UserRole;
+import vn.vtit.gemek.module.user.repository.UserRepository;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -86,6 +87,9 @@ class TicketLifecycleIntegrationTest {
 
     @Autowired
     private ContractorRepository contractorRepository;
+
+    @Autowired
+    private UserRepository userRepository;
 
     private String adminToken;
 
@@ -423,6 +427,191 @@ class TicketLifecycleIntegrationTest {
                 "Technician must see their own assigned overdue ticket");
         assertTrue(!ids.contains(outScope.toString()),
                 "Technician must NOT see another technician's overdue ticket — role-scope preserved under overdue=true");
+    }
+
+    // =========================================================================
+    // Test 7 — mine filter (P2.8): GET /api/tickets?mine=true returns only tickets
+    //          whose assignedToUser is the caller (server-derived from the principal,
+    //          no client-supplied id). ANDed on top of role-scope. Unassigned tickets
+    //          (assignedToUser NULL) and tickets assigned to another user are excluded.
+    //          mine=false / absent = no assignee filtering (no-op).
+    // =========================================================================
+
+    @Test
+    @DisplayName("GET /api/tickets?mine=true returns only tickets assigned to the caller; another user's and UNASSIGNED tickets excluded")
+    void mineTrue_returnsOnlyTicketsAssignedToCaller() throws Exception {
+        UUID adminId     = userRepository.findByPhone(ADMIN_PHONE).orElseThrow().getId();
+        UUID blockId     = createBlock("MF1-" + System.nanoTime());
+        UUID apartmentId = createApartment(blockId, "MF101");
+
+        String techUid = UUID.randomUUID().toString().replace("-", "").substring(0, 8);
+        UUID techId    = createUser(phoneFromUid(techUid), UserRole.TECHNICIAN);
+
+        // Assigned to caller (the admin) → must be INCLUDED.
+        UUID tMine = createTicket(adminToken, apartmentId, TicketCategory.MAINTENANCE_REPAIR);
+        assignToUser(tMine, adminId);
+        // Assigned to another user → must be EXCLUDED.
+        UUID tOther = createTicket(adminToken, apartmentId, TicketCategory.MAINTENANCE_REPAIR);
+        assignToUser(tOther, techId);
+        // Never assigned (assignedToUser NULL) → must be EXCLUDED (null-safety).
+        UUID tUnassigned = createTicket(adminToken, apartmentId, TicketCategory.MAINTENANCE_REPAIR);
+
+        MvcResult result = mockMvc.perform(get("/api/tickets")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .param("apartmentId", apartmentId.toString())
+                        .param("mine", "true"))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        Map<?, ?> body = objectMapper.readValue(result.getResponse().getContentAsString(), Map.class);
+        List<?> data   = (List<?>) body.get("data");
+        List<String> ids = data.stream().map(i -> (String) ((Map<?, ?>) i).get("id")).toList();
+
+        assertEquals(1, ids.size(), "Only the caller-assigned ticket must match mine=true; was: " + ids);
+        assertTrue(ids.contains(tMine.toString()), "Caller-assigned ticket must be present");
+        assertTrue(!ids.contains(tOther.toString()), "Ticket assigned to another user must be excluded");
+        assertTrue(!ids.contains(tUnassigned.toString()), "UNASSIGNED (null assignee) ticket must be excluded");
+        assertEquals(1, ((Number) body.get("total")).intValue(), "total must equal the matched-row count");
+    }
+
+    @Test
+    @DisplayName("GET /api/tickets with mine absent returns all tickets regardless of assignee (regression guard — unchanged behavior)")
+    void mineAbsent_returnsAll_unchangedBehavior() throws Exception {
+        UUID adminId     = userRepository.findByPhone(ADMIN_PHONE).orElseThrow().getId();
+        UUID blockId     = createBlock("MF2-" + System.nanoTime());
+        UUID apartmentId = createApartment(blockId, "MF201");
+
+        String techUid = UUID.randomUUID().toString().replace("-", "").substring(0, 8);
+        UUID techId    = createUser(phoneFromUid(techUid), UserRole.TECHNICIAN);
+
+        UUID tMine = createTicket(adminToken, apartmentId, TicketCategory.MAINTENANCE_REPAIR);
+        assignToUser(tMine, adminId);
+        UUID tOther = createTicket(adminToken, apartmentId, TicketCategory.MAINTENANCE_REPAIR);
+        assignToUser(tOther, techId);
+        createTicket(adminToken, apartmentId, TicketCategory.MAINTENANCE_REPAIR); // unassigned
+
+        // No mine param → existing behavior: all three returned.
+        MvcResult result = mockMvc.perform(get("/api/tickets")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .param("apartmentId", apartmentId.toString()))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        Map<?, ?> body = objectMapper.readValue(result.getResponse().getContentAsString(), Map.class);
+        assertEquals(3, ((Number) body.get("total")).intValue(),
+                "mine absent must not filter — all three tickets returned");
+    }
+
+    @Test
+    @DisplayName("GET /api/tickets?mine=false is a no-op (chosen semantics): no assignee filtering — same as absent")
+    void mineFalse_isNoOp_returnsAll() throws Exception {
+        UUID adminId     = userRepository.findByPhone(ADMIN_PHONE).orElseThrow().getId();
+        UUID blockId     = createBlock("MF3-" + System.nanoTime());
+        UUID apartmentId = createApartment(blockId, "MF301");
+
+        String techUid = UUID.randomUUID().toString().replace("-", "").substring(0, 8);
+        UUID techId    = createUser(phoneFromUid(techUid), UserRole.TECHNICIAN);
+
+        UUID tMine = createTicket(adminToken, apartmentId, TicketCategory.MAINTENANCE_REPAIR);
+        assignToUser(tMine, adminId);
+        UUID tOther = createTicket(adminToken, apartmentId, TicketCategory.MAINTENANCE_REPAIR);
+        assignToUser(tOther, techId);
+        createTicket(adminToken, apartmentId, TicketCategory.MAINTENANCE_REPAIR); // unassigned
+
+        // mine=false → no assignee filtering (no-op), identical to absent: all three returned.
+        MvcResult result = mockMvc.perform(get("/api/tickets")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .param("apartmentId", apartmentId.toString())
+                        .param("mine", "false"))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        Map<?, ?> body = objectMapper.readValue(result.getResponse().getContentAsString(), Map.class);
+        assertEquals(3, ((Number) body.get("total")).intValue(),
+                "mine=false must be a no-op — all three tickets returned (same as absent)");
+    }
+
+    @Test
+    @DisplayName("GET /api/tickets?mine=true as TECHNICIAN collapses scope to assigned-to-me: excludes NEW (in base scope) and another tech's ticket")
+    void mineTrue_respectsTechnicianRoleScope() throws Exception {
+        UUID blockId     = createBlock("MF4-" + System.nanoTime());
+        UUID apartmentId = createApartment(blockId, "MF401");
+
+        String tech1Uid = UUID.randomUUID().toString().replace("-", "").substring(0, 8);
+        UUID tech1Id    = createUser(phoneFromUid(tech1Uid), UserRole.TECHNICIAN);
+        String tech1Token = login(phoneFromUid(tech1Uid), "Password@123456");
+
+        String tech2Uid = UUID.randomUUID().toString().replace("-", "").substring(0, 8);
+        UUID tech2Id    = createUser(phoneFromUid(tech2Uid), UserRole.TECHNICIAN);
+
+        // NEW + unassigned: in tech1's BASE scope (status=NEW arm) but NOT assigned to tech1
+        // → must drop out under mine=true (proves the NEW arm collapses under the AND).
+        UUID tNew = createTicket(adminToken, apartmentId, TicketCategory.MAINTENANCE_REPAIR);
+        // Assigned to tech1 → must be INCLUDED.
+        UUID tMine = createTicket(adminToken, apartmentId, TicketCategory.MAINTENANCE_REPAIR);
+        assignToUser(tMine, tech1Id);
+        // Assigned to tech2 → out of tech1 base scope and not mine → EXCLUDED.
+        UUID tOther = createTicket(adminToken, apartmentId, TicketCategory.MAINTENANCE_REPAIR);
+        assignToUser(tOther, tech2Id);
+
+        MvcResult result = mockMvc.perform(get("/api/tickets")
+                        .header("Authorization", "Bearer " + tech1Token)
+                        .param("apartmentId", apartmentId.toString())
+                        .param("mine", "true"))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        Map<?, ?> body = objectMapper.readValue(result.getResponse().getContentAsString(), Map.class);
+        List<?> data   = (List<?>) body.get("data");
+        List<String> ids = data.stream().map(i -> (String) ((Map<?, ?>) i).get("id")).toList();
+
+        assertTrue(ids.contains(tMine.toString()), "Technician must see their own assigned ticket under mine=true");
+        assertTrue(!ids.contains(tNew.toString()),
+                "NEW unassigned ticket (in base scope) must drop out under mine=true — assigned-to-me subset");
+        assertTrue(!ids.contains(tOther.toString()),
+                "Another technician's ticket must NOT appear — role-scope preserved under mine=true");
+    }
+
+    @Test
+    @DisplayName("GET /api/tickets?mine=true&overdue=true returns the caller's own overdue-open tickets (both predicates AND)")
+    void mineTrueOverdueTrue_returnsCallerOwnOverdueOpen() throws Exception {
+        UUID adminId     = userRepository.findByPhone(ADMIN_PHONE).orElseThrow().getId();
+        UUID blockId     = createBlock("MF5-" + System.nanoTime());
+        UUID apartmentId = createApartment(blockId, "MF501");
+
+        String techUid = UUID.randomUUID().toString().replace("-", "").substring(0, 8);
+        UUID techId    = createUser(phoneFromUid(techUid), UserRole.TECHNICIAN);
+
+        // Mine + overdue (past deadline, open) → INCLUDED.
+        UUID tMineOverdue = createTicket(adminToken, apartmentId, TicketCategory.MAINTENANCE_REPAIR);
+        assignToUser(tMineOverdue, adminId);
+        setDeadlineAndStatus(tMineOverdue, OffsetDateTime.now().minusHours(48), TicketStatus.ASSIGNED);
+        // Mine but NOT overdue (future deadline) → EXCLUDED by overdue.
+        UUID tMineFuture = createTicket(adminToken, apartmentId, TicketCategory.MAINTENANCE_REPAIR);
+        assignToUser(tMineFuture, adminId);
+        setDeadlineAndStatus(tMineFuture, OffsetDateTime.now().plusHours(48), TicketStatus.ASSIGNED);
+        // Overdue but NOT mine (assigned to another) → EXCLUDED by mine.
+        UUID tOtherOverdue = createTicket(adminToken, apartmentId, TicketCategory.MAINTENANCE_REPAIR);
+        assignToUser(tOtherOverdue, techId);
+        setDeadlineAndStatus(tOtherOverdue, OffsetDateTime.now().minusHours(48), TicketStatus.ASSIGNED);
+
+        MvcResult result = mockMvc.perform(get("/api/tickets")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .param("apartmentId", apartmentId.toString())
+                        .param("mine", "true")
+                        .param("overdue", "true"))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        Map<?, ?> body = objectMapper.readValue(result.getResponse().getContentAsString(), Map.class);
+        List<?> data   = (List<?>) body.get("data");
+        List<String> ids = data.stream().map(i -> (String) ((Map<?, ?>) i).get("id")).toList();
+
+        assertEquals(1, ids.size(), "Only the caller's own overdue-open ticket must match; was: " + ids);
+        assertTrue(ids.contains(tMineOverdue.toString()), "Caller's own overdue-open ticket must be present");
+        assertTrue(!ids.contains(tMineFuture.toString()), "Caller's non-overdue ticket must be excluded by overdue=true");
+        assertTrue(!ids.contains(tOtherOverdue.toString()), "Another user's overdue ticket must be excluded by mine=true");
+        assertEquals(1, ((Number) body.get("total")).intValue(), "total must equal the matched-row count");
     }
 
     // =========================================================================

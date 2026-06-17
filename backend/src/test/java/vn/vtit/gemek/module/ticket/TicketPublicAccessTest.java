@@ -325,7 +325,7 @@ class TicketPublicAccessTest {
         TicketDetailResponse publicTicket = createTicket(true);
 
         List<TicketSummaryResponse> rows = ticketService.listTickets(
-                        admin.getId(), "ADMIN", null, null, null, null, apartmentA.getId(), null, pageable())
+                        admin.getId(), "ADMIN", null, null, null, null, apartmentA.getId(), null, null, pageable())
                 .getData();
         assertThat(rows).extracting(TicketSummaryResponse::getId).contains(publicTicket.getId());
         TicketSummaryResponse row = rows.stream()
@@ -492,7 +492,7 @@ class TicketPublicAccessTest {
      */
     private List<TicketSummaryResponse> list(UUID userId, String visibility) {
         return ticketService.listTickets(userId, "RESIDENT", visibility,
-                null, null, null, null, null, pageable()).getData();
+                null, null, null, null, null, null, pageable()).getData();
     }
 
     /**

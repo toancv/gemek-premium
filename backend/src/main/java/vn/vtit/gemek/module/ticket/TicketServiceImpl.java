@@ -198,6 +198,7 @@ public class TicketServiceImpl implements TicketService {
                                                            TicketPriority priority,
                                                            UUID apartmentId,
                                                            Boolean overdue,
+                                                           Boolean mine,
                                                            Pageable pageable) {
         log.debug("listTickets — role={}, visibility={}, statuses={}, category={}",
                 role, visibility, statuses, category);
@@ -210,7 +211,7 @@ public class TicketServiceImpl implements TicketService {
         }
 
         Specification<Ticket> spec = buildScopeSpec(principalId, role, visibility)
-                .and(buildFilterSpec(statuses, category, priority, apartmentId, overdue));
+                .and(buildFilterSpec(principalId, statuses, category, priority, apartmentId, overdue, mine));
 
         // RESIDENT rows outside the caller's own household can only be public tickets;
         // their summaries are redacted (G8) so the list cannot leak what the detail hides.
@@ -982,17 +983,22 @@ public class TicketServiceImpl implements TicketService {
     /**
      * Builds a filter {@link Specification} from optional request parameters.
      *
+     * @param principalId the caller's UUID; the target of the server-derived {@code mine}
+     *                    filter (same id {@code buildScopeSpec} uses — never client-supplied).
      * @param statuses    optional status filter; null or empty list matches all statuses.
      * @param category    optional category filter.
      * @param priority    optional priority filter.
      * @param apartmentId optional apartment filter.
      * @param overdue     optional SLA filter; {@code null} = no SLA filtering (existing
      *                    behavior), {@code true} = breached-open, {@code false} = complement.
+     * @param mine        optional assignee filter; {@code true} = assigned to the caller,
+     *                    {@code false}/{@code null} = no assignee filtering (no-op).
      * @return the composed filter specification.
      */
-    private Specification<Ticket> buildFilterSpec(List<TicketStatus> statuses, TicketCategory category,
+    private Specification<Ticket> buildFilterSpec(UUID principalId, List<TicketStatus> statuses,
+                                                   TicketCategory category,
                                                    TicketPriority priority, UUID apartmentId,
-                                                   Boolean overdue) {
+                                                   Boolean overdue, Boolean mine) {
         return (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
 
@@ -1020,6 +1026,16 @@ public class TicketServiceImpl implements TicketService {
                 // overdue=false = the logical complement; cb.not collapses the NULL-deadline
                 // case cleanly to "not overdue" via the isNotNull guard above.
                 predicates.add(Boolean.TRUE.equals(overdue) ? breached : cb.not(breached));
+            }
+            if (Boolean.TRUE.equals(mine)) {
+                // Assigned-to-caller, server-derived from principalId (the same id
+                // buildScopeSpec uses) — never a client-supplied id, so there is no IDOR
+                // surface. ANDed on top of role-scope; never widens it. isNotNull + equal
+                // so an UNASSIGNED ticket (assignedToUser NULL) can never match. Only
+                // mine=true is active; mine=false/absent is a no-op (no assignee filtering).
+                predicates.add(cb.and(
+                        cb.isNotNull(root.get("assignedToUser").get("id")),
+                        cb.equal(root.get("assignedToUser").get("id"), principalId)));
             }
 
             return cb.and(predicates.toArray(new Predicate[0]));

@@ -94,6 +94,10 @@ public class TicketController {
      *                    (sla_deadline past AND status NOT IN DONE/CANCELLED),
      *                    {@code false} = the complement, absent = no SLA filtering.
      *                    Applied on top of role-scope — exposes no data outside scope.
+     * @param mine        optional assignee filter: {@code true} = only tickets assigned to
+     *                    the calling user (server-derived from the principal — no client id),
+     *                    {@code false}/absent = no assignee filtering. ANDed on top of
+     *                    role-scope — exposes no data outside scope.
      * @param page        0-based page index (default 0).
      * @param size        page size (default 20, max 100).
      * @param principal   the authenticated caller.
@@ -109,6 +113,7 @@ public class TicketController {
             @RequestParam(required = false) TicketPriority priority,
             @RequestParam(required = false) UUID apartmentId,
             @RequestParam(required = false) Boolean overdue,
+            @RequestParam(required = false) Boolean mine,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             @AuthenticationPrincipal UserPrincipal principal) {
@@ -119,7 +124,7 @@ public class TicketController {
         String role = extractRole(principal);
         return ResponseEntity.ok(ticketService.listTickets(
                 principal.getId(), role, visibility, status, category, priority, apartmentId,
-                overdue, pageable));
+                overdue, mine, pageable));
     }
 
     // =========================================================================

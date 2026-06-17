@@ -45,6 +45,10 @@ public interface TicketService {
      * @param overdue     optional SLA filter: {@code true} = breached-open (sla_deadline
      *                    past AND status NOT IN DONE/CANCELLED), {@code false} = complement,
      *                    {@code null} = no SLA filtering. ANDed on top of role-scope.
+     * @param mine        optional assignee filter: {@code true} = only tickets assigned to
+     *                    the caller (server-derived from {@code principalId} — never a
+     *                    client-supplied id); {@code false}/{@code null} = no assignee
+     *                    filtering. ANDed on top of role-scope; never widens it.
      * @param pageable    pagination and sort parameters.
      * @return paginated summary responses.
      */
@@ -55,6 +59,7 @@ public interface TicketService {
                                                     TicketPriority priority,
                                                     UUID apartmentId,
                                                     Boolean overdue,
+                                                    Boolean mine,
                                                     Pageable pageable);
 
     /**

@@ -29,7 +29,10 @@ let bootstrapped = false;
 
 // Roles this portal serves. A shared host-scoped refresh cookie can restore a session belonging to
 // the wrong portal (e.g. a RESIDENT on the admin host), so the role must be validated client-side.
-const ALLOWED_ROLES = ['ADMIN', 'BOARD_MEMBER'];
+// TECHNICIAN admitted (backlog (c) P3): technicians use the admin portal for ticket handling only;
+// per-page RequireRole (P2 STEP B) bounces them off every non-/tickets route, so admission leaks no
+// admin-only data. Used at BOTH gates below (bootstrap + post-login). Resident portal stays RESIDENT-only.
+const ALLOWED_ROLES = ['ADMIN', 'BOARD_MEMBER', 'TECHNICIAN'];
 
 export const useAuthStore = create<AuthState>((set, get) => ({
   user: null,

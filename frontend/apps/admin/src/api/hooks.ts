@@ -5,6 +5,7 @@ const get = (url: string, params?: Record<string, unknown>) =>
   apiClient.get(url, { params }).then((r) => r.data);
 const post = (url: string, data?: unknown) => apiClient.post(url, data).then((r) => r.data);
 const put = (url: string, data?: unknown) => apiClient.put(url, data).then((r) => r.data);
+const del = (url: string) => apiClient.delete(url).then((r) => r.data);
 
 // Dashboard
 export const useDashboard = () =>
@@ -41,6 +42,41 @@ export const useBlocks = () =>
 // Users
 export const useUsers = (params?: Record<string, unknown>) =>
   useQuery({ queryKey: ['users', params], queryFn: () => get('/users', params) });
+
+export const useCreateUser = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: unknown) => post('/users', data),
+    meta: { skipErrorToast: true, successMessage: 'Đã tạo tài khoản.' },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['users'] }),
+  });
+};
+
+export const useUpdateUser = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: unknown }) => put(`/users/${id}`, data),
+    meta: { skipErrorToast: true, successMessage: 'Đã cập nhật tài khoản.' },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['users'] }),
+  });
+};
+
+export const useDeactivateUser = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => del(`/users/${id}`),
+    meta: { skipErrorToast: true, successMessage: 'Đã vô hiệu hóa tài khoản.' },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['users'] }),
+  });
+};
+
+export const useResetUserPassword = () => {
+  return useMutation({
+    mutationFn: ({ id, newPassword }: { id: string; newPassword: string }) =>
+      put(`/users/${id}/reset-password`, { newPassword }),
+    meta: { skipErrorToast: true, successMessage: 'Đã đặt lại mật khẩu.' },
+  });
+};
 
 // Residents
 export const useResidents = (params?: Record<string, unknown>) =>

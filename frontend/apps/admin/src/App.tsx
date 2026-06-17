@@ -7,6 +7,7 @@ import { LoginPage } from './pages/LoginPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { ApartmentsPage } from './pages/ApartmentsPage';
 import { ResidentsPage } from './pages/ResidentsPage';
+import { UsersPage } from './pages/UsersPage';
 import { TicketsPage } from './pages/TicketsPage';
 import { TicketDetailPage } from './pages/TicketDetailPage';
 import { ContractorsPage } from './pages/ContractorsPage';
@@ -53,6 +54,7 @@ export default function App() {
           <Route path="dashboard" element={<DashboardPage />} />
           <Route path="apartments" element={<RequireRole roles={['ADMIN','BOARD_MEMBER']}><ApartmentsPage /></RequireRole>} />
           <Route path="residents" element={<RequireRole roles={['ADMIN']}><ResidentsPage /></RequireRole>} />
+          <Route path="users" element={<RequireRole roles={['ADMIN']}><UsersPage /></RequireRole>} />
           <Route path="tickets" element={<TicketsPage />} />
           <Route path="tickets/:id" element={<TicketDetailPage />} />
           <Route path="contractors" element={<RequireRole roles={['ADMIN','BOARD_MEMBER']}><ContractorsPage /></RequireRole>} />

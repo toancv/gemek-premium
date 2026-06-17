@@ -16,6 +16,7 @@ export const vi: TranslationDict = {
     dashboard: 'Tổng quan',
     apartments: 'Căn hộ',
     residents: 'Cư dân',
+    users: 'Tài khoản',
     tickets: 'Phản ánh',
     contractors: 'Nhà thầu',
     announcements: 'Tin tức',

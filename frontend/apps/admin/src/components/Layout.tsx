@@ -18,6 +18,7 @@ const NAV = [
   { to: '/dashboard', label: t('nav.dashboard'), roles: ['ADMIN','BOARD_MEMBER','TECHNICIAN'] },
   { to: '/apartments', label: t('nav.apartments'), roles: ['ADMIN','BOARD_MEMBER'] },
   { to: '/residents', label: t('nav.residents'), roles: ['ADMIN'] },
+  { to: '/users', label: t('nav.users'), roles: ['ADMIN'] },
   { to: '/tickets', label: t('nav.tickets'), roles: ['ADMIN','BOARD_MEMBER','TECHNICIAN'] },
   { to: '/contractors', label: t('nav.contractors'), roles: ['ADMIN','BOARD_MEMBER'] },
   { to: '/announcements', label: t('nav.announcements'), roles: ['ADMIN'] },

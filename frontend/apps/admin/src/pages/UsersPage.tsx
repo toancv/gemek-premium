@@ -10,7 +10,8 @@ interface StaffUserItem {
   phone: string;
   email: string | null;
   role: 'ADMIN' | 'TECHNICIAN' | 'BOARD_MEMBER' | 'RESIDENT';
-  active: boolean;
+  // GET /api/users serializes the flag as `isActive` (UserResponse @JsonProperty); match it exactly.
+  isActive: boolean;
 }
 
 // Roles selectable when creating/editing a STAFF account. RESIDENT is intentionally
@@ -106,7 +107,7 @@ export function UsersPage() {
     setPhone(u.phone);
     setEmail(u.email ?? '');
     setRole(u.role);
-    setIsActive(u.active);
+    setIsActive(u.isActive);
     setShowForm(true);
   }
 
@@ -248,14 +249,14 @@ export function UsersPage() {
                 <td className="px-4 py-3 text-gray-500">{u.email ?? '—'}</td>
                 <td className="px-4 py-3">{labelFor('UserRole', u.role)}</td>
                 <td className="px-4 py-3">
-                  <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${u.active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
-                    {u.active ? 'Đang hoạt động' : 'Đã vô hiệu hóa'}
+                  <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${u.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                    {u.isActive ? 'Đang hoạt động' : 'Đã vô hiệu hóa'}
                   </span>
                 </td>
                 <td className="px-4 py-3 text-right whitespace-nowrap">
                   <button onClick={() => openEdit(u)} className="text-xs text-blue-600 hover:underline mr-3">Sửa</button>
                   <button onClick={() => openReset(u)} className="text-xs text-blue-600 hover:underline mr-3">Đặt lại mật khẩu</button>
-                  {u.active && u.id !== currentUserId && <button onClick={() => handleDeactivate(u)} className="text-xs text-red-600 hover:underline">Vô hiệu hóa</button>}
+                  {u.isActive && u.id !== currentUserId && <button onClick={() => handleDeactivate(u)} className="text-xs text-red-600 hover:underline">Vô hiệu hóa</button>}
                 </td>
               </tr>
             ))}

@@ -2,9 +2,67 @@ import React, { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { SearchableSelect, getVnErrorMessage, labelFor, formatVNDate } from '@gemek/ui';
 import type { SearchableOption } from '@gemek/ui';
-import { useTickets, useCreateTicket } from '../api/hooks';
+import { useTickets, useCreateTicket, useTicketCount } from '../api/hooks';
 import { apiClient } from '../api/client';
 import { t } from '../i18n/vi';
+
+// Ticket-stats block (backlog (c) P2.5): mirrors the dashboard's ticket semantics on the
+// Tickets page so a technician (admitted in P3) sees ticket stats here, not on the business
+// dashboard. Counts come from the role-scoped list endpoint via PageResponse.total — accurate
+// whole-dataset counts for the caller's scope, never page rows. SLA-breached is intentionally
+// OMITTED: the list has no overdue filter and the SLA endpoints are ADMIN/BOARD-only, so it is
+// not technician-derivable — omitted rather than fabricated (see reports/c-p2.5-ticketstats-source.md).
+const STAT_STATUSES: { status: string; color: string }[] = [
+  { status: 'NEW', color: 'text-blue-600' },
+  { status: 'ASSIGNED', color: 'text-purple-600' },
+  { status: 'IN_PROGRESS', color: 'text-yellow-600' },
+  { status: 'DONE', color: 'text-green-600' },
+];
+const STAT_CATEGORIES = ['MAINTENANCE_REPAIR', 'COMPLAINT', 'ADMINISTRATIVE', 'SUGGESTION_FEEDBACK', 'OTHER'];
+
+function StatCard({ title, value, color }: { title: string; value: string | number; color: string }) {
+  return (
+    <div className="bg-white rounded-lg border border-gray-200 p-6">
+      <p className="text-sm font-medium text-gray-500">{title}</p>
+      <p className={`text-3xl font-bold mt-1 ${color}`}>{value}</p>
+    </div>
+  );
+}
+
+function StatusCountCard({ status, color }: { status: string; color: string }) {
+  const { data, isLoading } = useTicketCount({ status });
+  return <StatCard title={labelFor('TicketStatus', status)} value={isLoading ? '…' : data ?? 0} color={color} />;
+}
+
+function CategoryCountRow({ category }: { category: string }) {
+  const { data, isLoading } = useTicketCount({ category });
+  return (
+    <div className="flex justify-between text-sm">
+      <span className="text-gray-500">{labelFor('TicketCategory', category)}</span>
+      <span className="font-medium">{isLoading ? '…' : data ?? 0}</span>
+    </div>
+  );
+}
+
+function TicketStats() {
+  return (
+    <div className="mb-6">
+      <div className="grid grid-cols-4 gap-4 mb-4">
+        {STAT_STATUSES.map((s) => (
+          <StatusCountCard key={s.status} status={s.status} color={s.color} />
+        ))}
+      </div>
+      <div className="bg-white rounded-lg border border-gray-200 p-6">
+        <h2 className="text-base font-semibold text-gray-900 mb-4">{t('dashboard.ticketsByCategory')}</h2>
+        <div className="grid grid-cols-2 gap-x-8 gap-y-2">
+          {STAT_CATEGORIES.map((c) => (
+            <CategoryCountRow key={c} category={c} />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 const STATUS_COLORS: Record<string, string> = {
   NEW: 'bg-blue-100 text-blue-700', ASSIGNED: 'bg-purple-100 text-purple-700',
@@ -74,6 +132,8 @@ export function TicketsPage() {
           {t('tickets.new')}
         </button>
       </div>
+
+      <TicketStats />
 
       <div className="bg-white rounded-lg border border-gray-200 p-4 mb-4 flex gap-3">
         <select value={category} onChange={(e) => { setCategory(e.target.value); setPage(0); }}

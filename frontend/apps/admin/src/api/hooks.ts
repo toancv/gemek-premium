@@ -95,6 +95,16 @@ export const useCreateResident = () => {
 export const useTickets = (params?: Record<string, unknown>) =>
   useQuery({ queryKey: ['tickets', params], queryFn: () => get('/tickets', params) });
 
+// Ticket stat count — derived from the role-scoped list endpoint. Reads PageResponse.total
+// (whole-dataset count for the caller's authorized scope), NOT page rows; size:1 minimizes
+// payload. Technician-safe (list @PreAuthorize admits TECHNICIAN) and ticket-only. See
+// reports/c-p2.5-ticketstats-source.md.
+export const useTicketCount = (filter: Record<string, unknown>) =>
+  useQuery({
+    queryKey: ['ticket-count', filter],
+    queryFn: () => get('/tickets', { ...filter, page: 0, size: 1 }).then((r) => r.total as number),
+  });
+
 export const useTicket = (id: string) =>
   useQuery({ queryKey: ['tickets', id], queryFn: () => get(`/tickets/${id}`), enabled: !!id });
 

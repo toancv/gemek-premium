@@ -197,6 +197,7 @@ public class TicketServiceImpl implements TicketService {
                                                            TicketCategory category,
                                                            TicketPriority priority,
                                                            UUID apartmentId,
+                                                           Boolean overdue,
                                                            Pageable pageable) {
         log.debug("listTickets — role={}, visibility={}, statuses={}, category={}",
                 role, visibility, statuses, category);
@@ -209,7 +210,7 @@ public class TicketServiceImpl implements TicketService {
         }
 
         Specification<Ticket> spec = buildScopeSpec(principalId, role, visibility)
-                .and(buildFilterSpec(statuses, category, priority, apartmentId));
+                .and(buildFilterSpec(statuses, category, priority, apartmentId, overdue));
 
         // RESIDENT rows outside the caller's own household can only be public tickets;
         // their summaries are redacted (G8) so the list cannot leak what the detail hides.
@@ -985,10 +986,13 @@ public class TicketServiceImpl implements TicketService {
      * @param category    optional category filter.
      * @param priority    optional priority filter.
      * @param apartmentId optional apartment filter.
+     * @param overdue     optional SLA filter; {@code null} = no SLA filtering (existing
+     *                    behavior), {@code true} = breached-open, {@code false} = complement.
      * @return the composed filter specification.
      */
     private Specification<Ticket> buildFilterSpec(List<TicketStatus> statuses, TicketCategory category,
-                                                   TicketPriority priority, UUID apartmentId) {
+                                                   TicketPriority priority, UUID apartmentId,
+                                                   Boolean overdue) {
         return (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
 
@@ -1003,6 +1007,19 @@ public class TicketServiceImpl implements TicketService {
             }
             if (apartmentId != null) {
                 predicates.add(cb.equal(root.get("apartment").get("id"), apartmentId));
+            }
+            if (overdue != null) {
+                // Canonical SLA-breach predicate, mirroring TicketRepository's report
+                // aggregates and findSlaOverdueCandidates: deadline present AND past
+                // AND status not closed. isNotNull guards Hibernate 6 three-valued logic
+                // so a NULL deadline is a definite non-match (never "overdue").
+                Predicate breached = cb.and(
+                        cb.isNotNull(root.get("slaDeadline")),
+                        cb.lessThan(root.<OffsetDateTime>get("slaDeadline"), OffsetDateTime.now()),
+                        cb.not(root.get("status").in(TicketStatus.DONE, TicketStatus.CANCELLED)));
+                // overdue=false = the logical complement; cb.not collapses the NULL-deadline
+                // case cleanly to "not overdue" via the isNotNull guard above.
+                predicates.add(Boolean.TRUE.equals(overdue) ? breached : cb.not(breached));
             }
 
             return cb.and(predicates.toArray(new Predicate[0]));

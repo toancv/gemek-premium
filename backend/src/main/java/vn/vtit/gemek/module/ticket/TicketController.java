@@ -90,6 +90,10 @@ public class TicketController {
      * @param category    optional category filter.
      * @param priority    optional priority filter.
      * @param apartmentId optional apartment UUID filter (ADMIN/BOARD_MEMBER).
+     * @param overdue     optional SLA filter: {@code true} = breached-open tickets
+     *                    (sla_deadline past AND status NOT IN DONE/CANCELLED),
+     *                    {@code false} = the complement, absent = no SLA filtering.
+     *                    Applied on top of role-scope — exposes no data outside scope.
      * @param page        0-based page index (default 0).
      * @param size        page size (default 20, max 100).
      * @param principal   the authenticated caller.
@@ -104,6 +108,7 @@ public class TicketController {
             @RequestParam(required = false) TicketCategory category,
             @RequestParam(required = false) TicketPriority priority,
             @RequestParam(required = false) UUID apartmentId,
+            @RequestParam(required = false) Boolean overdue,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             @AuthenticationPrincipal UserPrincipal principal) {
@@ -114,7 +119,7 @@ public class TicketController {
         String role = extractRole(principal);
         return ResponseEntity.ok(ticketService.listTickets(
                 principal.getId(), role, visibility, status, category, priority, apartmentId,
-                pageable));
+                overdue, pageable));
     }
 
     // =========================================================================

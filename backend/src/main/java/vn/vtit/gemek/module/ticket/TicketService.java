@@ -42,6 +42,9 @@ public interface TicketService {
      * @param category    optional category filter.
      * @param priority    optional priority filter.
      * @param apartmentId optional apartment filter (ADMIN/BOARD_MEMBER only).
+     * @param overdue     optional SLA filter: {@code true} = breached-open (sla_deadline
+     *                    past AND status NOT IN DONE/CANCELLED), {@code false} = complement,
+     *                    {@code null} = no SLA filtering. ANDed on top of role-scope.
      * @param pageable    pagination and sort parameters.
      * @return paginated summary responses.
      */
@@ -51,6 +54,7 @@ public interface TicketService {
                                                     TicketCategory category,
                                                     TicketPriority priority,
                                                     UUID apartmentId,
+                                                    Boolean overdue,
                                                     Pageable pageable);
 
     /**

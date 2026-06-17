@@ -677,3 +677,25 @@ Refresh token now travels BOTH channels: response body (legacy, pre-H4 FE) AND h
 - **Refresh is cookie-only as of this commit.** The H3 dual-mode body channel is removed: `/auth/login` and `/auth/refresh` no longer return `refreshToken` in the JSON body (`@JsonIgnore` on `LoginResponse.refreshToken`, kept only so the controller can build the cookie), and `/auth/refresh` accepts the httpOnly cookie as the sole token source (no cookie → 401; cookie without `X-Requested-With` → 403). Test-enforced in `AuthControllerTest` / `AuthCookieTest`.
 
 **Audit reconciliation:** **F-04 ≡ SEC-20** are the SAME finding (double-logged MEDIUM/INFO); unified as one item, MEDIUM governs, status **FIXED** (httpOnly cookie, H3/H4/close-out). **F-05** RESOLVED in H1/H2. Both `SECURITY_AUDIT_PROGRESS.md` and `reports/security-remediation.html` updated. **Hardening sprint H1–H5 COMPLETE.**
+
+## Backlog (c) — staff user-mgmt: CTO rulings (2026-06-17)
+
+Rulings on the two open decisions from `reports/c-staff-usermgmt-investigation.md` (the investigation stays the evidence; this entry records only the decisions). Item (c) moves to IN PROGRESS.
+
+1. **D1 = single-role model UNCHANGED.** A human who is both a resident and staff uses **two separate accounts** (two phones — phone is the unique login identifier, `uq_users_phone`). True multi-role (many-to-many) is **DEFERRED CONDITIONALLY**: revisit ONLY if a concrete "one person, two roles, in one session" requirement is confirmed. **Why:** multi-role is an authorization-core rewrite — single-authority → authority collection at `JwtAuthenticationFilter.java:134`, cascading to all 88 `@PreAuthorize` sites + every resident-scoping/IDOR guard — for a need not yet demonstrated. Cost of staying single-role is purely operational (two logins), no security risk.
+
+2. **D2 = (A) extend the EXISTING admin portal.** Add `TECHNICIAN` to the admin allowed-set. **No** separate technician portal, **no** new subdomain / nginx server block / build pipeline. The topology close-out ruling (separate subdomains per portal, `cookie-secure=true` in prod) is unchanged.
+
+3. **Technician UI scope = TICKETS ONLY** — queue/list + detail + status update. The other ~20 technician-authorized BE endpoints (parking / contractors / reads, investigation §2) are **NOT** surfaced in the technician UI for now.
+
+4. **UsersPage = admin staff management over the EXISTING `/api/users` endpoints** (no new BE endpoints for basic CRUD — list/create/get/update/deactivate/reset-password already exist, ADMIN-only). Manages **ADMIN + TECHNICIAN + BOARD_MEMBER**. Access stays **ADMIN-only** — BOARD_MEMBER does NOT get staff-list read.
+
+5. **Guardrail = UI confirmation for ADMIN role.** Creating a user with `role=ADMIN`, or promoting an existing user to `ADMIN`, requires an explicit confirmation step in the UI. (A backend DTO-level restriction on who may set `role=ADMIN` is a SEPARATE open question — this ruling covers the UI confirmation only.)
+
+6. **Audit_logs persistence is SPLIT OUT as the final phase (P4) and MAY be done in its own session.** Removing the `AuditLogAspect` DEBUG-stub + adding the `audit_logs` table + writing real DB rows is independent — **item (c) does NOT depend on it**.
+
+7. **Implementation order is FIXED for safety:** P1 build UsersPage → P2 audit & tighten `RequireRole` on ALL admin pages so a technician cannot reach any non-ticket page → **only THEN** P3 widen the admin allowed-set to admit `TECHNICIAN`. **Widening the gate before per-page `RequireRole` is in place is FORBIDDEN** — it would expose admin-only data to technicians (investigation §3: `tickets` + `dashboard` routes currently have NO `RequireRole`).
+
+8. **All H5 role-gate invariants MUST be preserved by any (c) change:** role validated at BOTH gate locations (bootstrap + post-login) in each app; mismatch → **LOCAL state reset only, NEVER `/auth/logout`**; `WRONG_PORTAL` surfaced via `getVnErrorMessage`. See the H5 point-6 entry above.
+
+**Phase plan:** P0 docs (this entry) → P1 UsersPage → P2 RequireRole audit → P3 admit TECHNICIAN (tickets-only) → P4 audit_logs (split, may be own session) → P5 docs (API-SPEC + user-guide). Recorded in `reports/module10-extended-backlog.md` item (c).

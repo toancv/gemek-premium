@@ -98,6 +98,13 @@ export const enumLabels = {
     ACTIVE: 'Hoạt động',
     INACTIVE: 'Ngừng',
   },
+  // vn.vtit.gemek.module.user.entity.UserRole — staff/account role display labels
+  UserRole: {
+    ADMIN: 'Quản trị viên',
+    TECHNICIAN: 'Kỹ thuật viên',
+    RESIDENT: 'Cư dân',
+    BOARD_MEMBER: 'Thành viên ban quản trị',
+  },
 } as const;
 
 export type EnumLabelType = keyof typeof enumLabels;

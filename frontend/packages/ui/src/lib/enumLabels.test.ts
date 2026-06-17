@@ -20,6 +20,9 @@ describe('labelFor', () => {
     expect(labelFor('AnnouncementScope', 'BLOCK')).toBe('Theo tòa');
     expect(labelFor('AnnouncementScope', 'ALL')).toBe('Toàn bộ');
     expect(labelFor('BookingStatus', 'COMPLETED')).toBe('Hoàn tất');
+    expect(labelFor('UserRole', 'ADMIN')).toBe('Quản trị viên');
+    expect(labelFor('UserRole', 'TECHNICIAN')).toBe('Kỹ thuật viên');
+    expect(labelFor('UserRole', 'BOARD_MEMBER')).toBe('Thành viên ban quản trị');
   });
 
   it('falls back to the raw key for unmapped values', () => {

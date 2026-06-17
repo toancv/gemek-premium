@@ -699,3 +699,14 @@ Rulings on the two open decisions from `reports/c-staff-usermgmt-investigation.m
 8. **All H5 role-gate invariants MUST be preserved by any (c) change:** role validated at BOTH gate locations (bootstrap + post-login) in each app; mismatch → **LOCAL state reset only, NEVER `/auth/logout`**; `WRONG_PORTAL` surfaced via `getVnErrorMessage`. See the H5 point-6 entry above.
 
 **Phase plan:** P0 docs (this entry) → P1 UsersPage → P2 RequireRole audit → P3 admit TECHNICIAN (tickets-only) → P4 audit_logs (split, may be own session) → P5 docs (API-SPEC + user-guide). Recorded in `reports/module10-extended-backlog.md` item (c).
+
+### Backlog (c) — P2.6: `overdue` filter on GET /api/tickets (2026-06-17)
+
+Decision after `reports/c-reports-investigation.md` established a BE change is required for technician-reachable SLA-breached **regardless of Cách 1/2**. Chose the minimal one: a filter, not a permission change.
+
+- **`overdue` Boolean filter added to GET /api/tickets** (the LIST endpoint that ALREADY admits TECHNICIAN and is ALREADY role-scoped). `@PreAuthorize` and `buildScopeSpec` UNCHANGED — this is a filter addition, exposes no new data. Param name `overdue` per CTO task (supersedes the never-implemented `slaBreached` placeholder in API-SPEC).
+- **Predicate mirrors the canonical SLA-breach definition** — not invented: `sla_deadline IS NOT NULL AND sla_deadline < now AND status NOT IN (DONE, CANCELLED)`, identical to `TicketRepository` report aggregates (`:43/91/130/159`) and `findSlaOverdueCandidates` (`:184-186`). Count matches Reports `slaBreached` / dashboard `overdueRequests` for the same dataset by construction.
+- **`overdue=false` semantics = logical complement** ("not overdue"), via `cb.not(breached)`. The leading `cb.isNotNull` makes a NULL deadline a definite non-match for `true`, so `cb.not` cleanly classifies NULL-deadline/future/closed as not-overdue. `null`/absent = no SLA filtering (existing behavior unchanged). Alternative (true-only active, false=no-filter) rejected — complement is well-defined and testable.
+- **Null-safety:** Criteria API (`cb.isNotNull` + `cb.lessThan`), never a JPQL nullable-param comparison (Hibernate 6 / PostgreSQL learning). NULL deadline never matches `overdue=true`.
+- **Verified:** suite 314/314; dev-DB canonical count 459 overdue-open / 603 total; integration test proves the real HTTP path; live :80 literal-459 deferred to the gated docker redeploy. Evidence: `reports/c-p2.6-overdue-filter.md`.
+- **FE consumption = P2.7** (not started): SLA-breached card via `useTicketCount({overdue:true})` + `?overdue=true` drill-down. Cách 2 confirmed — ruling 3 (technician UI = TICKETS ONLY) preserved.

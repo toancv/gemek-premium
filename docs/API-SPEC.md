@@ -711,7 +711,8 @@ Query params:
 - `assignedToContractorId` — UUID
 - `from` — ISO date (filter by `createdAt`)
 - `to` — ISO date
-- `slaBreached` — bool (tickets where `sla_deadline < NOW()` and status not terminal)
+- `slaBreached` — bool — **spec-only placeholder, NOT implemented**; use `overdue` below (the implemented equivalent).
+- `overdue` — bool (P2.6). `true` = breached-open tickets only: `sla_deadline IS NOT NULL AND sla_deadline < NOW() AND status NOT IN (DONE, CANCELLED)` — the canonical SLA-breach predicate, mirrored from the SLA scheduler + report aggregates, so the count matches the Reports `slaBreached` / dashboard `overdueRequests` for the same dataset. `false` = the complement (not overdue: NULL-deadline OR future OR closed). Omitted = no SLA filtering (unchanged behavior). Applied **on top of** role-scope — exposes no ticket outside the caller's authorized scope; a NULL deadline never matches `true`.
 - `search` — substring search on `title`
 - `visibility` — **RESIDENT only** (N3 P5): `mine` | `community`. Omitted/`null` = `mine` = the pre-N3 scoping (own apartment) — existing clients keep prior behavior unchanged. `community` = public tickets only (`is_public = true`, any apartment), rows REDACTED for non-household viewers (see GET /api/tickets/{id} redaction rule). Any other value yields `400 VALIDATION_ERROR`. Ignored for staff roles.
 

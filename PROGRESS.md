@@ -1,5 +1,25 @@
 # PROGRESS — Apartment Management System
 
+## ✅ COMPLETE (pending CTO :80 smoke) — Backlog (c) BOARD_MEMBER FE/BE 403 mismatches RESOLVED (Direction A) + announcements read-only for BOARD (2026-06-18)
+
+**Reports:** diagnosis `reports/c-boardmember-403-diagnosis.md` (authoritative mismatch list), fix `reports/c-boardmember-403-fix.md` (per-control table). FRONTEND ONLY — **zero BE `@PreAuthorize` changes**, no BOARD write capability granted. Closes the P2 STEP B-flagged item (`reports/c-p2-stepB-applied.md` §"In-page admin-only control audit").
+
+**CTO ruling:** Direction A for all 6 write mismatches (BOARD_MEMBER = read/oversight → hide write controls on FE), + open `/announcements` to BOARD read-only.
+
+**Role helper (NEW):** `src/lib/useRoleFlags.ts` → `useRoleFlags()` = `{role, isAdmin, isTechnician, isBoardMember}` from `authStore.user.role`. Replaces the ad-hoc inline `isTechnician` on TicketDetailPage; used by all 4 pages.
+
+**6 write controls gated to their EXACT BE allowed set (not just "not BOARD"):**
+- TicketDetailPage assign card → `isAdmin` (BE `/{id}/assign`=ADMIN); also kills the broken `GET /users` staff-picker for BOARD.
+- TicketDetailPage status card → `isAdmin || isTechnician` (BE `/{id}/status`=ADMIN,TECHNICIAN) — **TECHNICIAN keeps it**.
+- ApartmentsPage create + edit → `isAdmin` (BE POST/PUT=ADMIN).
+- ContractorsPage add + edit → `isAdmin` (BE POST/PUT=ADMIN).
+
+**#7 announcements read-only for BOARD:** `App.tsx` route + `Layout.tsx` nav `/announcements` → `[ADMIN,BOARD_MEMBER]`. AnnouncementsPage write controls (create button + per-row publish button) gated to `isAdmin` so opening the route creates NO new 403. BOARD gets list/status/paging only. BE announcement endpoints untouched.
+
+**Verify:** admin `tsc --noEmit` exit 0; `vite build` ✓ 590 modules (was 588) exit 0. /code-review (high, full working-tree diff) → **no findings**. `homePathFor`/landing/P2 routing untouched (BOARD still lands `/dashboard`). NOT browser-verified.
+
+**SMOKE (CTO, port 80 — admin app):** after `docker compose up -d --build nginx` — log in as **BOARD_MEMBER**: ticket detail shows NO assign + NO status card; apartments + contractors show NO add/edit; «Tin tức» nav visible, announcements list reads but NO create/publish. Log in as **ADMIN**: every control still present. Log in as **TECHNICIAN**: still has the ticket status card.
+
 ## ✅ COMPLETE (pending CTO :81 smoke) — Backlog (e) RESIDENT FE: profile EDITING on existing ProfilePage (2026-06-18)
 
 **Report:** `reports/e-resident-profile-fe.md` (static trace). FRONTEND ONLY, resident app only — BE / admin untouched, no apartment editing. Investigation `reports/e-resident-profile-investigation.md` confirmed all 3 `/api/auth/me*` endpoints already work for RESIDENT (no BE change).

@@ -1,11 +1,40 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from './client';
+import type { MyProfile } from '../types/profile';
 
 const get = (url: string, params?: Record<string, unknown>) =>
   apiClient.get(url, { params }).then((r) => r.data);
 const post = (url: string, data?: unknown) => apiClient.post(url, data).then((r) => r.data);
 const put = (url: string, data?: unknown) => apiClient.put(url, data).then((r) => r.data);
 const del = (url: string) => apiClient.delete(url).then((r) => r.data);
+
+// Self-service profile (the authenticated user's own account)
+// useMe is the canonical read of the current user's full profile (incl. email,
+// which authStore's lighter AuthUser does not hold). The profile page reads it
+// and refetches it after an update so the displayed values never go stale.
+export const useMe = () =>
+  useQuery<MyProfile>({ queryKey: ['me'], queryFn: () => get('/auth/me') });
+
+export const useUpdateOwnProfile = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    // Identity is server-derived from the principal; the body carries only the
+    // three editable fields. Phone/email uniqueness excludes the caller's own row.
+    mutationFn: (data: { fullName: string; phone: string; email: string | null }) =>
+      put('/auth/me/profile', data) as Promise<MyProfile>,
+    meta: { skipErrorToast: true, successMessage: 'Đã cập nhật thông tin cá nhân.' },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['me'] }),
+  });
+};
+
+export const useChangeOwnPassword = () =>
+  useMutation({
+    // Separate endpoint from the profile update — never merged. Verifies the
+    // current password; wrong value → WRONG_CURRENT_PASSWORD (422). Token survives.
+    mutationFn: (data: { currentPassword: string; newPassword: string }) =>
+      put('/auth/me/password', data),
+    meta: { skipErrorToast: true, successMessage: 'Đã đổi mật khẩu.' },
+  });
 
 // Dashboard
 export const useDashboard = () =>

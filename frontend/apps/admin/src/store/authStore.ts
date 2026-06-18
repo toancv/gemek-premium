@@ -22,6 +22,7 @@ interface AuthState {
   refreshToken: () => Promise<void>;
   isAuthenticated: () => boolean;
   setTokenAndUser: (token: string, user: AuthUser) => void;
+  setUser: (user: AuthUser) => void;
 }
 
 // Module-level guard: prevents React 18 StrictMode double-invocation from firing two refresh calls.
@@ -43,6 +44,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   setTokenAndUser: (token, user) =>
     set({ accessToken: token, user, authStatus: 'authenticated' }),
+
+  // Replace only the held user (no token/status change). Used after a self-service
+  // profile update so the sidebar/header name + login phone reflect the new value
+  // immediately, without re-bootstrapping the session. Does NOT touch the role-gate.
+  setUser: (user) => set({ user }),
 
   bootstrap: async () => {
     if (bootstrapped) return;

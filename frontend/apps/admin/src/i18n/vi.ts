@@ -22,6 +22,7 @@ export const vi: TranslationDict = {
     announcements: 'Tin tức',
     vehicles: 'Phương tiện',
     reports: 'Báo cáo',
+    profile: 'Trang cá nhân',
   },
   layout: {
     adminPortal: 'Cổng quản trị',

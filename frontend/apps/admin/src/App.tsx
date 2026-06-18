@@ -18,6 +18,7 @@ import { AnnouncementsPage } from './pages/AnnouncementsPage';
 // import { ParkingPage } from './pages/ParkingPage';
 import { ReportsPage } from './pages/ReportsPage';
 import { VehiclesPage } from './pages/VehiclesPage';
+import { ProfilePage } from './pages/ProfilePage';
 import { homePathFor } from './lib/homePathFor';
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
@@ -76,6 +77,9 @@ export default function App() {
           <Route path="parking" element={<HomeRedirect />} />
           <Route path="vehicles" element={<RequireRole roles={['ADMIN']}><VehiclesPage /></RequireRole>} />
           <Route path="reports" element={<RequireRole roles={['ADMIN','BOARD_MEMBER']}><ReportsPage /></RequireRole>} />
+          {/* Self-service profile: every authenticated admin-portal role, INCLUDING TECHNICIAN.
+              Reachable via nav only — does NOT change homePathFor (technician still lands /tickets). */}
+          <Route path="profile" element={<RequireRole roles={['ADMIN','BOARD_MEMBER','TECHNICIAN']}><ProfilePage /></RequireRole>} />
         </Route>
         <Route path="*" element={<HomeRedirect />} />
       </Routes>

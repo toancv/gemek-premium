@@ -30,6 +30,8 @@ const NAV = [
   // TEMP_HIDDEN_DEFERRED: parking nav — feature deferred, see PROGRESS.md
   // { to: '/parking', label: 'Parking', roles: ['ADMIN'] },
   { to: '/reports', label: t('nav.reports'), roles: ['ADMIN','BOARD_MEMBER'] },
+  // Self-service profile — visible to ALL admin-portal roles incl. TECHNICIAN.
+  { to: '/profile', label: t('nav.profile'), roles: ['ADMIN','BOARD_MEMBER','TECHNICIAN'] },
 ];
 
 export function Layout() {

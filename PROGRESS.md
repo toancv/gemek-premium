@@ -1,5 +1,17 @@
 # PROGRESS — Apartment Management System
 
+## ✅ AUD.1 DONE — Spring Data JPA auditing foundation (2026-06-18) — awaiting CTO go for AUD.2
+
+**Authoritative plan:** `reports/audit-columns-investigation.md` (§1 entity table, §3 AuditorAware, §4 column type/FK, §A/§B design). **AUD.1 report:** `reports/aud1-jpa-auditing.md`.
+
+**Shipped (AUD.1):** `V17__add_audit_columns.sql` adds nullable `uuid` actor columns + FK `users(id) ON DELETE SET NULL` to **17 tables** — BOTH `created_by`+`updated_by` on 12 mutable (users, blocks, apartments, residents, vehicles, contractors, maintenance_schedules, tickets, amenities, amenity_bookings, parking_slots, parking_assignments); `created_by` ONLY on 5 append-only (resident_history, contract_payments, guest_vehicles, notifications, notification_subscriptions). JPA: `JpaAuditingConfig` (`@EnableJpaAuditing(auditorAwareRef="auditorAware")`), `SecurityAuditorAware` (`@Component("auditorAware")` `AuditorAware<UUID>`, mirrors `AuditLogAspect:117-127`, empty when no `UserPrincipal`), base `@MappedSuperclass` `AuditableEntity` (both) + `CreatableEntity` (created_by only). 17 entities wired. Manual `@PrePersist`/`@PreUpdate` timestamps **untouched**.
+
+**Verify:** Flyway V17 applied; new `AuditingActorCaptureIntegrationTest` 4/4 green (actor capture, null-actor no-NPE, append-only no-updatedBy, timestamp regression). Full suite 331: 189 pass / 142 fail / 0 err — all 142 are the **pre-existing** `login→401` admin-hash corruption (`reports/ADMIN-LOGIN-DIAGNOSIS.md`), proven by reverting the 17 entity edits → `UserControllerTest` still 4/4 fails. Zero non-401 failures. /code-review: Java + migration clean; 2 test-clarity nits fixed, 1 (phone-collision, LOW) deferred. **API-SPEC: no change** — actor columns internal, not yet exposed (AUD.2 concern).
+
+**Untouched (by design):** Contract/Announcement entities + their migration (AUD.2 convergence); `AuditLogAspect` + `@Auditable` (AUD.3 removal).
+
+**Phase plan:** AUD.1 ✅ (this) → **AUD.2** converge contracts/announcements (add `updated_by`, switch to `@CreatedBy`/`@LastModifiedBy`, delete manual `setCreatedBy`, fix response mappers, no `created_by_user_id` rename per CTO) → **AUD.3** remove `AuditLogAspect`+`@Auditable` (keep `audit_logs` write-idle).
+
 ## ✅ COMPLETE (pending CTO :80 smoke) — Backlog (c) BOARD_MEMBER FE/BE 403 mismatches RESOLVED (Direction A) + announcements read-only for BOARD (2026-06-18)
 
 **Reports:** diagnosis `reports/c-boardmember-403-diagnosis.md` (authoritative mismatch list), fix `reports/c-boardmember-403-fix.md` (per-control table). FRONTEND ONLY — **zero BE `@PreAuthorize` changes**, no BOARD write capability granted. Closes the P2 STEP B-flagged item (`reports/c-p2-stepB-applied.md` §"In-page admin-only control audit").

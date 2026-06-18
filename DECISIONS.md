@@ -747,3 +747,14 @@ A phase shipping an API change without the matching API-SPEC update is INCOMPLET
 `CLAUDE.md` → "API-SPEC Sync (mandatory)". First reconciliation under this rule:
 `reports/c-p5-apispec-reconciliation.md` (spec bumped v2.1→v2.2: +10 endpoints, 10 mismatches fixed,
 4 stale entries flagged for ruling).
+
+### AUD.1 — Adopt Spring Data JPA auditing foundation (2026-06-18)
+
+Report: `reports/aud1-jpa-auditing.md`. Plan: `reports/audit-columns-investigation.md`.
+
+- **What:** `V17` adds nullable `uuid` `created_by`/`updated_by` (+ FK `users(id) ON DELETE SET NULL`) to 17 tables — both columns on 12 mutable, `created_by` only on 5 append-only. `@EnableJpaAuditing(auditorAwareRef="auditorAware")` + `AuditorAware<UUID>` (`SecurityAuditorAware`) + base `@MappedSuperclass` (`AuditableEntity`/`CreatableEntity`); 17 entities wired.
+- **Why UUID actor (not `@ManyToOne User`):** `UserPrincipal` already holds the id → no `userRepository` load per save; FK keeps DB-level integrity. Matches existing creator-column precedent.
+- **Why empty AuditorAware on unauthenticated:** system/seed/scheduler/Flyway/login writes have no principal → `Optional.empty()` → column stays NULL, no NPE. Verified Spring Data `touchAuditor` early-returns on empty, so the login `last_login_at` save does not null an existing `updated_by`.
+- **Why keep manual timestamps:** avoid churn — base class adds ONLY actor fields; `@PrePersist`/`@PreUpdate` `created_at`/`updated_at` unchanged. Both entity-listener and entity-method callbacks fire (JPA spec).
+- **Deferred:** Contract/Announcement convergence (AUD.2); `AuditLogAspect`/`@Auditable` removal (AUD.3). No `created_by_user_id` rename (CTO ruling).
+- **Alternatives rejected:** `AuditorAware<User>` (per-save DB hit, can't share a UUID base cleanly); plain UUID without FK (loses integrity, diverges from precedent).

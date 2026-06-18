@@ -1,5 +1,18 @@
 # PROGRESS — Apartment Management System
 
+## ✅ COMPLETE — Backlog (c): technician ticket stat-card role-split (2026-06-18)
+
+**Report:** `reports/c-tech-card-rolesplit-fe.md`. Closes the technician stat-card semantics follow-up from `reports/c-tech-overdue-card-diagnosis.md` (CTO ruling: scope-correct, label/semantics fix — FRONTEND ONLY; no BE/`@PreAuthorize`/authStore/route-guard change).
+
+**Applied (`TicketsPage.tsx` + `vi.ts`):**
+- TECHNICIAN only: «Trễ hạn» card → «Trễ hạn của tôi», sourced `overdue=true & mine=true` (own overdue, not the 327:1 shared-NEW-queue 328); drill-down `?overdue=true&mine=true` (count == drilled list); «Phân công cho tôi» (mine) card hidden; single combined red chip clears overdue+mine together. Grid `grid-cols-5`.
+- ADMIN/BOARD: unchanged byte-for-byte — «Trễ hạn» = `overdue=true` building-wide, drill `?overdue=true`, mine card visible, two independent chips, `grid-cols-6`.
+- Status/category cards untouched (scope-correct per diagnosis).
+- Role from `useAuthStore((s) => s.user?.role)` (same source as nav role-gate). New i18n key `dashboard.slaBreachedMine`.
+- Verify: admin `tsc --noEmit` exit 0; vite build green (588 modules). /code-review 1🔴 fixed (chip guards `overdue || mine`). NOT browser-verified.
+
+**SMOKE (CTO, port 80):** after `docker compose up -d --build nginx` (FE-only, rebuild not restart) — technician sees «Trễ hạn của tôi» ≈ their own overdue (≈1 for tested tech, not 328) and NO «Phân công cho tôi» card; ADMIN unchanged (building-wide «Trễ hạn», «Phân công cho tôi» present).
+
 ## ✅ COMPLETE — Form-Feedback Standardization (2026-06-10)
 
 **Standard:** All forms → errors = VN inline by BE error CODE (never raw serverMsg); success = toast.

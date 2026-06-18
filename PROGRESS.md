@@ -1,5 +1,21 @@
 # PROGRESS — Apartment Management System
 
+## ✅ COMPLETE (pending CTO :81 smoke) — Backlog (e) RESIDENT FE: profile EDITING on existing ProfilePage (2026-06-18)
+
+**Report:** `reports/e-resident-profile-fe.md` (static trace). FRONTEND ONLY, resident app only — BE / admin untouched, no apartment editing. Investigation `reports/e-resident-profile-investigation.md` confirmed all 3 `/api/auth/me*` endpoints already work for RESIDENT (no BE change).
+
+**Added — edit own fullName/phone/email on the EXISTING `apps/resident/src/pages/ProfilePage.tsx`** (`/profile`, bottom-tab «Cá nhân»). Additive: existing view card, change-password block, logout all intact.
+- New hook `useUpdateOwnProfile` (`api/hooks.ts`) → `PUT /auth/me/profile`, `meta {skipErrorToast, successMessage:'Cập nhật thông tin thành công.'}`, `onSuccess → invalidateQueries(['me'])` — the **real `useMe` key is `['me']`** (`hooks.ts:12`). Mirrors `useChangePassword`.
+- Edit form seeded from `useMe` via `useEffect` (re-seeds after refetch → no stale). Errors inline VN via `getVnErrorMessage` (PHONE_ALREADY_EXISTS / EMAIL_ALREADY_EXISTS / VALIDATION_ERROR). Empty email → `undefined` (BE null). Own unchanged phone → no confirm + BE self-exclusion → succeeds.
+- **Phone-change confirm via `@gemek/ui` `Modal`** (resident had no confirm dialog before): fires IFF `phone.trim() !== me.phone`; fullName/email-only edits submit directly. Token NOT rotated (subject=UUID) → no logout on phone change.
+- Toast stays **center** (existing `<Toaster />`, default position) via `meta.successMessage`. No top-right, no new Toaster. New `profile.*` i18n keys in resident `vi.ts`. Types `MeProfile`/`ApiError` — no `any`.
+
+**Verify:** resident `tsc && vite build` green (584 modules, exit 0). /code-review (high, full diff) → **no findings**. NOT browser-verified.
+
+**SMOKE (CTO, port 81 — resident app):** after `docker compose up -d --build nginx` (resident runs :81; admin :80) — a resident edits name/email (NO confirm) vs phone (Modal confirm "Bạn sắp đổi số điện thoại đăng nhập…"), sees a **center** success toast, the page reflects new name/phone/email **without re-login**, and wrong-current-password on the existing password block still errors in VN.
+
+**(e) now covers admin + resident.**
+
 ## ✅ (e) FE follow-up (2026-06-18): admin header/sidebar user-name now links to `/profile` (`Layout.tsx`, header span + sidebar footer → `<Link to="/profile">`, all roles). tsc+vite green. Pending CTO :80 smoke.
 
 ## ✅ COMPLETE (pending CTO :80 smoke) — Backlog (e) FRONTEND: self-service profile page (2026-06-18)

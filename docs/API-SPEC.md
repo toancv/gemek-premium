@@ -1,8 +1,10 @@
 # API Specification — Apartment Management System
 
-**Version:** 2.1
-**Date:** 2026-06-08
+**Version:** 2.2
+**Date:** 2026-06-18
 **Base URL:** `https://{host}/api`
+
+> **Reconciliation (2026-06-18, v2.2):** spec reconciled against the live controller layer (code = ground truth). 10 endpoints added (were in code, missing here), 10 contract mismatches corrected, 4 stale entries flagged for CTO ruling. Full diff: `reports/c-p5-apispec-reconciliation.md`.
 **Auth:** `Authorization: Bearer <accessToken>` header on all endpoints unless marked **Public**.
 
 ---
@@ -515,6 +517,18 @@ Errors: `409 CONFLICT` (apartment has active residents)
 
 ## 4. Residents
 
+### GET /api/residents/me
+
+**Auth:** RESIDENT
+**Description:** Return the authenticated resident's own active residency record. Identity is derived
+exclusively from the JWT principal — no user id is accepted as a param.
+
+Response `200 OK` — `ResidentResponse` (same shape as `GET /api/residents/{id}` detail).
+
+Errors: `404 NOT_FOUND` (caller has no active residency).
+
+---
+
 ### GET /api/residents
 
 **Auth:** ADMIN
@@ -646,8 +660,10 @@ Response: same shape as above.
 ### GET /api/vehicles
 
 **Auth:** ADMIN
-Query params: `apartmentId`, `residentId`, `type`, `licensePlate`, `isActive`, `search` (case-insensitive substring on licensePlate, brand, model — null/blank = no filter)
+Query params (as-built): `apartmentId`, `search` (case-insensitive substring on licensePlate, brand, model — null/blank = no filter)
 Default sort: `apartment.unitNumber asc`, `licensePlate asc`
+
+> **Reconciliation v2.2:** the controller binds only `apartmentId` + `search` (+ `page`/`size`). The prior `residentId`/`type`/`licensePlate`/`isActive` params were spec-only and are NOT implemented — removed.
 
 Response `200 OK` — paginated:
 ```json
@@ -690,6 +706,14 @@ Request:
 
 Response `201 Created` — vehicle object.
 Errors: `409 CONFLICT` (license plate already registered)
+
+---
+
+### GET /api/vehicles/{id}
+
+**Auth:** ADMIN, RESIDENT (own vehicle)
+
+Response `200 OK` — `VehicleResponse` (same shape as the vehicle list item).
 
 ---
 
@@ -952,6 +976,17 @@ Errors: `400 VALIDATION_ERROR` (unsupported MIME type), `413` (file exceeds size
 
 ---
 
+### DELETE /api/tickets/{id}/photos/{photoId}
+
+**Auth:** ADMIN, TECHNICIAN (assigned)
+**Description:** Remove a single photo from a ticket. `{photoId}` is the photo UUID.
+
+Response `204 No Content`
+
+Errors: `404 NOT_FOUND` (ticket or photo not found)
+
+---
+
 ### POST /api/tickets/{id}/rate
 
 **Auth:** RESIDENT (own apartment, only when `status = DONE`, one rating per ticket)
@@ -1116,6 +1151,17 @@ Errors: `409 AMENITY_NAME_EXISTS` (name already taken), `400 VALIDATION_ERROR`
 
 ---
 
+### GET /api/amenities/{id}
+
+**Auth:** Any authenticated role
+**Description:** Return a single amenity by id.
+
+Response `200 OK` — `AmenityResponse` (same shape as the amenity list item).
+
+Errors: `404 NOT_FOUND`
+
+---
+
 ### PUT /api/amenities/{id}
 
 **Auth:** ADMIN
@@ -1162,7 +1208,7 @@ Response `200 OK`:
 
 ### GET /api/amenity-bookings
 
-**Auth:** ADMIN (all bookings), RESIDENT (own bookings only)
+**Auth:** ADMIN, TECHNICIAN, BOARD_MEMBER (all bookings), RESIDENT (own bookings only)
 Query params: `amenityId`, `status`, `from`, `to`, `residentId` (ADMIN only)
 Default sort: `bookingDate desc`
 
@@ -1263,7 +1309,7 @@ Response `200 OK`
 
 ### GET /api/contractors
 
-**Auth:** ADMIN, BOARD_MEMBER
+**Auth:** ADMIN, TECHNICIAN, BOARD_MEMBER
 Query params: `specialty`, `isActive`, `search` (company name substring)
 Default sort: `companyName asc`
 
@@ -1311,7 +1357,7 @@ Response `201 Created` — contractor object.
 
 ### GET /api/contractors/{id}
 
-**Auth:** ADMIN, BOARD_MEMBER
+**Auth:** ADMIN, TECHNICIAN, BOARD_MEMBER
 **Description:** Full contractor profile including active contract count and computed average rating.
 
 Response `200 OK`:
@@ -1357,6 +1403,8 @@ Errors: `409 CONFLICT` (contractor has active contracts)
 
 ### GET /api/contractors/{id}/work-history
 
+> ⚠️ **STALE (reconciliation v2.2 — awaiting CTO ruling):** no controller mapping exists for this path. Possibly superseded by `GET /api/contractors/{id}/contracts` below, or genuinely dropped. NOT deleted pending ruling — see `reports/c-p5-apispec-reconciliation.md` §C S1.
+
 **Auth:** ADMIN, BOARD_MEMBER
 **Description:** Tickets that were assigned to this contractor.
 
@@ -1367,7 +1415,42 @@ Response `200 OK` — paginated list of ticket summaries (same shape as ticket l
 
 ---
 
+### GET /api/contractors/{id}/contracts
+
+**Auth:** ADMIN, BOARD_MEMBER
+**Description:** List the contracts belonging to a contractor. As-built contract LIST surface (nested under the contractor).
+
+Query params: `page` (default 0), `size` (default 20)
+
+Response `200 OK` — `PageResponse<ContractResponse>` (each item same shape as the `GET /api/contracts` list item below).
+
+---
+
+### POST /api/contractors/{id}/contracts
+
+**Auth:** ADMIN
+**Description:** Create a contract for a contractor. As-built contract CREATE surface (nested under the contractor; `{id}` is the contractor UUID, so no `contractorId` in the body).
+
+Request:
+```json
+{
+  "title": "string",
+  "scope": "string|null",
+  "contractValue": 120000000,
+  "currency": "VND",
+  "startDate": "2026-01-01",
+  "endDate": "2026-12-31",
+  "notes": "string|null"
+}
+```
+
+Response `201 Created` — `ContractResponse` (contract summary object).
+
+---
+
 ### GET /api/contracts
+
+> ⚠️ **STALE (reconciliation v2.2 — awaiting CTO ruling):** no top-level controller mapping exists; the as-built LIST is `GET /api/contractors/{id}/contracts` (above). NOT deleted pending ruling — see `reports/c-p5-apispec-reconciliation.md` §C S2.
 
 **Auth:** ADMIN, BOARD_MEMBER
 Query params: `contractorId`, `status`, `expiringWithinDays` (int), `from`, `to`
@@ -1396,6 +1479,8 @@ Response `200 OK` — paginated:
 
 ### POST /api/contracts
 
+> ⚠️ **STALE (reconciliation v2.2 — awaiting CTO ruling):** no top-level controller mapping exists; the as-built CREATE is `POST /api/contractors/{id}/contracts` (above, contractor id from the path, no `contractorId` in body). NOT deleted pending ruling — see `reports/c-p5-apispec-reconciliation.md` §C S3.
+
 **Auth:** ADMIN
 
 Request:
@@ -1418,7 +1503,7 @@ Response `201 Created` — contract summary object.
 
 ### GET /api/contracts/{id}
 
-**Auth:** ADMIN, BOARD_MEMBER
+**Auth:** ADMIN, BOARD_MEMBER, TECHNICIAN
 **Description:** Full contract detail including payments and schedules.
 
 Response `200 OK`:
@@ -1521,7 +1606,7 @@ Response `201 Created`:
 
 ### GET /api/contracts/{id}/payments
 
-**Auth:** ADMIN, BOARD_MEMBER
+**Auth:** ADMIN
 Default sort: `paymentDate desc`
 
 Response `200 OK` — paginated list of payment objects.
@@ -1530,7 +1615,7 @@ Response `200 OK` — paginated list of payment objects.
 
 ### GET /api/contracts/{id}/schedules
 
-**Auth:** ADMIN
+**Auth:** ADMIN, TECHNICIAN
 
 Response `200 OK`:
 ```json
@@ -1572,6 +1657,8 @@ Response `201 Created` — schedule object.
 
 ### PUT /api/maintenance-schedules/{id}
 
+> ⚠️ **STALE (reconciliation v2.2 — awaiting CTO ruling):** no controller mapping exists; schedules are create + list only in code (no update path). NOT deleted pending ruling — see `reports/c-p5-apispec-reconciliation.md` §C S4.
+
 **Auth:** ADMIN
 
 Request:
@@ -1595,7 +1682,7 @@ Response `200 OK` — updated schedule object.
 
 ### GET /api/parking/slots
 
-**Auth:** ADMIN
+**Auth:** ADMIN, TECHNICIAN
 Query params: `type`, `status`, `zone`
 Default sort: `slotNumber asc`
 
@@ -1650,6 +1737,28 @@ Response `200 OK`
 
 ---
 
+### GET /api/parking/slots/{id}
+
+**Auth:** ADMIN, TECHNICIAN
+**Description:** Return a single parking slot, including its current assignment if any.
+
+Response `200 OK` — `ParkingSlotResponse` (same shape as the slot list item).
+
+Errors: `404 NOT_FOUND`
+
+---
+
+### DELETE /api/parking/slots/{id}
+
+**Auth:** ADMIN
+**Description:** Delete a parking slot.
+
+Response `204 No Content`
+
+Errors: `409 CONFLICT` (slot has an active assignment)
+
+---
+
 ### POST /api/parking/slots/{id}/assign
 
 **Auth:** ADMIN
@@ -1680,10 +1789,23 @@ Errors: `409 CONFLICT` (slot already has an active assignment)
 ### GET /api/parking/assignments
 
 **Auth:** ADMIN
-Query params: `slotId`, `vehicleId`, `apartmentId`, `isActive` (bool)
+Query params (as-built): `apartmentId`, `slotId`, `active` (bool)
 Default sort: `startDate desc`
 
+> **Reconciliation v2.2:** the controller binds `apartmentId`, `slotId`, `active` (+ `page`/`size`). The prior `vehicleId` param was spec-only (not implemented) and `isActive` is named `active` in code.
+
 Response `200 OK` — paginated list of assignment objects.
+
+---
+
+### GET /api/parking/assignments/{id}
+
+**Auth:** ADMIN
+**Description:** Return a single parking assignment by id.
+
+Response `200 OK` — `ParkingAssignmentResponse` (same shape as the assignment list item).
+
+Errors: `404 NOT_FOUND`
 
 ---
 
@@ -1706,10 +1828,12 @@ Response `200 OK`
 
 ---
 
-### GET /api/parking/guest-vehicles
+### GET /api/parking/guests
 
-**Auth:** ADMIN
-Query params: `apartmentId`, `from`, `to`, `licensePlate`
+> **Reconciliation v2.2:** as-built path is `/api/parking/guests` (was documented as `/guest-vehicles`). Role and params corrected to match controller.
+
+**Auth:** ADMIN, TECHNICIAN
+Query params (as-built): `apartmentId`, `active` (bool)
 Default sort: `entryTime desc`
 
 Response `200 OK` — paginated:
@@ -1732,10 +1856,10 @@ Response `200 OK` — paginated:
 
 ---
 
-### POST /api/parking/guest-vehicles
+### POST /api/parking/guests
 
 **Auth:** ADMIN, TECHNICIAN
-**Description:** Log a guest vehicle entry.
+**Description:** Log a guest vehicle entry. (As-built path is `/api/parking/guests` — was `/guest-vehicles`.)
 
 Request:
 ```json
@@ -1752,10 +1876,10 @@ Response `201 Created` — guest vehicle object.
 
 ---
 
-### PUT /api/parking/guest-vehicles/{id}/exit
+### PUT /api/parking/guests/{id}/checkout
 
 **Auth:** ADMIN, TECHNICIAN
-**Description:** Record guest vehicle exit.
+**Description:** Record guest vehicle exit. (As-built path is `/api/parking/guests/{id}/checkout` — was `/guest-vehicles/{id}/exit`.)
 
 Request:
 ```json
@@ -2089,6 +2213,18 @@ Errors: `403 FORBIDDEN` (notification belongs to another user)
 **Description:** Mark all of the calling user's notifications as read.
 
 Response `204 No Content`
+
+---
+
+### GET /api/notifications/unread-count
+
+**Auth:** Any authenticated role
+**Description:** Return the count of the calling user's unread notifications (drives the FE bell badge). Identity is derived from the principal.
+
+Response `200 OK`:
+```json
+{ "unreadCount": 5 }
+```
 
 ---
 

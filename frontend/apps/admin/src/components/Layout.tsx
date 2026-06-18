@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Outlet, NavLink, useNavigate } from 'react-router-dom';
+import { Outlet, NavLink, Link, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 import { useNotifications, useMarkAllRead, useUnreadCount, useMarkNotificationRead } from '../api/hooks';
 import { t } from '../i18n/vi';
@@ -70,7 +70,7 @@ export function Layout() {
           ))}
         </nav>
         <div className="px-6 py-4 border-t border-gray-700">
-          <p className="text-gray-300 text-sm font-medium truncate">{user?.fullName}</p>
+          <Link to="/profile" className="block text-gray-300 text-sm font-medium truncate hover:text-white hover:underline">{user?.fullName}</Link>
           <p className="text-gray-500 text-xs">{user?.role}</p>
           <button onClick={handleLogout} className="mt-2 text-xs text-gray-400 hover:text-white">{t('layout.signOut')}</button>
         </div>
@@ -110,7 +110,7 @@ export function Layout() {
               </div>
             )}
           </div>
-          <span className="text-sm text-gray-700">{user?.fullName}</span>
+          <Link to="/profile" className="text-sm text-gray-700 hover:text-blue-600 hover:underline">{user?.fullName}</Link>
         </header>
         <main className="flex-1 overflow-y-auto p-6"><Outlet /></main>
       </div>

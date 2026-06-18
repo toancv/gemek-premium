@@ -1,5 +1,7 @@
 # PROGRESS — Apartment Management System
 
+## ✅ (e) FE follow-up (2026-06-18): admin header/sidebar user-name now links to `/profile` (`Layout.tsx`, header span + sidebar footer → `<Link to="/profile">`, all roles). tsc+vite green. Pending CTO :80 smoke.
+
 ## ✅ COMPLETE (pending CTO :80 smoke) — Backlog (e) FRONTEND: self-service profile page (2026-06-18)
 
 **Report:** `reports/e-fe-profile-page.md`. FRONTEND ONLY — no BE / no authStore role-gate / no `homePathFor` change. All 3 endpoints pre-existed (verified): `GET /api/auth/me`, `PUT /api/auth/me/profile`, `PUT /api/auth/me/password`.

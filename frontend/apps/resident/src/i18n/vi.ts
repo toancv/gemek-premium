@@ -109,6 +109,17 @@ export const vi: TranslationDict = {
     confirmNewPassword: 'Xác nhận mật khẩu mới',
     changing: 'Đang đổi...',
     signOut: 'Đăng xuất',
+    editInfo: 'Cập nhật thông tin',
+    fullName: 'Họ và tên',
+    phone: 'Số điện thoại',
+    email: 'Email',
+    emailPlaceholder: 'Không bắt buộc',
+    save: 'Lưu thay đổi',
+    saving: 'Đang lưu...',
+    phoneConfirmTitle: 'Đổi số điện thoại đăng nhập',
+    phoneConfirmBody: 'Bạn sắp đổi số điện thoại đăng nhập thành {phone}. Lần sau hãy dùng số này để đăng nhập.',
+    phoneConfirmOk: 'Xác nhận',
+    phoneConfirmCancel: 'Hủy',
   },
 };
 

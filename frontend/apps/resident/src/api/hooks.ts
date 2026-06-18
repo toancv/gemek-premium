@@ -111,6 +111,17 @@ export const useCreateVehicle = () => {
 export const useChangePassword = () =>
   useMutation({ mutationFn: (data: unknown) => put('/auth/me/password', data), meta: { skipErrorToast: true, successMessage: 'Đổi mật khẩu thành công.' } });
 
+export const useUpdateOwnProfile = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: { fullName: string; phone: string; email?: string }) => put('/auth/me/profile', data),
+    // Errors shown inline on the form (skipErrorToast); success → center toast.
+    meta: { skipErrorToast: true, successMessage: 'Cập nhật thông tin thành công.' },
+    // Refetch the same ['me'] key useMe registers so the view reflects new values (no stale).
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['me'] }),
+  });
+};
+
 export const useNotifications = () =>
   useQuery({ queryKey: ['notifications'], queryFn: () => get('/notifications', { size: 20 }) });
 

@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useTicket, useAssignTicket, useUpdateTicketStatus } from '../api/hooks';
 import { SearchableSelect, VNDatePicker, getVnErrorMessage, labelFor, formatVNDateTime } from '@gemek/ui';
 import { apiClient } from '../api/client';
-import { useAuthStore } from '../store/authStore';
+import { useRoleFlags } from '../lib/useRoleFlags';
 import { t } from '../i18n/vi';
 
 const STATUS_COLORS: Record<string, string> = {
@@ -24,10 +24,13 @@ export function TicketDetailPage() {
   const { data: ticket, isLoading, isError } = useTicket(id!);
   const assignTicket = useAssignTicket();
   const updateStatus = useUpdateTicketStatus();
-  // Assign (Phân công) is ADMIN-only on the BE (PUT /{id}/assign → hasRole ADMIN) — a TECHNICIAN
-  // would 403. Hide the assign card from TECHNICIAN. Status update is ADMIN+TECHNICIAN (core
-  // technician work) so it stays visible. ADMIN/BOARD_MEMBER views are unchanged.
-  const isTechnician = useAuthStore((s) => s.user?.role) === 'TECHNICIAN';
+  // Write controls are gated to their exact BE @PreAuthorize set (backlog (c) BOARD_MEMBER 403
+  // fix, Direction A — see reports/c-boardmember-403-diagnosis.md):
+  //   Assign (PUT /{id}/assign)  = hasRole('ADMIN')              → isAdmin only
+  //   Status (PUT /{id}/status)  = hasAnyRole('ADMIN','TECHNICIAN') → isAdmin || isTechnician
+  // BOARD_MEMBER (read/oversight) sees neither — both would 403. The assign staff-picker also
+  // calls GET /users (ADMIN-only), so gating assign to ADMIN removes that broken call for BOARD.
+  const { isAdmin, isTechnician } = useRoleFlags();
 
   const [assignedUserId, setAssignedUserId] = useState('');
   const [assignedContractorId, setAssignedContractorId] = useState('');
@@ -182,8 +185,8 @@ export function TicketDetailPage() {
 
       {/* Admin Actions */}
       <div className="grid grid-cols-2 gap-4">
-        {/* Assign (Phân công): ADMIN-only on BE — hidden from TECHNICIAN (see isTechnician above). */}
-        {!isTechnician && (
+        {/* Assign (Phân công): ADMIN-only on BE (PUT /{id}/assign) — shown only to ADMIN. */}
+        {isAdmin && (
         <div className="bg-white rounded-lg border border-gray-200 p-6">
           <h2 className="text-base font-semibold mb-3">Phân công</h2>
           <form onSubmit={handleAssign} className="space-y-3">
@@ -225,6 +228,9 @@ export function TicketDetailPage() {
           </form>
         </div>
         )}
+        {/* Status (Cập nhật trạng thái): BE PUT /{id}/status = hasAnyRole('ADMIN','TECHNICIAN').
+            Shown to ADMIN + TECHNICIAN; hidden from BOARD_MEMBER (would 403). */}
+        {(isAdmin || isTechnician) && (
         <div className="bg-white rounded-lg border border-gray-200 p-6">
           <h2 className="text-base font-semibold mb-3">Cập nhật trạng thái</h2>
           <form onSubmit={handleStatusUpdate} className="space-y-3">
@@ -243,6 +249,7 @@ export function TicketDetailPage() {
             </button>
           </form>
         </div>
+        )}
       </div>
     </div>
   );

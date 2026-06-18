@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useAnnouncements, useCreateAnnouncement, usePublishAnnouncement, useBlocks } from '../api/hooks';
+import { useRoleFlags } from '../lib/useRoleFlags';
 import { getVnErrorMessage, labelFor, formatVNDate } from '@gemek/ui';
 
 const TYPES = ['GENERAL','URGENT','MAINTENANCE','AMENITY','EVENT'];
@@ -13,6 +14,11 @@ export function AnnouncementsPage() {
   const [floor, setFloor] = useState('');
   const [pendingPublishId, setPendingPublishId] = useState<string | null>(null);
   const [publishError, setPublishError] = useState('');
+
+  // Announcement writes (create + publish) are ADMIN-only on the BE (POST/publish = hasRole('ADMIN')).
+  // BOARD_MEMBER now reads this page (route opened read-only — backlog (c) #7) but sees NO write
+  // control: gate create + publish to ADMIN so opening the route does not create a new 403 mismatch.
+  const { isAdmin } = useRoleFlags();
 
   const { data, isLoading, isError } = useAnnouncements({ page, size: 20 });
   const { data: blocksData } = useBlocks();
@@ -72,7 +78,9 @@ export function AnnouncementsPage() {
     <div>
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Thông báo</h1>
-        <button onClick={() => { setShowCreate(true); resetForm(); }} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium">Tạo thông báo</button>
+        {isAdmin && (
+          <button onClick={() => { setShowCreate(true); resetForm(); }} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium">Tạo thông báo</button>
+        )}
       </div>
       {isError && <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-700 mb-4">Không thể tải danh sách thông báo.</div>}
       {publishError && <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-700 mb-4">{publishError}</div>}
@@ -99,7 +107,7 @@ export function AnnouncementsPage() {
                 <td className="px-4 py-3 text-gray-500">{a.publishedAt ? formatVNDate(a.publishedAt) : '—'}</td>
                 <td className="px-4 py-3"><span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${a.publishedAt ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>{a.publishedAt ? 'Đã đăng' : 'Nháp'}</span></td>
                 <td className="px-4 py-3">
-                  {!a.publishedAt && (
+                  {isAdmin && !a.publishedAt && (
                     <button
                       onClick={() => { setPublishError(''); setPendingPublishId(a.id); }}
                       className="text-blue-600 hover:underline text-xs"

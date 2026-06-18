@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { getVnErrorMessage, labelFor } from '@gemek/ui';
 import { useContractors, useCreateContractor, useUpdateContractor } from '../api/hooks';
+import { useRoleFlags } from '../lib/useRoleFlags';
 import { t } from '../i18n/vi';
 
 const SPECIALTIES = ['CLEANING','SECURITY','ELEVATOR','FIRE_SAFETY','LANDSCAPING','PEST_CONTROL','ELECTRICAL','PLUMBING','OTHER'];
@@ -10,6 +11,10 @@ export function ContractorsPage() {
   const [page, setPage] = useState(0);
   const [modal, setModal] = useState<null | 'create' | any>(null);
   const [formError, setFormError] = useState('');
+
+  // Contractor create/edit are ADMIN-only on the BE (POST + PUT /contractors = hasRole('ADMIN')).
+  // Hide both write controls from BOARD_MEMBER (read/oversight) — backlog (c) 403 fix, Direction A.
+  const { isAdmin } = useRoleFlags();
 
   const { data, isLoading, isError } = useContractors({ page, size: 20, ...(search && { search }) });
   const createContractor = useCreateContractor();
@@ -33,7 +38,9 @@ export function ContractorsPage() {
     <div>
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold text-gray-900">{t('contractors.title')}</h1>
-        <button onClick={() => { setModal('create'); setFormError(''); }} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium">{t('contractors.add')}</button>
+        {isAdmin && (
+          <button onClick={() => { setModal('create'); setFormError(''); }} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium">{t('contractors.add')}</button>
+        )}
       </div>
       <div className="bg-white rounded-lg border border-gray-200 p-4 mb-4">
         <input value={search} onChange={(e) => { setSearch(e.target.value); setPage(0); }} placeholder={t('contractors.searchPlaceholder')} className="border border-gray-300 rounded-md px-3 py-2 text-sm w-80 focus:outline-none focus:ring-2 focus:ring-blue-500" />
@@ -63,7 +70,7 @@ export function ContractorsPage() {
                 <td className="px-4 py-3"><span className="inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700">{labelFor('ContractorSpecialty', c.specialty)}</span></td>
                 <td className="px-4 py-3">{c.rating ? `${'★'.repeat(Math.round(c.rating))} ${c.rating.toFixed(1)}` : '—'}</td>
                 <td className="px-4 py-3"><span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${c.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>{labelFor('ActiveStatus', c.isActive ? 'ACTIVE' : 'INACTIVE')}</span></td>
-                <td className="px-4 py-3"><button onClick={() => { setModal(c); setFormError(''); }} className="text-blue-600 hover:underline text-xs">{t('common.edit')}</button></td>
+                <td className="px-4 py-3">{isAdmin && (<button onClick={() => { setModal(c); setFormError(''); }} className="text-blue-600 hover:underline text-xs">{t('common.edit')}</button>)}</td>
               </tr>
             ))}
           </tbody>

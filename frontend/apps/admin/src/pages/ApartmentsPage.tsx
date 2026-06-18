@@ -3,6 +3,7 @@ import { SearchableSelect, getVnErrorMessage, labelFor } from '@gemek/ui';
 import type { SearchableOption } from '@gemek/ui';
 import { useApartments, useBlocks, useCreateApartment, useUpdateApartment } from '../api/hooks';
 import { apiClient } from '../api/client';
+import { useRoleFlags } from '../lib/useRoleFlags';
 import { t } from '../i18n/vi';
 
 export function ApartmentsPage() {
@@ -16,6 +17,10 @@ export function ApartmentsPage() {
   const [blockError, setBlockError] = useState('');
   const [createError, setCreateError] = useState('');
   const [editError, setEditError] = useState('');
+
+  // Apartment create/edit are ADMIN-only on the BE (POST + PUT /apartments = hasRole('ADMIN')).
+  // Hide both write controls from BOARD_MEMBER (read/oversight) — backlog (c) 403 fix, Direction A.
+  const { isAdmin } = useRoleFlags();
 
   const params = { page, size: 20, ...(search && { search }), ...(status && { status }), ...(blockId && { blockId }) };
   const { data, isLoading, isError } = useApartments(params);
@@ -47,10 +52,12 @@ export function ApartmentsPage() {
     <div>
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold text-gray-900">{t('apartments.title')}</h1>
-        <button onClick={openCreate}
-          className="px-4 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700">
-          + Thêm căn hộ
-        </button>
+        {isAdmin && (
+          <button onClick={openCreate}
+            className="px-4 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700">
+            + Thêm căn hộ
+          </button>
+        )}
       </div>
 
       <div className="bg-white rounded-lg border border-gray-200 p-4 mb-4 flex gap-3">
@@ -99,7 +106,9 @@ export function ApartmentsPage() {
                 </td>
                 <td className="px-4 py-3">{apt.primaryContact?.fullName ?? '—'}</td>
                 <td className="px-4 py-3">
-                  <button onClick={() => { setEditApt(apt); setEditError(''); }} className="text-blue-600 hover:underline text-xs">{t('common.edit')}</button>
+                  {isAdmin && (
+                    <button onClick={() => { setEditApt(apt); setEditError(''); }} className="text-blue-600 hover:underline text-xs">{t('common.edit')}</button>
+                  )}
                 </td>
               </tr>
             ))}

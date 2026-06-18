@@ -23,7 +23,9 @@ const NAV = [
   { to: '/users', label: t('nav.users'), roles: ['ADMIN'] },
   { to: '/tickets', label: t('nav.tickets'), roles: ['ADMIN','BOARD_MEMBER','TECHNICIAN'] },
   { to: '/contractors', label: t('nav.contractors'), roles: ['ADMIN','BOARD_MEMBER'] },
-  { to: '/announcements', label: t('nav.announcements'), roles: ['ADMIN'] },
+  // Announcements: BOARD_MEMBER reads (route opened read-only, backlog (c) #7); write controls on
+  // the page are gated to ADMIN. RESIDENT/TECHNICIAN excluded.
+  { to: '/announcements', label: t('nav.announcements'), roles: ['ADMIN','BOARD_MEMBER'] },
   { to: '/vehicles', label: t('nav.vehicles'), roles: ['ADMIN'] },
   // TEMP_HIDDEN_DEFERRED: amenities nav — feature deferred, see PROGRESS.md
   // { to: '/amenities', label: 'Amenities', roles: ['ADMIN'] },

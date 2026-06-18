@@ -70,7 +70,7 @@ export default function App() {
           <Route path="tickets" element={<RequireRole roles={['ADMIN','BOARD_MEMBER','TECHNICIAN']}><TicketsPage /></RequireRole>} />
           <Route path="tickets/:id" element={<RequireRole roles={['ADMIN','BOARD_MEMBER','TECHNICIAN']}><TicketDetailPage /></RequireRole>} />
           <Route path="contractors" element={<RequireRole roles={['ADMIN','BOARD_MEMBER']}><ContractorsPage /></RequireRole>} />
-          <Route path="announcements" element={<RequireRole roles={['ADMIN']}><AnnouncementsPage /></RequireRole>} />
+          <Route path="announcements" element={<RequireRole roles={['ADMIN','BOARD_MEMBER']}><AnnouncementsPage /></RequireRole>} />
           {/* TEMP_HIDDEN_DEFERRED: amenities route — feature deferred, see PROGRESS.md */}
           <Route path="amenities" element={<HomeRedirect />} />
           {/* TEMP_HIDDEN_DEFERRED: parking route — feature deferred, see PROGRESS.md */}

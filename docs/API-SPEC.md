@@ -1403,7 +1403,7 @@ Errors: `409 CONFLICT` (contractor has active contracts)
 
 ### GET /api/contractors/{id}/work-history
 
-> ⚠️ **STALE (reconciliation v2.2 — awaiting CTO ruling):** no controller mapping exists for this path. Possibly superseded by `GET /api/contractors/{id}/contracts` below, or genuinely dropped. NOT deleted pending ruling — see `reports/c-p5-apispec-reconciliation.md` §C S1.
+> 🚧 **[PLANNED — chưa implement]** No controller mapping. NOT a duplicate: this returns **tickets** assigned to a contractor, which no live endpoint serves — `GET /api/tickets` does not bind an `assignedToContractorId` filter (TicketController:106-128), and `GET /api/contractors/{id}/contracts` returns contracts, not tickets. Genuinely planned-but-unbuilt; kept as intent record. Resolution: `reports/c-p5-stale-resolution.md` S1.
 
 **Auth:** ADMIN, BOARD_MEMBER
 **Description:** Tickets that were assigned to this contractor.
@@ -1450,7 +1450,7 @@ Response `201 Created` — `ContractResponse` (contract summary object).
 
 ### GET /api/contracts
 
-> ⚠️ **STALE (reconciliation v2.2 — awaiting CTO ruling):** no top-level controller mapping exists; the as-built LIST is `GET /api/contractors/{id}/contracts` (above). NOT deleted pending ruling — see `reports/c-p5-apispec-reconciliation.md` §C S2.
+> 🚧 **[PLANNED — chưa implement]** No controller mapping. NOT a duplicate: the live `GET /api/contractors/{id}/contracts` (above) lists contracts for **one** contractor with `page`/`size` only — it does not cover this system-wide, cross-contractor filtered list (`contractorId`/`status`/`expiringWithinDays`/`from`/`to`). Genuinely planned-but-unbuilt; kept as intent record. Resolution: `reports/c-p5-stale-resolution.md` S2.
 
 **Auth:** ADMIN, BOARD_MEMBER
 Query params: `contractorId`, `status`, `expiringWithinDays` (int), `from`, `to`
@@ -1474,30 +1474,6 @@ Response `200 OK` — paginated:
   ]
 }
 ```
-
----
-
-### POST /api/contracts
-
-> ⚠️ **STALE (reconciliation v2.2 — awaiting CTO ruling):** no top-level controller mapping exists; the as-built CREATE is `POST /api/contractors/{id}/contracts` (above, contractor id from the path, no `contractorId` in body). NOT deleted pending ruling — see `reports/c-p5-apispec-reconciliation.md` §C S3.
-
-**Auth:** ADMIN
-
-Request:
-```json
-{
-  "contractorId": "uuid",
-  "title": "string",
-  "scope": "string|null",
-  "contractValue": 120000000,
-  "currency": "VND",
-  "startDate": "2026-01-01",
-  "endDate": "2026-12-31",
-  "notes": "string|null"
-}
-```
-
-Response `201 Created` — contract summary object.
 
 ---
 
@@ -1657,7 +1633,7 @@ Response `201 Created` — schedule object.
 
 ### PUT /api/maintenance-schedules/{id}
 
-> ⚠️ **STALE (reconciliation v2.2 — awaiting CTO ruling):** no controller mapping exists; schedules are create + list only in code (no update path). NOT deleted pending ruling — see `reports/c-p5-apispec-reconciliation.md` §C S4.
+> 🚧 **[PLANNED — chưa implement]** No controller mapping. NOT a duplicate: maintenance schedules have create + list only (`POST`/`GET /api/contracts/{id}/schedules`, ContractorController:280-298); no update path exists anywhere. Genuinely planned-but-unbuilt; kept as intent record. Resolution: `reports/c-p5-stale-resolution.md` S4.
 
 **Auth:** ADMIN
 

@@ -103,3 +103,15 @@ Already self-flagged in spec (NOT counted as new findings):
 
 All additions sourced from controller + DTO. No response field invented; where a shape is reused it
 points to the already-documented object.
+
+---
+
+## §C RESOLVED (2026-06-18) — see `reports/c-p5-stale-resolution.md`
+
+CTO ruling applied per entry (strict duplicate test against controller code):
+- S1 work-history → **KEEP [PLANNED]** (no tickets-by-contractor endpoint; `GET /api/tickets` has no `assignedToContractorId` filter).
+- S2 contracts list → **KEEP [PLANNED]** (nested `/contractors/{id}/contracts` is per-contractor, no system-wide filtered list).
+- S3 contracts create → **REMOVED** (duplicate of `POST /api/contractors/{id}/contracts`, ContractorController:190).
+- S4 maintenance-schedules PUT → **KEEP [PLANNED]** (schedules are create+list only; no update path).
+
+The 3 KEEPs are now marked `🚧 [PLANNED — chưa implement]` in API-SPEC so future reconciliation does not re-flag them as stale.

@@ -25,6 +25,7 @@ import vn.vtit.gemek.module.auth.dto.LoginResponse;
 import vn.vtit.gemek.module.auth.dto.RefreshTokenRequest;
 import vn.vtit.gemek.module.auth.dto.RefreshTokenResponse;
 import vn.vtit.gemek.module.auth.dto.UpdateFcmTokenRequest;
+import vn.vtit.gemek.module.auth.dto.UpdateOwnProfileRequest;
 import vn.vtit.gemek.common.util.PhoneUtils;
 import vn.vtit.gemek.module.user.dto.UserDetailResponse;
 import vn.vtit.gemek.module.user.entity.User;
@@ -273,6 +274,42 @@ public class AuthServiceImpl implements AuthService {
         user.setPasswordHash(passwordEncoder.encode(request.newPassword()));
         userRepository.save(user);
         log.info("Password changed for user id={}", user.getId());
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    @Transactional
+    public UserDetailResponse updateOwnProfile(UserPrincipal principal, UpdateOwnProfileRequest request) {
+        // Server-derived identity — the client never supplies a target id (IDOR-safe, mirrors getMe).
+        User user = userRepository.findById(principal.getId())
+                .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND, "User not found."));
+
+        // Normalize to the canonical 0xxxxxxxxx form; malformed input throws VALIDATION_ERROR.
+        String normalizedPhone = PhoneUtils.normalize(request.phone());
+
+        // Phone uniqueness — exclude the caller's own row so an unchanged phone is not a conflict.
+        if (!normalizedPhone.equals(user.getPhone()) && userRepository.existsByPhone(normalizedPhone)) {
+            throw new AppException(ErrorCode.PHONE_ALREADY_EXISTS,
+                    "Phone number is already registered: " + normalizedPhone);
+        }
+
+        // Email is informational and unique-nullable; blank → null, self-row excluded from the check.
+        String email = (request.email() != null && !request.email().isBlank()) ? request.email() : null;
+        if (email != null && !email.equals(user.getEmail()) && userRepository.existsByEmail(email)) {
+            throw new AppException(ErrorCode.EMAIL_ALREADY_EXISTS,
+                    "Email address is already registered: " + email);
+        }
+
+        // Mutate ONLY the three self-editable fields — role, isActive, and passwordHash are
+        // never touched here, so this endpoint cannot be used to self-promote or self-activate.
+        user.setFullName(request.fullName());
+        user.setPhone(normalizedPhone);
+        user.setEmail(email);
+        User saved = userRepository.save(user);
+        log.info("Profile self-updated for user id={}", saved.getId());
+        return userMapper.toUserDetailResponse(saved);
     }
 
     /**

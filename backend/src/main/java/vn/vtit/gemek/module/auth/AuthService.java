@@ -12,6 +12,7 @@ import vn.vtit.gemek.module.auth.dto.LoginResponse;
 import vn.vtit.gemek.module.auth.dto.RefreshTokenRequest;
 import vn.vtit.gemek.module.auth.dto.RefreshTokenResponse;
 import vn.vtit.gemek.module.auth.dto.UpdateFcmTokenRequest;
+import vn.vtit.gemek.module.auth.dto.UpdateOwnProfileRequest;
 import vn.vtit.gemek.module.user.dto.UserDetailResponse;
 
 /**
@@ -71,6 +72,26 @@ public interface AuthService {
      * @throws vn.vtit.gemek.common.exception.AppException with {@code INVALID_CREDENTIALS} if current password is wrong.
      */
     void changePassword(UserPrincipal principal, ChangePasswordRequest request);
+
+    /**
+     * Updates the authenticated user's own profile (fullName / phone / email).
+     *
+     * <p>Identity is server-derived from the principal — never a client-supplied id.
+     * Only the three self-editable fields are mutated; role, isActive, and password
+     * are immutable on this path (privilege-escalation guard). Phone/email uniqueness
+     * is enforced excluding the caller's own row, so a no-op (unchanged) value succeeds.
+     *
+     * @param principal the authenticated user.
+     * @param request   the self-editable profile fields.
+     * @return the updated profile (same shape as {@code GET /api/auth/me}).
+     * @throws vn.vtit.gemek.common.exception.AppException with {@code PHONE_ALREADY_EXISTS}
+     *         if the new phone belongs to another user.
+     * @throws vn.vtit.gemek.common.exception.AppException with {@code EMAIL_ALREADY_EXISTS}
+     *         if the new email belongs to another user.
+     * @throws vn.vtit.gemek.common.exception.AppException with {@code VALIDATION_ERROR}
+     *         if the phone is not a valid VN mobile number.
+     */
+    UserDetailResponse updateOwnProfile(UserPrincipal principal, UpdateOwnProfileRequest request);
 
     /**
      * Updates the authenticated user's FCM device token.

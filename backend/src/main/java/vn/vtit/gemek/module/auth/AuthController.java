@@ -35,13 +35,15 @@ import vn.vtit.gemek.module.auth.dto.LoginResponse;
 import vn.vtit.gemek.module.auth.dto.RefreshTokenRequest;
 import vn.vtit.gemek.module.auth.dto.RefreshTokenResponse;
 import vn.vtit.gemek.module.auth.dto.UpdateFcmTokenRequest;
+import vn.vtit.gemek.module.auth.dto.UpdateOwnProfileRequest;
 import vn.vtit.gemek.module.user.dto.UserDetailResponse;
 
 /**
  * REST controller for authentication endpoints.
  *
  * <p>Public endpoints: {@code /login}, {@code /refresh}.
- * Protected endpoints: {@code /logout}, {@code /me}, {@code /me/password}, {@code /me/fcm-token}.
+ * Protected endpoints: {@code /logout}, {@code /me}, {@code /me/password}, {@code /me/profile},
+ * {@code /me/fcm-token}.
  */
 @RestController
 @RequestMapping("/api/auth")
@@ -189,6 +191,25 @@ public class AuthController {
             @Valid @RequestBody ChangePasswordRequest request) {
         authService.changePassword(principal, request);
         return ResponseEntity.noContent().build();
+    }
+
+    /**
+     * Updates the authenticated user's own profile (fullName / phone / email).
+     *
+     * <p>Authenticated-only (any role) via the {@code anyRequest().authenticated()} rule —
+     * no {@code @PreAuthorize}. Identity is server-derived from the principal; the body
+     * carries no id and cannot change role/isActive/password (privilege-escalation guard).
+     *
+     * @param principal the authenticated user principal.
+     * @param request   the self-editable profile fields.
+     * @return 200 OK with the updated profile (same shape as {@code GET /api/auth/me}).
+     */
+    @PutMapping("/me/profile")
+    @Operation(summary = "Update own profile")
+    public ResponseEntity<UserDetailResponse> updateOwnProfile(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @Valid @RequestBody UpdateOwnProfileRequest request) {
+        return ResponseEntity.ok(authService.updateOwnProfile(principal, request));
     }
 
     /**

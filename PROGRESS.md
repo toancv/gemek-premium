@@ -1,5 +1,22 @@
 # PROGRESS — Apartment Management System
 
+## ✅ COMPLETE (pending CTO :80 smoke) — Backlog (e) FRONTEND: self-service profile page (2026-06-18)
+
+**Report:** `reports/e-fe-profile-page.md`. FRONTEND ONLY — no BE / no authStore role-gate / no `homePathFor` change. All 3 endpoints pre-existed (verified): `GET /api/auth/me`, `PUT /api/auth/me/profile`, `PUT /api/auth/me/password`.
+
+**Added — admin portal `/profile` page («Trang cá nhân»), reachable by ALL admin-portal roles incl. TECHNICIAN:**
+- `src/pages/ProfilePage.tsx` (NEW) — three INDEPENDENT areas: (A) read-only view (fullName/phone/email/role — role NOT editable); (B) update profile `PUT /me/profile` (fullName/phone/email); (C) change password `PUT /me/password` (current+new+confirm). Update and password are separate forms + separate submits — never merged.
+- Route: `App.tsx` `<Route path="profile" RequireRole [ADMIN,BOARD_MEMBER,TECHNICIAN]>`. Nav: `Layout.tsx` `/profile` item, same 3 roles. i18n `nav.profile`.
+- **homePathFor UNTOUCHED** — technician still LANDS on `/tickets`; `/profile` is nav-reachable only, no redirect-loop.
+- **Phone-change confirm** (ruling §C.4): real overlay gate (mirrors P1 ADMIN-confirm) fires IFF `phone.trim() !== me.phone`; email/fullName edits skip it.
+- **Refetch-after-update:** `useUpdateOwnProfile.onSuccess` invalidates `['me']`; `doUpdateProfile` calls new `authStore.setUser` from the 200 body so sidebar/header name + login phone update. Token NOT rotated → no logout.
+- Errors inline VN via `getVnErrorMessage`: `PHONE_ALREADY_EXISTS`→phone, `EMAIL_ALREADY_EXISTS`→email, `WRONG_CURRENT_PASSWORD`(422)→current pw, `PASSWORD_POLICY_VIOLATION`→new pw. Own unchanged phone → confirm-skip + BE self-exclusion → succeeds. Password fields cleared on success.
+- New hooks `useMe`/`useUpdateOwnProfile`/`useChangeOwnPassword` (reuse `meta.successMessage`+`skipErrorToast`). New type `src/types/profile.ts` `MyProfile` (no `any`). New `authStore.setUser` (held-user only; no role-gate touch).
+
+**Verify:** admin `tsc --noEmit` exit 0; `vite build` green (589 modules, 2.94s). /code-review (cavecrew-reviewer over diff) → **No issues.** NOT browser-verified.
+
+**SMOKE (CTO, port 80):** after `docker compose up -d --build nginx` (FE-only rebuild) — each role (ADMIN/BOARD/TECHNICIAN) sees «Trang cá nhân» in nav and can open it; editing email (NO confirm) vs phone (confirm dialog) differs; wrong current pw → VN error, correct one succeeds; after phone change the page shows the new phone and the user stays logged in.
+
 ## ✅ COMPLETE — Backlog (e) BACKEND: self-service profile-update endpoint (2026-06-18)
 
 **Report:** `reports/e-be-profile-endpoint.md` · smoke raw `reports/e-be-profile-smoke.raw.txt`. Closes the one BE gap from `reports/e-self-profile-investigation.md` (§B: self profile-update of fullName/phone/email was MISSING).

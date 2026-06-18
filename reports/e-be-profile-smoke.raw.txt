@@ -1,0 +1,10 @@
+admin token len: 344
+smoke user phone=0981754701 (len 10) email=smoke-81754701@gemek.vn
+create resp: {"id":"9c0d4e72-dbd9-49ad-9fe2-ec58baeab993","email":"smoke-81754701@gemek.vn","fullName":"Smoke Tech","phone":"0981754701","role":"TECHNICIAN","dateOfBirth":null,"createdAt":"2026-06-18T03:51:42.240687253Z","isActive":true}
+tech token len: 351
+--- PUT happy (rename + new email, keep phone) ---
+{"id":"9c0d4e72-dbd9-49ad-9fe2-ec58baeab993","email":"smoke-renamed-81754701@gemek.vn","fullName":"Smoke Renamed","phone":"0981754701","role":"TECHNICIAN","dateOfBirth":null,"avatarUrl":null,"lastLoginAt":"2026-06-18T03:51:42.650966Z","createdAt":"2026-06-18T03:51:42.240687Z","isActive":true}
+--- PUT crafted role=ADMIN isActive=false password=... ---
+{"id":"9c0d4e72-dbd9-49ad-9fe2-ec58baeab993","email":"smoke-renamed-81754701@gemek.vn","fullName":"Smoke Renamed","phone":"0981754701","role":"TECHNICIAN","dateOfBirth":null,"avatarUrl":null,"lastLoginAt":"2026-06-18T03:51:42.650966Z","createdAt":"2026-06-18T03:51:42.240687Z","isActive":true}
+--- GET /me (same token still valid) ---
+{"id":"9c0d4e72-dbd9-49ad-9fe2-ec58baeab993","email":"smoke-renamed-81754701@gemek.vn","fullName":"Smoke Renamed","phone":"0981754701","role":"TECHNICIAN","dateOfBirth":null,"avatarUrl":null,"lastLoginAt":"2026-06-18T03:51:42.650966Z","createdAt":"2026-06-18T03:51:42.240687Z","isActive":true}

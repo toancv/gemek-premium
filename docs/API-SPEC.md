@@ -184,6 +184,31 @@ Errors: `400 VALIDATION_ERROR` (weak password), `401 UNAUTHORIZED` (wrong curren
 
 ---
 
+### PUT /api/auth/me/profile
+
+**Auth:** Any authenticated role
+**Description:** Update the authenticated user's own profile. Identity is server-derived from the
+principal — the body carries no id, and `role`/`isActive`/`password` cannot be changed here
+(privilege-escalation guard; extra JSON keys are ignored at bind time). Phone/email uniqueness is
+enforced excluding the caller's own row, so submitting the unchanged phone/email succeeds. The
+access-token subject is the user UUID, so a phone/email change does not invalidate the session.
+
+Request:
+```json
+{
+  "fullName": "string (required, max 255)",
+  "phone": "string (required, VN mobile 0xxxxxxxxx, max 20)",
+  "email": "string|null (optional, valid email, max 255, blank treated as null)"
+}
+```
+
+Response `200 OK`: same shape as `GET /api/auth/me` (the updated profile).
+
+Errors: `400 VALIDATION_ERROR` (malformed phone/email), `409 PHONE_ALREADY_EXISTS` (phone used by
+another user), `409 EMAIL_ALREADY_EXISTS` (email used by another user)
+
+---
+
 ### PUT /api/auth/me/fcm-token
 
 **Auth:** Any authenticated role

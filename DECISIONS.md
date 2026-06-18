@@ -5,6 +5,12 @@ Format: Date | Decision | Reasoning | Alternatives
 
 ---
 
+## 2026-06-18 | (e) self-profile endpoint — DTO shape & validation choices
+
+- **Decision:** `PUT /api/auth/me/profile` DTO `UpdateOwnProfileRequest` requires `fullName` and `phone` (`@NotBlank`), `email` optional. role/isActive/password deliberately ABSENT.
+- **Reasoning:** phone is the NOT-NULL unique login identifier — a self-update must keep a valid phone, so `@NotBlank` (mirrors `CreateUserRequest`, stricter than admin `UpdateUserRequest` which allows blank). role/isActive omitted so the record cannot bind them = structural privilege-escalation guard (no client-supplied id either → no IDOR). Uniqueness pre-checks exclude the caller's own row so an unchanged phone/email is not a false conflict.
+- **Alternatives considered:** (a) reuse admin `UpdateUserRequest` — rejected, it carries role/isActive (escalation surface) and a target id. (b) PATCH-style partial nulls — rejected, FE sends the full small form; full-replace of 3 fields is simpler and matches `GET /me` shape.
+
 ## 2026-06-09 | Cluster 1 form-feedback patch (5 forms)
 
 **Decision:** Login (both apps): error → `getVnErrorMessage(code)`, success → navigate (no toast). Change-password / Book amenity / Rate ticket: success → `toast.success('Vietnamese message')`; error → `getVnErrorMessage(code)`. Inline English success removed from ProfilePage (was `pwSuccess` state + static string).

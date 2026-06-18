@@ -1,5 +1,20 @@
 # PROGRESS — Apartment Management System
 
+## ✅ COMPLETE — Backlog (e) BACKEND: self-service profile-update endpoint (2026-06-18)
+
+**Report:** `reports/e-be-profile-endpoint.md` · smoke raw `reports/e-be-profile-smoke.raw.txt`. Closes the one BE gap from `reports/e-self-profile-investigation.md` (§B: self profile-update of fullName/phone/email was MISSING).
+
+**Added — `PUT /api/auth/me/profile`** (authenticated, any role; no `@PreAuthorize` → `anyRequest().authenticated()`):
+- New DTO `UpdateOwnProfileRequest` — ONLY `fullName`/`phone`/`email`; no `role`/`isActive`/`password`/`id`. Validation mirrors `CreateUserRequest`.
+- `AuthService.updateOwnProfile` + impl: identity **server-derived** from `principal.getId()` (IDOR-safe, mirrors `getMe`/`changePassword`); `PhoneUtils.normalize`; phone + email uniqueness pre-checks **excluding the caller's own row** (`PHONE_ALREADY_EXISTS`/`EMAIL_ALREADY_EXISTS`); mutates only the three fields; returns `UserDetailResponse` (same shape as `GET /me`).
+- **Escalation guard:** `role`/`isActive`/`password` immutable here — record binding ignores smuggled JSON keys; service never reads/sets them. Proven by test #3 AND over-the-wire smoke (crafted `role=ADMIN`+`isActive=false` → role stays TECHNICIAN, isActive stays true).
+- **Token unaffected:** subject = user UUID, so a phone/email change does not invalidate the access token (smoke: same token used for `GET /me` after change).
+- `docs/API-SPEC.md` updated.
+
+**Verify:** new `SelfProfileUpdateIntegrationTest` **8/8** (happy/IDOR/escalation-guard/phone-uniqueness+self-exclusion/email-uniqueness/malformed-phone/malformed-email); full backend suite **327/327 green, BUILD SUCCESS**. HTTP smoke through nginx:80 against rebuilt backend confirmed all three invariants.
+
+**NEXT (not started):** FE profile page — admin portal `/profile` route (all-roles, the universal-access exception), nav entry, wire read (`GET /me`) + change-password (`PUT /me/password`, live) + this new `PUT /me/profile`. Mirror resident `ProfilePage` UX + UsersPage `PHONE_ALREADY_EXISTS` handling. See investigation §D. **Awaiting CTO go.**
+
 ## ✅ COMPLETE — Backlog (c): technician ticket stat-card role-split (2026-06-18)
 
 **Report:** `reports/c-tech-card-rolesplit-fe.md`. Closes the technician stat-card semantics follow-up from `reports/c-tech-overdue-card-diagnosis.md` (CTO ruling: scope-correct, label/semantics fix — FRONTEND ONLY; no BE/`@PreAuthorize`/authStore/route-guard change).

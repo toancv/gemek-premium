@@ -738,3 +738,12 @@ Full evidence: `reports/c-identity-confusion-diagnosis.md`. Verdict: dev/test ar
 - **Backend proven clean (no cross-request/cross-session bleed exists server-side):** `SecurityContextHolder` = default `MODE_THREADLOCAL` (no `setStrategyName`, no inheritable/global strategy); no singleton/static field holds the principal (`JwtAuthenticationFilter` deps all `final`; `getMe(principal)` is a method arg; every `private User user` is a JPA entity); principal resolved per-request from the request's own token, user loaded from the DB each request (SEC-06 intact, `JwtAuthenticationFilter.java:118-134`); Redis keys are user+jti scoped (`AuthServiceImpl.java:140/179/227`); no `HttpSession` anywhere (stateless JWT).
 - **Production: self-resolves.** Separate subdomains per portal → separate cookie jars per host (the topology close-out ruling). Consistent with the prior "cookie-overwrite is dev-only" ruling — the second login can only clobber the first within ONE shared jar on ONE host.
 - **Severity: LOW / informational.** Not privilege escalation, not cross-user data theft. Optional, non-security FE hardening logged as backlog item (f).
+
+### Standing rule — API-SPEC sync on every API change (2026-06-18)
+
+`docs/API-SPEC.md` MUST be updated in the SAME phase + same `docs(context)` commit group whenever an
+endpoint's path/method/params/request/response shape/`@PreAuthorize` changes (added/removed/changed).
+A phase shipping an API change without the matching API-SPEC update is INCOMPLETE. Recorded in
+`CLAUDE.md` → "API-SPEC Sync (mandatory)". First reconciliation under this rule:
+`reports/c-p5-apispec-reconciliation.md` (spec bumped v2.1→v2.2: +10 endpoints, 10 mismatches fixed,
+4 stale entries flagged for ruling).

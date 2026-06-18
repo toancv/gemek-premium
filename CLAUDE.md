@@ -140,6 +140,14 @@ Reports must be self-contained, readable in browser, professional.
 
 ---
 
+## API-SPEC Sync (mandatory)
+Whenever an endpoint is added, removed, or its contract changes (path, method, params,
+request/response shape, `@PreAuthorize`), `docs/API-SPEC.md` MUST be updated in the SAME phase,
+inside the same `docs(context)` commit group. A phase that ships an API change without the matching
+API-SPEC update is incomplete.
+
+---
+
 ## Security Remediation Loop
 
 When security-reviewer returns FAIL verdict:

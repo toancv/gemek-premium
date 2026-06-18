@@ -36,6 +36,7 @@ export const vi: TranslationDict = {
     openTickets: 'Phản ánh đang mở',
     inProgress: '{n} đang xử lý',
     slaBreached: 'Trễ hạn',
+    slaBreachedMine: 'Trễ hạn của tôi',
     assignedToMe: 'Phân công cho tôi',
     requiresAction: 'Cần xử lý ngay',
     expiringContracts: 'Hợp đồng sắp hết hạn',

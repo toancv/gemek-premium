@@ -2,6 +2,7 @@ import React from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { labelFor, formatVNDate } from '@gemek/ui';
 import { useTickets, useTicketCount } from '../api/hooks';
+import { useAuthStore } from '../store/authStore';
 import { t } from '../i18n/vi';
 
 // Ticket-stats block (backlog (c) P2.5 + P2.7): mirrors the dashboard's ticket semantics on the
@@ -38,10 +39,17 @@ function StatusCountCard({ status, color, onClick }: { status: string; color: st
 // SLA-breached / overdue card (P2.7): sourced the SAME way as the status cards — the role-scoped
 // list total with ?overdue=true (P2.6 filter: sla_deadline present AND past AND status not closed).
 // On error shows '—', never a fabricated 0: the number is real or explicitly absent.
-function SlaCountCard({ onClick }: { onClick: () => void }) {
-  const { data, isLoading, isError } = useTicketCount({ overdue: true });
+//
+// Role-aware (backlog (c) tech card role-split): for a TECHNICIAN the building-wide overdue count is
+// dominated 327:1 by the shared NEW-overdue claim queue (reports/c-tech-overdue-card-diagnosis.md),
+// so it misreads as "my overdue". For technicians ONLY the card sources overdue=true AND mine=true
+// (P2.8 confirmed these compose → the tech's OWN overdue count) and is labelled «Trễ hạn của tôi».
+// ADMIN/BOARD are unchanged: overdue=true, building-wide, «Trễ hạn». The drill-down patch is passed
+// in by the caller so the card count and the drilled list use the same filter set.
+function SlaCountCard({ mine, title, onClick }: { mine: boolean; title: string; onClick: () => void }) {
+  const { data, isLoading, isError } = useTicketCount(mine ? { overdue: true, mine: true } : { overdue: true });
   const value = isError ? '—' : isLoading ? '…' : data ?? 0;
-  return <StatCard title={t('dashboard.slaBreached')} value={value} color="text-red-600" onClick={onClick} />;
+  return <StatCard title={title} value={value} color="text-red-600" onClick={onClick} />;
 }
 
 // Assigned-to-me card (backlog (c) P2.8 FE): sourced the SAME way as the other cards — the
@@ -65,15 +73,22 @@ function CategoryCountRow({ category, onClick }: { category: string; onClick: ()
   );
 }
 
-function TicketStats({ onDrill }: { onDrill: (patch: Record<string, string>) => void }) {
+// isTechnician drives the role split: technician sees «Trễ hạn của tôi» (overdue+mine) and NO
+// «Phân công cho tôi» card (redundant — their whole scope is ~assigned-to-me). ADMIN/BOARD see the
+// building-wide «Trễ hạn» card + the «Phân công cho tôi» card, byte-for-byte the prior behavior.
+function TicketStats({ isTechnician, onDrill }: { isTechnician: boolean; onDrill: (patch: Record<string, string>) => void }) {
   return (
     <div className="mb-6">
-      <div className="grid grid-cols-6 gap-4 mb-4">
+      <div className={`grid ${isTechnician ? 'grid-cols-5' : 'grid-cols-6'} gap-4 mb-4`}>
         {STAT_STATUSES.map((s) => (
           <StatusCountCard key={s.status} status={s.status} color={s.color} onClick={() => onDrill({ status: s.status })} />
         ))}
-        <SlaCountCard onClick={() => onDrill({ overdue: 'true' })} />
-        <MineCountCard onClick={() => onDrill({ mine: 'true' })} />
+        <SlaCountCard
+          mine={isTechnician}
+          title={isTechnician ? t('dashboard.slaBreachedMine') : t('dashboard.slaBreached')}
+          onClick={() => onDrill(isTechnician ? { overdue: 'true', mine: 'true' } : { overdue: 'true' })}
+        />
+        {!isTechnician && <MineCountCard onClick={() => onDrill({ mine: 'true' })} />}
       </div>
       <div className="bg-white rounded-lg border border-gray-200 p-6">
         <h2 className="text-base font-semibold text-gray-900 mb-4">{t('dashboard.ticketsByCategory')}</h2>
@@ -100,6 +115,10 @@ const CAT_COLORS: Record<string, string> = {
 
 export function TicketsPage() {
   const navigate = useNavigate();
+  // Current role from the SAME source the nav role-gate uses (authStore user.role). Drives the
+  // technician-only stat-card split (label + overdue source/drill-down; mine card hidden). No BE,
+  // @PreAuthorize, or route-guard change — purely how the FE labels/sources the cards.
+  const isTechnician = useAuthStore((s) => s.user?.role) === 'TECHNICIAN';
   // URL search params are the single source of truth for list filters (P2.7) — stat-card
   // drill-downs (which set the URL) and the in-page dropdowns derive from the same place, and
   // landing on /tickets?overdue=true or ?status=NEW applies the filter immediately on mount.
@@ -151,7 +170,7 @@ export function TicketsPage() {
         <h1 className="text-2xl font-bold text-gray-900">{t('tickets.title')}</h1>
       </div>
 
-      <TicketStats onDrill={drillDown} />
+      <TicketStats isTechnician={isTechnician} onDrill={drillDown} />
 
       <div className="bg-white rounded-lg border border-gray-200 p-4 mb-4 flex gap-3 items-center">
         <select value={category} onChange={(e) => setFilter({ category: e.target.value })}
@@ -172,21 +191,35 @@ export function TicketsPage() {
           <option value="DONE">{labelFor('TicketStatus', 'DONE')}</option>
           <option value="CANCELLED">{labelFor('TicketStatus', 'CANCELLED')}</option>
         </select>
-        {/* overdue has no dropdown (filter controls are status/category only); when active via a
-            drill-down it is honored by the list query and shown as a clearable chip here. */}
-        {overdue && (
-          <button type="button" onClick={() => setFilter({ overdue: '' })}
-            className="inline-flex items-center gap-1 px-3 py-2 text-sm rounded-md bg-red-50 text-red-700 border border-red-200 hover:bg-red-100">
-            {t('dashboard.slaBreached')} ✕
-          </button>
-        )}
-        {/* mine has no dropdown (like overdue); when active via drill-down or direct URL it is
-            honored by the list query and shown as a clearable chip — clears only the mine key. */}
-        {mine && (
-          <button type="button" onClick={() => setFilter({ mine: '' })}
-            className="inline-flex items-center gap-1 px-3 py-2 text-sm rounded-md bg-indigo-50 text-indigo-700 border border-indigo-200 hover:bg-indigo-100">
-            {t('dashboard.assignedToMe')} ✕
-          </button>
+        {/* Role-aware chips. For a TECHNICIAN the «Trễ hạn của tôi» card sets overdue+mine together,
+            so a SINGLE red chip represents it and clears BOTH keys at once (never leaves a desynced
+            half-filter). ADMIN/BOARD keep the two independent chips, each clearing only its own key. */}
+        {isTechnician ? (
+          (overdue || mine) && (
+            <button type="button" onClick={() => setFilter({ overdue: '', mine: '' })}
+              className="inline-flex items-center gap-1 px-3 py-2 text-sm rounded-md bg-red-50 text-red-700 border border-red-200 hover:bg-red-100">
+              {t('dashboard.slaBreachedMine')} ✕
+            </button>
+          )
+        ) : (
+          <>
+            {/* overdue has no dropdown (filter controls are status/category only); when active via a
+                drill-down it is honored by the list query and shown as a clearable chip here. */}
+            {overdue && (
+              <button type="button" onClick={() => setFilter({ overdue: '' })}
+                className="inline-flex items-center gap-1 px-3 py-2 text-sm rounded-md bg-red-50 text-red-700 border border-red-200 hover:bg-red-100">
+                {t('dashboard.slaBreached')} ✕
+              </button>
+            )}
+            {/* mine has no dropdown (like overdue); when active via drill-down or direct URL it is
+                honored by the list query and shown as a clearable chip — clears only the mine key. */}
+            {mine && (
+              <button type="button" onClick={() => setFilter({ mine: '' })}
+                className="inline-flex items-center gap-1 px-3 py-2 text-sm rounded-md bg-indigo-50 text-indigo-700 border border-indigo-200 hover:bg-indigo-100">
+                {t('dashboard.assignedToMe')} ✕
+              </button>
+            )}
+          </>
         )}
       </div>
 

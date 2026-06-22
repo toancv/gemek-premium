@@ -21,14 +21,21 @@ import vn.vtit.gemek.module.announcement.entity.AnnouncementScope;
 import vn.vtit.gemek.module.announcement.entity.AnnouncementType;
 import vn.vtit.gemek.module.announcement.repository.AnnouncementReadRepository;
 import vn.vtit.gemek.module.announcement.repository.AnnouncementRepository;
+import vn.vtit.gemek.module.apartment.entity.Apartment;
+import vn.vtit.gemek.module.apartment.entity.Block;
 import vn.vtit.gemek.module.apartment.repository.BlockRepository;
 import vn.vtit.gemek.module.notification.repository.NotificationRepository;
+import vn.vtit.gemek.module.resident.entity.Resident;
+import vn.vtit.gemek.module.resident.entity.ResidentType;
 import vn.vtit.gemek.module.resident.repository.ResidentRepository;
 import vn.vtit.gemek.module.user.repository.UserRepository;
 
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
+
+import java.time.LocalDate;
 
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -261,6 +268,60 @@ class AnnouncementServiceImplTest {
         // Batch resolution: exactly one user query for the whole page, never one per row.
         verify(userRepository, times(1)).findAllById(any());
         verify(userRepository, never()).findById(any());
+    }
+
+    // =========================================================================
+    // listAnnouncements (RESIDENT) — multi-residency: union across active apartments,
+    // each announcement AT MOST ONCE (one query, never per-apartment concat).
+    // =========================================================================
+
+    @Test
+    @DisplayName("listAnnouncements (RESIDENT, 2 apartments) — one feed query, ALL announcement appears once (no duplicate)")
+    void listAnnouncements_residentTwoApartments_noDuplicateAndSingleQuery() {
+        // A user actively residing in two apartments (different blocks).
+        Resident residencyA = residencyIn("Block A", (short) 1);
+        Resident residencyB = residencyIn("Block B", (short) 5);
+        when(residentRepository.findAllActiveByUserId(principalId))
+                .thenReturn(List.of(residencyA, residencyB));
+
+        // A single building-wide (ALL) announcement — it must NOT be duplicated by the two residencies.
+        Announcement allScoped = announcementWithCreator(UUID.randomUUID());
+        when(announcementRepository.findAll(any(Specification.class), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(allScoped)));
+        when(announcementReadRepository.findReadAnnouncementIds(any(), anyList()))
+                .thenReturn(List.of());
+        when(userRepository.findAllById(any())).thenReturn(List.of());
+
+        var page = service.listAnnouncements(principalId, "RESIDENT", PageRequest.of(0, 20));
+
+        // Union-not-concat: ONE feed query for all residencies (a per-apartment loop would query twice).
+        verify(announcementRepository, times(1))
+                .findAll(any(Specification.class), any(Pageable.class));
+        // The ALL announcement appears exactly once for the multi-apartment resident.
+        assertThat(page.getData()).hasSize(1);
+    }
+
+    /**
+     * Builds an active residency in a freshly-created block at the given floor.
+     *
+     * @param blockName the block display name.
+     * @param floor     the apartment floor.
+     * @return an active {@link Resident} with apartment and block populated.
+     */
+    private Resident residencyIn(String blockName, short floor) {
+        Block block = new Block();
+        block.setId(UUID.randomUUID());
+        block.setName(blockName);
+        Apartment apartment = new Apartment();
+        apartment.setId(UUID.randomUUID());
+        apartment.setBlock(block);
+        apartment.setFloor(floor);
+        Resident resident = new Resident();
+        resident.setId(UUID.randomUUID());
+        resident.setApartment(apartment);
+        resident.setType(ResidentType.OWNER);
+        resident.setMoveInDate(LocalDate.of(2026, 1, 1));
+        return resident;
     }
 
     /**

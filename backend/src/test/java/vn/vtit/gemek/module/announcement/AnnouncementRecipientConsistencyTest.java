@@ -34,7 +34,6 @@ import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -225,7 +224,10 @@ class AnnouncementRecipientConsistencyTest extends AbstractIntegrationTest {
     /**
      * Models the resident feed exactly as {@code AnnouncementServiceImpl.listAnnouncements}:
      * no active residency → empty feed; deactivated account → cannot log in, sees nothing;
-     * otherwise visibility comes from {@code findPublishedForApartment}.
+     * otherwise the announcement is visible if published AND in scope for ANY of the user's active
+     * apartments (the multi-residency union, DISTINCT-by-id). For a single residency this is identical
+     * to {@code findPublishedForApartment}; the union mirrors {@code publishedForResidenciesSpec} so the
+     * oracle stays faithful to production once a user holds 2+ active residencies.
      *
      * @param user         the fixture user whose feed is evaluated.
      * @param announcement the announcement to look for.
@@ -236,16 +238,19 @@ class AnnouncementRecipientConsistencyTest extends AbstractIntegrationTest {
         if (!user.isActive()) {
             return false;
         }
-        Optional<Resident> residency = residentRepository.findActiveByUserId(user.getId());
+        List<Resident> residencies = residentRepository.findAllActiveByUserId(user.getId());
         // No active residency — the service returns an empty page.
-        if (residency.isEmpty()) {
+        if (residencies.isEmpty()) {
             return false;
         }
-        Apartment apartment = residency.get().getApartment();
-        return announcementRepository
-                .findPublishedForApartment(apartment.getBlock().getId(), apartment.getFloor(), Pageable.unpaged())
-                .getContent().stream()
-                .anyMatch(a -> a.getId().equals(announcement.getId()));
+        // Visible if in scope for ANY active apartment (anyMatch = union, short-circuits → no double count).
+        return residencies.stream().anyMatch(r -> {
+            Apartment apartment = r.getApartment();
+            return announcementRepository
+                    .findPublishedForApartment(apartment.getBlock().getId(), apartment.getFloor(), Pageable.unpaged())
+                    .getContent().stream()
+                    .anyMatch(a -> a.getId().equals(announcement.getId()));
+        });
     }
 
     // =========================================================================

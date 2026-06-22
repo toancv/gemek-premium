@@ -881,9 +881,18 @@ client-settable`).
 
 **`residents` is the RESIDENCY HISTORY table.** One user (one permanent-phone identity) may hold
 **MULTIPLE** resident records:
-- **Concurrently** — living in 2+ apartments at once (confirmed allowed). Only one *active* row per
-  (user, apartment) is enforced by the `uq_residents_active_user` partial unique index family; multi-apartment
-  concurrency is permitted.
+- **Concurrently** — living in 2+ apartments at once. **⚠️ CORRECTION (2026-06-22, see investigation
+  §A):** the original wording below was FACTUALLY WRONG and is retained struck-through for the record.
+  > ~~(confirmed allowed). Only one *active* row per (user, apartment) is enforced by the
+  > `uq_residents_active_user` partial unique index family; multi-apartment concurrency is permitted.~~
+
+  **Verified truth:** the CURRENT live index `uq_residents_active_user` is partial-unique on **`user_id`
+  ALONE** (`V4__create_residents_vehicles.sql:22`, confirmed against live dev DB), NOT on
+  `(user_id, apartment_id)`. It therefore **FORBIDS concurrent multi-residency TODAY** — at most one active
+  residency per user across all apartments. Concurrent multi-residency is a **CTO-approved TARGET** (see
+  the ruling sub-entry below), not a current capability. Enabling it requires, in order: **(a)** a
+  call-site sweep of `findActiveByUserId` consumers, then **(b)** a later migration relaxing the index to
+  `(user_id, apartment_id) WHERE move_out_date IS NULL`. Evidence: `reports/residency-lifecycle-investigation.md §A`.
 - **Over time** — lived in A (moved out), later in B. Move-out is **soft** (set `moveOutDate`); the row is
   **retained as history**, never deleted.
 
@@ -903,14 +912,63 @@ a single residency — correct under multi-residency.
 Derivation counts active residency presence per apartment, so it supports multi-residency automatically (a
 user active in A and B makes both apartments OCCUPIED with no extra modelling).
 
-**OPEN considerations for the design session (questions, NOT yet decided):**
-- **`primaryContact` scope.** Clearing the primary-contact flag must be scoped **per-residency**, not
-  per-user: moving out of apartment A must NOT clear the primary-contact flag of the same user's active
-  residency in apartment B. Current move-out clears it — verify the scope is per-residency before relying on
-  it under multi-residency.
-- **Other one-user-one-apartment assumptions.** Audit places that may implicitly assume a user lives in
-  exactly one apartment — **notifications** (recipient/apartment fan-out), **parking** (slot↔apartment vs
-  ↔user), **billing/fees** (which residency is charged) — for multi-residency correctness.
+**OPEN considerations for the design session — UPDATED 2026-06-22 with investigation §E/§F findings:**
+- **✅ CLOSED — `primaryContact` scope (verified-correct, no change needed).** Investigation §E verified
+  clearing IS already **per-residency / per-row**: `ResidentServiceImpl.moveOut` clears the flag only on the
+  single moved-out row (the entity loaded by `findById(id)`), and `clearPrimaryContactInApartment` is
+  apartment-scoped — neither is user-wide. Moving out of A does NOT touch the same user's primary-contact
+  flag on B. No user-wide clearing bug; correct under multi-residency as-is.
+- **✅ VERIFIED — `existsActiveByUserId` (§E).** Counts active residency across ANY apartment for the user
+  (not apartment-scoped), so move-out deactivation correctly fires only when no OTHER active residency
+  remains anywhere. Correct under multi-residency.
+- **Other one-user-one-apartment assumptions (§F risk levels).** Audited for what would break IF the index
+  were relaxed: **tickets** (7 guards) and **`/residents/me`** are **HIGH** (the real work for P1; see ruling
+  sub-entry); amenity / announcement feed / vehicle owns-check are **MED**; **notifications** (recipient
+  fan-out is `DISTINCT u.id`, multi-residency-safe), **parking** (apartment-scoped assignments), and
+  **billing/fees** (no per-resident charging exists) came out **LOW / N-A** — left as-is. Cross-reference
+  `reports/residency-lifecycle-investigation.md §F` for the full risk table.
+
+---
+
+### 2026-06-22 | Residency lifecycle — CTO ruling on concurrent multi-residency + phased plan
+
+**See:** the model entry above (now corrected re: the index) and `reports/residency-lifecycle-investigation.md`.
+
+**RULING (CTO, authoritative):** concurrent multi-residency — one user holding **≥2 active `residents` rows
+in different apartments at the same time** — **IS a real business requirement** (residents genuinely living
+in 2+ apartments at once) and **WILL be supported**. The current schema does not allow it yet (the live
+`uq_residents_active_user` index is partial-unique on `user_id` alone, §A); it will be enabled by relaxing
+that index AFTER a call-site sweep.
+
+**Phased plan (gate-controlled, STRICT order):**
+- **P0 — DOCS reconcile (this entry).** Correct the index factual error in the model entry + record this
+  ruling and plan. No code, no migration, no index change.
+- **P1 — call-site sweep** of `findActiveByUserId` consumers → convert to list-returning + define a
+  per-surface **"which residency"** semantic (the auth/permission gate per surface), landed **WHILE the
+  index still enforces single-active** (so build + runtime both stay green). CTO-gated.
+- **P2 — index-relax migration** to `(user_id, apartment_id) WHERE move_out_date IS NULL` + allow a 2nd
+  active row. Migration-gated. **ONLY after P1 is green.**
+- **P3 — move-in / return flow:** reuse-by-phone (existing user → REUSE) + new `residents` row + reactivate
+  disabled account + append `resident_history`. (See backlog entry below.)
+
+**HARD ordering constraint (WHY P1 before P2, index NEVER relaxed first):** `findActiveByUserId` is an
+`Optional`-returning `@Query` with **no `LIMIT`** (`ResidentRepository.java:91`). If the index were relaxed
+first, any user with 2 active rows would make that query throw **`NonUniqueResultException` at runtime** —
+the build stays green but `/residents/me` and all 7 ticket guards break in production. So the sweep MUST land
+**before or with** the index relax; the index is **never** relaxed ahead of the sweep. Evidence: investigation
+§A, §F.
+
+**~11 singular consumers P1 must address (from §A/§F):**
+- **`/residents/me`** — `ResidentServiceImpl.getMyResident` `findActiveByUserId(...).orElseThrow` — **HIGH**.
+- **7 ticket guards** in `TicketServiceImpl` (`:219, 360, 607, 873, 906, 933, 970`) — ownership/visibility
+  `findActiveByUserId(...) → .getApartment().getId()` equality — **HIGH** (most pervasive).
+- **amenity booking** (`AmenityServiceImpl`), **announcement resident feed** (`AnnouncementServiceImpl`),
+  **vehicle owns-check** (`VehicleServiceImpl.verifyResidentOwnsApartment`) — **MED**.
+
+**DEFERRED to the P1 CTO ruling (open item, NOT decided here):** the exact **"which residency"** semantic per
+surface (e.g. does `/residents/me` return all active residencies, a default/primary one, or require an
+apartment context? does a ticket guard match if the user is active in ANY of their apartments?). P1 will
+propose these per-surface and gate for CTO approval.
 
 ---
 

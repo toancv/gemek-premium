@@ -1,6 +1,13 @@
 # PROGRESS — Apartment Management System
 
-## ⏸ AWAITING CTO RULING — Residency-lifecycle read-only investigation DONE (2026-06-22)
+## ⏸ AWAITING CTO RULING ON P1 — Residency-lifecycle phased plan (P0 DONE 2026-06-22)
+
+**P0 (DECISIONS reconcile) DONE** — corrected the index factual error in the model entry and recorded the
+CTO ruling + phased plan in `DECISIONS.md` ("Residency lifecycle — CTO ruling on concurrent multi-residency
++ phased plan", 2026-06-22). Concurrent multi-residency is a CTO-approved TARGET; current index forbids it.
+Phased plan: **P0** docs reconcile (done) → **P1** `findActiveByUserId` call-site sweep + per-surface "which
+residency" semantics WHILE index still enforces single-active → **P2** index-relax migration → **P3**
+move-in/return reuse-by-phone flow. Hard order: sweep before index relax (else `NonUniqueResultException`).
 
 **Report:** `reports/residency-lifecycle-investigation.md` (diagnose-only; no code/migration/test changed).
 Answers sections A–F with file:line + live dev-DB evidence.
@@ -14,8 +21,9 @@ schema contradict. Move-in/return flow confirmed **absent** (`createResident` al
 `findActiveByUserId` is `Optional` with no LIMIT → ~11 singular consumers (`/residents/me`, 7 ticket guards,
 amenity, announcement, vehicle owns-check) would throw `NonUniqueResultException` if the index were relaxed.
 
-**Resume pointer:** awaiting CTO ruling on residency-lifecycle design (reconcile model vs schema first; then
-move-in/return flow). Do NOT write code/migration until ruled.
+**Resume pointer:** awaiting CTO ruling on P1 — `findActiveByUserId` sweep, per-surface "which residency"
+semantics (auth/permission gate). Phased plan in `DECISIONS.md` ("Residency lifecycle — CTO ruling on
+concurrent multi-residency + phased plan"). Do NOT write code/migration until P1 is ruled.
 
 ---
 

@@ -3,6 +3,7 @@
  * All rights reserved.
  */
 package vn.vtit.gemek.module.ticket;
+import vn.vtit.gemek.support.AbstractIntegrationTest;
 
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
@@ -67,7 +68,7 @@ import static org.mockito.Mockito.when;
 @SpringBootTest
 @ActiveProfiles("test")
 @Transactional
-class TicketPublicAccessTest {
+class TicketPublicAccessTest extends AbstractIntegrationTest {
 
     /** Mock MinIO — not started in this test suite. */
     @MockBean

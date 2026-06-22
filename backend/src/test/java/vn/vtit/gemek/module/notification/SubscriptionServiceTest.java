@@ -3,6 +3,7 @@
  * All rights reserved.
  */
 package vn.vtit.gemek.module.notification;
+import vn.vtit.gemek.support.AbstractIntegrationTest;
 
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceException;
@@ -35,7 +36,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 @SpringBootTest
 @ActiveProfiles("test")
 @Transactional
-class SubscriptionServiceTest {
+class SubscriptionServiceTest extends AbstractIntegrationTest {
 
     private static final String ENTITY_TYPE = "Ticket";
 

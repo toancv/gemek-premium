@@ -3,6 +3,7 @@
  * All rights reserved.
  */
 package vn.vtit.gemek.module.resident;
+import vn.vtit.gemek.support.AbstractIntegrationTest;
 
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
@@ -48,7 +49,7 @@ import static org.assertj.core.api.Assertions.assertThatCode;
 @SpringBootTest
 @ActiveProfiles("test")
 @Transactional
-class ResidentHouseholdDispatchTest {
+class ResidentHouseholdDispatchTest extends AbstractIntegrationTest {
 
     @Autowired
     private ResidentService residentService;

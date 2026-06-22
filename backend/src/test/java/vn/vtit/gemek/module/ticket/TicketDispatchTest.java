@@ -3,6 +3,7 @@
  * All rights reserved.
  */
 package vn.vtit.gemek.module.ticket;
+import vn.vtit.gemek.support.AbstractIntegrationTest;
 
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
@@ -57,7 +58,7 @@ import static org.assertj.core.api.Assertions.assertThatCode;
 @SpringBootTest
 @ActiveProfiles("test")
 @Transactional
-class TicketDispatchTest {
+class TicketDispatchTest extends AbstractIntegrationTest {
 
     /** Mock MinIO — not started in this test suite. */
     @MockBean

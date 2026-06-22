@@ -3,6 +3,7 @@
  * All rights reserved.
  */
 package vn.vtit.gemek.common.storage;
+import vn.vtit.gemek.support.AbstractIntegrationTest;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -43,7 +44,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @ActiveProfiles("test")
 @AutoConfigureMockMvc
 @Transactional
-class PresignPrefixRoutingTest {
+class PresignPrefixRoutingTest extends AbstractIntegrationTest {
 
     /** Mock MinIO — not started in this test suite. */
     @MockBean

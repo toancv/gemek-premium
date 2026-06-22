@@ -3,6 +3,7 @@
  * All rights reserved.
  */
 package vn.vtit.gemek.module.announcement;
+import vn.vtit.gemek.support.AbstractIntegrationTest;
 
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
@@ -57,7 +58,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 @SpringBootTest
 @ActiveProfiles("test")
 @Transactional
-class AnnouncementPublishDispatchTest {
+class AnnouncementPublishDispatchTest extends AbstractIntegrationTest {
 
     /** Mock MinIO — not started in this test suite. */
     @MockBean

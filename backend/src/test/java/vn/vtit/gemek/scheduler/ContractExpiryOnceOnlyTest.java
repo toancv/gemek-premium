@@ -3,6 +3,7 @@
  * All rights reserved.
  */
 package vn.vtit.gemek.scheduler;
+import vn.vtit.gemek.support.AbstractIntegrationTest;
 
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
@@ -44,7 +45,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 @SpringBootTest
 @ActiveProfiles("test")
 @Transactional
-class ContractExpiryOnceOnlyTest {
+class ContractExpiryOnceOnlyTest extends AbstractIntegrationTest {
 
     /** Mock MinIO — not started in this test suite. */
     @MockBean

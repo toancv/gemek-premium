@@ -1,7 +1,10 @@
 app:
   admin:
     email: admin@gemek.vn
-    password: Admin@123456
+    # Must match the ADMIN_PASSWORD constant hardcoded in the integration tests
+    # (e.g. AuthControllerTest). On a fresh container DB, AdminSeeder seeds this
+    # plaintext (phone default 0900000000) so test logins return 200.
+    password: GemekAdmin2026
 
 auth:
   rate-limit:

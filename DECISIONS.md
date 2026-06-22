@@ -806,4 +806,24 @@ Reports: `reports/apartment-occupancy-diagnosis.md` (root cause) + `reports/apar
 - **Convergence (the secondary bug):** dashboard and resident-report now call the SAME private `ReportServiceImpl.computeOccupancy(blockId)` → identical numbers by construction. Dev DB: was dashboard 10 / report 1622 (disagree); now both 1622 / ≈71.5% (agree). Removed `ApartmentRepository.countByStatus` (read the never-synced field).
 - **N+1:** list batch-fetches the page's active residents in ONE `findActiveByApartmentIdIn(pageIds)` query (occupancy + primary-contact both derived from it); dashboard/report use one `[id,status]` projection + one occupied-id set. Guarded by a unit test (batch once / per-row never). This also eliminated the pre-existing per-row primary-contact query.
 - **Response shape unchanged:** apartment `status` field keeps its name/enum type; only the VALUE is now computed → FE needs no change.
-- **Deferred (recorded):** the list `?status=` query filter still matches the STORED value (`findAllWithFilters`), so filtering by OCCUPIED/AVAILABLE is now imprecise. Fixing it cleanly needs occupancy pushed into the paginated query (native CASE/EXISTS + count) — would duplicate the rule in SQL or break JPA pagination. Display (the reported bug) is fixed; filter-derivation deferred. Noted in API-SPEC.
+- **~~Deferred (recorded)~~ RESOLVED (2026-06-22, see next entry):** the list `?status=` query filter now derives effective status in SQL, matching the display. The earlier "deferred filter" caveat is removed from API-SPEC.
+
+### 2026-06-22 | Apartment `?status=` filter derives effective status (resolves filter/display mismatch)
+
+**Context:** The occupancy DISPLAY fix made list/detail/dashboard derive AVAILABLE/OCCUPIED from active residents, but the `?status=` filter still matched the STORED column. Post-V19 the stored column only holds AVAILABLE/MAINTENANCE, so `?status=OCCUPIED` returned empty and `?status=AVAILABLE` returned occupied units too — the filter actively contradicted the display (CTO smoke). Not deferrable: the display fix broke the filter.
+
+**Decision:** Filter by EFFECTIVE status in the paginated SQL query (`ApartmentRepository.findAllByEffectiveStatus`, called via the `findAllWithFilters` default method):
+- `OCCUPIED` → `a.status <> MAINTENANCE AND EXISTS(active resident, move_out_date IS NULL)`
+- `AVAILABLE` → `a.status <> MAINTENANCE AND NOT EXISTS(active resident)`
+- `MAINTENANCE` → `a.status = MAINTENANCE` (priority, residents irrelevant)
+- no filter → all.
+
+**Single-source / drift prevention:** the SQL predicate is the textual mirror of `OccupancyResolver` (MAINTENANCE-priority + the `move_out_date IS NULL` active-resident fact). Both the resolver javadoc and the repository javadoc cross-reference each other and state the predicate MUST stay in lock-step. The `ApartmentStatusFilterIntegrationTest` filter↔display agreement test asserts each `?status=X` returns exactly the apartments whose displayed status is X — it fails if the SQL and the resolver ever drift.
+
+**Count-query consistency:** kept as a single `@Query`; Spring derives the count query from the SAME JPQL, so the count and row queries apply the IDENTICAL effective-status WHERE clause — `total` can never disagree with the rows. A test asserts `total == data.length` per status.
+
+**Enum-typing gotcha:** a fully-qualified enum LITERAL in JPQL (`...ApartmentStatus.MAINTENANCE`) made Postgres reject the query (`type "apartmentstatus" does not exist` — bad cast). Fix: pass the requested status as its NAME (string branch selector, no anchoring needed) and bind `MAINTENANCE` as an enum PARAMETER, which Hibernate anchors against `a.status` and renders with the correct `apartment_status` type. Same class of fix as the recipient-query default-method pattern.
+
+**Performance:** one in-SQL query; the EXISTS subquery on `residents(move_out_date IS NULL)` is not an N+1.
+
+**Verified:** suite 358/358; dev-DB effective counts via the identical predicate: OCCUPIED 1622, AVAILABLE 647, MAINTENANCE 0, total 2269 (1622+647+0=2269, matches the derived display breakdown). Evidence: `reports/apartment-filter-fix.md`.

@@ -10,9 +10,9 @@
 
 **Migration `V19`:** normalize 10 stored OCCUPIED→AVAILABLE (no 1612-row data-fix — derivation fixes those). Response `status` field name/type unchanged → **FE needs no change**.
 
-**Tests (TDD):** +10 — `OccupancyResolverTest` (5), `ApartmentServiceImplTest` (+3 incl. N+1 guard), `ReportServiceImplTest` (new, 2 incl. convergence). **Backend suite 343→353/353 green.** API-SPEC updated (status now computed; filter-on-stored limitation noted).
+**Tests (TDD):** +10 — `OccupancyResolverTest` (5), `ApartmentServiceImplTest` (+3 incl. N+1 guard), `ReportServiceImplTest` (new, 2 incl. convergence). **Backend suite 343→353/353 green.** API-SPEC updated (status now computed).
 
-**Deferred (recorded):** list `?status=` filter still matches stored value (imprecise for OCCUPIED/AVAILABLE) — display fixed, filter-derivation a follow-up.
+**✅ FILTER NOW RESOLVED (2026-06-22)** — see `reports/apartment-filter-fix.md` + DECISIONS "Apartment `?status=` filter derives effective status". The prior "deferred filter" caveat is RESOLVED, not deferred: `?status=` now derives effective status in SQL (`ApartmentRepository.findAllByEffectiveStatus`, MAINTENANCE bound as enum param + EXISTS on active residents), mirroring `OccupancyResolver`. CTO bug fixed (`?status=AVAILABLE` no longer returns occupied units). Count query derived from the SAME `@Query` → `total` matches rows. Filter↔display agreement test added (`ApartmentStatusFilterIntegrationTest`, 5). **Backend suite 353→358/358 green.** Dev-DB effective counts: OCCUPIED 1622 / AVAILABLE 647 / MAINTENANCE 0 / total 2269. API-SPEC caveat removed.
 
 **🔔 SMOKE (CTO, :80):** Open an apartment with active residents → status shows OCCUPIED (not "còn trống"). Dashboard occupancyRate ≈ resident-report occupancyRate (~71.5%, both). An apartment flagged MAINTENANCE with residents still shows MAINTENANCE.
 

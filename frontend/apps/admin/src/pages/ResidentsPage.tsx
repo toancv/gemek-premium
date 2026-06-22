@@ -364,8 +364,8 @@ export function ResidentsPage() {
             <p className="text-sm text-gray-700 mb-4">
               Kết thúc cư trú của <span className="font-semibold">{moveOutTarget.user?.fullName}</span> tại căn{' '}
               <span className="font-semibold">{moveOutTarget.apartment?.unitNumber}</span>? Cư dân sẽ được đánh dấu đã rời đi
-              và gỡ vai trò liên hệ chính. Thao tác này <span className="font-semibold">KHÔNG</span> khoá tài khoản đăng nhập
-              và <span className="font-semibold">KHÔNG thể hoàn tác</span> từ giao diện.
+              và gỡ vai trò liên hệ chính. Tài khoản đăng nhập <span className="font-semibold">sẽ bị khoá</span> nếu cư dân
+              không còn cư trú ở căn hộ nào khác. Thao tác này <span className="font-semibold">KHÔNG thể hoàn tác</span> từ giao diện.
             </p>
 
             <div className="mb-3">

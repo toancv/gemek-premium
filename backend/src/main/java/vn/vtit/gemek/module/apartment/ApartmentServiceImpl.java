@@ -239,7 +239,9 @@ public class ApartmentServiceImpl implements ApartmentService {
         apartment.setFloor(request.floor());
         apartment.setUnitNumber(request.unitNumber());
         apartment.setAreaSqm(request.areaSqm());
-        apartment.setStatus(request.status());
+        // Status is intentionally NOT set from the request: occupancy is fully derived
+        // (OccupancyResolver) and MAINTENANCE has no set flow, so no status is client-settable.
+        // The apartment keeps its stored status (AVAILABLE post-V19) — closing the desync hole.
         apartment.setNotes(request.notes());
 
         Apartment saved = apartmentRepository.save(apartment);

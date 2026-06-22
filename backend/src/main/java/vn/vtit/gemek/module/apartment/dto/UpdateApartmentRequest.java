@@ -8,17 +8,20 @@ import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
-import vn.vtit.gemek.module.apartment.entity.ApartmentStatus;
 
 import java.math.BigDecimal;
 
 /**
  * Request body for {@code PUT /api/apartments/{id}} (ADMIN only).
  *
+ * <p>Occupancy status is intentionally NOT a field here: AVAILABLE/OCCUPIED are fully derived
+ * from active residents by {@code OccupancyResolver}, and MAINTENANCE has no set flow in the UI.
+ * Accepting a client-supplied status would let an admin store a value that contradicts the
+ * derived display — so status is not client-settable via update.
+ *
  * @param floor      new floor number, must be zero or positive.
  * @param unitNumber new unit number, required.
  * @param areaSqm    new floor area in square metres, optional.
- * @param status     new occupancy status, required.
  * @param notes      optional free-text notes.
  */
 public record UpdateApartmentRequest(
@@ -32,9 +35,6 @@ public record UpdateApartmentRequest(
         String unitNumber,
 
         BigDecimal areaSqm,
-
-        @NotNull(message = "Status is required.")
-        ApartmentStatus status,
 
         String notes
 ) {}

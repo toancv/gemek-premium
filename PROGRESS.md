@@ -1,5 +1,24 @@
 # PROGRESS — Apartment Management System
 
+## ⏸ AWAITING CTO RULING — Residency-lifecycle read-only investigation DONE (2026-06-22)
+
+**Report:** `reports/residency-lifecycle-investigation.md` (diagnose-only; no code/migration/test changed).
+Answers sections A–F with file:line + live dev-DB evidence.
+
+**Headline finding (CTO must rule):** the CTO-approved domain model (`DECISIONS.md:884-886`) says a user
+may hold **concurrent multi-residency** ("2+ apartments at once"), but the actual `uq_residents_active_user`
+index is partial-unique on **`user_id` ALONE** (`V4:22`, confirmed live) → the DB **forbids** concurrent
+multi-residency today (live: max active residencies/user = 1; 0 null/dup phone over 2082 users). Model ↔
+schema contradict. Move-in/return flow confirmed **absent** (`createResident` always `new User()`, blocks on
+`PHONE_ALREADY_EXISTS`). Primary-contact clearing verified **already per-residency** (move-out OPEN item closeable).
+`findActiveByUserId` is `Optional` with no LIMIT → ~11 singular consumers (`/residents/me`, 7 ticket guards,
+amenity, announcement, vehicle owns-check) would throw `NonUniqueResultException` if the index were relaxed.
+
+**Resume pointer:** awaiting CTO ruling on residency-lifecycle design (reconcile model vs schema first; then
+move-in/return flow). Do NOT write code/migration until ruled.
+
+---
+
 ## ✅ COMPLETE (pending CTO :80 smoke) — Apartment status LOCKDOWN: not client-settable on update + MAINTENANCE hidden in UI (2026-06-22)
 
 **Report:** `reports/apartment-status-lockdown.md`. **DECISIONS:** "Occupancy fully derived + status not client-settable".

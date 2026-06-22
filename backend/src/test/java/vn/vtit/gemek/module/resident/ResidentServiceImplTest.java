@@ -40,6 +40,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentCaptor.forClass;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -344,5 +345,82 @@ class ResidentServiceImplTest {
                 .isInstanceOf(AppException.class)
                 .satisfies(ex -> assertThat(((AppException) ex).getErrorCode())
                         .isEqualTo(ErrorCode.NOT_FOUND));
+    }
+
+    // =========================================================================
+    // moveOut — conditional user deactivation (backlog (d) follow-up)
+    // =========================================================================
+
+    @Test
+    @DisplayName("moveOut — user with no other active residency is deactivated in the same transaction")
+    void moveOut_noOtherActiveResidency_deactivatesUser() {
+        user.setActive(true);
+        when(residentRepository.findById(residentId)).thenReturn(Optional.of(resident));
+        when(residentRepository.save(any(Resident.class))).thenAnswer(inv -> inv.getArgument(0));
+        // After this move-out, the user has no remaining active residency.
+        when(residentRepository.existsActiveByUserId(userId)).thenReturn(false);
+        when(residentMapper.toResponse(any(Resident.class)))
+                .thenReturn(ResidentResponse.builder().id(residentId).build());
+
+        MoveOutRequest request = new MoveOutRequest(LocalDate.of(2026, 4, 1), null);
+        service.moveOut(residentId, request, UUID.randomUUID());
+
+        assertThat(user.isActive()).isFalse();
+        verify(userRepository).save(user);
+    }
+
+    @Test
+    @DisplayName("moveOut — user with another active residency stays active (safe guard)")
+    void moveOut_anotherActiveResidency_keepsUserActive() {
+        user.setActive(true);
+        when(residentRepository.findById(residentId)).thenReturn(Optional.of(resident));
+        when(residentRepository.save(any(Resident.class))).thenAnswer(inv -> inv.getArgument(0));
+        // The user still lives in another apartment — must NOT be locked out.
+        when(residentRepository.existsActiveByUserId(userId)).thenReturn(true);
+        when(residentMapper.toResponse(any(Resident.class)))
+                .thenReturn(ResidentResponse.builder().id(residentId).build());
+
+        MoveOutRequest request = new MoveOutRequest(LocalDate.of(2026, 4, 1), null);
+        service.moveOut(residentId, request, UUID.randomUUID());
+
+        assertThat(user.isActive()).isTrue();
+        verify(userRepository, never()).save(user);
+    }
+
+    @Test
+    @DisplayName("moveOut — resident with no linked user account does not deactivate and does not error")
+    void moveOut_noLinkedUser_noDeactivation() {
+        resident.setUser(null);
+        when(residentRepository.findById(residentId)).thenReturn(Optional.of(resident));
+        when(residentRepository.save(any(Resident.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(residentMapper.toResponse(any(Resident.class)))
+                .thenReturn(ResidentResponse.builder().id(residentId).build());
+
+        MoveOutRequest request = new MoveOutRequest(LocalDate.of(2026, 4, 1), null);
+        service.moveOut(residentId, request, UUID.randomUUID());
+
+        // No user to touch; the residency-check query is never run.
+        verify(userRepository, never()).save(any(User.class));
+        verify(residentRepository, never()).existsActiveByUserId(any());
+    }
+
+    @Test
+    @DisplayName("moveOut — deactivation failure propagates so the whole move-out rolls back")
+    void moveOut_deactivationThrows_propagates() {
+        user.setActive(true);
+        when(residentRepository.findById(residentId)).thenReturn(Optional.of(resident));
+        when(residentRepository.save(any(Resident.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(residentRepository.existsActiveByUserId(userId)).thenReturn(false);
+        // Simulate the deactivation write failing inside the transaction.
+        when(userRepository.save(user)).thenThrow(new RuntimeException("DB write failed"));
+
+        MoveOutRequest request = new MoveOutRequest(LocalDate.of(2026, 4, 1), null);
+
+        assertThatThrownBy(() -> service.moveOut(residentId, request, UUID.randomUUID()))
+                .isInstanceOf(RuntimeException.class);
+
+        // Method aborted before mapping the response — proves the failure is not swallowed,
+        // so the @Transactional boundary rolls the move-out back (move_out_date not committed).
+        verify(residentMapper, never()).toResponse(any());
     }
 }

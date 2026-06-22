@@ -608,7 +608,7 @@ Response `200 OK` — updated resident object.
 ### POST /api/residents/{id}/move-out
 
 **Auth:** ADMIN
-**Description:** Record a move-out event. Sets `move_out_date`, appends to `resident_history`.
+**Description:** Record a move-out event. Sets `move_out_date`, clears the resident's `is_primary_contact`, appends to `resident_history`. Additionally, in the same transaction, deactivates the resident's linked user account (`users.active = false`) **only if** the user has no remaining active residency (no other resident row with `move_out_date IS NULL`). A user who still lives in another apartment keeps their login. The whole operation is atomic — if deactivation fails, the move-out is rolled back.
 
 Request:
 ```json

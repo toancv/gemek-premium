@@ -1,5 +1,19 @@
 # PROGRESS — Apartment Management System
 
+## ✅ COMPLETE (pending CTO :80 smoke) — Backlog (d) follow-up: move-out now conditionally deactivates the login account (2026-06-22)
+
+**Report:** `reports/d-moveout-deactivate.md`. **DECISIONS:** "Move-out conditional user deactivation".
+
+**Relationship (verified first):** Resident→User is `@ManyToOne` (`Resident.java:54-56`) — one user CAN have multiple resident rows; at most ONE active (partial unique index `uq_residents_active_user`, `Resident.java:36-38`). Resident→Apartment `@ManyToOne` (one resident = one apartment). Active = `moveOutDate == null`. Clean model, no blocker.
+
+**Shipped (BE):** `ResidentServiceImpl.moveOut` — after existing move-out logic (set `moveOutDate`, clear `primaryContact`, append MOVED_OUT history), in the SAME `@Transactional` tx: if the moved-out resident has a linked user AND `residentRepository.existsActiveByUserId(userId)` is false (no other active residency), set `user.active = false` and save. Reused the existing repo guard query `existsActiveByUserId` (`ResidentRepository.java:62-67`). Deactivation flips `user.active` directly via the entity (mirrors `createResident`'s `user.setActive(true)` at line 157) rather than `UserServiceImpl.deactivateUser` — that method's `SELF_OPERATION_NOT_ALLOWED` guard would wrongly abort move-out and it has no token-revocation side-effect to preserve (see DECISIONS). Atomic: if deactivation throws, the whole move-out rolls back.
+
+**Shipped (FE):** `ResidentsPage.tsx` move-out dialog copy changed from "KHÔNG khoá tài khoản đăng nhập" → "Tài khoản đăng nhập **sẽ bị khoá** nếu cư dân không còn cư trú ở căn hộ nào khác." (truthful to the new conditional BE effect).
+
+**Tests (TDD):** 4 new `ResidentServiceImplTest` cases — deactivates when no other residency; stays active when another active residency exists (safe guard, multi-residency possible); no linked user → no-op; deactivation throws → propagates (rolls back). **Backend suite 339→343/343 green.** Admin `tsc && vite build` green (590 modules). /code-review (high): no findings. **API-SPEC updated** (`POST /residents/{id}/move-out` now documents the conditional deactivation + atomicity).
+
+**🔔 SMOKE (CTO, :80):** Move out a resident whose user has only that residency → confirm dialog states account will be locked; after confirm, that user can no longer log in. (If a user ever had a 2nd active residency, they'd stay able to log in.)
+
 ## ✅ COMPLETE (pending CTO :80 smoke) — Backlog (d) Resident move-out ("Kết thúc cư trú") FE action (Option B) (2026-06-22)
 
 **Reports:** `reports/d-moveout-build.md` (build) + `reports/d-moveout-ui.md` (BE-contract investigation). **Backlog (d): DONE** — BE endpoint already existed; this was the UI.

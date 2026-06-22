@@ -5,6 +5,15 @@ Format: Date | Decision | Reasoning | Alternatives
 
 ---
 
+## 2026-06-22 | (d) follow-up — Move-out conditional user deactivation: rule + deactivation mechanism
+
+- **Decision (rule):** On move-out, deactivate the linked user account (`user.active = false`) ONLY when the user has no remaining active residency — checked via `residentRepository.existsActiveByUserId(userId)` AFTER `moveOutDate` is set (so the just-moved-out residency no longer counts). Implemented as the general "no other active residency" check even though the model is effectively 1-active-residency today, so it stays correct if multi-residency arises.
+- **Reasoning:** Resident→User is `@ManyToOne` (a user can hold multiple resident rows; only one active per the `uq_residents_active_user` partial unique index). The login identity is the user; residency is what we gate on. A user still living in another apartment must keep their login → conditional, not unconditional.
+- **Decision (mechanism):** Flip `user.active` directly on the entity (mirrors `createResident`'s `user.setActive(true)`, `ResidentServiceImpl.java:157`) instead of calling `UserServiceImpl.deactivateUser`.
+- **Reasoning:** `deactivateUser(id, requestUserId)` has a `SELF_OPERATION_NOT_ALLOWED` guard that throws when `id == requestUserId` — meant for the admin UsersPage flow; inside move-out it would wrongly abort a valid move-out if an actor ever moved out their own residency. Its only behavior is `setActive(false)` (auth is stateless JWT — no token-revocation side-effect exists to preserve). Direct entity set is the established in-service pattern and avoids the inapplicable guard; net effect is identical to the admin deactivate.
+- **Atomicity:** runs inside the existing `@Transactional moveOut` — deactivation failure propagates and rolls the move-out back (move_out_date not committed).
+- **Alternatives considered:** (a) unconditional deactivate on move-out — rejected (breaks multi-residency users); (b) reuse `deactivateUser` — rejected for the self-op guard + cross-module coupling with no side-effect benefit; (c) a second FE API call — rejected (not atomic, per task).
+
 ## 2026-06-22 | (d) Resident move-out UI — surface placement + Option B date
 
 - **Decision:** The "Kết thúc cư trú" action + moved-out state live on `ResidentsPage` (the `/residents` list, per-row) — NOT a new resident detail page/route.

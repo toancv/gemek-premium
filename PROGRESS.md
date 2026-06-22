@@ -1,6 +1,16 @@
 # PROGRESS — Apartment Management System
 
-## ✅ AUD.2 DONE — Contract/Announcement converged onto Spring Data auditing (2026-06-22) — awaiting CTO go for AUD.3
+## ✅ AUD.3 DONE — AuditLogAspect + @Auditable removed; AUD chain (auditing rework) COMPLETE (2026-06-22)
+
+**Report:** `reports/aud3-remove-aspect.md`. **Plan:** `reports/audit-columns-investigation.md` §5 + §C. **DECISIONS:** "AUD.3 — AuditLogAspect + @Auditable removed".
+
+**Shipped (AUD.3):** Deleted `AuditLogAspect` (the `@Aspect` write path) + the `@Auditable` annotation type (4 usages in `UserServiceImpl` removed first, then the orphaned annotation file) + the dead import. Auditing is now **fully** on Spring Data `created_by`/`updated_by` (`@CreatedBy`/`@LastModifiedBy` + `SecurityAuditorAware`, from AUD.1/AUD.2). **KEPT write-idle (NOT dropped — destructive):** `audit_logs` table + `V10` migration untouched (historical rows preserved); `AuditLog` entity + `AuditLogRepository` retained for read access (javadoc on both now marks them write-idle). **Intentionally dropped per CTO ruling (knowing trade-off, not a regression):** reset-password actor attribution + full before/after change-history (the aspect's `audit_logs` rows). `created_by`/`updated_by` capture only the latest create/update actor, not a change log.
+
+**Verify:** blast radius pre-confirmed by grep (aspect/`@Auditable` referenced by exactly the 5 §5 files; `AuditLogRepository` injected only by the aspect; aspect `SecurityContext` read self-contained — `SecurityAuditorAware` is the reader now). No test asserted on `audit_logs` rows (grep `src/test` = 0) → nothing to un-assert. Added 3 `UserServiceImplTest` unit tests proving the user actions still WORK aspect-free (`deactivateUser` valid, `resetPassword` valid + NOT_FOUND; create/update already covered). Baseline 336 → **full suite 339/339 green, BUILD SUCCESS**. Full-context `@SpringBootTest` (`UserControllerTest`) + `AuditingActorCaptureIntegrationTest` boot the real ApplicationContext clean → no orphaned aspect bean / AOP wiring (HTTP-layer smoke equivalent; no live stack needed). /code-review: clean, no findings. **API-SPEC: no change** (no endpoint touched). Flyway: no new migration in AUD.3.
+
+**State:** **AUD chain (auditing rework) COMPLETE** — AUD.1 (foundation) → AUD.2 (Contract/Announcement converge) → AUD.3 (aspect removal). Auditing is consolidated on Spring Data `created_by`/`updated_by` system-wide. `audit_logs` retained write-idle (future drop = separate CTO decision).
+
+## ✅ AUD.2 DONE — Contract/Announcement converged onto Spring Data auditing (2026-06-22)
 
 **Report:** `reports/aud2-converge.md`. **Plan:** `reports/audit-columns-investigation.md` §2 + §B Option B1.
 

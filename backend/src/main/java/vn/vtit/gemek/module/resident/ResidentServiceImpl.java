@@ -274,6 +274,21 @@ public class ResidentServiceImpl implements ResidentService {
 
         appendHistory(saved, "MOVED_OUT", req.getMoveOutDate(), principalId, req.getNotes());
 
+        // Conditionally deactivate the linked login account in the SAME transaction.
+        // The move-out above already set moveOutDate; existsActiveByUserId therefore no
+        // longer counts THIS residency, so it answers "does the user still have ANY other
+        // active residency?". Lock the account only when the answer is no — a user who still
+        // lives in another apartment keeps their login. resident.user is non-null per schema
+        // (user_id NOT NULL); the null guard is defensive. If the deactivation write fails,
+        // the RuntimeException propagates and the whole move-out rolls back (atomic).
+        User residentUser = saved.getUser();
+        if (residentUser != null && !residentRepository.existsActiveByUserId(residentUser.getId())) {
+            residentUser.setActive(false);
+            userRepository.save(residentUser);
+            log.info("Resident move-out — user {} deactivated (no remaining active residency).",
+                    residentUser.getId());
+        }
+
         log.info("Resident moved out — id={}, moveOutDate={}", saved.getId(), saved.getMoveOutDate());
         return residentMapper.toResponse(saved);
     }

@@ -1,0 +1,283 @@
+/*
+ * Copyright (c) 2026 VTIT — Gemek Premium Apartment Management System.
+ * All rights reserved.
+ */
+package vn.vtit.gemek.module.announcement;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
+import vn.vtit.gemek.common.exception.AppException;
+import vn.vtit.gemek.common.exception.ErrorCode;
+import vn.vtit.gemek.module.announcement.dto.CreateAnnouncementRequest;
+import vn.vtit.gemek.module.announcement.dto.UpdateAnnouncementRequest;
+import vn.vtit.gemek.module.announcement.entity.Announcement;
+import vn.vtit.gemek.module.announcement.entity.AnnouncementScope;
+import vn.vtit.gemek.module.announcement.entity.AnnouncementType;
+import vn.vtit.gemek.module.announcement.repository.AnnouncementReadRepository;
+import vn.vtit.gemek.module.announcement.repository.AnnouncementRepository;
+import vn.vtit.gemek.module.apartment.repository.BlockRepository;
+import vn.vtit.gemek.module.notification.repository.NotificationRepository;
+import vn.vtit.gemek.module.resident.repository.ResidentRepository;
+import vn.vtit.gemek.module.user.repository.UserRepository;
+
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+
+import java.time.OffsetDateTime;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+/**
+ * Unit tests for {@link AnnouncementServiceImpl} — GAP-10 access control.
+ *
+ * <p>Covers: RESIDENT draft-view NOT_FOUND, published-edit/delete CONFLICT,
+ * SEC-07 draft markRead NOT_FOUND, and scope constraint VALIDATION_ERROR.
+ */
+@ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
+class AnnouncementServiceImplTest {
+
+    @Mock private AnnouncementRepository announcementRepository;
+    @Mock private AnnouncementReadRepository announcementReadRepository;
+    @Mock private BlockRepository blockRepository;
+    @Mock private UserRepository userRepository;
+    @Mock private ResidentRepository residentRepository;
+    @Mock private NotificationRepository notificationRepository;
+
+    private AnnouncementServiceImpl service;
+
+    private UUID announcementId;
+    private UUID principalId;
+    private Announcement draftAnnouncement;
+    private Announcement publishedAnnouncement;
+
+    @BeforeEach
+    void setUp() {
+        service = new AnnouncementServiceImpl(
+                announcementRepository, announcementReadRepository,
+                blockRepository, userRepository, residentRepository,
+                notificationRepository);
+
+        announcementId = UUID.randomUUID();
+        principalId = UUID.randomUUID();
+
+        draftAnnouncement = new Announcement();
+        draftAnnouncement.setId(announcementId);
+        draftAnnouncement.setTitle("Draft");
+        draftAnnouncement.setContent("Draft content");
+        draftAnnouncement.setScope(AnnouncementScope.ALL);
+        // publishedAt intentionally null — draft state
+
+        publishedAnnouncement = new Announcement();
+        publishedAnnouncement.setId(announcementId);
+        publishedAnnouncement.setTitle("Published");
+        publishedAnnouncement.setContent("Published content");
+        publishedAnnouncement.setScope(AnnouncementScope.ALL);
+        publishedAnnouncement.setPublishedAt(OffsetDateTime.now());
+    }
+
+    // =========================================================================
+    // getAnnouncement — RESIDENT viewing draft → NOT_FOUND (not leaked)
+    // =========================================================================
+
+    @Test
+    @DisplayName("getAnnouncement — RESIDENT viewing unpublished draft throws NOT_FOUND")
+    void getAnnouncement_residentViewingDraft_throwsNotFound() {
+        when(announcementRepository.findById(announcementId))
+                .thenReturn(Optional.of(draftAnnouncement));
+
+        assertThatThrownBy(() -> service.getAnnouncement(announcementId, principalId, "RESIDENT"))
+                .isInstanceOf(AppException.class)
+                .satisfies(ex -> assertThat(((AppException) ex).getErrorCode())
+                        .isEqualTo(ErrorCode.NOT_FOUND));
+    }
+
+    // =========================================================================
+    // getAnnouncement — announcement not found → NOT_FOUND
+    // =========================================================================
+
+    @Test
+    @DisplayName("getAnnouncement — unknown announcement ID throws NOT_FOUND")
+    void getAnnouncement_notFound_throwsNotFound() {
+        UUID unknownId = UUID.randomUUID();
+        when(announcementRepository.findById(unknownId)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.getAnnouncement(unknownId, principalId, "ADMIN"))
+                .isInstanceOf(AppException.class)
+                .satisfies(ex -> assertThat(((AppException) ex).getErrorCode())
+                        .isEqualTo(ErrorCode.NOT_FOUND));
+    }
+
+    // =========================================================================
+    // updateAnnouncement — already published → CONFLICT (immutable)
+    // =========================================================================
+
+    @Test
+    @DisplayName("updateAnnouncement — editing a published announcement throws INVALID_STATUS_TRANSITION")
+    void updateAnnouncement_publishedAnnouncement_throwsInvalidStatusTransition() {
+        when(announcementRepository.findById(announcementId))
+                .thenReturn(Optional.of(publishedAnnouncement));
+
+        UpdateAnnouncementRequest request = new UpdateAnnouncementRequest();
+        request.setTitle("New Title");
+
+        assertThatThrownBy(() -> service.updateAnnouncement(announcementId, request))
+                .isInstanceOf(AppException.class)
+                .satisfies(ex -> assertThat(((AppException) ex).getErrorCode())
+                        .isEqualTo(ErrorCode.INVALID_STATUS_TRANSITION));
+    }
+
+    // =========================================================================
+    // deleteAnnouncement — already published → CONFLICT (preserve read history)
+    // =========================================================================
+
+    @Test
+    @DisplayName("deleteAnnouncement — deleting a published announcement throws CONFLICT")
+    void deleteAnnouncement_publishedAnnouncement_throwsConflict() {
+        when(announcementRepository.findById(announcementId))
+                .thenReturn(Optional.of(publishedAnnouncement));
+
+        assertThatThrownBy(() -> service.deleteAnnouncement(announcementId))
+                .isInstanceOf(AppException.class)
+                .satisfies(ex -> assertThat(((AppException) ex).getErrorCode())
+                        .isEqualTo(ErrorCode.CONFLICT));
+    }
+
+    // =========================================================================
+    // markRead — draft announcement → NOT_FOUND (SEC-07)
+    // =========================================================================
+
+    @Test
+    @DisplayName("markRead — marking a draft announcement as read throws NOT_FOUND (SEC-07)")
+    void markRead_draftAnnouncement_throwsNotFound() {
+        when(announcementRepository.findById(announcementId))
+                .thenReturn(Optional.of(draftAnnouncement));
+
+        assertThatThrownBy(() -> service.markRead(announcementId, principalId))
+                .isInstanceOf(AppException.class)
+                .satisfies(ex -> assertThat(((AppException) ex).getErrorCode())
+                        .isEqualTo(ErrorCode.NOT_FOUND));
+    }
+
+    // =========================================================================
+    // createAnnouncement — BLOCK scope without targetBlockId → VALIDATION_ERROR
+    // =========================================================================
+
+    @Test
+    @DisplayName("createAnnouncement — BLOCK scope without targetBlockId throws VALIDATION_ERROR")
+    void createAnnouncement_blockScopeWithoutBlockId_throwsValidationError() {
+        CreateAnnouncementRequest request = new CreateAnnouncementRequest();
+        request.setTitle("Block Announcement");
+        request.setContent("Content");
+        request.setType(AnnouncementType.GENERAL);
+        request.setTargetScope(AnnouncementScope.BLOCK);
+        // targetBlockId intentionally null
+
+        assertThatThrownBy(() -> service.createAnnouncement(request, principalId))
+                .isInstanceOf(AppException.class)
+                .satisfies(ex -> assertThat(((AppException) ex).getErrorCode())
+                        .isEqualTo(ErrorCode.VALIDATION_ERROR));
+    }
+
+    // =========================================================================
+    // createAnnouncement — FLOOR scope without targetBlockId → VALIDATION_ERROR
+    // =========================================================================
+
+    @Test
+    @DisplayName("createAnnouncement — FLOOR scope without targetBlockId throws VALIDATION_ERROR")
+    void createAnnouncement_floorScopeWithoutBlockId_throwsValidationError() {
+        CreateAnnouncementRequest request = new CreateAnnouncementRequest();
+        request.setTitle("Floor Announcement");
+        request.setContent("Content");
+        request.setType(AnnouncementType.GENERAL);
+        request.setTargetScope(AnnouncementScope.FLOOR);
+        request.setTargetFloor((short) 3);
+        // targetBlockId intentionally null
+
+        assertThatThrownBy(() -> service.createAnnouncement(request, principalId))
+                .isInstanceOf(AppException.class)
+                .satisfies(ex -> assertThat(((AppException) ex).getErrorCode())
+                        .isEqualTo(ErrorCode.VALIDATION_ERROR));
+    }
+
+    // =========================================================================
+    // createAnnouncement — FLOOR scope without targetFloor → VALIDATION_ERROR
+    // =========================================================================
+
+    @Test
+    @DisplayName("createAnnouncement — FLOOR scope without targetFloor throws VALIDATION_ERROR")
+    void createAnnouncement_floorScopeWithoutFloor_throwsValidationError() {
+        CreateAnnouncementRequest request = new CreateAnnouncementRequest();
+        request.setTitle("Floor Announcement");
+        request.setContent("Content");
+        request.setType(AnnouncementType.GENERAL);
+        request.setTargetScope(AnnouncementScope.FLOOR);
+        request.setTargetBlockId(UUID.randomUUID());
+        // targetFloor intentionally null
+
+        assertThatThrownBy(() -> service.createAnnouncement(request, principalId))
+                .isInstanceOf(AppException.class)
+                .satisfies(ex -> assertThat(((AppException) ex).getErrorCode())
+                        .isEqualTo(ErrorCode.VALIDATION_ERROR));
+    }
+
+    // =========================================================================
+    // listAnnouncements — N+1 guard: creator names resolved in ONE batch query
+    // =========================================================================
+
+    @Test
+    @DisplayName("listAnnouncements (ADMIN) — resolves creator names via a single findAllById (no per-row findById)")
+    void listAnnouncements_resolvesCreatorNamesInBatch_noN1() {
+        // Three announcements, each with a distinct creator UUID — naive mapping would do 3 lookups.
+        Announcement a1 = announcementWithCreator(UUID.randomUUID());
+        Announcement a2 = announcementWithCreator(UUID.randomUUID());
+        Announcement a3 = announcementWithCreator(UUID.randomUUID());
+
+        when(announcementRepository.findAll(any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(a1, a2, a3)));
+        when(announcementReadRepository.findReadAnnouncementIds(any(), anyList()))
+                .thenReturn(List.of());
+        when(userRepository.findAllById(any())).thenReturn(List.of());
+
+        service.listAnnouncements(principalId, "ADMIN", PageRequest.of(0, 10));
+
+        // Batch resolution: exactly one user query for the whole page, never one per row.
+        verify(userRepository, times(1)).findAllById(any());
+        verify(userRepository, never()).findById(any());
+    }
+
+    /**
+     * Builds a published announcement carrying the given creator actor UUID.
+     *
+     * @param creatorId the creator actor UUID.
+     * @return an announcement with id, scope, and createdBy populated.
+     */
+    private Announcement announcementWithCreator(UUID creatorId) {
+        Announcement a = new Announcement();
+        a.setId(UUID.randomUUID());
+        a.setTitle("A");
+        a.setContent("body");
+        a.setScope(AnnouncementScope.ALL);
+        a.setType(AnnouncementType.GENERAL);
+        a.setPublishedAt(OffsetDateTime.now());
+        a.setCreatedBy(creatorId);
+        return a;
+    }
+}

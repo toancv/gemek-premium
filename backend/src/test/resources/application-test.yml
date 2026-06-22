@@ -1,0 +1,29 @@
+app:
+  admin:
+    email: admin@gemek.vn
+    # Must match the ADMIN_PASSWORD constant hardcoded in the integration tests
+    # (e.g. AuthControllerTest). On a fresh container DB, AdminSeeder seeds this
+    # plaintext (phone default 0900000000) so test logins return 200.
+    password: GemekAdmin2026
+
+auth:
+  rate-limit:
+    max-attempts: 1000
+
+# Test-only JWT secret — NOT a production value. Must be >= 512 bits for HS512.
+jwt:
+  secret: "TEST-ONLY-DO-NOT-USE-IN-PROD-gemek-integration-test-jwt-secret-512bits-padding-aabbcc"
+
+# Point at the docker-compose services reachable from the Windows host via WSL2 port proxy.
+spring:
+  datasource:
+    # Dedicated test DB — NEVER the dev 'gemek' DB. AbstractIntegrationTest creates it
+    # and runs Flyway clean+migrate once per JVM so each run starts from an empty schema.
+    url: jdbc:postgresql://localhost:5433/gemek_test
+    username: gemek
+    password: "GemekLocal@2026"
+  data:
+    redis:
+      host: localhost
+      port: 6380
+      password: GemekRedis@2026

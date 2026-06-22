@@ -1,0 +1,15 @@
+Picked up JAVA_TOOL_OPTIONS: -Duser.timezone=Asia/Ho_Chi_Minh
+OpenJDK 64-Bit Server VM warning: Sharing is only supported for boot loader classes because bootstrap classpath has been appended
+WARNING: A Java agent has been loaded dynamically (C:\Users\toancv2\.m2\repository\net\bytebuddy\byte-buddy-agent\1.14.19\byte-buddy-agent-1.14.19.jar)
+WARNING: If a serviceability tool is in use, please run with -XX:+EnableDynamicAgentLoading to hide this warning
+WARNING: If a serviceability tool is not in use, please run with -Djdk.instrument.traceUsage for more information
+WARNING: Dynamic loading of agents will be disallowed by default in a future release
+09:50:51.369 [main] INFO vn.vtit.gemek.module.resident.ResidentServiceImpl -- Resident created — id=888f7c33-92c7-42d2-ba77-98d5ebd05291, userId=null
+09:50:51.408 [main] INFO vn.vtit.gemek.module.resident.ResidentServiceImpl -- Resident created — id=9c914a52-ac69-4329-9db4-4979e3ca02b9, userId=5ac9e2f8-5ffa-4f31-ac44-f48d863f76b7
+09:50:51.422 [main] INFO vn.vtit.gemek.module.resident.ResidentServiceImpl -- Resident created — id=9c50f992-783b-417f-b04b-e7951feb19b5, userId=null
+09:50:51.506 [main] INFO vn.vtit.gemek.module.user.UserServiceImpl -- User created — id=c1da49ff-5705-4b15-9db1-a52e0922f1e3, role=RESIDENT
+09:50:51.511 [main] INFO vn.vtit.gemek.module.user.UserServiceImpl -- User created — id=c171d3a4-f38c-490c-9cdd-7b38806f563c, role=RESIDENT
+09:50:51.595 [main] WARN vn.vtit.gemek.module.user.UserServiceImpl -- Role change — userId=c1b09aed-6c54-4434-b16a-e0e301d25fb4 oldRole=RESIDENT newRole=ADMIN actorId=admin-uuid
+09:50:51.595 [main] INFO vn.vtit.gemek.module.user.UserServiceImpl -- User updated — id=c1b09aed-6c54-4434-b16a-e0e301d25fb4
+09:50:51.600 [main] INFO vn.vtit.gemek.module.user.UserServiceImpl -- User updated — id=31ac0f17-48b0-4042-b0fc-157ca4898e47
+09:50:51.605 [main] INFO vn.vtit.gemek.module.user.UserServiceImpl -- User created — id=efd47229-1680-4a13-b0ca-94448d58e8d5, role=RESIDENT

@@ -1,0 +1,31 @@
+{
+  "name": "admin",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@gemek/ui": "workspace:*",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "react-router-dom": "6.26.2",
+    "@tanstack/react-query": "5.56.2",
+    "@tanstack/react-query-devtools": "5.56.2",
+    "zustand": "4.5.5",
+    "axios": "1.7.7"
+  },
+  "devDependencies": {
+    "vite": "5.4.8",
+    "@vitejs/plugin-react": "4.3.1",
+    "typescript": "5.5.4",
+    "tailwindcss": "3.4.13",
+    "postcss": "8.4.47",
+    "autoprefixer": "10.4.20",
+    "@types/react": "18.3.11",
+    "@types/react-dom": "18.3.1"
+  }
+}

@@ -1,0 +1,23 @@
+﻿=== STEP 7 FE DISPLAY AUDIT BUILD ===
+
+--- ADMIN BUILD ---
+$ tsc && vite build
+vite v5.4.8 building for production...
+transforming...
+165 modules transformed.
+dist/index.html                 0.41 kB | gzip: 0.29 kB
+dist/assets/index-CG7UOAmx.css 18.04 kB | gzip: 4.03 kB
+dist/assets/index-BFoL4H2j.js  339.38 kB | gzip: 98.11 kB
+built in 2.00s
+EXIT_ADMIN:0
+
+--- RESIDENT BUILD ---
+$ tsc && vite build
+vite v5.4.8 building for production...
+transforming...
+162 modules transformed.
+dist/index.html                 0.42 kB | gzip: 0.29 kB
+dist/assets/index-CqnC9qMA.css 15.28 kB | gzip: 3.61 kB
+dist/assets/index-DQdVEEum.js  277.94 kB | gzip: 88.41 kB
+built in 1.87s
+EXIT_RESIDENT:0

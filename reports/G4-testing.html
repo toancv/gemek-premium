@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>G4 — Test Report (Final)</title>
+<style>
+  :root {
+    --bg: #0f1117; --surface: #1a1d27; --border: #2a2d3a;
+    --accent: #6366f1; --accent2: #10b981; --warn: #f59e0b;
+    --danger: #ef4444; --text: #e2e8f0; --muted: #64748b;
+    --font: 'SF Mono', 'Fira Code', monospace;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: -apple-system, sans-serif; padding: 2rem; }
+  .header { border-left: 4px solid var(--accent2); padding-left: 1.5rem; margin-bottom: 2.5rem; }
+  .gate-badge { display: inline-block; background: var(--accent2); color: #064e3b; font-family: var(--font); font-size: 0.7rem; padding: 0.25rem 0.75rem; border-radius: 100px; margin-bottom: 0.75rem; letter-spacing: 0.1em; font-weight: 700; }
+  h1 { font-size: 1.75rem; font-weight: 700; margin-bottom: 0.25rem; }
+  .meta { color: var(--muted); font-size: 0.85rem; font-family: var(--font); }
+  .stats-row { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
+  .stat { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 1.25rem; text-align: center; }
+  .stat .number { font-size: 2rem; font-weight: 700; color: var(--accent2); font-family: var(--font); }
+  .stat .number.warn { color: var(--warn); }
+  .stat .number.danger { color: var(--danger); }
+  .stat .label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); margin-top: 0.25rem; }
+  .section { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; margin-bottom: 1.5rem; }
+  .section-title { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.15em; color: var(--muted); margin-bottom: 1rem; font-family: var(--font); }
+  table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
+  th { text-align: left; padding: 0.6rem 1rem; background: var(--bg); color: var(--muted); font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.1em; font-family: var(--font); }
+  td { padding: 0.75rem 1rem; border-top: 1px solid var(--border); vertical-align: top; }
+  .badge { display: inline-block; font-size: 0.65rem; padding: 0.2rem 0.6rem; border-radius: 4px; font-family: var(--font); font-weight: 600; }
+  .badge.pass { background: rgba(16,185,129,0.15); color: #6ee7b7; }
+  .badge.warn { background: rgba(245,158,11,0.15); color: #fcd34d; }
+  .badge.fail { background: rgba(239,68,68,0.15); color: #fca5a5; }
+  .badge.done { background: rgba(16,185,129,0.15); color: #6ee7b7; }
+  .badge.info { background: rgba(99,102,241,0.15); color: #a5b4fc; }
+  .note-box { background: rgba(245,158,11,0.08); border: 1px solid rgba(245,158,11,0.3); border-radius: 8px; padding: 1rem 1.25rem; margin-top: 1rem; font-size: 0.875rem; color: var(--warn); line-height: 1.6; }
+  .note-box.green { background: rgba(16,185,129,0.08); border-color: rgba(16,185,129,0.3); color: var(--accent2); }
+  .decisions { list-style: none; }
+  .decisions li { padding: 0.6rem 0; border-bottom: 1px solid var(--border); font-size: 0.875rem; color: var(--muted); }
+  .decisions li:last-child { border-bottom: none; }
+  .decisions li strong { color: var(--text); display: block; margin-bottom: 0.2rem; }
+  .approval-box { background: linear-gradient(135deg, rgba(16,185,129,0.1), rgba(99,102,241,0.05)); border: 1px solid var(--accent2); border-radius: 12px; padding: 1.5rem; text-align: center; }
+  .approval-box .instruction { font-size: 1rem; margin-bottom: 0.75rem; }
+  code { background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 0.4rem 0.8rem; font-family: var(--font); font-size: 0.9rem; color: var(--accent2); display: inline-block; margin: 0.25rem; }
+  .commit { font-family: var(--font); font-size: 0.75rem; color: var(--accent); }
+  .fix-num { display: inline-block; width: 1.4rem; height: 1.4rem; border-radius: 50%; background: rgba(16,185,129,0.2); color: var(--accent2); font-size: 0.7rem; font-weight: 700; text-align: center; line-height: 1.4rem; font-family: var(--font); margin-right: 0.5rem; flex-shrink: 0; }
+  .fix-row { display: flex; align-items: flex-start; gap: 0.1rem; padding: 0.6rem 0; border-bottom: 1px solid var(--border); font-size: 0.875rem; }
+  .fix-row:last-child { border-bottom: none; }
+  .fix-row .fix-body { flex: 1; }
+  .fix-row .fix-body strong { color: var(--text); display: block; margin-bottom: 0.2rem; }
+  .fix-row .fix-body span { color: var(--muted); }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="gate-badge">GATE G4 · TEST REPORT — FINAL</div>
+  <h1>Integration &amp; Unit Test Report</h1>
+  <div class="meta">Updated: 2026-06-03 &nbsp;·&nbsp; Branch: deploy/local (from improvement/security) &nbsp;·&nbsp; Java 21 Temurin · Maven 3.9.6 &nbsp;·&nbsp; Awaiting CTO Approval</div>
+</div>
+
+<!-- ── Summary stats ─────────────────────────────────────────────────────── -->
+<div class="stats-row">
+  <div class="stat">
+    <div class="number">149</div>
+    <div class="label">Total Tests</div>
+  </div>
+  <div class="stat">
+    <div class="number">149</div>
+    <div class="label">Passing</div>
+  </div>
+  <div class="stat">
+    <div class="number">0</div>
+    <div class="label">Failing</div>
+  </div>
+  <div class="stat">
+    <div class="number">100%</div>
+    <div class="label">Pass Rate</div>
+  </div>
+  <div class="stat">
+    <div class="number">15</div>
+    <div class="label">G4 Integration (15/15)</div>
+  </div>
+  <div class="stat">
+    <div class="number">19</div>
+    <div class="label">Security Fixes (19/20)</div>
+  </div>
+  <div class="stat">
+    <div class="number">1</div>
+    <div class="label">SEC Deferred (SEC-20)</div>
+  </div>
+  <div class="stat">
+    <div class="number">&#10003;</div>
+    <div class="label">App Boots — Fresh DB</div>
+  </div>
+</div>
+
+<div class="note-box green">
+  &#10003; <strong>Overall Verdict — PASS (100%):</strong>
+  All <strong>149 tests</strong> pass on branch <code>deploy/local</code> via <code>mvn clean verify</code>
+  with JDK 21 (2026-06-03). This includes 15 G4 cross-module integration tests, 66 unit/controller tests,
+  and 12 post-audit coverage-gap tests (AuthZ regression guards added on branch improvement/security).
+  App boots cleanly against a fresh PostgreSQL 15 database: Flyway applies all 10 migrations (V1–V10)
+  with no checksum mismatch; Tomcat starts on port 8080 in 11.6 s.
+</div>
+
+<!-- ── G4 Integration Tests ──────────────────────────────────────────────── -->
+<div class="section" style="margin-top:1.5rem;">
+  <div class="section-title">G4 Cross-Module Integration Tests — 15 / 15 PASS</div>
+  <table>
+    <thead>
+      <tr><th>Test Class</th><th>Test Method</th><th>End-to-End Flow</th><th>Result</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td rowspan="5"><strong>TicketLifecycle<br>IntegrationTest</strong><br><span class="commit">5 / 5</span></td>
+        <td>createAndAssignTicket_fullLifecycle</td>
+        <td>RESIDENT creates ticket → ADMIN assigns staff → TECHNICIAN transitions IN_PROGRESS → DONE → RESIDENT rates</td>
+        <td><span class="badge pass">&#10003; PASS</span></td>
+      </tr>
+      <tr>
+        <td>maintenanceTicket_assignedToContractor_fullLifecycle</td>
+        <td>MAINTENANCE_REPAIR → contractor assigned → DONE → rate → contractor.rating recalculated</td>
+        <td><span class="badge pass">&#10003; PASS</span></td>
+      </tr>
+      <tr>
+        <td>slaBreachDetected</td>
+        <td>Backdated slaDeadline via repository → GET /reports/dashboard → slaBreachedTickets &gt; 0</td>
+        <td><span class="badge pass">&#10003; PASS</span></td>
+      </tr>
+      <tr>
+        <td>nonMaintenanceTicket_contractorAssignment_rejected</td>
+        <td>COMPLAINT ticket + contractor assign → 400 CONTRACTOR_ASSIGNMENT_NOT_ALLOWED</td>
+        <td><span class="badge pass">&#10003; PASS</span></td>
+      </tr>
+      <tr>
+        <td>residentCanOnlySeeOwnTickets</td>
+        <td>Two residents, two apartments → each GET /tickets returns only own tickets</td>
+        <td><span class="badge pass">&#10003; PASS</span></td>
+      </tr>
+      <tr>
+        <td rowspan="3"><strong>AnnouncementFlow<br>IntegrationTest</strong><br><span class="commit">3 / 3</span></td>
+        <td>createPublishAndResidentReads</td>
+        <td>ADMIN creates (DRAFT) → publishes → RESIDENT list includes it → mark read → isRead=true</td>
+        <td><span class="badge pass">&#10003; PASS</span></td>
+      </tr>
+      <tr>
+        <td>blockScopedAnnouncement_onlyVisibleToBlock</td>
+        <td>scope=BLOCK(A) → residentA sees it, residentB (different block) does not</td>
+        <td><span class="badge pass">&#10003; PASS</span></td>
+      </tr>
+      <tr>
+        <td>unpublishedAnnouncement_notVisibleToResident</td>
+        <td>DRAFT announcement → RESIDENT GET /announcements → not present in response</td>
+        <td><span class="badge pass">&#10003; PASS</span></td>
+      </tr>
+      <tr>
+        <td rowspan="4"><strong>AmenityBooking<br>IntegrationTest</strong><br><span class="commit">4 / 4</span></td>
+        <td>bookAndApprove_fullFlow</td>
+        <td>RESIDENT books (requiresApproval=true) → PENDING → ADMIN approves → APPROVED</td>
+        <td><span class="badge pass">&#10003; PASS</span></td>
+      </tr>
+      <tr>
+        <td>conflictingBooking_rejected</td>
+        <td>Resident A holds slot → Resident B requests same slot/time overlap → 409 CONFLICT</td>
+        <td><span class="badge pass">&#10003; PASS</span></td>
+      </tr>
+      <tr>
+        <td>autoApprove_noApprovalRequired</td>
+        <td>requiresApproval=false amenity → booking immediately transitions to APPROVED</td>
+        <td><span class="badge pass">&#10003; PASS</span></td>
+      </tr>
+      <tr>
+        <td>cancelPending_allowed</td>
+        <td>RESIDENT cancels own PENDING booking → CANCELLED; second cancel attempt → 409/404</td>
+        <td><span class="badge pass">&#10003; PASS</span></td>
+      </tr>
+      <tr>
+        <td rowspan="3"><strong>Notification<br>IntegrationTest</strong><br><span class="commit">3 / 3</span></td>
+        <td>ticketAssignment_createsNotification</td>
+        <td>Ticket assigned to technician → GET /notifications as technician → notification present in list</td>
+        <td><span class="badge pass">&#10003; PASS</span></td>
+      </tr>
+      <tr>
+        <td>markAllRead_decrementsUnreadCount</td>
+        <td>3 injected notifications → unread-count=3 → POST /notifications/read-all → unread-count=0</td>
+        <td><span class="badge pass">&#10003; PASS</span></td>
+      </tr>
+      <tr>
+        <td>markSingleRead</td>
+        <td>2 injected notifications → mark one by ID → unread-count=1, isRead=true on that record</td>
+        <td><span class="badge pass">&#10003; PASS</span></td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ── Unit / Controller Tests ───────────────────────────────────────────── -->
+<div class="section">
+  <div class="section-title">Unit &amp; Controller Tests — 68 / 68 Pass</div>
+  <table>
+    <thead>
+      <tr><th>Test Class</th><th>Pass / Total</th><th>Result</th><th>Notes</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><strong>AmenityControllerTest</strong></td><td>5 / 5</td><td><span class="badge pass">&#10003; PASS</span></td><td>—</td></tr>
+      <tr><td><strong>AnnouncementControllerTest</strong></td><td>4 / 4</td><td><span class="badge pass">&#10003; PASS</span></td><td>—</td></tr>
+      <tr>
+        <td><strong>ApartmentControllerTest</strong></td><td>5 / 5</td>
+        <td><span class="badge pass">&#10003; PASS</span></td>
+        <td>Fixed: JPQL null-param filter rewritten to <code>col = COALESCE(:p, col)</code> — eliminates PostgreSQL untyped-parameter error on enum/UUID IS NULL checks</td>
+      </tr>
+      <tr><td><strong>BlockControllerTest</strong></td><td>5 / 5</td><td><span class="badge pass">&#10003; PASS</span></td><td>—</td></tr>
+      <tr>
+        <td><strong>AuthControllerTest</strong></td><td>6 / 6</td>
+        <td><span class="badge pass">&#10003; PASS</span></td>
+        <td>Fixed: <code>@JsonProperty("isActive")</code> on <code>UserResponse</code> / <code>UserDetailResponse</code> record components</td>
+      </tr>
+      <tr><td><strong>AuthServiceTest</strong></td><td>7 / 7</td><td><span class="badge pass">&#10003; PASS</span></td><td>—</td></tr>
+      <tr><td><strong>ContractorControllerTest</strong></td><td>5 / 5</td><td><span class="badge pass">&#10003; PASS</span></td><td>—</td></tr>
+      <tr><td><strong>NotificationControllerTest</strong></td><td>3 / 3</td><td><span class="badge pass">&#10003; PASS</span></td><td>—</td></tr>
+      <tr><td><strong>ParkingControllerTest</strong></td><td>4 / 4</td><td><span class="badge pass">&#10003; PASS</span></td><td>—</td></tr>
+      <tr>
+        <td><strong>ReportControllerTest</strong></td><td>6 / 6</td>
+        <td><span class="badge pass">&#10003; PASS</span></td>
+        <td>Fixed: <code>r.resident_type</code>→<code>r.type</code>; CAST for JDBC type inference on nullable native params; <code>List&lt;Object[]&gt;</code> return type on aggregate queries</td>
+      </tr>
+      <tr>
+        <td><strong>ResidentControllerTest</strong></td><td>5 / 5</td>
+        <td><span class="badge pass">&#10003; PASS</span></td>
+        <td>Fixed: <code>@JsonProperty("isPrimaryContact")</code> on both <code>ResidentResponse</code> and <code>CreateResidentRequest</code></td>
+      </tr>
+      <tr><td><strong>TicketControllerTest</strong></td><td>8 / 8</td><td><span class="badge pass">&#10003; PASS</span></td><td>—</td></tr>
+      <tr>
+        <td><strong>VehicleControllerTest</strong></td><td>5 / 5</td>
+        <td><span class="badge pass">&#10003; PASS</span></td>
+        <td>Fixed: <code>@JsonProperty("isActive")</code> on <code>VehicleResponse</code></td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ── Bugs Fixed ────────────────────────────────────────────────────────── -->
+<div class="section">
+  <div class="section-title">All Bugs Fixed — 16 Defects (2 Commits)</div>
+  <p style="font-size:0.75rem; color:var(--muted); margin-bottom:1rem; font-family:var(--font);">
+    Commit <span class="commit">8d10d2b</span> — G4 integration fixes &nbsp;|&nbsp; Commit <span class="commit">c98c99c</span> — pre-existing unit test fixes
+  </p>
+
+  <div class="fix-row"><div class="fix-num">1</div><div class="fix-body">
+    <strong>@PrePersist missing on 6 entities (Block, Apartment, User, Resident, ResidentHistory, Vehicle)</strong>
+    <span><code>created_at</code> / <code>updated_at</code> NULL on INSERT. Added <code>@PrePersist</code> / <code>@PreUpdate</code> to all 6 entities. <span class="commit">8d10d2b</span></span>
+  </div></div>
+
+  <div class="fix-row"><div class="fix-num">2</div><div class="fix-body">
+    <strong>AuditLog JSONB columns missing @JdbcTypeCode(SqlTypes.JSON)</strong>
+    <span>Hibernate sent <code>Map</code> as TEXT; PostgreSQL rejected INSERT into <code>JSONB</code>. Added annotation to <code>oldValue</code> and <code>newValue</code>. <span class="commit">8d10d2b</span></span>
+  </div></div>
+
+  <div class="fix-row"><div class="fix-num">3</div><div class="fix-body">
+    <strong>hibernate.jdbc.time_zone=UTC shifted LocalTime by +8h on PostgreSQL TIME columns</strong>
+    <span>Amenity operating hours read with +8h offset in UTC+8 environment. Removed <code>jdbc.time_zone</code> from <code>application.yml</code>. <span class="commit">8d10d2b</span></span>
+  </div></div>
+
+  <div class="fix-row"><div class="fix-num">4</div><div class="fix-body">
+    <strong>Login rate limit hardcoded at 10 — test suite rate-limited</strong>
+    <span>Made configurable via <code>@Value</code>; test profile sets 10000. <span class="commit">8d10d2b</span></span>
+  </div></div>
+
+  <div class="fix-row"><div class="fix-num">5</div><div class="fix-body">
+    <strong>getDashboardTicketKpis declared Object[] — Spring Data returns List&lt;Object[]&gt;</strong>
+    <span>Changed return type; unwrapped with null-safe fallback in service. <span class="commit">8d10d2b</span></span>
+  </div></div>
+
+  <div class="fix-row"><div class="fix-num">6</div><div class="fix-body">
+    <strong>ContractRepository JPQL enum literal generated invalid PostgreSQL cast</strong>
+    <span><code>'ACTIVE'::ContractStatus</code> rejected; PostgreSQL type is <code>contract_status</code>. Converted to native queries. <span class="commit">8d10d2b</span></span>
+  </div></div>
+
+  <div class="fix-row"><div class="fix-num">7</div><div class="fix-body">
+    <strong>TicketServiceImpl missing NotificationService — TICKET_ASSIGNED never sent</strong>
+    <span>Injected dependency; added <code>createNotification()</code> call after ticket assignment. <span class="commit">8d10d2b</span></span>
+  </div></div>
+
+  <div class="fix-row"><div class="fix-num">8</div><div class="fix-body">
+    <strong>Integration test unit numbers exceeded VARCHAR(20)</strong>
+    <span>Truncated <code>nanoTime()</code> suffix to <code>% 100_000_000L</code> (max 8 digits). <span class="commit">8d10d2b</span></span>
+  </div></div>
+
+  <div class="fix-row"><div class="fix-num">9</div><div class="fix-body">
+    <strong>Static booking dates / block names — 409 CONFLICT across repeated runs</strong>
+    <span>Per-run <code>dayBase</code> offset for dates; <code>nanoTime()</code> suffix for names. <span class="commit">8d10d2b</span></span>
+  </div></div>
+
+  <div class="fix-row"><div class="fix-num">10</div><div class="fix-body">
+    <strong>TicketLifecycleIntegrationTest used wrong token for rating — 403</strong>
+    <span>Changed ticket creation to <code>residentToken</code> so submitter equals rater. <span class="commit">8d10d2b</span></span>
+  </div></div>
+
+  <div class="fix-row"><div class="fix-num">11</div><div class="fix-body">
+    <strong>Jackson strips "is" prefix on 5 response DTOs — isXxx serialised as xxx</strong>
+    <span>Added <code>@JsonProperty</code> to <code>isActive</code> / <code>isRead</code> / <code>isPrimaryContact</code> fields in <code>VehicleResponse</code>, <code>ResidentResponse</code>, <code>NotificationResponse</code>, <code>UserDetailResponse</code>, <code>UserResponse</code>. <span class="commit">c98c99c</span></span>
+  </div></div>
+
+  <div class="fix-row"><div class="fix-num">12</div><div class="fix-body">
+    <strong>Jackson strips "is" prefix on CreateResidentRequest deserialization — value always false</strong>
+    <span>Jackson resolves setter by stripping "is": <code>setPrimaryContact()</code> not found (Lombok generates <code>setIsPrimaryContact()</code>) → field stays false. Added <code>@JsonProperty("isPrimaryContact")</code>. <span class="commit">c98c99c</span></span>
+  </div></div>
+
+  <div class="fix-row"><div class="fix-num">13</div><div class="fix-body">
+    <strong>ResidentRepository native query used r.resident_type — actual column is r.type</strong>
+    <span>Entity maps field as <code>@Column(name = "type")</code>. Fixed column reference; added <code>CAST(:blockId AS UUID)</code> for PostgreSQL JDBC type inference. <span class="commit">c98c99c</span></span>
+  </div></div>
+
+  <div class="fix-row"><div class="fix-num">14</div><div class="fix-body">
+    <strong>ApartmentRepository JPQL: PostgreSQL cannot type enum/UUID parameters in IS NULL check</strong>
+    <span>Named param appearing twice generates two separate JDBC <code>?</code>; first occurrence in IS NULL has no type context. Rewrote all optional filters from <code>(:p IS NULL OR col = :p)</code> to <code>col = COALESCE(:p, col)</code> — single occurrence, typed from column. <span class="commit">c98c99c</span></span>
+  </div></div>
+
+  <div class="fix-row"><div class="fix-num">15</div><div class="fix-body">
+    <strong>TicketRepository native queries: could not determine data type of parameter $1</strong>
+    <span>Same JDBC double-placeholder issue for TIMESTAMPTZ/TEXT/UUID/enum params. Added <code>CAST(:from AS TIMESTAMPTZ)</code>, <code>CAST(:to AS TIMESTAMPTZ)</code>, <code>CAST(:category AS TEXT)</code>, <code>CAST(:apartmentId AS UUID)</code>, <code>CAST(:groupBy AS TEXT)</code> on IS NULL sides. <span class="commit">c98c99c</span></span>
+  </div></div>
+
+  <div class="fix-row"><div class="fix-num">16</div><div class="fix-body">
+    <strong>getTicketSummary / getResidentDemographics declared Object[] — returns List&lt;Object[]&gt;</strong>
+    <span>Aggregate native queries always return a list. Changed repository signatures; unwrapped with null-safe fallback in <code>ReportServiceImpl</code>. <span class="commit">c98c99c</span></span>
+  </div></div>
+</div>
+
+<!-- ── Infrastructure ────────────────────────────────────────────────────── -->
+<div class="section">
+  <div class="section-title">Test Infrastructure</div>
+  <table>
+    <thead><tr><th>Component</th><th>Connection</th><th>Status</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><strong>PostgreSQL (test DB)</strong></td>
+        <td><code>localhost:5432 / gemek2</code> — local instance, Flyway-migrated on startup</td>
+        <td><span class="badge pass">&#10003; Running</span></td>
+      </tr>
+      <tr>
+        <td><strong>Redis</strong></td>
+        <td><code>localhost:6379</code> — shared across test suite</td>
+        <td><span class="badge pass">&#10003; Running</span></td>
+      </tr>
+      <tr>
+        <td><strong>JDK</strong></td>
+        <td>Java 21 — Eclipse Adoptium <code>jdk-21.0.10.7-hotspot</code></td>
+        <td><span class="badge pass">&#10003; OK</span></td>
+      </tr>
+      <tr>
+        <td><strong>Build</strong></td>
+        <td><code>./mvnw test -Dspring.profiles.active=test</code></td>
+        <td><span class="badge pass">&#10003; OK</span></td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ── Security Audit — Post-G4 (improvement/security) ───────────────────── -->
+<div class="section">
+  <div class="section-title">Security Audit — improvement/security branch — 19 Fixed / 1 Deferred / 20 Total</div>
+  <table>
+    <thead>
+      <tr><th>ID</th><th>Severity</th><th>Location</th><th>Finding</th><th>Status</th><th>AuthZ Regression Test</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><strong>SEC-01</strong></td><td><span class="badge fail">HIGH</span></td><td><code>FileController.java:66</code></td><td>File IDOR — presign without ownership check</td><td><span class="badge done">&#10003; FIXED</span></td><td><span class="badge pass">&#10003; Yes</span></td></tr>
+      <tr><td><strong>SEC-02</strong></td><td><span class="badge warn">MEDIUM</span></td><td><code>AmenityController.java:241</code></td><td>ADMIN could book as resident — wrong role guard</td><td><span class="badge done">&#10003; FIXED</span></td><td><span class="badge pass">&#10003; Yes</span></td></tr>
+      <tr><td><strong>SEC-03</strong></td><td><span class="badge fail">HIGH</span></td><td><code>TicketServiceImpl.java:190</code></td><td>Ticket phone data leaked to TECHNICIAN/BOARD_MEMBER</td><td><span class="badge done">&#10003; FIXED</span></td><td><span class="badge pass">&#10003; Yes</span></td></tr>
+      <tr><td><strong>SEC-04</strong></td><td><span class="badge fail">HIGH</span></td><td><code>UserServiceImpl.java:121</code></td><td>Role promotion — no WARN log, no actor capture</td><td><span class="badge done">&#10003; FIXED</span></td><td><span class="badge pass">&#10003; Yes</span></td></tr>
+      <tr><td><strong>SEC-05</strong></td><td><span class="badge fail">HIGH</span></td><td><code>AuthServiceImpl.java:158</code></td><td>No rate limit on /auth/refresh — token grinding</td><td><span class="badge done">&#10003; FIXED</span></td><td><span class="badge pass">&#10003; Yes</span></td></tr>
+      <tr><td><strong>SEC-06</strong></td><td><span class="badge fail">HIGH</span></td><td><code>JwtAuthenticationFilter.java:134</code></td><td>Role read from JWT claim — privilege escalation via forged token</td><td><span class="badge done">&#10003; FIXED</span></td><td><span class="badge pass">&#10003; Yes</span></td></tr>
+      <tr><td><strong>SEC-07</strong></td><td><span class="badge warn">MEDIUM</span></td><td><code>NotificationServiceImpl.java:97</code></td><td>markAsRead not scoped to calling user — IDOR</td><td><span class="badge done">&#10003; FIXED</span></td><td><span class="badge pass">&#10003; Yes</span></td></tr>
+      <tr><td><strong>SEC-08</strong></td><td><span class="badge warn">MEDIUM</span></td><td><code>TicketServiceImpl.java:190</code></td><td>BOARD_MEMBER phone leak — same guard as SEC-03</td><td><span class="badge done">&#10003; FIXED</span></td><td><span class="badge info">Covered by SEC-03 test</span></td></tr>
+      <tr><td><strong>SEC-09</strong></td><td><span class="badge warn">MEDIUM</span></td><td><code>application.yml:48</code></td><td>Redis password empty-string fallback — unauthenticated Redis</td><td><span class="badge done">&#10003; FIXED</span></td><td>—</td></tr>
+      <tr><td><strong>SEC-10</strong></td><td><span class="badge warn">MEDIUM</span></td><td><code>V2__seed_admin.sql:18</code></td><td>Hardcoded BCrypt hash in migration — credential in source</td><td><span class="badge done">&#10003; FIXED</span></td><td>—</td></tr>
+      <tr><td><strong>SEC-11</strong></td><td><span class="badge warn">MEDIUM</span></td><td><code>AmenityServiceImpl.java:331</code></td><td>No minimum booking duration — zero/negative duration bookings</td><td><span class="badge done">&#10003; FIXED</span></td><td>—</td></tr>
+      <tr><td><strong>SEC-12</strong></td><td><span class="badge warn">MEDIUM</span></td><td><code>AmenityServiceImpl.java:311</code></td><td>No max advance booking limit — arbitrary future reservations</td><td><span class="badge done">&#10003; FIXED</span></td><td>—</td></tr>
+      <tr><td><strong>SEC-13</strong></td><td><span class="badge warn">MEDIUM</span></td><td><code>AuthServiceImpl.java:205</code></td><td>Null access token on logout — NPE / no-op logout</td><td><span class="badge done">&#10003; FIXED</span></td><td>—</td></tr>
+      <tr><td><strong>SEC-14</strong></td><td><span class="badge info">LOW</span></td><td><code>AuthServiceImpl.java:226</code></td><td>Redis KEYS scan in logout — O(N) blocking on large keyspace</td><td><span class="badge done">&#10003; FIXED</span></td><td>—</td></tr>
+      <tr><td><strong>SEC-15</strong></td><td><span class="badge info">LOW</span></td><td><code>pom.xml:15</code></td><td>Spring Boot 3.3.5 — CVEs in embedded Tomcat / Spring Security</td><td><span class="badge done">&#10003; FIXED → 3.3.8</span></td><td>—</td></tr>
+      <tr><td><strong>SEC-16</strong></td><td><span class="badge info">LOW</span></td><td><code>pom.xml:29</code></td><td>JJWT 0.12.3 — known parsing vulnerability</td><td><span class="badge done">&#10003; FIXED → 0.12.6</span></td><td>—</td></tr>
+      <tr><td><strong>SEC-17</strong></td><td><span class="badge info">LOW</span></td><td><code>SecurityConfig.java:99</code></td><td>/actuator/info exposed publicly</td><td><span class="badge done">&#10003; FIXED</span></td><td>—</td></tr>
+      <tr><td><strong>SEC-21</strong></td><td><span class="badge info">LOW</span></td><td><code>SecurityConfig.java</code></td><td>CORS — no explicit CorsConfigurationSource bean</td><td><span class="badge done">&#10003; FIXED</span></td><td><span class="badge pass">&#10003; Yes — CorsIntegrationTest</span></td></tr>
+      <tr><td><strong>SEC-22</strong></td><td><span class="badge warn">MEDIUM</span></td><td><code>AmenityServiceImpl.java:308</code></td><td>Past-date bookings accepted</td><td><span class="badge done">&#10003; FIXED</span></td><td>—</td></tr>
+      <tr style="background: rgba(245,158,11,0.05);">
+        <td><strong>SEC-20</strong></td><td><span class="badge info">INFO</span></td><td>Frontend (localStorage)</td>
+        <td>Refresh token in localStorage — XSS accessible</td>
+        <td><span class="badge warn">DEFERRED — by design</span></td>
+        <td>N/A — frontend arch decision</td>
+      </tr>
+    </tbody>
+  </table>
+  <div class="note-box">
+    <strong>SEC-20 Deferred:</strong> Refresh token stored in <code>localStorage</code> (key <code>gemek_refresh</code>).
+    Full remediation requires <code>Set-Cookie: HttpOnly; Secure; SameSite=Strict</code> on <code>/auth/login</code>
+    and <code>/auth/refresh</code>, plus removal of the localStorage read/write in the frontend Zustand store.
+    Deferred by architectural decision (DECISIONS.md — 2026-05-29 "Access token in Zustand memory,
+    refresh token in localStorage"). Confirmed deferred post-audit per CTO Override in DECISIONS.md.
+  </div>
+  <div class="note-box green" style="margin-top:0.75rem;">
+    <strong>AuthZ Regression Coverage:</strong> 7 of the HIGH/MEDIUM AuthZ findings (SEC-01, 02, 03/08, 04, 05, 06, 07)
+    each have a dedicated regression test in the 12-test coverage-gap suite (branch improvement/security,
+    commit <span class="commit">3ce9639</span>). SEC-21 covered by existing CorsIntegrationTest (3 tests).
+    These tests will prevent future regressions from reverting the security fixes.
+  </div>
+</div>
+
+<!-- ── Fresh DB Boot Confirmation ────────────────────────────────────────── -->
+<div class="section">
+  <div class="section-title">Fresh Database Boot — Flyway Migration Verification (2026-06-03)</div>
+  <table>
+    <thead><tr><th>Step</th><th>Detail</th><th>Result</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><strong>Volume reset</strong></td>
+        <td><code>docker compose -f docker-compose.dev.yml down -v</code> → all postgres_dev_data volume removed</td>
+        <td><span class="badge pass">&#10003; Done</span></td>
+      </tr>
+      <tr>
+        <td><strong>Fresh postgres start</strong></td>
+        <td>postgres:15-alpine on port 5434 — empty database, no flyway_schema_history table</td>
+        <td><span class="badge pass">&#10003; Healthy</span></td>
+      </tr>
+      <tr>
+        <td><strong>Flyway V1–V10</strong></td>
+        <td><code>Successfully validated 10 migrations</code> → <code>Successfully applied 10 migrations to schema "public", now at version v10</code> (1.13 s)</td>
+        <td><span class="badge pass">&#10003; No checksum mismatch</span></td>
+      </tr>
+      <tr>
+        <td><strong>V2 placeholder</strong></td>
+        <td><code>ADMIN_PASSWORD_HASH</code> Flyway placeholder resolved from env — admin seeded with BCrypt-12 hash, no hardcoded credential in SQL</td>
+        <td><span class="badge pass">&#10003; OK</span></td>
+      </tr>
+      <tr>
+        <td><strong>App boot</strong></td>
+        <td><code>Started GemekApplication in 11.668 seconds</code> — Tomcat port 8080, JPA schema validation passes, all Hibernate entities match migrated schema</td>
+        <td><span class="badge pass">&#10003; Booted</span></td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ── Open Items ─────────────────────────────────────────────────────────── -->
+<div class="section">
+  <div class="section-title">Open Items Before Production</div>
+  <ul class="decisions">
+    <li>
+      <strong>SEC-20 — Refresh token HttpOnly cookie migration (DEFERRED by design)</strong>
+      Currently stored in <code>localStorage</code> key <code>gemek_refresh</code>. Full fix: <code>Set-Cookie: HttpOnly; Secure; SameSite=Strict</code> on <code>/auth/login</code> + <code>/auth/refresh</code>; frontend removes localStorage read/write. Confirmed deferred post-audit (DECISIONS.md — CTO Overrides).
+    </li>
+    <li>
+      <strong>Frontend build not wired into Docker Compose</strong>
+      Run <code>pnpm --filter admin build</code> + <code>pnpm --filter resident build</code>, copy dist to nginx. Recommend multi-stage Dockerfile.
+    </li>
+    <li>
+      <strong>FCM web push not wired</strong>
+      Notification bell polls unread-count API only. Service worker deferred.
+    </li>
+    <li>
+      <strong>Playwright / Cypress E2E deferred</strong>
+      Critical user flows covered by 15 backend integration tests + 12 security regression tests. Browser E2E recommended for next sprint.
+    </li>
+    <li>
+      <strong>MinIO image not cached locally — docker compose up requires pull</strong>
+      <code>minio/minio:RELEASE.2024-11-07T00-52-20Z</code> not in local image cache. Pull separately before full stack deploy.
+    </li>
+  </ul>
+</div>
+
+<!-- ── Approval ───────────────────────────────────────────────────────────── -->
+<div class="approval-box">
+  <div class="instruction">Review above, then reply in Claude Code:</div>
+  <code>approve G4</code>
+  <span style="color:var(--muted); margin: 0 0.5rem;">or</span>
+  <code>approve G4, note: [your note]</code>
+</div>
+
+</body>
+</html>

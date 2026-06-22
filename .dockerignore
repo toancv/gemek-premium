@@ -1,0 +1,36 @@
+# =============================================================================
+# .dockerignore — applies to builds with context: . (nginx/frontend build)
+# Key: prevent host node_modules (Windows native binaries) from entering the
+# linux alpine build context and corrupting the container's pnpm install.
+# =============================================================================
+
+# Version control
+.git
+**/.git
+
+# Node — CRITICAL: host native binaries won't run on alpine linux
+node_modules
+**/node_modules
+.pnpm-store
+**/.pnpm-store
+
+# Build output (not needed as input)
+dist
+**/dist
+
+# Java backend build artifacts
+backend/target
+backend/.mvn/wrapper/maven-wrapper.jar
+
+# IDE / OS artefacts
+.idea
+**/*.iml
+.DS_Store
+Thumbs.db
+
+# Secrets — never in image
+.env
+.env.*
+
+# Reports / docs (not needed for build)
+reports/

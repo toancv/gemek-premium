@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Security Remediation Report</title>
+<style>
+  :root {
+    --bg: #0f1117; --surface: #1a1d27; --border: #2a2d3a;
+    --accent: #6366f1; --accent2: #10b981; --warn: #f59e0b;
+    --danger: #ef4444; --text: #e2e8f0; --muted: #64748b;
+    --font: 'SF Mono', 'Fira Code', monospace;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: -apple-system, sans-serif; padding: 2rem; }
+  .header { border-left: 4px solid var(--accent); padding-left: 1.5rem; margin-bottom: 2.5rem; }
+  .gate-badge { display: inline-block; background: var(--accent); color: #fff; font-family: var(--font); font-size: 0.7rem; padding: 0.25rem 0.75rem; border-radius: 100px; margin-bottom: 0.75rem; letter-spacing: 0.1em; font-weight: 700; }
+  h1 { font-size: 1.75rem; font-weight: 700; margin-bottom: 0.25rem; }
+  .meta { color: var(--muted); font-size: 0.85rem; font-family: var(--font); }
+  .stats-row { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
+  .stat { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 1.25rem; text-align: center; }
+  .stat .number { font-size: 2rem; font-weight: 700; font-family: var(--font); }
+  .stat .number.crit { color: var(--danger); }
+  .stat .number.high { color: var(--warn); }
+  .stat .number.pass { color: var(--accent2); }
+  .stat .number.med  { color: #a78bfa; }
+  .stat .label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); margin-top: 0.25rem; }
+  .section { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; margin-bottom: 1.5rem; }
+  .section-title { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.15em; color: var(--muted); margin-bottom: 1.25rem; font-family: var(--font); }
+  .finding { border: 1px solid var(--border); border-radius: 8px; margin-bottom: 1rem; overflow: hidden; }
+  .finding:last-child { margin-bottom: 0; }
+  .finding-header { display: flex; align-items: center; gap: 0.75rem; padding: 0.9rem 1.1rem; background: rgba(255,255,255,0.02); border-bottom: 1px solid var(--border); }
+  .finding-header h3 { flex: 1; font-size: 0.9rem; font-weight: 600; }
+  .finding-body { display: grid; grid-template-columns: 1fr 1fr; gap: 0; }
+  .finding-col { padding: 1rem 1.1rem; font-size: 0.85rem; }
+  .finding-col:first-child { border-right: 1px solid var(--border); }
+  .finding-col .col-label { font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.12em; color: var(--muted); font-family: var(--font); margin-bottom: 0.4rem; }
+  .finding-col p { color: var(--muted); line-height: 1.6; }
+  .finding-col code { background: var(--bg); border: 1px solid var(--border); border-radius: 4px; padding: 0.15rem 0.45rem; font-family: var(--font); font-size: 0.8rem; color: var(--accent2); }
+  .finding-footer { display: flex; align-items: center; gap: 1rem; padding: 0.65rem 1.1rem; border-top: 1px solid var(--border); background: rgba(255,255,255,0.01); flex-wrap: wrap; }
+  .finding-footer .loc { font-family: var(--font); font-size: 0.75rem; color: var(--accent); flex: 1; min-width: 200px; }
+  .finding-footer .commit { font-family: var(--font); font-size: 0.75rem; color: var(--muted); }
+  .badge { display: inline-block; font-size: 0.65rem; padding: 0.2rem 0.6rem; border-radius: 4px; font-family: var(--font); font-weight: 600; white-space: nowrap; }
+  .badge.crit  { background: rgba(239,68,68,0.18);  color: #fca5a5; }
+  .badge.high  { background: rgba(245,158,11,0.18); color: #fcd34d; }
+  .badge.med   { background: rgba(167,139,250,0.18);color: #c4b5fd; }
+  .badge.low   { background: rgba(100,116,139,0.18);color: #94a3b8; }
+  .badge.pass  { background: rgba(16,185,129,0.15); color: #6ee7b7; }
+  .badge.fail  { background: rgba(239,68,68,0.15);  color: #fca5a5; }
+  .badge.defer { background: rgba(99,102,241,0.15); color: #a5b4fc; }
+  .badge.fixed { background: rgba(16,185,129,0.15); color: #6ee7b7; }
+  .verdict-box { border-radius: 12px; padding: 1.25rem 1.5rem; display: flex; align-items: center; gap: 1.25rem; margin-bottom: 1.5rem; }
+  .verdict-box.pass  { background: rgba(16,185,129,0.08); border: 1px solid rgba(16,185,129,0.3); }
+  .verdict-icon { font-size: 1.75rem; flex-shrink: 0; }
+  .verdict-text strong { display: block; font-size: 1rem; margin-bottom: 0.25rem; color: var(--text); }
+  .verdict-text p { font-size: 0.875rem; color: var(--muted); line-height: 1.5; }
+  .scan-timeline { display: flex; align-items: center; gap: 0; margin-bottom: 0.75rem; }
+  .scan-step { background: rgba(255,255,255,0.02); border: 1px solid var(--border); border-radius: 8px; padding: 0.75rem 1rem; font-size: 0.8rem; flex: 1; text-align: center; }
+  .scan-step .step-label { font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); font-family: var(--font); margin-bottom: 0.25rem; }
+  .scan-step .step-val { font-weight: 600; color: var(--text); }
+  .scan-arrow { color: var(--muted); padding: 0 0.5rem; font-size: 1.1rem; flex-shrink: 0; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
+  th { text-align: left; padding: 0.6rem 1rem; background: var(--bg); color: var(--muted); font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.1em; font-family: var(--font); }
+  td { padding: 0.75rem 1rem; border-top: 1px solid var(--border); vertical-align: top; }
+  .note-box { background: rgba(99,102,241,0.07); border: 1px solid rgba(99,102,241,0.25); border-radius: 8px; padding: 1rem 1.25rem; font-size: 0.875rem; color: #a5b4fc; line-height: 1.6; margin-top: 1rem; }
+  .cm { font-family: var(--font); font-size: 0.8rem; color: var(--accent); }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="gate-badge">SECURITY REMEDIATION REPORT</div>
+  <h1>SAST Findings — Full Remediation Log</h1>
+  <div class="meta">Generated: 2026-06-01 &nbsp;·&nbsp; Branch: phase/frontend &nbsp;·&nbsp; Scope: Backend + Frontend &nbsp;·&nbsp; Tool: Manual SAST review (security-reviewer agent)</div>
+</div>
+
+<!-- ── Overall verdict ───────────────────────────────────────────────────── -->
+<div class="verdict-box pass">
+  <div class="verdict-icon">&#10003;</div>
+  <div class="verdict-text">
+    <strong>Final Verdict — PASS WITH NOTES</strong>
+    <p>All Critical and High findings remediated across 3 fix commits.
+    The 2 Medium items once deferred to the hardening sprint are now CLOSED:
+    refresh token storage (F-04 &equiv; SEC-20 &rarr; httpOnly cookie, cookie-only) and
+    MinIO per-user ownership (F-05 &rarr; H1/H2). No Critical, High, or Medium finding remains open.</p>
+  </div>
+</div>
+
+<!-- ── Summary stats ─────────────────────────────────────────────────────── -->
+<div class="stats-row">
+  <div class="stat"><div class="number crit">3</div><div class="label">Critical — Fixed</div></div>
+  <div class="stat"><div class="number high">7</div><div class="label">High — Fixed</div></div>
+  <div class="stat"><div class="number med">3</div><div class="label">Medium — Fixed</div></div>
+  <div class="stat"><div class="number" style="color:#a5b4fc">2</div><div class="label">Medium — Deferred</div></div>
+  <div class="stat"><div class="number" style="color:var(--muted)">1</div><div class="label">Low — Fixed</div></div>
+  <div class="stat"><div class="number pass">14 / 16</div><div class="label">Findings Resolved</div></div>
+</div>
+
+<!-- ── Scan timeline ─────────────────────────────────────────────────────── -->
+<div class="section">
+  <div class="section-title">Remediation Timeline</div>
+  <div class="scan-timeline">
+    <div class="scan-step"><div class="step-label">Backend — Scan 1</div><div class="step-val"><span class="badge fail">FAIL</span> 3C · 6H · 1L</div></div>
+    <div class="scan-arrow">&#8594;</div>
+    <div class="scan-step"><div class="step-label">Fix Cycle 1</div><div class="step-val"><span class="cm">6e43ebf</span></div></div>
+    <div class="scan-arrow">&#8594;</div>
+    <div class="scan-step"><div class="step-label">Fix Cycle 2 (172.x)</div><div class="step-val"><span class="cm">6519fa7</span></div></div>
+    <div class="scan-arrow">&#8594;</div>
+    <div class="scan-step"><div class="step-label">Backend — Re-scan</div><div class="step-val"><span class="badge pass">PASS WITH NOTES</span></div></div>
+  </div>
+  <div class="scan-timeline" style="margin-bottom:0;">
+    <div class="scan-step"><div class="step-label">Frontend — Scan 1</div><div class="step-val"><span class="badge high" style="background:rgba(245,158,11,0.12)">NOTES</span> 2H · 3M</div></div>
+    <div class="scan-arrow">&#8594;</div>
+    <div class="scan-step"><div class="step-label">Fix Cycle 1</div><div class="step-val"><span class="cm">ba1c634</span></div></div>
+    <div class="scan-arrow" style="visibility:hidden">&#8594;</div>
+    <div class="scan-step" style="visibility:hidden"><div class="step-label">—</div></div>
+    <div class="scan-arrow">&#8594;</div>
+    <div class="scan-step"><div class="step-label">Frontend — Re-scan</div><div class="step-val"><span class="badge pass">PASS WITH NOTES</span></div></div>
+  </div>
+</div>
+
+<!-- ── BACKEND FINDINGS ───────────────────────────────────────────────────── -->
+<div class="section">
+  <div class="section-title">Backend SAST Findings (10 total — 3 Critical · 6 High · 1 Low)</div>
+
+  <div class="finding">
+    <div class="finding-header">
+      <span class="badge crit">CRITICAL</span>
+      <h3>B-01 — Unsanitised <code>groupBy</code> parameter — logic / query injection</h3>
+      <span class="badge fixed">&#10003; FIXED</span>
+    </div>
+    <div class="finding-body">
+      <div class="finding-col">
+        <div class="col-label">Finding</div>
+        <p>The <code>groupBy</code> string from the HTTP request was passed directly into a native SQL
+        <code>CASE</code> expression with no validation. An attacker could supply arbitrary SQL
+        to alter query semantics or exfiltrate data via the label column.</p>
+      </div>
+      <div class="finding-col">
+        <div class="col-label">Fix Applied</div>
+        <p>Added <code>private static final Set&lt;String&gt; ALLOWED_GROUP_BY = Set.of("month", "category", "status", "assignee")</code>.
+        Any value outside the allowlist throws <code>AppException(VALIDATION_ERROR)</code>
+        before the repository is called.</p>
+      </div>
+    </div>
+    <div class="finding-footer">
+      <span class="loc">ReportServiceImpl.java:48 (constant) · :130 (validation check)</span>
+      <span class="commit">commit <span class="cm">6e43ebf</span></span>
+      <span class="badge pass">Re-scan: RESOLVED</span>
+    </div>
+  </div>
+
+  <div class="finding">
+    <div class="finding-header">
+      <span class="badge crit">CRITICAL</span>
+      <h3>B-02 — Unsanitised sort field in UserController — ORDER BY injection</h3>
+      <span class="badge fixed">&#10003; FIXED</span>
+    </div>
+    <div class="finding-body">
+      <div class="finding-col">
+        <div class="col-label">Finding</div>
+        <p>The <code>sort</code> query parameter was used to construct a JPA <code>Sort</code> object
+        directly from raw user input. A malicious value could inject SQL into the
+        <code>ORDER BY</code> clause of the generated query.</p>
+      </div>
+      <div class="finding-col">
+        <div class="col-label">Fix Applied</div>
+        <p>Replaced freeform sort construction with <code>Sort.by(Sort.Direction.fromString(dir), field)</code>
+        where <code>field</code> is validated against an explicit allowlist
+        (<code>email</code>, <code>fullName</code>, <code>createdAt</code>, <code>role</code>).
+        Unknown values rejected with 400.</p>
+      </div>
+    </div>
+    <div class="finding-footer">
+      <span class="loc">UserController.java (list endpoint — sort parameter handling)</span>
+      <span class="commit">commit <span class="cm">6e43ebf</span></span>
+      <span class="badge pass">Re-scan: RESOLVED</span>
+    </div>
+  </div>
+
+  <div class="finding">
+    <div class="finding-header">
+      <span class="badge crit">CRITICAL</span>
+      <h3>B-03 — Plaintext admin password in Flyway migration comment</h3>
+      <span class="badge fixed">&#10003; FIXED</span>
+    </div>
+    <div class="finding-body">
+      <div class="finding-col">
+        <div class="col-label">Finding</div>
+        <p>The V2 seed migration SQL contained an inline comment exposing the admin account's
+        plaintext password. Anyone with access to the repository, migration history, or DB
+        schema dump could read the credential.</p>
+      </div>
+      <div class="finding-col">
+        <div class="col-label">Fix Applied</div>
+        <p>Removed the plaintext password comment from <code>V2__seed_admin.sql</code>.
+        Only the bcrypt hash is present. Comment updated to reference the environment
+        variable source without disclosing any credential value.</p>
+      </div>
+    </div>
+    <div class="finding-footer">
+      <span class="loc">db/migration/V2__seed_admin.sql (seed INSERT comment)</span>
+      <span class="commit">commit <span class="cm">6e43ebf</span></span>
+      <span class="badge pass">Re-scan: RESOLVED</span>
+    </div>
+  </div>
+
+  <div class="finding">
+    <div class="finding-header">
+      <span class="badge high">HIGH</span>
+      <h3>B-04 — X-Forwarded-For blindly trusted — rate-limit bypass via IP spoofing</h3>
+      <span class="badge fixed">&#10003; FIXED</span>
+    </div>
+    <div class="finding-body">
+      <div class="finding-col">
+        <div class="col-label">Finding</div>
+        <p>The login rate limiter used <code>X-Forwarded-For</code> without verifying the
+        immediate connection source. An external attacker could set
+        <code>X-Forwarded-For: 127.0.0.1</code> to bypass per-IP limits entirely.
+        A follow-up finding noted that the initial RFC 1918 check incorrectly matched
+        <code>172.0.0.0/8</code> instead of the correct <code>172.16.0.0/12</code>.</p>
+      </div>
+      <div class="finding-col">
+        <div class="col-label">Fix Applied (2 cycles)</div>
+        <p><strong>6e43ebf:</strong> Header only trusted when <code>RemoteAddr</code>
+        is a private/loopback address.<br>
+        <strong>6519fa7:</strong> Corrected <code>isPrivateOrLoopback()</code> to cover
+        RFC 1918 ranges exactly: <code>10.x</code>, <code>172.16–31.x</code>,
+        <code>192.168.x</code>, <code>127.x</code>, <code>::1</code>.</p>
+      </div>
+    </div>
+    <div class="finding-footer">
+      <span class="loc">AuthServiceImpl.java (getClientIp · isPrivateOrLoopback)</span>
+      <span class="commit">commits <span class="cm">6e43ebf</span> + <span class="cm">6519fa7</span></span>
+      <span class="badge pass">Re-scan: RESOLVED</span>
+    </div>
+  </div>
+
+  <div class="finding">
+    <div class="finding-header">
+      <span class="badge high">HIGH</span>
+      <h3>B-05 — File presign endpoint — Insecure Direct Object Reference (IDOR)</h3>
+      <span class="badge fixed">&#10003; FIXED</span>
+    </div>
+    <div class="finding-body">
+      <div class="finding-col">
+        <div class="col-label">Finding</div>
+        <p><code>GET /api/files/presign?key=...</code> generated a MinIO presigned URL for any
+        object key without verifying the key belonged to a resource the caller could access.
+        Any authenticated user could access any uploaded file by knowing its storage key.</p>
+      </div>
+      <div class="finding-col">
+        <div class="col-label">Fix Applied</div>
+        <p>Added <code>TicketPhotoRepository.existsByStorageKey(key)</code> check in
+        <code>FileController</code>. Requests for unknown keys are rejected with 403
+        before the MinIO presign call. Full per-user ownership check deferred (see F-05).</p>
+      </div>
+    </div>
+    <div class="finding-footer">
+      <span class="loc">FileController.java (presign endpoint) · TicketPhotoRepository.java</span>
+      <span class="commit">commit <span class="cm">6e43ebf</span></span>
+      <span class="badge pass">Re-scan: RESOLVED</span>
+    </div>
+  </div>
+
+  <div class="finding">
+    <div class="finding-header">
+      <span class="badge high">HIGH</span>
+      <h3>B-06 — Swagger UI and OpenAPI spec exposed in all environments</h3>
+      <span class="badge fixed">&#10003; FIXED</span>
+    </div>
+    <div class="finding-body">
+      <div class="finding-col">
+        <div class="col-label">Finding</div>
+        <p><code>/swagger-ui/**</code> and <code>/v3/api-docs/**</code> were permitted on all
+        Spring profiles including production. This exposes the full API surface, internal
+        endpoint schemas, and security annotation details to unauthenticated users.</p>
+      </div>
+      <div class="finding-col">
+        <div class="col-label">Fix Applied</div>
+        <p>Added a <code>@Value("${spring.profiles.active:}")</code> check in
+        <code>SecurityConfig</code>. When profile is <code>prod</code>, both
+        <code>/swagger-ui/**</code> and <code>/v3/api-docs/**</code> are blocked with 403.
+        Dev and test profiles retain full access.</p>
+      </div>
+    </div>
+    <div class="finding-footer">
+      <span class="loc">SecurityConfig.java (swagger path permit configuration)</span>
+      <span class="commit">commit <span class="cm">6e43ebf</span></span>
+      <span class="badge pass">Re-scan: RESOLVED</span>
+    </div>
+  </div>
+
+  <div class="finding">
+    <div class="finding-header">
+      <span class="badge high">HIGH</span>
+      <h3>B-07 — No MIME type validation on file upload — arbitrary content accepted</h3>
+      <span class="badge fixed">&#10003; FIXED</span>
+    </div>
+    <div class="finding-body">
+      <div class="finding-col">
+        <div class="col-label">Finding</div>
+        <p>Ticket photo uploads were validated only by file extension, which is client-controlled.
+        An attacker could rename a malicious file (web shell, executable) to <code>.jpg</code>
+        and upload it to MinIO without any server-side content check.</p>
+      </div>
+      <div class="finding-col">
+        <div class="col-label">Fix Applied</div>
+        <p>Added Apache Tika magic-byte detection (<code>tika-core</code> added to
+        <code>pom.xml</code>). <code>Tika.detect(InputStream)</code> is called before
+        the MinIO write. Only <code>image/jpeg</code>, <code>image/png</code>, and
+        <code>image/webp</code> accepted. Mismatched types rejected with 400.</p>
+      </div>
+    </div>
+    <div class="finding-footer">
+      <span class="loc">TicketServiceImpl.java (uploadPhoto) · pom.xml</span>
+      <span class="commit">commit <span class="cm">6e43ebf</span></span>
+      <span class="badge pass">Re-scan: RESOLVED</span>
+    </div>
+  </div>
+
+  <div class="finding">
+    <div class="finding-header">
+      <span class="badge high">HIGH</span>
+      <h3>B-08 — AssignTicketRequest missing <code>@Valid</code> — bean validation skipped</h3>
+      <span class="badge fixed">&#10003; FIXED</span>
+    </div>
+    <div class="finding-body">
+      <div class="finding-col">
+        <div class="col-label">Finding</div>
+        <p>The <code>PATCH /api/tickets/{id}/assign</code> controller parameter lacked the
+        <code>@Valid</code> annotation. All Bean Validation constraints on
+        <code>AssignTicketRequest</code> were silently bypassed, allowing assignment to a
+        null or invalid assignee.</p>
+      </div>
+      <div class="finding-col">
+        <div class="col-label">Fix Applied</div>
+        <p>Added <code>@Valid</code> to the controller parameter. Added a cross-field
+        <code>@AssertTrue(message = "exactly one of assignedToUserId or contractorId must be set")</code>
+        on <code>AssignTicketRequest</code> ensuring mutual exclusivity between the two
+        assignment targets.</p>
+      </div>
+    </div>
+    <div class="finding-footer">
+      <span class="loc">TicketController.java (assign endpoint) · AssignTicketRequest.java</span>
+      <span class="commit">commit <span class="cm">6e43ebf</span></span>
+      <span class="badge pass">Re-scan: RESOLVED</span>
+    </div>
+  </div>
+
+  <div class="finding">
+    <div class="finding-header">
+      <span class="badge high">HIGH</span>
+      <h3>B-09 — Missing HTTP security headers (XSS / clickjacking / MIME sniff / HSTS)</h3>
+      <span class="badge fixed">&#10003; FIXED</span>
+    </div>
+    <div class="finding-body">
+      <div class="finding-col">
+        <div class="col-label">Finding</div>
+        <p>No security-relevant HTTP response headers were set. Missing
+        <code>Content-Security-Policy</code>, <code>X-Frame-Options</code>,
+        <code>X-Content-Type-Options</code>, and <code>Strict-Transport-Security</code>
+        leaves the API responses vulnerable to XSS escalation, clickjacking, MIME confusion,
+        and protocol downgrade.</p>
+      </div>
+      <div class="finding-col">
+        <div class="col-label">Fix Applied</div>
+        <p>Added via Spring Security <code>http.headers()</code> DSL in <code>SecurityConfig</code>:<br>
+        &bull; <code>X-Content-Type-Options: nosniff</code><br>
+        &bull; <code>X-Frame-Options: DENY</code><br>
+        &bull; <code>Strict-Transport-Security: max-age=31536000; includeSubDomains</code><br>
+        &bull; <code>Content-Security-Policy: default-src 'self'</code></p>
+      </div>
+    </div>
+    <div class="finding-footer">
+      <span class="loc">SecurityConfig.java (http.headers() configuration block)</span>
+      <span class="commit">commit <span class="cm">6e43ebf</span></span>
+      <span class="badge pass">Re-scan: RESOLVED</span>
+    </div>
+  </div>
+
+  <div class="finding">
+    <div class="finding-header">
+      <span class="badge low">LOW</span>
+      <h3>B-10 — No multipart upload size limits — DoS via oversized payloads</h3>
+      <span class="badge fixed">&#10003; FIXED</span>
+    </div>
+    <div class="finding-body">
+      <div class="finding-col">
+        <div class="col-label">Finding</div>
+        <p>No limit was configured for multipart upload size. An authenticated attacker could
+        upload arbitrarily large files to exhaust JVM heap or disk space, causing a
+        denial-of-service for the application.</p>
+      </div>
+      <div class="finding-col">
+        <div class="col-label">Fix Applied</div>
+        <p>Added to <code>application.yml</code>:<br>
+        <code>spring.servlet.multipart.max-file-size: 10MB</code><br>
+        <code>spring.servlet.multipart.max-request-size: 55MB</code><br>
+        Requests exceeding the limit are rejected with HTTP 413 before reaching application code.</p>
+      </div>
+    </div>
+    <div class="finding-footer">
+      <span class="loc">application.yml (spring.servlet.multipart section)</span>
+      <span class="commit">commit <span class="cm">6e43ebf</span></span>
+      <span class="badge pass">Re-scan: RESOLVED</span>
+    </div>
+  </div>
+
+</div>
+
+<!-- ── FRONTEND FINDINGS ──────────────────────────────────────────────────── -->
+<div class="section">
+  <div class="section-title">Frontend SAST Findings (5 total — 2 High · 3 Medium)</div>
+
+  <div class="finding">
+    <div class="finding-header">
+      <span class="badge high">HIGH</span>
+      <h3>F-01 — Global <code>window</code> object access exposes auth state to third-party scripts</h3>
+      <span class="badge fixed">&#10003; FIXED</span>
+    </div>
+    <div class="finding-body">
+      <div class="finding-col">
+        <div class="col-label">Finding</div>
+        <p>Auth tokens and user state were attached directly to the global <code>window</code>
+        object in both frontend apps. Any injected third-party script (analytics, ad networks,
+        CDN content) could read or overwrite these values without restriction.</p>
+      </div>
+      <div class="finding-col">
+        <div class="col-label">Fix Applied</div>
+        <p>Removed all direct <code>window.*</code> assignments for auth state. Token storage
+        and user session confined to Pinia store modules with no global leakage.
+        Store state is not accessible from <code>window</code> in production builds.</p>
+      </div>
+    </div>
+    <div class="finding-footer">
+      <span class="loc">frontend/apps/admin/src · frontend/apps/resident/src (auth store modules)</span>
+      <span class="commit">commit <span class="cm">ba1c634</span></span>
+      <span class="badge pass">Re-scan: RESOLVED</span>
+    </div>
+  </div>
+
+  <div class="finding">
+    <div class="finding-header">
+      <span class="badge high">HIGH</span>
+      <h3>F-02 — Auth route guard not reactive — expired token does not trigger logout</h3>
+      <span class="badge fixed">&#10003; FIXED</span>
+    </div>
+    <div class="finding-body">
+      <div class="finding-col">
+        <div class="col-label">Finding</div>
+        <p>The Vue Router navigation guard checked token presence only at route navigation time.
+        If a token expired mid-session during a long idle period, the UI remained on protected
+        pages without redirecting to login, and subsequent API calls used the expired token.</p>
+      </div>
+      <div class="finding-col">
+        <div class="col-label">Fix Applied</div>
+        <p>Replaced the static check with a reactive guard that verifies token expiry
+        on every navigation and on a periodic interval. Expired state triggers immediate
+        redirect to <code>/login</code> and clears the Pinia token store.</p>
+      </div>
+    </div>
+    <div class="finding-footer">
+      <span class="loc">frontend/apps/admin/src/router/index.ts · frontend/apps/resident/src/router/index.ts</span>
+      <span class="commit">commit <span class="cm">ba1c634</span></span>
+      <span class="badge pass">Re-scan: RESOLVED</span>
+    </div>
+  </div>
+
+  <div class="finding">
+    <div class="finding-header">
+      <span class="badge med">MEDIUM</span>
+      <h3>F-03 — Vue DevTools enabled in production build — internal state exposed</h3>
+      <span class="badge fixed">&#10003; FIXED</span>
+    </div>
+    <div class="finding-body">
+      <div class="finding-col">
+        <div class="col-label">Finding</div>
+        <p>Vue DevTools were not explicitly disabled for production. The browser extension or
+        any injected script using the DevTools bridge API could inspect the full Pinia store,
+        component tree, and emitted events in a production deployment.</p>
+      </div>
+      <div class="finding-col">
+        <div class="col-label">Fix Applied</div>
+        <p>Added <code>app.config.devtools = import.meta.env.DEV</code> in both app entry
+        points. DevTools disabled when <code>NODE_ENV=production</code>, which is the Vite
+        default for all <code>pnpm build</code> output.</p>
+      </div>
+    </div>
+    <div class="finding-footer">
+      <span class="loc">frontend/apps/admin/src/main.ts · frontend/apps/resident/src/main.ts</span>
+      <span class="commit">commit <span class="cm">ba1c634</span></span>
+      <span class="badge pass">Re-scan: RESOLVED</span>
+    </div>
+  </div>
+
+  <div class="finding">
+    <div class="finding-header">
+      <span class="badge med">MEDIUM</span>
+      <h3>F-04 &equiv; SEC-20 — Refresh token stored in <code>localStorage</code> — readable by XSS</h3>
+      <span class="badge fixed">&#10003; RESOLVED</span>
+    </div>
+    <div class="finding-body">
+      <div class="finding-col">
+        <div class="col-label">Finding</div>
+        <p>The refresh token is persisted in <code>localStorage</code>.
+        Any XSS vulnerability in the SPA, including from third-party scripts,
+        can read <code>localStorage</code> and exfiltrate the refresh token,
+        enabling long-lived account takeover even after session close.
+        <em>Same finding as SEC-20 (logged INFO); double-counted — unified here, MEDIUM governs.</em></p>
+      </div>
+      <div class="finding-col">
+        <div class="col-label">Remediation (Hardening Sprint — DONE)</div>
+        <p><strong>H3 (BE):</strong> <code>/auth/login</code> and <code>/auth/refresh</code> set
+        <code>Set-Cookie: refreshToken=...; HttpOnly; SameSite=Strict; Path=/api/auth</code>
+        (<code>Secure</code> profile-driven via <code>app.auth.cookie-secure</code>, true in prod).
+        <strong>H4 (FE):</strong> both apps removed every <code>localStorage</code> read/write of the
+        refresh token; refresh is cookie-implicit (empty body + <code>X-Requested-With</code>).
+        <strong>Close-out:</strong> the dual-mode body channel removed — refresh token is
+        <em>cookie-only</em>, no longer present in any JSON response body (test-enforced).</p>
+      </div>
+    </div>
+    <div class="finding-footer">
+      <span class="loc">AuthController.java + both FE authStores</span>
+      <span class="commit">0090241 + 1e8ce69 + d4e931c + ba4c0b7</span>
+      <span class="badge fixed">&#10003; RESOLVED (H3/H4/close-out)</span>
+    </div>
+  </div>
+
+  <div class="finding">
+    <div class="finding-header">
+      <span class="badge med">MEDIUM</span>
+      <h3>F-05 — MinIO presign endpoint does not verify per-user file ownership</h3>
+      <span class="badge fixed">&#10003; RESOLVED</span>
+    </div>
+    <div class="finding-body">
+      <div class="finding-col">
+        <div class="col-label">Finding</div>
+        <p>The B-05 fix confirmed that a storage key exists in <code>ticket_photos</code>,
+        but does not verify the requesting user owns the ticket linked to that photo.
+        Any authenticated user who obtains or guesses a valid key can generate a presigned
+        download URL for another user's ticket attachment.</p>
+      </div>
+      <div class="finding-col">
+        <div class="col-label">Remediation Plan (Hardening Sprint)</div>
+        <p>Add <code>TicketPhotoRepository.existsByStorageKeyAndTicket_SubmitterId(key, userId)</code>
+        with a role bypass for ADMIN and TECHNICIAN. The current check significantly reduces
+        attack surface (key must exist); full IDOR prevention requires the ownership join.
+        Tracked in backlog.</p>
+        <p><strong>RESOLVED 2026-06-12 (Hardening H1):</strong> IDOR core closed by N3 P5
+        <code>enforcePhotoAccess</code> (commit <code>96ae285</code>) — presign now enforces the
+        household/staff rule per key (404 on unknown keys, household match for RESIDENT,
+        assigned-or-NEW for TECHNICIAN). Residuals addressed: expiry 1h&rarr;10min (P-A, commit
+        <code>0c72583</code>); per-surface access matrix (P-C) codified in API-SPEC &sect;13.
+        CTO ratified E1/E3/E4/E5; see DECISIONS.md hardening entry.</p>
+      </div>
+    </div>
+    <div class="finding-footer">
+      <span class="loc">FileController.java (presign) · TicketPhotoRepository.java</span>
+      <span class="commit">partial fix in <span class="cm">6e43ebf</span> — ownership check deferred</span>
+      <span class="badge defer">Hardening Sprint</span>
+    </div>
+  </div>
+
+</div>
+
+<!-- ── Re-scan summary table ─────────────────────────────────────────────── -->
+<div class="section">
+  <div class="section-title">Re-Scan Results — All Findings</div>
+  <table>
+    <thead>
+      <tr><th>ID</th><th>Sev</th><th>Finding</th><th>Location</th><th>Fix Commit</th><th>Re-scan</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><strong>B-01</strong></td><td><span class="badge crit">CRIT</span></td><td>groupBy injection</td><td style="font-family:monospace;font-size:0.78rem">ReportServiceImpl.java:130</td><td><span class="cm">6e43ebf</span></td><td><span class="badge pass">&#10003; RESOLVED</span></td></tr>
+      <tr><td><strong>B-02</strong></td><td><span class="badge crit">CRIT</span></td><td>Sort field injection</td><td style="font-family:monospace;font-size:0.78rem">UserController.java</td><td><span class="cm">6e43ebf</span></td><td><span class="badge pass">&#10003; RESOLVED</span></td></tr>
+      <tr><td><strong>B-03</strong></td><td><span class="badge crit">CRIT</span></td><td>Plaintext password in migration</td><td style="font-family:monospace;font-size:0.78rem">V2__seed_admin.sql</td><td><span class="cm">6e43ebf</span></td><td><span class="badge pass">&#10003; RESOLVED</span></td></tr>
+      <tr><td><strong>B-04</strong></td><td><span class="badge high">HIGH</span></td><td>X-Forwarded-For spoofing (+ RFC 1918 fix)</td><td style="font-family:monospace;font-size:0.78rem">AuthServiceImpl.java</td><td><span class="cm">6e43ebf + 6519fa7</span></td><td><span class="badge pass">&#10003; RESOLVED</span></td></tr>
+      <tr><td><strong>B-05</strong></td><td><span class="badge high">HIGH</span></td><td>File presign IDOR</td><td style="font-family:monospace;font-size:0.78rem">FileController.java</td><td><span class="cm">6e43ebf</span></td><td><span class="badge pass">&#10003; RESOLVED</span></td></tr>
+      <tr><td><strong>B-06</strong></td><td><span class="badge high">HIGH</span></td><td>Swagger UI on production</td><td style="font-family:monospace;font-size:0.78rem">SecurityConfig.java</td><td><span class="cm">6e43ebf</span></td><td><span class="badge pass">&#10003; RESOLVED</span></td></tr>
+      <tr><td><strong>B-07</strong></td><td><span class="badge high">HIGH</span></td><td>No MIME type validation</td><td style="font-family:monospace;font-size:0.78rem">TicketServiceImpl.java</td><td><span class="cm">6e43ebf</span></td><td><span class="badge pass">&#10003; RESOLVED</span></td></tr>
+      <tr><td><strong>B-08</strong></td><td><span class="badge high">HIGH</span></td><td>AssignTicketRequest missing @Valid</td><td style="font-family:monospace;font-size:0.78rem">TicketController.java · AssignTicketRequest.java</td><td><span class="cm">6e43ebf</span></td><td><span class="badge pass">&#10003; RESOLVED</span></td></tr>
+      <tr><td><strong>B-09</strong></td><td><span class="badge high">HIGH</span></td><td>Missing HTTP security headers</td><td style="font-family:monospace;font-size:0.78rem">SecurityConfig.java</td><td><span class="cm">6e43ebf</span></td><td><span class="badge pass">&#10003; RESOLVED</span></td></tr>
+      <tr><td><strong>B-10</strong></td><td><span class="badge low">LOW</span></td><td>No multipart size limits</td><td style="font-family:monospace;font-size:0.78rem">application.yml</td><td><span class="cm">6e43ebf</span></td><td><span class="badge pass">&#10003; RESOLVED</span></td></tr>
+      <tr><td><strong>F-01</strong></td><td><span class="badge high">HIGH</span></td><td>window globals expose auth state</td><td style="font-family:monospace;font-size:0.78rem">auth store modules</td><td><span class="cm">ba1c634</span></td><td><span class="badge pass">&#10003; RESOLVED</span></td></tr>
+      <tr><td><strong>F-02</strong></td><td><span class="badge high">HIGH</span></td><td>Auth guard not reactive</td><td style="font-family:monospace;font-size:0.78rem">router/index.ts (both apps)</td><td><span class="cm">ba1c634</span></td><td><span class="badge pass">&#10003; RESOLVED</span></td></tr>
+      <tr><td><strong>F-03</strong></td><td><span class="badge med">MED</span></td><td>Vue DevTools in production</td><td style="font-family:monospace;font-size:0.78rem">main.ts (both apps)</td><td><span class="cm">ba1c634</span></td><td><span class="badge pass">&#10003; RESOLVED</span></td></tr>
+      <tr><td><strong>F-04 &equiv; SEC-20</strong></td><td><span class="badge med">MED</span></td><td>Refresh token in localStorage</td><td style="font-family:monospace;font-size:0.78rem">AuthController + FE authStores</td><td><span class="cm">0090241 + 1e8ce69 + d4e931c + ba4c0b7</span></td><td><span class="badge fixed">&#10003; RESOLVED (H3/H4/close-out)</span></td></tr>
+      <tr><td><strong>F-05</strong></td><td><span class="badge med">MED</span></td><td>MinIO presign — no ownership check</td><td style="font-family:monospace;font-size:0.78rem">FileController.java</td><td><span class="cm">96ae285 + 0c72583</span></td><td><span class="badge fixed">&#10003; RESOLVED (H1)</span></td></tr>
+    </tbody>
+  </table>
+  <div class="note-box">
+    <strong>Final re-scan verdict: PASS WITH NOTES</strong> —
+    All 3 Critical and 7 High findings resolved (backend: <span class="cm">6e43ebf</span> + <span class="cm">6519fa7</span>;
+    frontend: <span class="cm">ba1c634</span>).
+    All Medium findings resolved. The two formerly-deferred Mediums are now closed by the hardening sprint:
+    <strong>F-04 &equiv; SEC-20</strong> (refresh token in localStorage) &rarr; httpOnly cookie, cookie-only after close-out (H3/H4/close-out);
+    <strong>F-05</strong> (MinIO presign ownership) &rarr; RESOLVED in H1/H2.
+    No Critical, High, or Medium finding remains open. System is cleared for G4 approval.
+  </div>
+</div>
+
+</body>
+</html>

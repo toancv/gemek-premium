@@ -1,0 +1,7 @@
+backend/target/
+backend/.idea/
+node_modules/
+dist/
+reports/coverage-raw/
+.env
+docker-compose.override.yml

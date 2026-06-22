@@ -1,0 +1,8 @@
+﻿=== ADMIN BUILD ===
+/usr/bin/bash: line 1: pnpm: command not found
+EXIT:
+
+=== RESIDENT BUILD ===
+/usr/bin/bash: line 1: pnpm: command not found
+EXIT:
+

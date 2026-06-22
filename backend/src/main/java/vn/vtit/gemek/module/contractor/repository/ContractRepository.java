@@ -1,0 +1,109 @@
+/*
+ * Copyright (c) 2026 VTIT — Gemek Premium Apartment Management System.
+ * All rights reserved.
+ */
+package vn.vtit.gemek.module.contractor.repository;
+
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+import org.springframework.stereotype.Repository;
+import vn.vtit.gemek.module.contractor.entity.Contract;
+import vn.vtit.gemek.module.contractor.entity.ContractStatus;
+
+import java.time.LocalDate;
+import java.util.List;
+import java.util.UUID;
+
+/**
+ * Spring Data JPA repository for the {@link Contract} entity.
+ *
+ * <p>Extends {@link JpaSpecificationExecutor} for future dynamic filter support.
+ * The {@link #findExpiringBetween} query is used by {@link vn.vtit.gemek.scheduler.ContractExpiryScheduler}
+ * to identify contracts expiring within a configurable look-ahead window.
+ */
+@Repository
+public interface ContractRepository extends JpaRepository<Contract, UUID>, JpaSpecificationExecutor<Contract> {
+
+    /**
+     * Returns all contracts belonging to the given contractor, ordered by start date descending.
+     *
+     * @param contractorId the contractor UUID.
+     * @return list of contracts for that contractor.
+     */
+    List<Contract> findByContractorId(UUID contractorId);
+
+    /**
+     * Returns all ACTIVE contracts whose end date falls within the given date range
+     * and whose expiry notification has not been sent yet.
+     *
+     * <p>Used by the daily expiry scheduler to find contracts expiring within 30 days.
+     * The {@code expiryNotifiedAt IS NULL} sent-marker predicate (G6 fix) makes the
+     * daily scan once-only — the scheduler sets the marker in the same transaction
+     * as the notification insert.
+     *
+     * @param from the start of the look-ahead window (inclusive).
+     * @param to   the end of the look-ahead window (inclusive).
+     * @return list of expiring contracts pending their expiry notification.
+     */
+    @Query("""
+            SELECT c FROM Contract c
+            WHERE c.status = 'ACTIVE'
+              AND c.endDate BETWEEN :from AND :to
+              AND c.expiryNotifiedAt IS NULL
+            """)
+    List<Contract> findExpiringBetween(@Param("from") LocalDate from, @Param("to") LocalDate to);
+
+    /**
+     * Returns ACTIVE contracts whose end date falls between today and {@code maxDate},
+     * with contractor eagerly fetched to avoid N+1 in the report builder.
+     *
+     * <p>Used by the reports module ({@code GET /api/reports/contracts-expiring}).
+     *
+     * @param today   the reference date (today).
+     * @param maxDate the upper bound (today + withinDays).
+     * @return list ordered by {@code end_date} ascending.
+     */
+    @Query("""
+            SELECT c FROM Contract c
+            JOIN FETCH c.contractor
+            WHERE c.status = :status
+              AND c.endDate >= :today
+              AND c.endDate <= :maxDate
+            ORDER BY c.endDate ASC
+            """)
+    List<Contract> findActiveExpiringWithContractor(
+            @Param("today") LocalDate today,
+            @Param("maxDate") LocalDate maxDate,
+            @Param("status") ContractStatus status);
+
+    /**
+     * Counts ACTIVE contracts whose end date falls within the given window.
+     *
+     * <p>Used by the dashboard KPI query.
+     *
+     * @param today   the reference date.
+     * @param maxDate the upper-bound date.
+     * @return count of matching ACTIVE contracts.
+     */
+    @Query(value = """
+            SELECT COUNT(*) FROM contracts
+            WHERE status = 'ACTIVE'
+              AND end_date >= :today
+              AND end_date <= :maxDate
+            """, nativeQuery = true)
+    long countActiveExpiring(
+            @Param("today") LocalDate today,
+            @Param("maxDate") LocalDate maxDate);
+
+    /**
+     * Counts all ACTIVE contracts.
+     *
+     * <p>Used by the dashboard KPI query.
+     *
+     * @return total count of ACTIVE contracts.
+     */
+    @Query(value = "SELECT COUNT(*) FROM contracts WHERE status = 'ACTIVE'", nativeQuery = true)
+    long countActive();
+}

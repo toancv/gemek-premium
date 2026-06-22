@@ -56,6 +56,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  *   <li>Injecting 2 unread notifications, marking one read by ID → unread-count = 1.</li>
  * </ol>
  */
+// NOTE (TEST.1b): deliberately NOT @Transactional. "Mark read" is a bulk @Modifying UPDATE;
+// under a rolled-back test transaction the first-level cache stays stale and the read-back
+// assertions (isRead=true) would falsely fail. Committing exercises the real production path.
+// Its committed rows are harmless to suite order-independence: every count assertion in the
+// suite is scoped to a unique in-test marker, and the per-JVM Flyway clean isolates across runs.
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @AutoConfigureMockMvc
 @ActiveProfiles("test")

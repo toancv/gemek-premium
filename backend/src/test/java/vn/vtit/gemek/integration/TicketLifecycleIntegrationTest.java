@@ -68,6 +68,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  *   <li>Resident list scoping — resident only sees their own apartment's tickets.</li>
  * </ol>
  */
+// NOTE (TEST.1b): deliberately NOT @Transactional. Contractor rating recalculation runs as a
+// bulk @Modifying UPDATE; under a rolled-back test transaction the first-level cache stays stale
+// and the read-back assertion (contractor.rating != null) would falsely fail. Committing exercises
+// the real production path. Its committed rows are harmless to suite order-independence: every count
+// assertion in the suite is scoped to a unique in-test marker, and the per-JVM Flyway clean isolates
+// across runs.
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @AutoConfigureMockMvc
 @ActiveProfiles("test")

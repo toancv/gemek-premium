@@ -65,14 +65,14 @@ public class MaintenanceScheduleRunner {
         log.info("Maintenance schedule check: {} overdue schedules.", overdue.size());
 
         for (MaintenanceSchedule schedule : overdue) {
-            // Navigate the lazy contract association to find the responsible user.
+            // Navigate the lazy contract association; createdBy is the responsible user's actor UUID.
             if (schedule.getContract() == null || schedule.getContract().getCreatedBy() == null) {
                 log.debug("Schedule {} has no associated user — skipping notification.", schedule.getId());
                 continue;
             }
             try {
                 notificationService.createNotification(
-                        schedule.getContract().getCreatedBy().getId(),
+                        schedule.getContract().getCreatedBy(),
                         "Maintenance task overdue",
                         "Maintenance task \"" + schedule.getTitle()
                                 + "\" was due on " + schedule.getNextDueDate() + " and has not been completed.",

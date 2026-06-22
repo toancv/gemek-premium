@@ -39,8 +39,13 @@ import vn.vtit.gemek.module.contractor.repository.MaintenanceScheduleRepository;
 import vn.vtit.gemek.module.user.entity.User;
 import vn.vtit.gemek.module.user.repository.UserRepository;
 
+import java.util.Collection;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 /**
  * Implementation of {@link ContractorService}.
@@ -224,8 +229,10 @@ public class ContractorServiceImpl implements ContractorService {
                 ? List.of()
                 : allContracts.subList(start, end);
 
+        // Resolve all creator names for the page in ONE query, then map from the map (no N+1).
+        Map<UUID, String> names = creatorNames(pageContent);
         Page<ContractResponse> page = new PageImpl<>(
-                pageContent.stream().map(contractorMapper::toContractResponse).toList(),
+                pageContent.stream().map(c -> contractorMapper.toContractResponse(c, names)).toList(),
                 pageable,
                 allContracts.size());
 
@@ -241,7 +248,6 @@ public class ContractorServiceImpl implements ContractorService {
         log.debug("Creating contract — contractorId={}, title={}", contractorId, request.title());
 
         Contractor contractor = loadContractorOrThrow(contractorId);
-        User creator = userRepository.findById(principalId).orElse(null);
 
         Contract contract = new Contract();
         contract.setContractor(contractor);
@@ -256,11 +262,11 @@ public class ContractorServiceImpl implements ContractorService {
         contract.setEndDate(request.endDate());
         contract.setNotes(request.notes());
         contract.setStatus(ContractStatus.PENDING);
-        contract.setCreatedBy(creator);
+        // createdBy is set by Spring Data auditing from the authenticated actor — no manual write.
 
         Contract saved = contractRepository.save(contract);
         log.info("Contract created — id={}, contractorId={}", saved.getId(), contractorId);
-        return contractorMapper.toContractResponse(saved);
+        return contractorMapper.toContractResponse(saved, creatorNames(List.of(saved)));
     }
 
     /**
@@ -270,7 +276,7 @@ public class ContractorServiceImpl implements ContractorService {
     public ContractResponse getContract(UUID id) {
         log.debug("Getting contract — id={}", id);
         Contract contract = loadContractOrThrow(id);
-        return contractorMapper.toContractResponse(contract);
+        return contractorMapper.toContractResponse(contract, creatorNames(List.of(contract)));
     }
 
     /**
@@ -305,7 +311,7 @@ public class ContractorServiceImpl implements ContractorService {
 
         Contract saved = contractRepository.save(contract);
         log.info("Contract updated — id={}", saved.getId());
-        return contractorMapper.toContractResponse(saved);
+        return contractorMapper.toContractResponse(saved, creatorNames(List.of(saved)));
     }
 
     /**
@@ -407,5 +413,27 @@ public class ContractorServiceImpl implements ContractorService {
     private Contract loadContractOrThrow(UUID id) {
         return contractRepository.findById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND, "Contract not found: " + id));
+    }
+
+    /**
+     * Resolves creator display names for a set of contracts in a single batch query.
+     *
+     * <p>Collects the distinct non-null {@code createdBy} actor UUIDs and issues ONE
+     * {@code findAllById} — never a per-row lookup — so list mapping stays free of N+1.
+     *
+     * @param contracts the contracts whose creator names are needed.
+     * @return id&rarr;fullName map; empty when no contract carries a creator UUID.
+     */
+    private Map<UUID, String> creatorNames(Collection<Contract> contracts) {
+        Set<UUID> ids = contracts.stream()
+                .map(Contract::getCreatedBy)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        // Guard the IN clause — and skip the round-trip entirely when there is nothing to resolve.
+        if (ids.isEmpty()) {
+            return Map.of();
+        }
+        return userRepository.findAllById(ids).stream()
+                .collect(Collectors.toMap(User::getId, User::getFullName));
     }
 }

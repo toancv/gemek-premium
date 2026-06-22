@@ -37,6 +37,7 @@ import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
@@ -119,13 +120,18 @@ public class AnnouncementServiceImpl implements AnnouncementService {
                     .findPublishedForApartment(blockId, floor, pageable);
             // One batched read-state query per page — avoids N exists() calls (N+1).
             Set<UUID> readIds = readAnnouncementIds(principalId, residentPage.getContent());
-            return PageResponse.of(residentPage.map(a -> toResponse(a, readIds.contains(a.getId()))));
+            // One batched creator-name query per page — avoids N user lookups (N+1).
+            Map<UUID, String> creatorNames = resolveCreatorNames(residentPage.getContent());
+            return PageResponse.of(residentPage.map(
+                    a -> toResponse(a, readIds.contains(a.getId()), creatorNames)));
         }
 
         // ADMIN, TECHNICIAN, BOARD_MEMBER — all announcements.
         Page<Announcement> adminPage = announcementRepository.findAll(pageable);
         Set<UUID> readIds = readAnnouncementIds(principalId, adminPage.getContent());
-        return PageResponse.of(adminPage.map(a -> toResponse(a, readIds.contains(a.getId()))));
+        Map<UUID, String> creatorNames = resolveCreatorNames(adminPage.getContent());
+        return PageResponse.of(adminPage.map(
+                a -> toResponse(a, readIds.contains(a.getId()), creatorNames)));
     }
 
     /**
@@ -164,10 +170,6 @@ public class AnnouncementServiceImpl implements AnnouncementService {
 
         validateScopeConstraints(req.getTargetScope(), req.getTargetBlockId(), req.getTargetFloor());
 
-        User creator = userRepository.findById(principalId)
-                .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND,
-                        "User not found: " + principalId));
-
         Announcement announcement = new Announcement();
         announcement.setTitle(req.getTitle());
         announcement.setContent(req.getContent());
@@ -176,7 +178,7 @@ public class AnnouncementServiceImpl implements AnnouncementService {
         announcement.setSendPush(req.getSendPush() != null ? req.getSendPush() : true);
         announcement.setSendEmail(req.getSendEmail() != null ? req.getSendEmail() : false);
         announcement.setSendSms(req.getSendSms() != null ? req.getSendSms() : false);
-        announcement.setCreatedBy(creator);
+        // createdBy is set by Spring Data auditing from the authenticated actor — no manual write.
         // publishedAt intentionally null — announcement starts as a draft.
 
         if (req.getTargetBlockId() != null) {
@@ -465,6 +467,28 @@ public class AnnouncementServiceImpl implements AnnouncementService {
     }
 
     /**
+     * Resolves creator display names for a page of announcements in a single batch query.
+     *
+     * <p>Collects the distinct non-null {@code createdBy} actor UUIDs and issues ONE
+     * {@code findAllById} — never a per-row lookup — so list mapping stays free of N+1.
+     *
+     * @param announcements the announcements whose creator names are needed.
+     * @return id&rarr;fullName map; empty when no announcement carries a creator UUID.
+     */
+    private Map<UUID, String> resolveCreatorNames(List<Announcement> announcements) {
+        Set<UUID> ids = announcements.stream()
+                .map(Announcement::getCreatedBy)
+                .filter(java.util.Objects::nonNull)
+                .collect(java.util.stream.Collectors.toSet());
+        // Guard the IN clause — and skip the round-trip when there is nothing to resolve.
+        if (ids.isEmpty()) {
+            return Map.of();
+        }
+        return userRepository.findAllById(ids).stream()
+                .collect(java.util.stream.Collectors.toMap(User::getId, User::getFullName));
+    }
+
+    /**
      * Maps an {@link Announcement} entity to an {@link AnnouncementResponse} DTO
      * with {@code isRead = false}.
      *
@@ -480,13 +504,34 @@ public class AnnouncementServiceImpl implements AnnouncementService {
     }
 
     /**
-     * Maps an {@link Announcement} entity to an {@link AnnouncementResponse} DTO.
+     * Maps an {@link Announcement} entity to an {@link AnnouncementResponse} DTO,
+     * resolving the creator name with a single-entry batch lookup.
+     *
+     * <p>Single-row convenience used by mutation/detail paths. List paths must call
+     * {@link #toResponse(Announcement, boolean, Map)} with a page-scoped name map so the
+     * creator name is resolved in one query (no N+1).
      *
      * @param announcement the entity to map.
      * @param isRead       whether the requesting user has read this announcement.
      * @return the response DTO.
      */
     private AnnouncementResponse toResponse(Announcement announcement, boolean isRead) {
+        return toResponse(announcement, isRead, resolveCreatorNames(List.of(announcement)));
+    }
+
+    /**
+     * Maps an {@link Announcement} entity to an {@link AnnouncementResponse} DTO.
+     *
+     * <p>{@code createdBy} is now a plain actor UUID (Spring Data auditing). The creator's
+     * display name is read from the pre-built {@code creatorNames} map, never a per-row query.
+     *
+     * @param announcement the entity to map.
+     * @param isRead       whether the requesting user has read this announcement.
+     * @param creatorNames id&rarr;fullName map covering the createdBy UUIDs being mapped.
+     * @return the response DTO.
+     */
+    private AnnouncementResponse toResponse(Announcement announcement, boolean isRead,
+                                            Map<UUID, String> creatorNames) {
         AnnouncementResponse.BlockRef blockRef = null;
         if (announcement.getTargetBlock() != null) {
             Block block = announcement.getTargetBlock();
@@ -497,11 +542,11 @@ public class AnnouncementServiceImpl implements AnnouncementService {
         }
 
         AnnouncementResponse.UserRef creatorRef = null;
-        if (announcement.getCreatedBy() != null) {
-            User creator = announcement.getCreatedBy();
+        UUID creatorId = announcement.getCreatedBy();
+        if (creatorId != null) {
             creatorRef = AnnouncementResponse.UserRef.builder()
-                    .id(creator.getId())
-                    .fullName(creator.getFullName())
+                    .id(creatorId)
+                    .fullName(creatorNames.get(creatorId))
                     .build();
         }
 

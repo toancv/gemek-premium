@@ -4,6 +4,7 @@
  */
 package vn.vtit.gemek.module.contractor.mapper;
 
+import org.mapstruct.Context;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import vn.vtit.gemek.module.contractor.dto.ContractPaymentResponse;
@@ -14,6 +15,9 @@ import vn.vtit.gemek.module.contractor.entity.Contract;
 import vn.vtit.gemek.module.contractor.entity.ContractPayment;
 import vn.vtit.gemek.module.contractor.entity.Contractor;
 import vn.vtit.gemek.module.contractor.entity.MaintenanceSchedule;
+
+import java.util.Map;
+import java.util.UUID;
 
 /**
  * MapStruct mapper for the contractor module.
@@ -37,17 +41,36 @@ public interface ContractorMapper {
     /**
      * Maps a {@link Contract} entity to a {@link ContractResponse}.
      *
-     * <p>The nested {@code contractor} and {@code createdBy} references are derived
-     * from the entity associations and must be join-fetched before this method is called.
+     * <p>{@code createdBy} is now a plain actor UUID (Spring Data auditing), not a
+     * {@code User} association. The creator's display name is resolved from the
+     * supplied {@code creatorNames} map — built ONCE per page by the caller via a
+     * single {@code findAllById} — so a list mapping issues no per-row user query
+     * (no N+1).
      *
-     * @param contract the contract entity (contractor and createdBy must be loaded).
+     * @param contract     the contract entity.
+     * @param creatorNames id&rarr;fullName map covering the createdBy UUIDs being mapped.
      * @return the contract response DTO.
      */
     @Mapping(target = "contractor.id",          source = "contractor.id")
     @Mapping(target = "contractor.companyName", source = "contractor.companyName")
-    @Mapping(target = "createdBy.id",           source = "createdBy.id")
-    @Mapping(target = "createdBy.fullName",     source = "createdBy.fullName")
-    ContractResponse toContractResponse(Contract contract);
+    @Mapping(target = "createdBy",              source = "createdBy")
+    ContractResponse toContractResponse(Contract contract, @Context Map<UUID, String> creatorNames);
+
+    /**
+     * Builds the slim creator reference from an actor UUID, resolving the display
+     * name from the page-scoped {@code creatorNames} map.
+     *
+     * @param createdBy    the creator actor UUID; may be {@code null}.
+     * @param creatorNames id&rarr;fullName map for the current page.
+     * @return the user reference, or {@code null} when {@code createdBy} is null.
+     */
+    default ContractResponse.UserRef mapCreator(UUID createdBy, @Context Map<UUID, String> creatorNames) {
+        // Null actor (system / seed / deleted user) -> no creator reference.
+        if (createdBy == null) {
+            return null;
+        }
+        return new ContractResponse.UserRef(createdBy, creatorNames.get(createdBy));
+    }
 
     /**
      * Maps a {@link ContractPayment} entity to a {@link ContractPaymentResponse}.

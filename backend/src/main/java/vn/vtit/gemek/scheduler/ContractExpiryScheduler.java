@@ -80,7 +80,7 @@ public class ContractExpiryScheduler {
             }
             try {
                 notificationService.createNotification(
-                        contract.getCreatedBy().getId(),
+                        contract.getCreatedBy(),
                         "Contract expiring soon",
                         "Contract \"" + contract.getTitle() + "\" expires on " + contract.getEndDate() + ".",
                         NotificationType.CONTRACT_EXPIRING,

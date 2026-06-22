@@ -98,28 +98,17 @@ public interface ApartmentRepository extends JpaRepository<Apartment, UUID> {
             Pageable pageable);
 
     /**
-     * Returns counts of apartments per status for the dashboard KPI.
+     * Returns {@code [id, status]} pairs for all apartments, optionally scoped to a block.
      *
-     * <p>Each row is {@code [statusText, count]}. All statuses with at least one
-     * apartment are represented; missing statuses can be defaulted to 0 by the caller.
+     * <p>Lightweight projection (no block join, no entity hydration) used by the dashboard
+     * KPI and resident report to tally effective occupancy via
+     * {@link vn.vtit.gemek.module.apartment.OccupancyResolver}.
+     * Replaces the former {@code countByStatus} GROUP-BY, which counted the never-synced
+     * stored status and therefore reported wrong occupancy.
      *
-     * @return list of two-element rows.
+     * @param blockId optional block UUID; {@code null} means all apartments.
+     * @return list of {@code Object[]} rows: {@code [UUID id, ApartmentStatus status]}.
      */
-    @Query(value = """
-            SELECT a.status::text AS status, COUNT(*) AS cnt
-            FROM apartments a
-            GROUP BY a.status
-            """, nativeQuery = true)
-    java.util.List<Object[]> countByStatus();
-
-    /**
-     * Counts total apartments optionally filtered by block.
-     *
-     * <p>Used by the resident report when scoped to a single block.
-     *
-     * @param blockId optional block UUID; {@code null} means count all apartments.
-     * @return total apartment count matching the filter.
-     */
-    @Query("SELECT COUNT(a) FROM Apartment a WHERE (:blockId IS NULL OR a.block.id = :blockId)")
-    long countByOptionalBlock(@Param("blockId") UUID blockId);
+    @Query("SELECT a.id, a.status FROM Apartment a WHERE (:blockId IS NULL OR a.block.id = :blockId)")
+    java.util.List<Object[]> findIdAndStatus(@Param("blockId") UUID blockId);
 }

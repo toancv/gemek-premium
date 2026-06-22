@@ -12,6 +12,7 @@ import org.springframework.stereotype.Repository;
 import vn.vtit.gemek.module.announcement.entity.AnnouncementScope;
 import vn.vtit.gemek.module.resident.entity.Resident;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -39,6 +40,42 @@ public interface ResidentRepository extends JpaRepository<Resident, UUID>, JpaSp
               AND r.moveOutDate IS NULL
             """)
     List<Resident> findActiveByApartmentId(@Param("apartmentId") UUID apartmentId);
+
+    /**
+     * Batch variant of {@link #findActiveByApartmentId}: returns all active residents
+     * (no move-out date) for ANY of the given apartments in a single query, with the
+     * user fetched eagerly. Used by the apartment list endpoint to resolve occupancy
+     * and primary-contact for a whole page without a per-row query (N+1 avoidance).
+     *
+     * @param apartmentIds the apartment UUIDs to query; must be non-empty.
+     * @return active residents across all given apartments, user eagerly loaded.
+     */
+    @Query("""
+            SELECT r FROM Resident r
+            JOIN FETCH r.user
+            WHERE r.apartment.id IN :apartmentIds
+              AND r.moveOutDate IS NULL
+            """)
+    List<Resident> findActiveByApartmentIdIn(@Param("apartmentIds") Collection<UUID> apartmentIds);
+
+    /**
+     * Returns the IDs of all apartments that currently have at least one active resident
+     * (a resident with {@code move_out_date IS NULL}), optionally scoped to a block.
+     *
+     * <p>This is the single SQL expression of the "occupied" fact. The dashboard KPI and
+     * the resident report both consume it (combined with
+     * {@link vn.vtit.gemek.module.apartment.OccupancyResolver} for the MAINTENANCE-priority rule)
+     * so their occupancy numbers cannot diverge.
+     *
+     * @param blockId optional block UUID; {@code null} means all blocks.
+     * @return distinct apartment IDs with an active resident.
+     */
+    @Query("""
+            SELECT DISTINCT r.apartment.id FROM Resident r
+            WHERE r.moveOutDate IS NULL
+              AND (:blockId IS NULL OR r.apartment.block.id = :blockId)
+            """)
+    List<UUID> findOccupiedApartmentIds(@Param("blockId") UUID blockId);
 
     /**
      * Returns the single active resident record for the given user, if any.
@@ -101,9 +138,10 @@ public interface ResidentRepository extends JpaRepository<Resident, UUID>, JpaSp
     /**
      * Returns resident demographics for the report endpoint.
      *
-     * <p>Returns one {@code Object[]} row:
-     * [totalActive, owners, tenants, occupiedApartments].
-     * Optionally filtered by block.
+     * <p>Returns one {@code Object[]} row: [totalActive, owners, tenants].
+     * Optionally filtered by block. Occupancy (occupied-apartment count) is intentionally
+     * NOT returned here — it is derived via
+     * {@link vn.vtit.gemek.module.apartment.OccupancyResolver} so it honors MAINTENANCE priority.
      *
      * @param blockId optional block UUID; {@code null} means all apartments.
      * @return single-element list with one aggregate row.
@@ -112,8 +150,7 @@ public interface ResidentRepository extends JpaRepository<Resident, UUID>, JpaSp
             SELECT
               COUNT(*)                                                             AS totalActive,
               COUNT(CASE WHEN r.type = 'OWNER'  THEN 1 END)                      AS owners,
-              COUNT(CASE WHEN r.type = 'TENANT' THEN 1 END)                      AS tenants,
-              COUNT(DISTINCT r.apartment_id)                                      AS occupiedApartments
+              COUNT(CASE WHEN r.type = 'TENANT' THEN 1 END)                      AS tenants
             FROM residents r
             JOIN apartments a ON a.id = r.apartment_id
             WHERE r.move_out_date IS NULL

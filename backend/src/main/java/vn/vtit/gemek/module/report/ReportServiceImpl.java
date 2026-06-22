@@ -14,6 +14,8 @@ import vn.vtit.gemek.common.exception.ErrorCode;
 import vn.vtit.gemek.module.amenity.entity.Amenity;
 import vn.vtit.gemek.module.amenity.repository.AmenityBookingRepository;
 import vn.vtit.gemek.module.amenity.repository.AmenityRepository;
+import vn.vtit.gemek.module.apartment.OccupancyResolver;
+import vn.vtit.gemek.module.apartment.entity.ApartmentStatus;
 import vn.vtit.gemek.module.apartment.repository.ApartmentRepository;
 import vn.vtit.gemek.module.contractor.entity.Contract;
 import vn.vtit.gemek.module.contractor.entity.ContractStatus;
@@ -31,6 +33,7 @@ import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -256,17 +259,22 @@ public class ReportServiceImpl implements ReportService {
     public ResidentReportResponse getResidentReport(UUID blockId) {
         log.debug("Resident report: blockId={}", blockId);
 
-        long totalApartments = apartmentRepository.countByOptionalBlock(blockId);
+        // Occupancy (total/occupied/rate) comes from the SAME shared derivation as the dashboard,
+        // so the two surfaces always agree. Demographics supplies only the resident-mix figures.
+        OccupancyCounts counts = computeOccupancy(blockId);
+        long totalApartments = counts.total();
+        long occupied = counts.occupied();
+
         List<Object[]> demoRows = residentRepository.getResidentDemographics(blockId);
         Object[] demo = demoRows.isEmpty()
-                ? new Object[]{0L, 0L, 0L, 0L}
+                ? new Object[]{0L, 0L, 0L}
                 : demoRows.get(0);
 
-        // Row: [totalActive, owners, tenants, occupiedApartments]
+        // Row: [totalActive, owners, tenants]; occupancy is derived via computeOccupancy
+        // (honors MAINTENANCE priority), not taken from this demographics row.
         long totalActive = toLong(demo[0]);
         long owners = toLong(demo[1]);
         long tenants = toLong(demo[2]);
-        long occupied = toLong(demo[3]);
 
         double occupancyRate = totalApartments > 0 ? (double) occupied / totalApartments : 0.0;
         double avgPerApartment = occupied > 0 ? (double) totalActive / occupied : 0.0;
@@ -291,28 +299,57 @@ public class ReportServiceImpl implements ReportService {
      * @return populated {@link DashboardResponse.ApartmentStats}.
      */
     private DashboardResponse.ApartmentStats buildApartmentStats() {
-        List<Object[]> statusCounts = apartmentRepository.countByStatus();
+        // DERIVED occupancy across all blocks — same shared computation the resident report uses.
+        OccupancyCounts counts = computeOccupancy(null);
+        double occupancyRate = counts.total() > 0 ? (double) counts.occupied() / counts.total() : 0.0;
+        return new DashboardResponse.ApartmentStats(
+                counts.total(), counts.occupied(), counts.available(), counts.maintenance(), occupancyRate);
+    }
+
+    /**
+     * THE single occupancy tally for the dashboard and resident report.
+     *
+     * <p>Derives each apartment's effective status via {@link OccupancyResolver} (MAINTENANCE
+     * stored-priority; otherwise OCCUPIED iff it has an active resident, else AVAILABLE), using
+     * the one occupied-apartment-id set ({@code move_out_date IS NULL}). Both surfaces call this
+     * with the same {@code blockId} semantics, so their occupancy numbers are identical by
+     * construction — they cannot diverge.
+     *
+     * @param blockId optional block UUID; {@code null} means all apartments.
+     * @return the total/occupied/available/maintenance tally for the scope.
+     */
+    private OccupancyCounts computeOccupancy(UUID blockId) {
+        Set<UUID> occupiedIds = new HashSet<>(residentRepository.findOccupiedApartmentIds(blockId));
+        List<Object[]> rows = apartmentRepository.findIdAndStatus(blockId);
+
         long total = 0;
         long occupied = 0;
         long available = 0;
         long maintenance = 0;
-
-        for (Object[] row : statusCounts) {
-            String status = (String) row[0];
-            long count = toLong(row[1]);
-            total += count;
-            // Match against ApartmentStatus enum names
-            if ("OCCUPIED".equals(status)) {
-                occupied = count;
-            } else if ("AVAILABLE".equals(status)) {
-                available = count;
-            } else if ("MAINTENANCE".equals(status)) {
-                maintenance = count;
+        for (Object[] row : rows) {
+            UUID id = (UUID) row[0];
+            ApartmentStatus stored = (ApartmentStatus) row[1];
+            ApartmentStatus effective = OccupancyResolver.effective(stored, occupiedIds.contains(id));
+            total++;
+            // Bucket by the SAME derived status the list/detail surfaces expose.
+            switch (effective) {
+                case OCCUPIED -> occupied++;
+                case MAINTENANCE -> maintenance++;
+                default -> available++;
             }
         }
+        return new OccupancyCounts(total, occupied, available, maintenance);
+    }
 
-        double occupancyRate = total > 0 ? (double) occupied / total : 0.0;
-        return new DashboardResponse.ApartmentStats(total, occupied, available, maintenance, occupancyRate);
+    /**
+     * Immutable occupancy tally for a scope. Internal to the report service.
+     *
+     * @param total       total apartments in scope.
+     * @param occupied    apartments with an active resident and not under maintenance.
+     * @param available   apartments with no active resident and not under maintenance.
+     * @param maintenance apartments whose stored status is MAINTENANCE.
+     */
+    private record OccupancyCounts(long total, long occupied, long available, long maintenance) {
     }
 
     /**

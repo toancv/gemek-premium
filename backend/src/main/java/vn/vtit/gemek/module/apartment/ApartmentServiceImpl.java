@@ -29,7 +29,9 @@ import vn.vtit.gemek.module.vehicle.entity.Vehicle;
 import vn.vtit.gemek.module.vehicle.repository.VehicleRepository;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 /**
  * Implementation of {@link ApartmentService} for apartment management.
@@ -82,35 +84,51 @@ public class ApartmentServiceImpl implements ApartmentService {
             UUID blockId, Short floor, ApartmentStatus status, String search, Pageable pageable) {
         log.debug("Listing apartments — blockId={}, floor={}, status={}, search={}", blockId, floor, status, search);
 
-        Page<ApartmentSummaryResponse> page = apartmentRepository
-                .findAllWithFilters(blockId, floor, status, search, pageable)
-                .map(apartment -> {
-                    // Build the summary without primary contact first.
-                    ApartmentSummaryResponse base = apartmentMapper.toSummaryResponse(apartment);
+        Page<Apartment> apartmentPage =
+                apartmentRepository.findAllWithFilters(blockId, floor, status, search, pageable);
 
-                    // Resolve primary contact via a targeted query on the residents table.
-                    ApartmentSummaryResponse.PrimaryContactRef contact = residentRepository
-                            .findActiveByApartmentId(apartment.getId())
-                            .stream()
-                            .filter(Resident::isPrimaryContact)
-                            .findFirst()
-                            .map(r -> new ApartmentSummaryResponse.PrimaryContactRef(
-                                    r.getId(),
-                                    r.getUser().getFullName(),
-                                    r.getType(),
-                                    r.getUser().getPhone()))
-                            .orElse(null);
+        // Batch-fetch active residents for the WHOLE page in ONE query (N+1 avoidance) and
+        // group by apartment. Both occupancy and primary contact are derived from this map,
+        // so no per-apartment resident query is issued.
+        List<UUID> pageApartmentIds = apartmentPage.getContent().stream()
+                .map(Apartment::getId)
+                .toList();
+        Map<UUID, List<Resident>> activeByApartment = pageApartmentIds.isEmpty()
+                ? Map.of()
+                : residentRepository.findActiveByApartmentIdIn(pageApartmentIds).stream()
+                        .collect(Collectors.groupingBy(r -> r.getApartment().getId()));
 
-                    // Rebuild the record with the primary contact field populated.
-                    return new ApartmentSummaryResponse(
-                            base.id(),
-                            base.block(),
-                            base.floor(),
-                            base.unitNumber(),
-                            base.areaSqm(),
-                            base.status(),
-                            contact);
-                });
+        Page<ApartmentSummaryResponse> page = apartmentPage.map(apartment -> {
+            // Build the summary without primary contact first.
+            ApartmentSummaryResponse base = apartmentMapper.toSummaryResponse(apartment);
+
+            List<Resident> activeResidents = activeByApartment.getOrDefault(apartment.getId(), List.of());
+
+            // Occupancy is DERIVED from active-resident presence; MAINTENANCE (stored) wins.
+            ApartmentStatus effectiveStatus =
+                    OccupancyResolver.effective(apartment.getStatus(), !activeResidents.isEmpty());
+
+            // Resolve primary contact from the same already-fetched active-resident list.
+            ApartmentSummaryResponse.PrimaryContactRef contact = activeResidents.stream()
+                    .filter(Resident::isPrimaryContact)
+                    .findFirst()
+                    .map(r -> new ApartmentSummaryResponse.PrimaryContactRef(
+                            r.getId(),
+                            r.getUser().getFullName(),
+                            r.getType(),
+                            r.getUser().getPhone()))
+                    .orElse(null);
+
+            // Rebuild the record with the computed status and primary contact populated.
+            return new ApartmentSummaryResponse(
+                    base.id(),
+                    base.block(),
+                    base.floor(),
+                    base.unitNumber(),
+                    base.areaSqm(),
+                    effectiveStatus,
+                    contact);
+        });
 
         return PageResponse.of(page);
     }
@@ -180,14 +198,18 @@ public class ApartmentServiceImpl implements ApartmentService {
                 .map(apartmentMapper::toVehicleRef)
                 .toList();
 
-        // Reconstruct the record with the populated lists.
+        // Occupancy is DERIVED from the already-fetched active-resident list; MAINTENANCE wins.
+        ApartmentStatus effectiveStatus =
+                OccupancyResolver.effective(apartment.getStatus(), !residents.isEmpty());
+
+        // Reconstruct the record with the computed status and populated lists.
         return new ApartmentDetailResponse(
                 base.id(),
                 base.block(),
                 base.floor(),
                 base.unitNumber(),
                 base.areaSqm(),
-                base.status(),
+                effectiveStatus,
                 base.notes(),
                 residentRefs,
                 vehicleRefs);

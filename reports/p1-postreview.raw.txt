@@ -1,0 +1,162 @@
+Picked up JAVA_TOOL_OPTIONS: -Duser.timezone=Asia/Ho_Chi_Minh
+[INFO] Scanning for projects...
+[INFO] 
+[INFO] -----------------------< vn.vtit:gemek-backend >------------------------
+[INFO] Building gemek-backend 1.0.0-SNAPSHOT
+[INFO]   from pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- jacoco:0.8.12:prepare-agent (prepare-agent) @ gemek-backend ---
+[INFO] argLine set to -javaagent:C:\\Users\\toancv2\\.m2\\repository\\org\\jacoco\\org.jacoco.agent\\0.8.12\\org.jacoco.agent-0.8.12-runtime.jar=destfile=D:\\Projects\\my-project\\gemek-premium\\backend\\target\\jacoco.exec
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ gemek-backend ---
+[INFO] Copying 2 resources from src\main\resources to target\classes
+[INFO] Copying 19 resources from src\main\resources to target\classes
+[INFO] 
+[INFO] --- compiler:3.13.0:compile (default-compile) @ gemek-backend ---
+[INFO] Recompiling the module because of changed source code.
+[INFO] Compiling 210 source files with javac [debug parameters release 21] to target\classes
+[INFO] 
+[INFO] --- resources:3.3.1:testResources (default-testResources) @ gemek-backend ---
+[INFO] Copying 2 resources from src\test\resources to target\test-classes
+[INFO] 
+[INFO] --- compiler:3.13.0:testCompile (default-testCompile) @ gemek-backend ---
+[INFO] Recompiling the module because of changed dependency.
+[INFO] Compiling 56 source files with javac [debug parameters release 21] to target\test-classes
+[WARNING] The following options were not recognized by any processor: '[mapstruct.defaultComponentModel]'
+[INFO] /D:/Projects/my-project/gemek-premium/backend/src/test/java/vn/vtit/gemek/module/announcement/AnnouncementServiceImplTest.java: Some input files use unchecked or unsafe operations.
+[INFO] /D:/Projects/my-project/gemek-premium/backend/src/test/java/vn/vtit/gemek/module/announcement/AnnouncementServiceImplTest.java: Recompile with -Xlint:unchecked for details.
+[INFO] 
+[INFO] --- surefire:3.2.5:test (default-test) @ gemek-backend ---
+[INFO] Using auto detected provider org.apache.maven.surefire.junitplatform.JUnitPlatformProvider
+[INFO] 
+[INFO] -------------------------------------------------------
+[INFO]  T E S T S
+[INFO] -------------------------------------------------------
+Picked up JAVA_TOOL_OPTIONS: -Duser.timezone=Asia/Ho_Chi_Minh
+[INFO] Running vn.vtit.gemek.module.announcement.AnnouncementServiceImplTest
+OpenJDK 64-Bit Server VM warning: Sharing is only supported for boot loader classes because bootstrap classpath has been appended
+WARNING: A Java agent has been loaded dynamically (C:\Users\toancv2\.m2\repository\net\bytebuddy\byte-buddy-agent\1.14.19\byte-buddy-agent-1.14.19.jar)
+WARNING: If a serviceability tool is in use, please run with -XX:+EnableDynamicAgentLoading to hide this warning
+WARNING: If a serviceability tool is not in use, please run with -Djdk.instrument.traceUsage for more information
+WARNING: Dynamic loading of agents will be disallowed by default in a future release
+[INFO] Tests run: 10, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 2.186 s -- in vn.vtit.gemek.module.announcement.AnnouncementServiceImplTest
+[INFO] Running vn.vtit.gemek.module.announcement.AnnouncementRecipientConsistencyTest
+Standard Commons Logging discovery in action with spring-jcl: please remove commons-logging.jar from classpath in order to avoid potential conflicts
+18:37:47.671 [main] INFO org.springframework.test.context.support.AnnotationConfigContextLoaderUtils -- Could not detect default configuration classes for test class [vn.vtit.gemek.module.announcement.AnnouncementRecipientConsistencyTest]: AnnouncementRecipientConsistencyTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+18:37:47.956 [main] INFO org.springframework.boot.test.context.SpringBootTestContextBootstrapper -- Found @SpringBootConfiguration vn.vtit.gemek.GemekApplication for test class vn.vtit.gemek.module.announcement.AnnouncementRecipientConsistencyTest
+18:37:49.037 [main] INFO org.flywaydb.core.FlywayExecutor -- Database: jdbc:postgresql://localhost:5433/gemek_test (PostgreSQL 15.18)
+18:37:49.104 [main] INFO org.flywaydb.core.internal.command.clean.CleanExecutor -- Successfully dropped pre-schema database level objects (execution time 00:00.001s)
+18:37:49.408 [main] INFO org.flywaydb.core.internal.command.clean.CleanExecutor -- Successfully cleaned schema "public" (execution time 00:00.301s)
+18:37:49.440 [main] INFO org.flywaydb.core.internal.command.clean.CleanExecutor -- Successfully cleaned schema "public" (execution time 00:00.031s)
+18:37:49.441 [main] INFO org.flywaydb.core.internal.command.clean.CleanExecutor -- Successfully dropped post-schema database level objects (execution time 00:00.000s)
+18:37:49.541 [main] INFO org.flywaydb.core.internal.schemahistory.JdbcTableSchemaHistory -- Schema history table "public"."flyway_schema_history" does not exist yet
+18:37:49.546 [main] INFO org.flywaydb.core.internal.command.DbValidate -- Successfully validated 19 migrations (execution time 00:00.041s)
+18:37:49.570 [main] INFO org.flywaydb.core.internal.schemahistory.JdbcTableSchemaHistory -- Creating Schema History table "public"."flyway_schema_history" ...
+18:37:49.660 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Current version of schema "public": << Empty Schema >>
+18:37:49.681 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Migrating schema "public" to version "1 - create enums and users"
+18:37:49.805 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Migrating schema "public" to version "2 - seed admin"
+18:37:49.832 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Migrating schema "public" to version "3 - create blocks apartments"
+18:37:49.944 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Migrating schema "public" to version "4 - create residents vehicles"
+18:37:50.149 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Migrating schema "public" to version "5 - create contractors and tickets"
+18:37:50.395 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Migrating schema "public" to version "6 - create contracts"
+18:37:50.549 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Migrating schema "public" to version "7 - create announcements"
+18:37:50.659 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Migrating schema "public" to version "8 - create amenities"
+18:37:50.781 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Migrating schema "public" to version "9 - create parking"
+18:37:50.949 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Migrating schema "public" to version "10 - create notifications audit"
+18:37:51.044 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Migrating schema "public" to version "11 - add user date of birth"
+18:37:51.063 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Migrating schema "public" to version "12 - phone as login"
+18:37:51.094 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Migrating schema "public" to version "13 - add n3 notification types"
+18:37:51.117 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Migrating schema "public" to version "14 - create notification subscriptions"
+18:37:51.175 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Migrating schema "public" to version "15 - add ticket is public"
+18:37:51.200 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Migrating schema "public" to version "16 - add sla and expiry sent markers"
+18:37:51.226 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Migrating schema "public" to version "17 - add audit columns"
+18:37:51.323 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Migrating schema "public" to version "18 - add contract announcement updated by"
+18:37:51.349 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Migrating schema "public" to version "19 - normalize apartment occupied status"
+18:37:51.365 [main] INFO org.flywaydb.core.internal.command.DbMigrate -- Successfully applied 19 migrations to schema "public", now at version v19 (execution time 00:01.316s)
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+
+ :: Spring Boot ::                (v3.3.8)
+
+2026-06-22T18:37:51.836+07:00  INFO 9156 --- [gemek-backend] [           main] m.a.AnnouncementRecipientConsistencyTest : Starting AnnouncementRecipientConsistencyTest using Java 21.0.10 with PID 9156 (started by toancv2 in D:\Projects\my-project\gemek-premium\backend)
+2026-06-22T18:37:51.836+07:00 DEBUG 9156 --- [gemek-backend] [           main] m.a.AnnouncementRecipientConsistencyTest : Running with Spring Boot v3.3.8, Spring v6.1.16
+2026-06-22T18:37:51.837+07:00  INFO 9156 --- [gemek-backend] [           main] m.a.AnnouncementRecipientConsistencyTest : The following 1 profile is active: "test"
+2026-06-22T18:37:53.370+07:00  INFO 9156 --- [gemek-backend] [           main] .s.d.r.c.RepositoryConfigurationDelegate : Multiple Spring Data modules found, entering strict repository configuration mode
+2026-06-22T18:37:53.374+07:00  INFO 9156 --- [gemek-backend] [           main] .s.d.r.c.RepositoryConfigurationDelegate : Bootstrapping Spring Data JPA repositories in DEFAULT mode.
+2026-06-22T18:37:53.670+07:00  INFO 9156 --- [gemek-backend] [           main] .s.d.r.c.RepositoryConfigurationDelegate : Finished Spring Data repository scanning in 286 ms. Found 23 JPA repository interfaces.
+2026-06-22T18:37:53.687+07:00  INFO 9156 --- [gemek-backend] [           main] .s.d.r.c.RepositoryConfigurationDelegate : Multiple Spring Data modules found, entering strict repository configuration mode
+2026-06-22T18:37:53.688+07:00  INFO 9156 --- [gemek-backend] [           main] .s.d.r.c.RepositoryConfigurationDelegate : Bootstrapping Spring Data Redis repositories in DEFAULT mode.
+2026-06-22T18:37:53.734+07:00  INFO 9156 --- [gemek-backend] [           main] .RepositoryConfigurationExtensionSupport : Spring Data Redis - Could not safely identify store assignment for repository candidate interface vn.vtit.gemek.common.audit.repository.AuditLogRepository; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+2026-06-22T18:37:53.735+07:00  INFO 9156 --- [gemek-backend] [           main] .RepositoryConfigurationExtensionSupport : Spring Data Redis - Could not safely identify store assignment for repository candidate interface vn.vtit.gemek.module.amenity.repository.AmenityBookingRepository; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+2026-06-22T18:37:53.736+07:00  INFO 9156 --- [gemek-backend] [           main] .RepositoryConfigurationExtensionSupport : Spring Data Redis - Could not safely identify store assignment for repository candidate interface vn.vtit.gemek.module.amenity.repository.AmenityRepository; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+2026-06-22T18:37:53.736+07:00  INFO 9156 --- [gemek-backend] [           main] .RepositoryConfigurationExtensionSupport : Spring Data Redis - Could not safely identify store assignment for repository candidate interface vn.vtit.gemek.module.announcement.repository.AnnouncementReadRepository; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+2026-06-22T18:37:53.737+07:00  INFO 9156 --- [gemek-backend] [           main] .RepositoryConfigurationExtensionSupport : Spring Data Redis - Could not safely identify store assignment for repository candidate interface vn.vtit.gemek.module.announcement.repository.AnnouncementRepository; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+2026-06-22T18:37:53.737+07:00  INFO 9156 --- [gemek-backend] [           main] .RepositoryConfigurationExtensionSupport : Spring Data Redis - Could not safely identify store assignment for repository candidate interface vn.vtit.gemek.module.apartment.repository.ApartmentRepository; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+2026-06-22T18:37:53.737+07:00  INFO 9156 --- [gemek-backend] [           main] .RepositoryConfigurationExtensionSupport : Spring Data Redis - Could not safely identify store assignment for repository candidate interface vn.vtit.gemek.module.apartment.repository.BlockRepository; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+2026-06-22T18:37:53.737+07:00  INFO 9156 --- [gemek-backend] [           main] .RepositoryConfigurationExtensionSupport : Spring Data Redis - Could not safely identify store assignment for repository candidate interface vn.vtit.gemek.module.contractor.repository.ContractorRepository; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+2026-06-22T18:37:53.737+07:00  INFO 9156 --- [gemek-backend] [           main] .RepositoryConfigurationExtensionSupport : Spring Data Redis - Could not safely identify store assignment for repository candidate interface vn.vtit.gemek.module.contractor.repository.ContractPaymentRepository; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+2026-06-22T18:37:53.738+07:00  INFO 9156 --- [gemek-backend] [           main] .RepositoryConfigurationExtensionSupport : Spring Data Redis - Could not safely identify store assignment for repository candidate interface vn.vtit.gemek.module.contractor.repository.ContractRepository; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+2026-06-22T18:37:53.738+07:00  INFO 9156 --- [gemek-backend] [           main] .RepositoryConfigurationExtensionSupport : Spring Data Redis - Could not safely identify store assignment for repository candidate interface vn.vtit.gemek.module.contractor.repository.MaintenanceScheduleRepository; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+2026-06-22T18:37:53.738+07:00  INFO 9156 --- [gemek-backend] [           main] .RepositoryConfigurationExtensionSupport : Spring Data Redis - Could not safely identify store assignment for repository candidate interface vn.vtit.gemek.module.notification.repository.NotificationRepository; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+2026-06-22T18:37:53.738+07:00  INFO 9156 --- [gemek-backend] [           main] .RepositoryConfigurationExtensionSupport : Spring Data Redis - Could not safely identify store assignment for repository candidate interface vn.vtit.gemek.module.notification.repository.NotificationSubscriptionRepository; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+2026-06-22T18:37:53.738+07:00  INFO 9156 --- [gemek-backend] [           main] .RepositoryConfigurationExtensionSupport : Spring Data Redis - Could not safely identify store assignment for repository candidate interface vn.vtit.gemek.module.parking.repository.GuestVehicleRepository; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+2026-06-22T18:37:53.738+07:00  INFO 9156 --- [gemek-backend] [           main] .RepositoryConfigurationExtensionSupport : Spring Data Redis - Could not safely identify store assignment for repository candidate interface vn.vtit.gemek.module.parking.repository.ParkingAssignmentRepository; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+2026-06-22T18:37:53.738+07:00  INFO 9156 --- [gemek-backend] [           main] .RepositoryConfigurationExtensionSupport : Spring Data Redis - Could not safely identify store assignment for repository candidate interface vn.vtit.gemek.module.parking.repository.ParkingSlotRepository; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+2026-06-22T18:37:53.739+07:00  INFO 9156 --- [gemek-backend] [           main] .RepositoryConfigurationExtensionSupport : Spring Data Redis - Could not safely identify store assignment for repository candidate interface vn.vtit.gemek.module.resident.repository.ResidentHistoryRepository; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+2026-06-22T18:37:53.739+07:00  INFO 9156 --- [gemek-backend] [           main] .RepositoryConfigurationExtensionSupport : Spring Data Redis - Could not safely identify store assignment for repository candidate interface vn.vtit.gemek.module.resident.repository.ResidentRepository; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+2026-06-22T18:37:53.739+07:00  INFO 9156 --- [gemek-backend] [           main] .RepositoryConfigurationExtensionSupport : Spring Data Redis - Could not safely identify store assignment for repository candidate interface vn.vtit.gemek.module.ticket.repository.TicketPhotoRepository; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+2026-06-22T18:37:53.739+07:00  INFO 9156 --- [gemek-backend] [           main] .RepositoryConfigurationExtensionSupport : Spring Data Redis - Could not safely identify store assignment for repository candidate interface vn.vtit.gemek.module.ticket.repository.TicketRepository; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+2026-06-22T18:37:53.739+07:00  INFO 9156 --- [gemek-backend] [           main] .RepositoryConfigurationExtensionSupport : Spring Data Redis - Could not safely identify store assignment for repository candidate interface vn.vtit.gemek.module.ticket.repository.TicketStatusHistoryRepository; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+2026-06-22T18:37:53.739+07:00  INFO 9156 --- [gemek-backend] [           main] .RepositoryConfigurationExtensionSupport : Spring Data Redis - Could not safely identify store assignment for repository candidate interface vn.vtit.gemek.module.user.repository.UserRepository; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+2026-06-22T18:37:53.740+07:00  INFO 9156 --- [gemek-backend] [           main] .RepositoryConfigurationExtensionSupport : Spring Data Redis - Could not safely identify store assignment for repository candidate interface vn.vtit.gemek.module.vehicle.repository.VehicleRepository; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+2026-06-22T18:37:53.740+07:00  INFO 9156 --- [gemek-backend] [           main] .s.d.r.c.RepositoryConfigurationDelegate : Finished Spring Data repository scanning in 40 ms. Found 0 Redis repository interfaces.
+2026-06-22T18:37:54.971+07:00  INFO 9156 --- [gemek-backend] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Starting...
+2026-06-22T18:37:55.003+07:00  INFO 9156 --- [gemek-backend] [           main] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Added connection org.postgresql.jdbc.PgConnection@7dca9c94
+2026-06-22T18:37:55.005+07:00  INFO 9156 --- [gemek-backend] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Start completed.
+2026-06-22T18:37:55.042+07:00  INFO 9156 --- [gemek-backend] [           main] org.flywaydb.core.FlywayExecutor         : Database: jdbc:postgresql://localhost:5433/gemek_test (PostgreSQL 15.18)
+2026-06-22T18:37:55.074+07:00  INFO 9156 --- [gemek-backend] [           main] o.f.core.internal.command.DbValidate     : Successfully validated 19 migrations (execution time 00:00.020s)
+2026-06-22T18:37:55.103+07:00  INFO 9156 --- [gemek-backend] [           main] o.f.core.internal.command.DbMigrate      : Current version of schema "public": 19
+2026-06-22T18:37:55.105+07:00  INFO 9156 --- [gemek-backend] [           main] o.f.core.internal.command.DbMigrate      : Schema "public" is up to date. No migration necessary.
+2026-06-22T18:37:55.294+07:00  INFO 9156 --- [gemek-backend] [           main] o.hibernate.jpa.internal.util.LogHelper  : HHH000204: Processing PersistenceUnitInfo [name: default]
+2026-06-22T18:37:55.379+07:00  INFO 9156 --- [gemek-backend] [           main] org.hibernate.Version                    : HHH000412: Hibernate ORM core version 6.5.3.Final
+2026-06-22T18:37:55.429+07:00  INFO 9156 --- [gemek-backend] [           main] o.h.c.internal.RegionFactoryInitiator    : HHH000026: Second-level cache disabled
+2026-06-22T18:37:55.623+07:00  INFO 9156 --- [gemek-backend] [           main] o.s.o.j.p.SpringPersistenceUnitInfo      : No LoadTimeWeaver setup: ignoring JPA class transformer
+2026-06-22T18:37:55.705+07:00  WARN 9156 --- [gemek-backend] [           main] org.hibernate.orm.deprecation            : HHH90000025: PostgreSQLDialect does not need to be specified explicitly using 'hibernate.dialect' (remove the property setting and it will be selected by default)
+2026-06-22T18:37:57.258+07:00  INFO 9156 --- [gemek-backend] [           main] o.h.e.t.j.p.i.JtaPlatformInitiator       : HHH000489: No JTA platform available (set 'hibernate.transaction.jta.platform' to enable JTA platform integration)
+2026-06-22T18:37:57.336+07:00  INFO 9156 --- [gemek-backend] [           main] j.LocalContainerEntityManagerFactoryBean : Initialized JPA EntityManagerFactory for persistence unit 'default'
+2026-06-22T18:37:57.712+07:00  INFO 9156 --- [gemek-backend] [           main] o.s.d.j.r.query.QueryEnhancerFactory     : Hibernate is in classpath; If applicable, HQL parser will be used.
+2026-06-22T18:37:59.932+07:00  INFO 9156 --- [gemek-backend] [           main] vn.vtit.gemek.config.FirebaseConfig      : Firebase initialisation skipped — enabled=false, credentialsPath configured=false
+2026-06-22T18:38:01.136+07:00  WARN 9156 --- [gemek-backend] [           main] JpaBaseConfiguration$JpaWebConfiguration : spring.jpa.open-in-view is enabled by default. Therefore, database queries may be performed during view rendering. Explicitly configure spring.jpa.open-in-view to disable this warning
+2026-06-22T18:38:01.206+07:00  WARN 9156 --- [gemek-backend] [           main] r$InitializeUserDetailsManagerConfigurer : Global AuthenticationManager configured with an AuthenticationProvider bean. UserDetailsService beans will not be used for username/password login. Consider removing the AuthenticationProvider bean. Alternatively, consider using the UserDetailsService in a manually instantiated DaoAuthenticationProvider.
+2026-06-22T18:38:01.871+07:00  INFO 9156 --- [gemek-backend] [           main] o.s.b.a.e.web.EndpointLinksResolver      : Exposing 2 endpoints beneath base path '/actuator'
+2026-06-22T18:38:02.896+07:00  INFO 9156 --- [gemek-backend] [           main] m.a.AnnouncementRecipientConsistencyTest : Started AnnouncementRecipientConsistencyTest in 11.489 seconds (process running for 28.672)
+2026-06-22T18:38:03.409+07:00  INFO 9156 --- [gemek-backend] [           main] vn.vtit.gemek.config.AdminSeeder         : Admin user seeded — phone=0900000000
+[INFO] Tests run: 4, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 16.24 s -- in vn.vtit.gemek.module.announcement.AnnouncementRecipientConsistencyTest
+[INFO] Running vn.vtit.gemek.module.ticket.TicketServiceImplTest
+2026-06-22T18:38:04.168+07:00 DEBUG 9156 --- [gemek-backend] [           main] v.v.g.module.ticket.TicketServiceImpl    : rateTicket — ticketId=dc16caf2-ea96-4105-a41f-cde1d7698b1b, rating=5
+2026-06-22T18:38:04.173+07:00 DEBUG 9156 --- [gemek-backend] [           main] v.v.g.module.ticket.TicketServiceImpl    : getTicketDetail — id=d1ce5abf-d8f4-40c5-919b-a66128448aac, role=RESIDENT
+2026-06-22T18:38:04.188+07:00 DEBUG 9156 --- [gemek-backend] [           main] v.v.g.module.ticket.TicketServiceImpl    : getTicketDetail — id=00b99ad9-a687-49c6-a2a2-fa94b5cc5e40, role=ADMIN
+2026-06-22T18:38:04.195+07:00 DEBUG 9156 --- [gemek-backend] [           main] v.v.g.module.ticket.TicketServiceImpl    : getTicketDetail — id=31c8093e-7b50-4cdf-ad22-01bb9e58466e, role=TECHNICIAN
+2026-06-22T18:38:04.200+07:00 DEBUG 9156 --- [gemek-backend] [           main] v.v.g.module.ticket.TicketServiceImpl    : getTicketDetail — id=03edc2c9-0418-4e1f-a63b-9a39559998c0, role=RESIDENT
+2026-06-22T18:38:04.205+07:00 DEBUG 9156 --- [gemek-backend] [           main] v.v.g.module.ticket.TicketServiceImpl    : listTickets — role=RESIDENT, visibility=null, statuses=null, category=null
+2026-06-22T18:38:04.216+07:00 DEBUG 9156 --- [gemek-backend] [           main] v.v.g.module.ticket.TicketServiceImpl    : getTicketDetail — id=893ac2c5-d74d-4a01-9909-f2b9684837b1, role=RESIDENT
+2026-06-22T18:38:04.220+07:00 DEBUG 9156 --- [gemek-backend] [           main] v.v.g.module.ticket.TicketServiceImpl    : rateTicket — ticketId=5216a7e2-9638-49b4-8bb1-d89ef4905d60, rating=5
+2026-06-22T18:38:04.227+07:00 DEBUG 9156 --- [gemek-backend] [           main] v.v.g.module.ticket.TicketServiceImpl    : getTicketDetail — id=f3ac5421-86de-4489-ad35-11733c9ada94, role=BOARD_MEMBER
+[INFO] Tests run: 12, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.506 s -- in vn.vtit.gemek.module.ticket.TicketServiceImplTest
+[INFO] 
+[INFO] Results:
+[INFO] 
+[INFO] Tests run: 26, Failures: 0, Errors: 0, Skipped: 0
+[INFO] 
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  45.176 s
+[INFO] Finished at: 2026-06-22T18:38:04+07:00
+[INFO] ------------------------------------------------------------------------

@@ -1,29 +1,35 @@
 # PROGRESS — Apartment Management System
 
-## ⏸ AWAITING CTO RULING ON P1 — Residency-lifecycle phased plan (P0 DONE 2026-06-22)
+## ⏸ P1 DONE — awaiting CTO smoke; next P2 (index relax) — Residency-lifecycle (P0+P1 DONE 2026-06-22)
 
-**P0 (DECISIONS reconcile) DONE** — corrected the index factual error in the model entry and recorded the
-CTO ruling + phased plan in `DECISIONS.md` ("Residency lifecycle — CTO ruling on concurrent multi-residency
-+ phased plan", 2026-06-22). Concurrent multi-residency is a CTO-approved TARGET; current index forbids it.
-Phased plan: **P0** docs reconcile (done) → **P1** `findActiveByUserId` call-site sweep + per-surface "which
-residency" semantics WHILE index still enforces single-active → **P2** index-relax migration → **P3**
-move-in/return reuse-by-phone flow. Hard order: sweep before index relax (else `NonUniqueResultException`).
+**P1 (findActiveByUserId sweep) DONE** — every consumer of the singular `Optional`-returning
+`findActiveByUserId` was made multi-residency-safe WHILE the index still enforces single-active, so P2 can
+relax the index without `NonUniqueResultException`. Index NOT touched; single-residency behavior identical.
+Per-surface semantics as IMPLEMENTED (CTO-ruled):
+- `/residents/me` → **ALL**: `getMyResident` returns `List<ResidentResponse>` (new `findAllActiveByUserId`);
+  empty = `200 []` (was 404). **Contract change** — API-SPEC §Residents updated; resident FE updated.
+- Ticket guards (createTicket, uploadPhotos, enforceReadAccess, enforcePhotoAccess, isHouseholdMember) →
+  **PER-CONTEXT** via new `existsActiveByUserIdAndApartmentId(principal, ticketApt)`.
+- Ticket "mine" list scope + redaction → **ALL** via new `findActiveApartmentIdsByUserId` (apt.id IN set).
+- Vehicle owns-check → **PER-CONTEXT**.
+- Amenity booking/listBookings → **SAFE TEMPORARY [PLANNED]**: primary-or-latest residency (first of ordered
+  `findAllActiveByUserId`). Real attribution rule pending CTO ruling. API-SPEC `[PLANNED]` note added.
 
-**Report:** `reports/residency-lifecycle-investigation.md` (diagnose-only; no code/migration/test changed).
-Answers sections A–F with file:line + live dev-DB evidence.
+`findActiveByUserId` retained with a `@deprecated` note (no production caller remains). Full backend suite
+**366/366 green**; resident `tsc && vite build` green. `/code-review` (high): backend clean, no regressions
+(FE break + 2 import-order + consistency-oracle migration all resolved; one pre-existing string-concat left).
 
-**Headline finding (CTO must rule):** the CTO-approved domain model (`DECISIONS.md:884-886`) says a user
-may hold **concurrent multi-residency** ("2+ apartments at once"), but the actual `uq_residents_active_user`
-index is partial-unique on **`user_id` ALONE** (`V4:22`, confirmed live) → the DB **forbids** concurrent
-multi-residency today (live: max active residencies/user = 1; 0 null/dup phone over 2082 users). Model ↔
-schema contradict. Move-in/return flow confirmed **absent** (`createResident` always `new User()`, blocks on
-`PHONE_ALREADY_EXISTS`). Primary-contact clearing verified **already per-residency** (move-out OPEN item closeable).
-`findActiveByUserId` is `Optional` with no LIMIT → ~11 singular consumers (`/residents/me`, 7 ticket guards,
-amenity, announcement, vehicle owns-check) would throw `NonUniqueResultException` if the index were relaxed.
+**Reports:** `reports/p1-findactivebyuserid-sweep.md` (sweep plan, per-site before/after, /code-review,
+RED→GREEN evidence); raw logs `reports/p1-{unit-green,suite-green,announcement-red,postreview}.raw.txt`.
+Investigation: `reports/residency-lifecycle-investigation.md` (§A consumer table, §F assumptions).
 
-**Resume pointer:** awaiting CTO ruling on P1 — `findActiveByUserId` sweep, per-surface "which residency"
-semantics (auth/permission gate). Phased plan in `DECISIONS.md` ("Residency lifecycle — CTO ruling on
-concurrent multi-residency + phased plan"). Do NOT write code/migration until P1 is ruled.
+**Phased plan:** **P0** docs reconcile (done) → **P1** sweep (done) → **P2** index-relax migration
+(`uq_residents_active_user` → `(user_id, apartment_id) WHERE move_out_date IS NULL`) → **P3** move-in/return
+reuse-by-phone flow. Hard order: sweep before index relax — satisfied.
+
+**Resume pointer:** awaiting CTO smoke of P1; then **P2 — relax `uq_residents_active_user` to
+`(user_id, apartment_id)` [migration gate]**. Do NOT relax the index or start P2 until CTO rules. Authoritative
+plan: `DECISIONS.md` ("Residency lifecycle — CTO ruling…" + the P1 as-implemented entry).
 
 ---
 

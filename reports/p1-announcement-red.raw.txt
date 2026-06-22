@@ -1,0 +1,79 @@
+Picked up JAVA_TOOL_OPTIONS: -Duser.timezone=Asia/Ho_Chi_Minh
+[INFO] Scanning for projects...
+[INFO] 
+[INFO] -----------------------< vn.vtit:gemek-backend >------------------------
+[INFO] Building gemek-backend 1.0.0-SNAPSHOT
+[INFO]   from pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- jacoco:0.8.12:prepare-agent (prepare-agent) @ gemek-backend ---
+[INFO] argLine set to -javaagent:C:\\Users\\toancv2\\.m2\\repository\\org\\jacoco\\org.jacoco.agent\\0.8.12\\org.jacoco.agent-0.8.12-runtime.jar=destfile=D:\\Projects\\my-project\\gemek-premium\\backend\\target\\jacoco.exec
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ gemek-backend ---
+[INFO] Copying 2 resources from src\main\resources to target\classes
+[INFO] Copying 19 resources from src\main\resources to target\classes
+[INFO] 
+[INFO] --- compiler:3.13.0:compile (default-compile) @ gemek-backend ---
+[INFO] Recompiling the module because of changed source code.
+[INFO] Compiling 210 source files with javac [debug parameters release 21] to target\classes
+[INFO] 
+[INFO] --- resources:3.3.1:testResources (default-testResources) @ gemek-backend ---
+[INFO] Copying 2 resources from src\test\resources to target\test-classes
+[INFO] 
+[INFO] --- compiler:3.13.0:testCompile (default-testCompile) @ gemek-backend ---
+[INFO] Recompiling the module because of changed dependency.
+[INFO] Compiling 56 source files with javac [debug parameters release 21] to target\test-classes
+[WARNING] The following options were not recognized by any processor: '[mapstruct.defaultComponentModel]'
+[INFO] /D:/Projects/my-project/gemek-premium/backend/src/test/java/vn/vtit/gemek/module/announcement/AnnouncementRecipientConsistencyTest.java: D:\Projects\my-project\gemek-premium\backend\src\test\java\vn\vtit\gemek\module\announcement\AnnouncementRecipientConsistencyTest.java uses or overrides a deprecated API.
+[INFO] /D:/Projects/my-project/gemek-premium/backend/src/test/java/vn/vtit/gemek/module/announcement/AnnouncementRecipientConsistencyTest.java: Recompile with -Xlint:deprecation for details.
+[INFO] /D:/Projects/my-project/gemek-premium/backend/src/test/java/vn/vtit/gemek/module/announcement/AnnouncementServiceImplTest.java: Some input files use unchecked or unsafe operations.
+[INFO] /D:/Projects/my-project/gemek-premium/backend/src/test/java/vn/vtit/gemek/module/announcement/AnnouncementServiceImplTest.java: Recompile with -Xlint:unchecked for details.
+[INFO] 
+[INFO] --- surefire:3.2.5:test (default-test) @ gemek-backend ---
+[INFO] Using auto detected provider org.apache.maven.surefire.junitplatform.JUnitPlatformProvider
+[INFO] 
+[INFO] -------------------------------------------------------
+[INFO]  T E S T S
+[INFO] -------------------------------------------------------
+Picked up JAVA_TOOL_OPTIONS: -Duser.timezone=Asia/Ho_Chi_Minh
+[INFO] Running vn.vtit.gemek.module.announcement.AnnouncementServiceImplTest
+WARNING: A Java agent has been loaded dynamically (C:\Users\toancv2\.m2\repository\net\bytebuddy\byte-buddy-agent\1.14.19\byte-buddy-agent-1.14.19.jar)
+WARNING: If a serviceability tool is in use, please run with -XX:+EnableDynamicAgentLoading to hide this warning
+WARNING: If a serviceability tool is not in use, please run with -Djdk.instrument.traceUsage for more information
+WARNING: Dynamic loading of agents will be disallowed by default in a future release
+OpenJDK 64-Bit Server VM warning: Sharing is only supported for boot loader classes because bootstrap classpath has been appended
+[ERROR] Tests run: 1, Failures: 0, Errors: 1, Skipped: 0, Time elapsed: 2.013 s <<< FAILURE! -- in vn.vtit.gemek.module.announcement.AnnouncementServiceImplTest
+[ERROR] vn.vtit.gemek.module.announcement.AnnouncementServiceImplTest.listAnnouncements_residentTwoApartments_noDuplicateAndSingleQuery -- Time elapsed: 1.969 s <<< ERROR!
+java.lang.NullPointerException: Cannot invoke "org.springframework.data.domain.Page.getContent()" because the return value of "vn.vtit.gemek.module.announcement.repository.AnnouncementRepository.findPublishedForApartment(java.util.UUID, short, org.springframework.data.domain.Pageable)" is null
+	at vn.vtit.gemek.module.announcement.AnnouncementServiceImpl.listAnnouncements(AnnouncementServiceImpl.java:123)
+	at vn.vtit.gemek.module.announcement.AnnouncementServiceImplTest.listAnnouncements_residentTwoApartments_noDuplicateAndSingleQuery(AnnouncementServiceImplTest.java:295)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:580)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1596)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1596)
+
+[INFO] 
+[INFO] Results:
+[INFO] 
+[ERROR] Errors: 
+[ERROR]   AnnouncementServiceImplTest.listAnnouncements_residentTwoApartments_noDuplicateAndSingleQuery:295 » NullPointer Cannot invoke "org.springframework.data.domain.Page.getContent()" because the return value of "vn.vtit.gemek.module.announcement.repository.AnnouncementRepository.findPublishedForApartment(java.util.UUID, short, org.springframework.data.domain.Pageable)" is null
+[INFO] 
+[ERROR] Tests run: 1, Failures: 0, Errors: 1, Skipped: 0
+[INFO] 
+[WARNING] Could not delete temp directory C:\Users\toancv2\AppData\Local\Temp\surefire14929177091042976433 because File C:\Users\toancv2\AppData\Local\Temp\surefire14929177091042976433\surefirebooter-20260622182821321_3.jar unable to be deleted.
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD FAILURE
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  17.864 s
+[INFO] Finished at: 2026-06-22T18:28:24+07:00
+[INFO] ------------------------------------------------------------------------
+[ERROR] Failed to execute goal org.apache.maven.plugins:maven-surefire-plugin:3.2.5:test (default-test) on project gemek-backend: 
+[ERROR] 
+[ERROR] Please refer to D:\Projects\my-project\gemek-premium\backend\target\surefire-reports for the individual test results.
+[ERROR] Please refer to dump files (if any exist) [date].dump, [date]-jvmRun[N].dump and [date].dumpstream.
+[ERROR] -> [Help 1]
+[ERROR] 
+[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
+[ERROR] Re-run Maven using the -X switch to enable full debug logging.
+[ERROR] 
+[ERROR] For more information about the errors and possible solutions, please read the following articles:
+[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoFailureException

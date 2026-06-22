@@ -972,6 +972,52 @@ propose these per-surface and gate for CTO approval.
 
 ---
 
+### 2026-06-22 | Residency lifecycle — P1 findActiveByUserId sweep (AS IMPLEMENTED)
+
+**See:** the CTO ruling entry above; `reports/p1-findactivebyuserid-sweep.md`. **Status:** P1 DONE, awaiting
+CTO smoke. Index NOT touched (single-active still enforced); single-residency behavior identical to before.
+
+**What:** every consumer of `ResidentRepository.findActiveByUserId` (singular `Optional`, no `LIMIT` — would
+throw `NonUniqueResultException` once the index is relaxed) was converted to a multi-residency-safe query. The
+per-surface "which residency" semantics deferred at the ruling are now DECIDED + IMPLEMENTED:
+
+1. **`/residents/me` → ALL.** `getMyResident` returns `List<ResidentResponse>` (new `findAllActiveByUserId`,
+   JOIN FETCH user+apartment+block, ordered primaryContact desc, moveInDate desc, id desc). Empty = `200 []`
+   (was `404`). **Contract change** — `docs/API-SPEC.md §Residents` updated; resident FE updated to the array
+   shape (chosen over `{residencies:[]}` because the hook returns `r.data` raw and consumers index it).
+2. **Ticket ownership/visibility guards → PER-CONTEXT** (5 single-ticket sites: createTicket, uploadPhotos,
+   enforceReadAccess, enforcePhotoAccess, isHouseholdMember) via new
+   `existsActiveByUserIdAndApartmentId(principalId, ticketApartmentId)`. Strictly more correct: act on a ticket
+   IFF actively residing in THAT ticket's apartment.
+3. **Ticket "mine" list scope + redaction → ALL** (`buildScopeSpec` mine-tab `:970` and listTickets redaction
+   `:219`) via new `findActiveApartmentIdsByUserId` (one batch query; `apartment.id IN set` / `Set.contains`).
+   **Reconciliation noted:** §A/ruling bucketed `:970` among the "6 guards", but `:970` is structurally a
+   list-scope (no single ticket to compare against) → it fits the ALL semantic, not PER-CONTEXT. Applied as ALL.
+4. **Announcement resident feed → ALL, DISTINCT-by-id.** One Specification union across all active apartments
+   (`publishedForResidenciesSpec`): scope ALL ∪ BLOCK∈blocks ∪ FLOOR per exact (block,floor) pair, with
+   `query.distinct(true)`. No per-apartment loop+concat (which would duplicate ALL/BLOCK announcements). FLOOR
+   matched per-pair to prevent cross-apartment floor leakage.
+5. **Vehicle owns-check → PER-CONTEXT** (`verifyResidentOwnsApartment` → `existsActiveByUserIdAndApartmentId`).
+6. **Amenity booking + listBookings → SAFE TEMPORARY, [PLANNED].** Deterministic primary-or-latest residency
+   (first of `findAllActiveByUserId`) via private `resolveActiveResidency`. Code marked
+   `// [PLANNED] multi-residency: temporary primary-or-latest selection; real attribution rule pending CTO ruling`;
+   API-SPEC carries a `[PLANNED — multi-residency attribution]` note. **The real "which apartment is a booking
+   charged to" rule is NOT decided** — deferred to CTO. Single-residency behavior unchanged.
+
+**`findActiveByUserId`:** retained (NOT deleted — separate cleanup) with a `@deprecated`-style Javadoc note
+(unsafe under multi-residency). No production code calls it after the sweep; the
+`AnnouncementRecipientConsistencyTest` oracle was migrated off it to `findAllActiveByUserId`.
+
+**Verified:** backend suite **366/366** green; resident `tsc && vite build` green. `/code-review` (high effort,
+2 reviewers): backend clean, no single-residency regressions; FE break + import-order + consistency-oracle
+findings resolved; one pre-existing string-concat in an error message left as-is (codebase-wide idiom, out of
+P1 scope). TDD RED→GREEN demonstrated (announcement no-duplicate proof against the naive concat impl).
+
+**Next (P2, gated):** relax `uq_residents_active_user` to `(user_id, apartment_id) WHERE move_out_date IS NULL`
+(migration gate) — ONLY after CTO smokes P1.
+
+---
+
 ### Backlog — Residency lifecycle: move-in / return flow + multi-residency  *(NOT STARTED — needs design session)*
 
 **See:** `2026-06-22 | Residency lifecycle — domain model (CTO-approved)` (above).

@@ -523,12 +523,20 @@ Errors: `409 CONFLICT` (apartment has active residents)
 ### GET /api/residents/me
 
 **Auth:** RESIDENT
-**Description:** Return the authenticated resident's own active residency record. Identity is derived
-exclusively from the JWT principal — no user id is accepted as a param.
+**Description:** Return ALL of the authenticated resident's active residencies. Identity is derived
+exclusively from the JWT principal — no user id is accepted as a param. A user may hold multiple
+concurrent active residencies (multi-residency), so the response is an array.
 
-Response `200 OK` — `ResidentResponse` (same shape as `GET /api/residents/{id}` detail).
+Response `200 OK` — JSON **array** of `ResidentResponse` (each element same shape as
+`GET /api/residents/{id}` detail), ordered primary-contact first, then latest move-in. An empty array
+`[]` is returned when the caller has **no** active residency (a valid state, e.g. between move-out and a
+return) — this is **NOT** a 404.
 
-Errors: `404 NOT_FOUND` (caller has no active residency).
+> **Contract change (residency-lifecycle P1, 2026-06-22):** previously returned a single
+> `ResidentResponse` object and `404 NOT_FOUND` when the caller had no active residency. Now returns a
+> list and `200 []`. Resident-app consumers updated accordingly.
+
+Errors: none specific (an empty list, not an error, represents "no active residency").
 
 ---
 
@@ -1243,6 +1251,14 @@ Response `200 OK` — paginated:
 
 **Auth:** RESIDENT
 **Description:** Submit a booking request. If `amenity.requiresApproval = false`, status is automatically set to `APPROVED`.
+
+> **[PLANNED — multi-residency attribution]** When the caller holds multiple concurrent active
+> residencies, the booking is currently attributed to a deterministically-selected residency
+> (primary-contact first, else latest move-in, tie-break by id) — a SAFE TEMPORARY rule landed in
+> residency-lifecycle P1 so the endpoint never throws under multi-residency. For a single-residency
+> caller the behavior is unchanged. The real attribution rule (which apartment a multi-residency
+> booking is charged to, or whether the request should carry an explicit apartment context) is
+> **pending CTO ruling**.
 
 Request:
 ```json

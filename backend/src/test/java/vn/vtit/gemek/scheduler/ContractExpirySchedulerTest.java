@@ -14,7 +14,6 @@ import vn.vtit.gemek.module.contractor.entity.Contract;
 import vn.vtit.gemek.module.contractor.repository.ContractRepository;
 import vn.vtit.gemek.module.notification.NotificationService;
 import vn.vtit.gemek.module.notification.entity.NotificationType;
-import vn.vtit.gemek.module.user.entity.User;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -63,14 +62,11 @@ class ContractExpirySchedulerTest {
         UUID staffId = UUID.randomUUID();
         UUID contractId = UUID.randomUUID();
 
-        User staff = new User();
-        staff.setId(staffId);
-
         Contract contract = new Contract();
         contract.setId(contractId);
         contract.setTitle("Cleaning Contract");
         contract.setEndDate(LocalDate.now().plusDays(15));
-        contract.setCreatedBy(staff);
+        contract.setCreatedBy(staffId);
 
         when(contractRepository.findExpiringBetween(any(LocalDate.class), any(LocalDate.class)))
                 .thenReturn(List.of(contract));
@@ -103,22 +99,17 @@ class ContractExpirySchedulerTest {
         UUID staffId1 = UUID.randomUUID();
         UUID staffId2 = UUID.randomUUID();
 
-        User staff1 = new User();
-        staff1.setId(staffId1);
-        User staff2 = new User();
-        staff2.setId(staffId2);
-
         Contract c1 = new Contract();
         c1.setId(UUID.randomUUID());
         c1.setTitle("C1");
         c1.setEndDate(LocalDate.now().plusDays(5));
-        c1.setCreatedBy(staff1);
+        c1.setCreatedBy(staffId1);
 
         Contract c2 = new Contract();
         c2.setId(UUID.randomUUID());
         c2.setTitle("C2");
         c2.setEndDate(LocalDate.now().plusDays(10));
-        c2.setCreatedBy(staff2);
+        c2.setCreatedBy(staffId2);
 
         when(contractRepository.findExpiringBetween(any(), any())).thenReturn(List.of(c1, c2));
         doThrow(new RuntimeException("down"))

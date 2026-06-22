@@ -26,12 +26,22 @@ import vn.vtit.gemek.module.notification.repository.NotificationRepository;
 import vn.vtit.gemek.module.resident.repository.ResidentRepository;
 import vn.vtit.gemek.module.user.repository.UserRepository;
 
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+
 import java.time.OffsetDateTime;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
@@ -226,5 +236,48 @@ class AnnouncementServiceImplTest {
                 .isInstanceOf(AppException.class)
                 .satisfies(ex -> assertThat(((AppException) ex).getErrorCode())
                         .isEqualTo(ErrorCode.VALIDATION_ERROR));
+    }
+
+    // =========================================================================
+    // listAnnouncements — N+1 guard: creator names resolved in ONE batch query
+    // =========================================================================
+
+    @Test
+    @DisplayName("listAnnouncements (ADMIN) — resolves creator names via a single findAllById (no per-row findById)")
+    void listAnnouncements_resolvesCreatorNamesInBatch_noN1() {
+        // Three announcements, each with a distinct creator UUID — naive mapping would do 3 lookups.
+        Announcement a1 = announcementWithCreator(UUID.randomUUID());
+        Announcement a2 = announcementWithCreator(UUID.randomUUID());
+        Announcement a3 = announcementWithCreator(UUID.randomUUID());
+
+        when(announcementRepository.findAll(any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(a1, a2, a3)));
+        when(announcementReadRepository.findReadAnnouncementIds(any(), anyList()))
+                .thenReturn(List.of());
+        when(userRepository.findAllById(any())).thenReturn(List.of());
+
+        service.listAnnouncements(principalId, "ADMIN", PageRequest.of(0, 10));
+
+        // Batch resolution: exactly one user query for the whole page, never one per row.
+        verify(userRepository, times(1)).findAllById(any());
+        verify(userRepository, never()).findById(any());
+    }
+
+    /**
+     * Builds a published announcement carrying the given creator actor UUID.
+     *
+     * @param creatorId the creator actor UUID.
+     * @return an announcement with id, scope, and createdBy populated.
+     */
+    private Announcement announcementWithCreator(UUID creatorId) {
+        Announcement a = new Announcement();
+        a.setId(UUID.randomUUID());
+        a.setTitle("A");
+        a.setContent("body");
+        a.setScope(AnnouncementScope.ALL);
+        a.setType(AnnouncementType.GENERAL);
+        a.setPublishedAt(OffsetDateTime.now());
+        a.setCreatedBy(creatorId);
+        return a;
     }
 }

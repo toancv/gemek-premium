@@ -15,7 +15,6 @@ import vn.vtit.gemek.module.contractor.entity.MaintenanceSchedule;
 import vn.vtit.gemek.module.contractor.repository.MaintenanceScheduleRepository;
 import vn.vtit.gemek.module.notification.NotificationService;
 import vn.vtit.gemek.module.notification.entity.NotificationType;
-import vn.vtit.gemek.module.user.entity.User;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -63,11 +62,8 @@ class MaintenanceScheduleRunnerTest {
         UUID staffId = UUID.randomUUID();
         UUID scheduleId = UUID.randomUUID();
 
-        User staff = new User();
-        staff.setId(staffId);
-
         Contract contract = new Contract();
-        contract.setCreatedBy(staff);
+        contract.setCreatedBy(staffId);
 
         MaintenanceSchedule schedule = new MaintenanceSchedule();
         schedule.setId(scheduleId);
@@ -120,15 +116,10 @@ class MaintenanceScheduleRunnerTest {
         UUID staffId1 = UUID.randomUUID();
         UUID staffId2 = UUID.randomUUID();
 
-        User staff1 = new User();
-        staff1.setId(staffId1);
-        User staff2 = new User();
-        staff2.setId(staffId2);
-
         Contract contract1 = new Contract();
-        contract1.setCreatedBy(staff1);
+        contract1.setCreatedBy(staffId1);
         Contract contract2 = new Contract();
-        contract2.setCreatedBy(staff2);
+        contract2.setCreatedBy(staffId2);
 
         MaintenanceSchedule s1 = new MaintenanceSchedule();
         s1.setId(UUID.randomUUID());

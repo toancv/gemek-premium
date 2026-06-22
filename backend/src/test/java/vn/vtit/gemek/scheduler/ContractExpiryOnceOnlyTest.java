@@ -7,14 +7,18 @@ import vn.vtit.gemek.support.AbstractIntegrationTest;
 
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
+import vn.vtit.gemek.common.security.UserPrincipal;
 import vn.vtit.gemek.common.storage.FileStorageService;
 import vn.vtit.gemek.module.contractor.entity.Contract;
 import vn.vtit.gemek.module.contractor.entity.ContractStatus;
@@ -82,6 +86,12 @@ class ContractExpiryOnceOnlyTest extends AbstractIntegrationTest {
         staff.setActive(true);
         staff = userRepository.save(staff);
 
+        // Authenticate as staff so Spring Data auditing stamps createdBy = staff on the contract
+        // (the scheduler notifies the contract's creator). Mirrors a real authenticated create.
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(new UserPrincipal(staff), null,
+                        new UserPrincipal(staff).getAuthorities()));
+
         Contractor contractor = new Contractor();
         contractor.setCompanyName("P6 Contractor " + tag);
         contractor = contractorRepository.save(contractor);
@@ -92,8 +102,13 @@ class ContractExpiryOnceOnlyTest extends AbstractIntegrationTest {
         contract.setStartDate(LocalDate.now().minusMonths(6));
         contract.setEndDate(LocalDate.now().plusDays(15));
         contract.setStatus(ContractStatus.ACTIVE);
-        contract.setCreatedBy(staff);
+        // createdBy is set by auditing from the authenticated staff principal — no manual write.
         contract = contractRepository.save(contract);
+    }
+
+    @AfterEach
+    void tearDown() {
+        SecurityContextHolder.clearContext();
     }
 
     @Test

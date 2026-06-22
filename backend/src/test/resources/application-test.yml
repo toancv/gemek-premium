@@ -17,7 +17,9 @@ jwt:
 # Point at the docker-compose services reachable from the Windows host via WSL2 port proxy.
 spring:
   datasource:
-    url: jdbc:postgresql://localhost:5433/gemek
+    # Dedicated test DB — NEVER the dev 'gemek' DB. AbstractIntegrationTest creates it
+    # and runs Flyway clean+migrate once per JVM so each run starts from an empty schema.
+    url: jdbc:postgresql://localhost:5433/gemek_test
     username: gemek
     password: "GemekLocal@2026"
   data:

@@ -14,8 +14,10 @@ export const useMe = () =>
 export const useMyTickets = (params?: Record<string, unknown>) =>
   useQuery({ queryKey: ['tickets', params], queryFn: () => get('/tickets', params) });
 
+// /residents/me returns ALL active residencies (multi-residency): 0, 1, or 2+, primary first.
+// Typed as an array so consumers cannot accidentally treat it as a single object.
 export const useMyResident = () =>
-  useQuery({ queryKey: ['my-resident'], queryFn: () => get('/residents/me') });
+  useQuery<any[]>({ queryKey: ['my-resident'], queryFn: () => get('/residents/me') });
 
 export const useTicket = (id: string) =>
   useQuery<TicketDetailItem>({ queryKey: ['tickets', id], queryFn: () => get(`/tickets/${id}`), enabled: !!id });

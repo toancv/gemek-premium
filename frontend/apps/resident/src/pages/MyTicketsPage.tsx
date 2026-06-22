@@ -15,8 +15,12 @@ export function MyTicketsPage() {
   const [tab, setTab] = useState<'mine' | 'community'>('mine');
   const { data, isLoading } = useMyTickets(
     tab === 'community' ? { size: 20, visibility: 'community' } : { size: 20 });
-  const { data: resident, isLoading: aptLoading } = useMyResident();
-  const apartment = resident?.apartment ?? null;
+  // Multi-residency: /residents/me returns ALL active residencies. With one, behave as before;
+  // with 2+, let the resident choose which apartment the ticket is filed under (primary is first).
+  const { data: residencies, isLoading: aptLoading } = useMyResident();
+  const apartments = (residencies ?? []).map((r: any) => r.apartment).filter(Boolean);
+  const [selectedAptId, setSelectedAptId] = useState<string>('');
+  const apartment = apartments.find((a: any) => a.id === selectedAptId) ?? apartments[0] ?? null;
   const create = useCreateTicket();
   const [showForm, setShowForm] = useState(false);
   const [formError, setFormError] = useState('');
@@ -101,6 +105,18 @@ export function MyTicketsPage() {
                 <label className="block text-sm font-medium text-gray-700 mb-1">Căn hộ</label>
                 {aptLoading ? (
                   <div className="block w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm bg-gray-50 text-gray-400">Đang tải...</div>
+                ) : apartments.length > 1 ? (
+                  <select
+                    value={apartment?.id ?? ''}
+                    onChange={(e) => setSelectedAptId(e.target.value)}
+                    className="block w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm bg-white"
+                  >
+                    {apartments.map((a: any) => (
+                      <option key={a.id} value={a.id}>
+                        {a.block?.name ? `Tòa ${a.block.name} / ` : ''}{a.unitNumber}
+                      </option>
+                    ))}
+                  </select>
                 ) : aptLabel ? (
                   <div className="block w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm bg-gray-50 text-gray-700 font-medium">{aptLabel}</div>
                 ) : (

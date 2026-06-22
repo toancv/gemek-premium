@@ -5,22 +5,27 @@ import { getVnErrorMessage, labelFor } from '@gemek/ui';
 const VEHICLE_TYPES = ['CAR', 'MOTORBIKE', 'BICYCLE', 'OTHER'];
 
 export function MyVehiclesPage() {
-  const { data: resident, isLoading: residentLoading } = useMyResident();
+  // Multi-residency: /residents/me returns ALL active residencies. With one, behave as before;
+  // with 2+, the resident picks which apartment the vehicle is registered under (primary first).
+  const { data: residencies, isLoading: residentLoading } = useMyResident();
   const createVehicle = useCreateVehicle();
   const [showCreate, setShowCreate] = useState(false);
   const [formError, setFormError] = useState('');
+  const [selectedResidencyId, setSelectedResidencyId] = useState<string>('');
 
-  const residentId: string | undefined = resident?.id;
-  const apartmentId: string | undefined = resident?.apartment?.id;
-  const unitLabel = resident?.apartment
-    ? `${resident.apartment.block?.name ? resident.apartment.block.name + ' / ' : ''}${resident.apartment.unitNumber}`
+  const list = residencies ?? [];
+  const residency = list.find((r: any) => r.id === selectedResidencyId) ?? list[0] ?? null;
+  const residentId: string | undefined = residency?.id;
+  const apartmentId: string | undefined = residency?.apartment?.id;
+  const unitLabel = residency?.apartment
+    ? `${residency.apartment.block?.name ? residency.apartment.block.name + ' / ' : ''}${residency.apartment.unitNumber}`
     : null;
 
   if (residentLoading) {
     return <div className="p-4 text-center text-gray-400 pt-10">Đang tải...</div>;
   }
 
-  if (!resident || !apartmentId) {
+  if (!residency || !apartmentId) {
     return (
       <div className="p-4 pt-6">
         <p className="text-red-600 text-sm bg-red-50 rounded-xl px-4 py-3">
@@ -69,7 +74,24 @@ export function MyVehiclesPage() {
       </div>
 
       <div className="bg-blue-50 rounded-xl px-4 py-3 text-sm text-blue-700">
-        Căn hộ của bạn: <span className="font-semibold">{unitLabel}</span>
+        {list.length > 1 ? (
+          <label className="flex items-center gap-2">
+            <span className="flex-shrink-0">Căn hộ của bạn:</span>
+            <select
+              value={residency?.id ?? ''}
+              onChange={(e) => setSelectedResidencyId(e.target.value)}
+              className="flex-1 border border-blue-200 rounded-lg px-2 py-1 text-sm bg-white text-gray-800"
+            >
+              {list.map((r: any) => (
+                <option key={r.id} value={r.id}>
+                  {r.apartment?.block?.name ? `Tòa ${r.apartment.block.name} / ` : ''}{r.apartment?.unitNumber}
+                </option>
+              ))}
+            </select>
+          </label>
+        ) : (
+          <>Căn hộ của bạn: <span className="font-semibold">{unitLabel}</span></>
+        )}
       </div>
 
       <p className="text-sm text-gray-500">

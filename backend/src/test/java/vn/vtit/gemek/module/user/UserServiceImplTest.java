@@ -18,6 +18,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import vn.vtit.gemek.common.exception.AppException;
 import vn.vtit.gemek.common.exception.ErrorCode;
 import vn.vtit.gemek.module.user.dto.CreateUserRequest;
+import vn.vtit.gemek.module.user.dto.ResetPasswordRequest;
 import vn.vtit.gemek.module.user.dto.UpdateUserRequest;
 import vn.vtit.gemek.module.user.entity.User;
 import vn.vtit.gemek.module.user.entity.UserRole;
@@ -247,6 +248,59 @@ class UserServiceImplTest {
         when(userRepository.findById(userId)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> userService.deactivateUser(userId, actorId))
+                .isInstanceOf(AppException.class)
+                .satisfies(ex -> assertThat(((AppException) ex).getErrorCode())
+                        .isEqualTo(ErrorCode.NOT_FOUND));
+    }
+
+    @Test
+    @DisplayName("deactivateUser: valid target — deactivates without aspect (AUD.3: succeeds with audit write removed)")
+    void deactivateUser_validTarget_deactivatesUser() {
+        UUID userId = UUID.randomUUID();
+        UUID actorId = UUID.randomUUID();
+        User existing = buildUser(userId, UserRole.RESIDENT);
+
+        when(userRepository.findById(userId)).thenReturn(Optional.of(existing));
+        when(userRepository.save(any())).thenReturn(existing);
+
+        userService.deactivateUser(userId, actorId);
+
+        ArgumentCaptor<User> captor = ArgumentCaptor.forClass(User.class);
+        verify(userRepository).save(captor.capture());
+        assertThat(captor.getValue().isActive()).isFalse();
+    }
+
+    // -------------------------------------------------------------------------
+    // resetPassword() — AUD.3: business path works without AuditLogAspect
+    // -------------------------------------------------------------------------
+
+    @Test
+    @DisplayName("resetPassword: valid user — re-encodes and saves new hash (AUD.3: succeeds with audit write removed)")
+    void resetPassword_validUser_savesNewHash() {
+        UUID userId = UUID.randomUUID();
+        User existing = buildUser(userId, UserRole.RESIDENT);
+        ResetPasswordRequest request = new ResetPasswordRequest("NewPass@12345");
+
+        when(userRepository.findById(userId)).thenReturn(Optional.of(existing));
+        when(passwordEncoder.encode("NewPass@12345")).thenReturn("$newhashed");
+        when(userRepository.save(any())).thenReturn(existing);
+
+        userService.resetPassword(userId, request);
+
+        ArgumentCaptor<User> captor = ArgumentCaptor.forClass(User.class);
+        verify(userRepository).save(captor.capture());
+        assertThat(captor.getValue().getPasswordHash()).isEqualTo("$newhashed");
+    }
+
+    @Test
+    @DisplayName("resetPassword: user not found — throws NOT_FOUND")
+    void resetPassword_userNotFound_throwsNotFound() {
+        UUID userId = UUID.randomUUID();
+        ResetPasswordRequest request = new ResetPasswordRequest("NewPass@12345");
+
+        when(userRepository.findById(userId)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> userService.resetPassword(userId, request))
                 .isInstanceOf(AppException.class)
                 .satisfies(ex -> assertThat(((AppException) ex).getErrorCode())
                         .isEqualTo(ErrorCode.NOT_FOUND));

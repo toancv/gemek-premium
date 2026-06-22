@@ -28,9 +28,12 @@ import java.util.UUID;
 /**
  * JPA entity representing the {@code audit_logs} table.
  *
- * <p>Provides an immutable record of every state-changing operation in the system.
- * Rows are written fire-and-forget by {@link vn.vtit.gemek.common.audit.AuditLogAspect}
- * so that audit failures never roll back the primary transaction.
+ * <p>Holds historical audit records of state-changing operations. As of AUD.3 the
+ * write path (the former {@code AuditLogAspect}) has been removed: auditing is now
+ * consolidated on Spring Data {@code created_by}/{@code updated_by} attribution. This
+ * entity and its table are <strong>retained but write-idle</strong> — historical rows
+ * are preserved and readable; no new rows are written. The table is intentionally not
+ * dropped (a future migration may do so if the history is ever no longer wanted).
  *
  * <p>JSONB columns ({@code old_value}, {@code new_value}) are stored as {@link String}
  * because the application serialises the values to JSON before persisting.

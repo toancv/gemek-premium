@@ -15,7 +15,6 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import vn.vtit.gemek.common.audit.Auditable;
 import vn.vtit.gemek.common.exception.AppException;
 import vn.vtit.gemek.common.exception.ErrorCode;
 import vn.vtit.gemek.common.util.PhoneUtils;
@@ -94,7 +93,6 @@ public class UserServiceImpl implements UserService {
      */
     @Override
     @Transactional
-    @Auditable(action = "CREATE", entityType = "User")
     public UserResponse createUser(CreateUserRequest request) {
         String normalizedPhone = PhoneUtils.normalize(request.phone());
         log.debug("Creating user with phone={}", normalizedPhone);
@@ -139,7 +137,6 @@ public class UserServiceImpl implements UserService {
      */
     @Override
     @Transactional
-    @Auditable(action = "UPDATE", entityType = "User")
     public UserResponse updateUser(UUID id, UpdateUserRequest request) {
         log.debug("Updating user id={}", id);
         User user = findOrThrow(id);
@@ -164,7 +161,6 @@ public class UserServiceImpl implements UserService {
      */
     @Override
     @Transactional
-    @Auditable(action = "DELETE", entityType = "User")
     public void deactivateUser(UUID id, UUID requestUserId) {
         log.debug("Deactivating user id={} requested by {}", id, requestUserId);
 
@@ -185,7 +181,6 @@ public class UserServiceImpl implements UserService {
      */
     @Override
     @Transactional
-    @Auditable(action = "RESET_PASSWORD", entityType = "User")
     public void resetPassword(UUID id, ResetPasswordRequest request) {
         log.debug("Resetting password for user id={}", id);
         User user = findOrThrow(id);

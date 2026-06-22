@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from 'react';
-import { SearchableSelect, labelFor, formatVNDate, VNDatePicker } from '@gemek/ui';
+import { SearchableSelect, labelFor, formatVNDate, VNDatePicker, getVnErrorMessage, toISODateLocal } from '@gemek/ui';
 import type { SearchableOption } from '@gemek/ui';
-import { useResidents, useCreateResident } from '../api/hooks';
+import { useResidents, useCreateResident, useMoveOutResident } from '../api/hooks';
 import { apiClient } from '../api/client';
 import { t } from '../i18n/vi';
 
@@ -11,6 +11,8 @@ interface ResidentItem {
   apartment: { unitNumber: string; block?: { name: string } };
   type: 'OWNER' | 'TENANT';
   moveInDate: string;
+  // null = đang cư trú; non-null ISO date = đã chuyển đi (soft end-of-residency).
+  moveOutDate: string | null;
 }
 
 /** Generates a random password satisfying: ≥8 chars, upper+lower+digit+special. */
@@ -53,8 +55,39 @@ export function ResidentsPage() {
   const [selectedApartmentId, setSelectedApartmentId] = useState('');
   const [aptError, setAptError] = useState('');
 
+  // Move-out ("Kết thúc cư trú") dialog state. moveOutDate stays ISO (yyyy-mm-dd),
+  // defaulted to today; VNDatePicker shows dd/mm but the payload is a pure LocalDate.
+  const [moveOutTarget, setMoveOutTarget] = useState<ResidentItem | null>(null);
+  const [moveOutDate, setMoveOutDate] = useState('');
+  const [moveOutNotes, setMoveOutNotes] = useState('');
+  const [moveOutError, setMoveOutError] = useState('');
+
   const { data, isLoading, isError } = useResidents({ page, size: 20, ...(search && { search }) });
   const createResident = useCreateResident();
+  const moveOutResident = useMoveOutResident();
+
+  function openMoveOut(resident: ResidentItem) {
+    setMoveOutTarget(resident);
+    setMoveOutDate(toISODateLocal(new Date())); // default = hôm nay, vẫn sửa được
+    setMoveOutNotes('');
+    setMoveOutError('');
+  }
+
+  const handleMoveOut = async () => {
+    if (!moveOutTarget) return;
+    setMoveOutError('');
+    if (!moveOutDate) { setMoveOutError('Vui lòng chọn ngày kết thúc cư trú.'); return; }
+    try {
+      await moveOutResident.mutateAsync({
+        id: moveOutTarget.id,
+        moveOutDate,
+        ...(moveOutNotes.trim() && { notes: moveOutNotes.trim() }),
+      });
+      setMoveOutTarget(null); // success toast + residents refetch handled by the hook
+    } catch (err: any) {
+      setMoveOutError(getVnErrorMessage(err?.response?.data?.error));
+    }
+  };
 
   const loadApartmentOptions = useCallback(async (query: string): Promise<SearchableOption[]> => {
     const params: Record<string, unknown> = { size: 10, sort: 'unitNumber', direction: 'asc' };
@@ -155,11 +188,12 @@ export function ResidentsPage() {
               <th className="text-left px-4 py-3 font-medium text-gray-500">{t('residents.apartment')}</th>
               <th className="text-left px-4 py-3 font-medium text-gray-500">{t('residents.type')}</th>
               <th className="text-left px-4 py-3 font-medium text-gray-500">{t('residents.moveInDate')}</th>
+              <th className="text-left px-4 py-3 font-medium text-gray-500">Trạng thái cư trú</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
-            {isLoading && <tr><td colSpan={6} className="text-center py-8 text-gray-400">{t('common.loading')}</td></tr>}
-            {!isLoading && !data?.data?.length && <tr><td colSpan={6} className="text-center py-8 text-gray-400">{t('common.emptyFound', { item: 'cư dân' })}</td></tr>}
+            {isLoading && <tr><td colSpan={7} className="text-center py-8 text-gray-400">{t('common.loading')}</td></tr>}
+            {!isLoading && !data?.data?.length && <tr><td colSpan={7} className="text-center py-8 text-gray-400">{t('common.emptyFound', { item: 'cư dân' })}</td></tr>}
             {data?.data?.map((r: ResidentItem) => (
               <tr key={r.id} className="hover:bg-gray-50">
                 <td className="px-4 py-3 font-medium">{r.user?.fullName}</td>
@@ -170,6 +204,21 @@ export function ResidentsPage() {
                   <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${r.type === 'OWNER' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'}`}>{labelFor('ResidentType', r.type)}</span>
                 </td>
                 <td className="px-4 py-3">{formatVNDate(r.moveInDate)}</td>
+                <td className="px-4 py-3">
+                  {r.moveOutDate ? (
+                    // Đã chuyển đi: badge + ngày rời đi; không cho kết thúc lại (khớp guard BE).
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-gray-200 text-gray-700">
+                      Đã chuyển đi · {formatVNDate(r.moveOutDate)}
+                    </span>
+                  ) : (
+                    <button
+                      onClick={() => openMoveOut(r)}
+                      className="px-3 py-1 text-xs border border-red-300 text-red-700 rounded hover:bg-red-50 font-medium"
+                    >
+                      Kết thúc cư trú
+                    </button>
+                  )}
+                </td>
               </tr>
             ))}
           </tbody>
@@ -302,6 +351,52 @@ export function ResidentsPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {moveOutTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/50" onClick={() => setMoveOutTarget(null)} />
+          <div className="relative bg-white rounded-lg shadow-xl w-full max-w-md p-6">
+            <h2 className="text-lg font-semibold mb-3">Kết thúc cư trú</h2>
+
+            <p className="text-sm text-gray-700 mb-4">
+              Kết thúc cư trú của <span className="font-semibold">{moveOutTarget.user?.fullName}</span> tại căn{' '}
+              <span className="font-semibold">{moveOutTarget.apartment?.unitNumber}</span>? Cư dân sẽ được đánh dấu đã rời đi
+              và gỡ vai trò liên hệ chính. Thao tác này <span className="font-semibold">KHÔNG</span> khoá tài khoản đăng nhập
+              và <span className="font-semibold">KHÔNG thể hoàn tác</span> từ giao diện.
+            </p>
+
+            <div className="mb-3">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Ngày kết thúc cư trú <span className="text-red-500">*</span></label>
+              <VNDatePicker value={moveOutDate} onChange={(iso) => { setMoveOutDate(iso); setMoveOutError(''); }} />
+            </div>
+
+            <div className="mb-3">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Ghi chú <span className="text-gray-400">(tùy chọn)</span></label>
+              <textarea
+                value={moveOutNotes}
+                onChange={(e) => setMoveOutNotes(e.target.value)}
+                rows={2}
+                placeholder="Lý do hoặc ghi chú thêm..."
+                className="block w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+
+            {moveOutError && <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded mb-3">{moveOutError}</p>}
+
+            <div className="flex gap-2 justify-end">
+              <button type="button" onClick={() => setMoveOutTarget(null)} className="px-4 py-2 text-sm border border-gray-300 rounded-md hover:bg-gray-50">Hủy</button>
+              <button
+                type="button"
+                onClick={handleMoveOut}
+                disabled={moveOutResident.isPending}
+                className="px-4 py-2 text-sm bg-red-600 text-white rounded-md hover:bg-red-700 disabled:opacity-50"
+              >
+                {moveOutResident.isPending ? 'Đang xử lý...' : 'Xác nhận kết thúc'}
+              </button>
+            </div>
           </div>
         </div>
       )}

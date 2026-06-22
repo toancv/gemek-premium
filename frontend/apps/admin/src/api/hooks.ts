@@ -120,6 +120,24 @@ export const useCreateResident = () => {
   });
 };
 
+/** Move-out request body. moveOutDate is a pure ISO date (yyyy-mm-dd); notes optional. */
+export interface MoveOutPayload {
+  id: string;
+  moveOutDate: string;
+  notes?: string;
+}
+
+export const useMoveOutResident = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    // Soft end-of-residency: sets moveOutDate, clears primary-contact flag, logs MOVED_OUT.
+    mutationFn: ({ id, moveOutDate, notes }: MoveOutPayload) =>
+      post(`/residents/${id}/move-out`, { moveOutDate, ...(notes ? { notes } : {}) }),
+    meta: { skipErrorToast: true, successMessage: 'Đã kết thúc cư trú của cư dân.' },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['residents'] }),
+  });
+};
+
 // Tickets
 export const useTickets = (params?: Record<string, unknown>) =>
   useQuery({ queryKey: ['tickets', params], queryFn: () => get('/tickets', params) });

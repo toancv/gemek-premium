@@ -19,7 +19,9 @@ import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.transaction.annotation.Transactional;
 import vn.vtit.gemek.module.apartment.dto.CreateApartmentRequest;
 import vn.vtit.gemek.module.apartment.dto.CreateBlockRequest;
-import vn.vtit.gemek.module.apartment.dto.UpdateApartmentRequest;
+import vn.vtit.gemek.module.apartment.entity.Apartment;
+import vn.vtit.gemek.module.apartment.entity.ApartmentStatus;
+import vn.vtit.gemek.module.apartment.repository.ApartmentRepository;
 import vn.vtit.gemek.module.auth.dto.LoginRequest;
 
 import java.util.HashMap;
@@ -29,7 +31,6 @@ import java.util.UUID;
 import static org.hamcrest.Matchers.everyItem;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -60,6 +61,9 @@ class ApartmentStatusFilterIntegrationTest extends AbstractIntegrationTest {
 
     @Autowired
     private ObjectMapper objectMapper;
+
+    @Autowired
+    private ApartmentRepository apartmentRepository;
 
     private String adminToken;
 
@@ -218,15 +222,12 @@ class ApartmentStatusFilterIntegrationTest extends AbstractIntegrationTest {
         return UUID.fromString((String) body.get("id"));
     }
 
-    private void setMaintenance(UUID apartmentId, String unitNumber) throws Exception {
-        UpdateApartmentRequest req = new UpdateApartmentRequest(
-                (short) 1, unitNumber, null,
-                vn.vtit.gemek.module.apartment.entity.ApartmentStatus.MAINTENANCE, null);
-        mockMvc.perform(put("/api/apartments/" + apartmentId)
-                        .header("Authorization", "Bearer " + adminToken)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(req)))
-                .andExpect(status().isOk());
+    private void setMaintenance(UUID apartmentId, String unitNumber) {
+        // Status is no longer client-settable via the update endpoint, so the MAINTENANCE fixture
+        // is stamped directly on the stored column — the value the BE filter/resolver still honour.
+        Apartment apartment = apartmentRepository.findById(apartmentId).orElseThrow();
+        apartment.setStatus(ApartmentStatus.MAINTENANCE);
+        apartmentRepository.save(apartment);
     }
 
     private void createResident(String phone, UUID apartmentId) throws Exception {

@@ -14,6 +14,7 @@ import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
+import org.mockito.ArgumentCaptor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import vn.vtit.gemek.common.exception.AppException;
@@ -22,6 +23,7 @@ import vn.vtit.gemek.common.model.PageResponse;
 import vn.vtit.gemek.module.apartment.dto.ApartmentDetailResponse;
 import vn.vtit.gemek.module.apartment.dto.ApartmentSummaryResponse;
 import vn.vtit.gemek.module.apartment.dto.CreateApartmentRequest;
+import vn.vtit.gemek.module.apartment.dto.UpdateApartmentRequest;
 import vn.vtit.gemek.module.apartment.entity.Apartment;
 import vn.vtit.gemek.module.apartment.entity.ApartmentStatus;
 import vn.vtit.gemek.module.apartment.entity.Block;
@@ -34,6 +36,7 @@ import vn.vtit.gemek.module.resident.repository.ResidentRepository;
 import vn.vtit.gemek.module.user.entity.User;
 import vn.vtit.gemek.module.vehicle.repository.VehicleRepository;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -269,6 +272,37 @@ class ApartmentServiceImplTest {
         ApartmentDetailResponse result = service.getApartmentDetail(apartmentId, userId, false);
 
         assertThat(result.status()).isEqualTo(ApartmentStatus.MAINTENANCE);
+    }
+
+    // =========================================================================
+    // updateApartment — occupancy is fully derived; status is NOT client-settable
+    // =========================================================================
+
+    @Test
+    @DisplayName("updateApartment — stored status is preserved (not settable via update)")
+    void updateApartment_doesNotChangeStoredStatus() {
+        // Stored status is MAINTENANCE; the update request carries no status field at all.
+        apartment.setStatus(ApartmentStatus.MAINTENANCE);
+        when(apartmentRepository.findByIdWithBlock(apartmentId)).thenReturn(Optional.of(apartment));
+        when(apartmentRepository.existsByBlockIdAndUnitNumberAndIdNot(blockId, "A999", apartmentId))
+                .thenReturn(false);
+        when(apartmentRepository.save(any(Apartment.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(apartmentMapper.toSummaryResponse(any(Apartment.class))).thenReturn(summaryFor(apartment));
+
+        UpdateApartmentRequest request =
+                new UpdateApartmentRequest((short) 9, "A999", new BigDecimal("80.5"), "updated notes");
+        service.updateApartment(apartmentId, request);
+
+        // The persisted entity keeps its stored status — the desync hole is closed.
+        ArgumentCaptor<Apartment> saved = ArgumentCaptor.forClass(Apartment.class);
+        verify(apartmentRepository).save(saved.capture());
+        assertThat(saved.getValue().getStatus()).isEqualTo(ApartmentStatus.MAINTENANCE);
+
+        // Other editable fields are still applied.
+        assertThat(saved.getValue().getFloor()).isEqualTo((short) 9);
+        assertThat(saved.getValue().getUnitNumber()).isEqualTo("A999");
+        assertThat(saved.getValue().getAreaSqm()).isEqualByComparingTo("80.5");
+        assertThat(saved.getValue().getNotes()).isEqualTo("updated notes");
     }
 
     // ── test fixtures ───────────────────────────────────────────────────────

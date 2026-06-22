@@ -403,6 +403,8 @@ Errors: `409 CONFLICT` (block has apartments)
 Query params: `blockId`, `floor`, `status`, `search` (unit number substring)
 Default sort: `block name asc, floor asc, unitNumber asc`
 
+**`status` semantics (occupancy is DERIVED).** The returned `status` is computed, not a raw stored value: `MAINTENANCE` when the apartment is manually flagged for maintenance (stored, takes priority); otherwise `OCCUPIED` when it has ≥1 active resident (`moveOutDate == null`), else `AVAILABLE`. `OCCUPIED` is therefore never stored — only `AVAILABLE`/`MAINTENANCE` are persisted (see migration V19). The same derivation backs apartment detail and the `occupied`/`occupancyRate` figures in `GET /api/reports/dashboard` and `GET /api/reports/residents`, so all four surfaces agree. Field name and enum values are unchanged. NOTE: the `status` **query filter** still matches the stored value, so filtering `?status=OCCUPIED` will not return derived-occupied apartments (known limitation — deferred).
+
 Response `200 OK` — paginated:
 ```json
 {

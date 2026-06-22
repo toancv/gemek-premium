@@ -1,5 +1,21 @@
 # PROGRESS — Apartment Management System
 
+## ✅ COMPLETE (pending CTO :80 smoke) — Apartment occupancy now DERIVED, MAINTENANCE priority, 3 surfaces converged (2026-06-22)
+
+**Reports:** `reports/apartment-occupancy-diagnosis.md` (root cause A) + `reports/apartment-occupancy-fix.md`. **DECISIONS:** "Apartment occupancy derived…".
+
+**Fixed:** occupancy was a stored `apartments.status` enum never synced by any resident path → 1612/1622 occupied apartments wrongly showed AVAILABLE; dashboard (stored) and resident-report (derived) disagreed (10 vs 1622). Now occupancy is DERIVED via ONE rule `OccupancyResolver.effective(stored, hasActiveResident)`: MAINTENANCE (stored, manual) priority; else OCCUPIED if ≥1 active resident (`move_out_date IS NULL`); else AVAILABLE. `OCCUPIED` is derived-only, never stored.
+
+**3 surfaces converged on the rule:** apartment list (`ApartmentServiceImpl.listApartments` — batch `findActiveByApartmentIdIn(pageIds)`, no N+1), apartment detail (derives from already-fetched residents, 0 new queries), dashboard + resident-report (both call the SAME `ReportServiceImpl.computeOccupancy(blockId)` → identical numbers). Removed `ApartmentRepository.countByStatus`. **Dev DB now: dashboard==report==1622 occupied / ≈71.5%** (was 10 vs 1622).
+
+**Migration `V19`:** normalize 10 stored OCCUPIED→AVAILABLE (no 1612-row data-fix — derivation fixes those). Response `status` field name/type unchanged → **FE needs no change**.
+
+**Tests (TDD):** +10 — `OccupancyResolverTest` (5), `ApartmentServiceImplTest` (+3 incl. N+1 guard), `ReportServiceImplTest` (new, 2 incl. convergence). **Backend suite 343→353/353 green.** API-SPEC updated (status now computed; filter-on-stored limitation noted).
+
+**Deferred (recorded):** list `?status=` filter still matches stored value (imprecise for OCCUPIED/AVAILABLE) — display fixed, filter-derivation a follow-up.
+
+**🔔 SMOKE (CTO, :80):** Open an apartment with active residents → status shows OCCUPIED (not "còn trống"). Dashboard occupancyRate ≈ resident-report occupancyRate (~71.5%, both). An apartment flagged MAINTENANCE with residents still shows MAINTENANCE.
+
 ## ✅ COMPLETE (pending CTO :80 smoke) — Backlog (d) follow-up: move-out now conditionally deactivates the login account (2026-06-22)
 
 **Report:** `reports/d-moveout-deactivate.md`. **DECISIONS:** "Move-out conditional user deactivation".

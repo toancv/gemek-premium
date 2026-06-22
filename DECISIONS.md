@@ -827,3 +827,37 @@ Reports: `reports/apartment-occupancy-diagnosis.md` (root cause) + `reports/apar
 **Performance:** one in-SQL query; the EXISTS subquery on `residents(move_out_date IS NULL)` is not an N+1.
 
 **Verified:** suite 358/358; dev-DB effective counts via the identical predicate: OCCUPIED 1622, AVAILABLE 647, MAINTENANCE 0, total 2269 (1622+647+0=2269, matches the derived display breakdown). Evidence: `reports/apartment-filter-fix.md`.
+
+### 2026-06-22 | Occupancy fully derived → apartment status is NOT client-settable; MAINTENANCE hidden in UI
+
+**Context:** With occupancy DISPLAY derived (`OccupancyResolver`) and the `?status=` FILTER derived in SQL,
+the stored `apartments.status` column only ever holds AVAILABLE/MAINTENANCE post-V19. The update endpoint
+still accepted a client-supplied `status` (`setStatus(request.status())`), letting an admin persist an
+OCCUPIED/MAINTENANCE value that contradicts the derived display — a desync hole. The admin UI also still
+offered MAINTENANCE (filter dropdown + a free status `<select>` in the edit form) despite there being no
+maintenance set-flow.
+
+**Decision:** Status is **not client-settable** via the apartment update endpoint.
+- Removed `status` from `UpdateApartmentRequest` (DTO) and `setStatus(request.status())` from
+  `ApartmentServiceImpl.updateApartment`. Verified the only `status` writers were create (hardcoded
+  AVAILABLE — kept) and update (removed); after this, nothing client-driven sets status. Apartments keep
+  their stored status; the response status is the derived effective status.
+- Frontend hides MAINTENANCE: removed from the `?status=` filter dropdown; the edit-form status control is
+  now read-only (derived display); `status` no longer sent in the update payload. Badge keeps the
+  MAINTENANCE colour for graceful legacy rendering.
+
+**Explicitly retained for re-enable:** `OccupancyResolver`, the `ApartmentStatus` enum (incl. MAINTENANCE),
+and the BE `?status=MAINTENANCE` filter are UNTOUCHED. MAINTENANCE is hidden in the UI only.
+
+**Alternatives considered:** (1) keep status settable but validate against derivation — rejected: still lets
+a stored value drift and duplicates the rule. (2) Make the edit field read-only but keep it on the DTO —
+rejected: a stale field a client could still POST; cleaner to remove it entirely (Spring ignores unknown
+JSON properties, so an old client sending `status` is silently ignored, not 400).
+
+**Deferred backlog:** *maintenance set flow* — when a real maintenance workflow is needed, add a dedicated
+intentional set path (not a free status field on the generic update) and unhide the UI filter option.
+
+**Verified:** backend suite 359/359 (358 + new status-not-settable guard); admin `tsc && vite build` green.
+TDD: new guard `ApartmentServiceImplTest.updateApartment_doesNotChangeStoredStatus`; adjusted
+`ApartmentStatusFilterIntegrationTest.setMaintenance` to stamp MAINTENANCE via repo. Evidence:
+`reports/apartment-status-lockdown.md`.

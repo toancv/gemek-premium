@@ -500,10 +500,11 @@ Request:
   "floor": 3,
   "unitNumber": "A301",
   "areaSqm": 75.5,
-  "status": "OCCUPIED",
   "notes": "string|null"
 }
 ```
+
+**No `status` field.** Occupancy (`OCCUPIED`/`AVAILABLE`) is fully derived from active residents and `MAINTENANCE` has no set flow, so status is **not client-settable** via update — a supplied `status` is ignored/rejected (the field no longer exists on the DTO). The apartment keeps its stored status (`AVAILABLE` post-V19); the response `status` is the derived effective status. This closes the desync hole where an admin could store a status contradicting the derived display.
 
 Response `200 OK` — updated apartment object.
 

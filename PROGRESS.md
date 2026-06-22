@@ -1,5 +1,36 @@
 # PROGRESS — Apartment Management System
 
+## ✅ COMPLETE (pending CTO :80 smoke) — Apartment status LOCKDOWN: not client-settable on update + MAINTENANCE hidden in UI (2026-06-22)
+
+**Report:** `reports/apartment-status-lockdown.md`. **DECISIONS:** "Occupancy fully derived + status not client-settable".
+
+Finalizes the occupancy model (follows the derive-display and derive-filter fixes below):
+
+- **(b) Backend — status no longer client-settable on update.** Removed the `status` field from
+  `UpdateApartmentRequest` (DTO) and the `setStatus(request.status())` line in
+  `ApartmentServiceImpl.updateApartment`. Occupancy (OCCUPIED/AVAILABLE) is fully derived and MAINTENANCE
+  has no set flow, so **no status value is client-settable** — closing the desync hole where an admin could
+  store a status that contradicts the derived display. Verified beforehand: the only writers of `status`
+  were create (:144, hardcoded AVAILABLE — kept) and update (now removed). Apartments keep their stored
+  status (AVAILABLE post-V19).
+- **(a) Frontend — MAINTENANCE hidden.** `ApartmentsPage.tsx`: removed the MAINTENANCE option from the
+  `?status=` filter dropdown (keeps All / Đã ở / Còn trống); edit-form status `<select>` replaced with a
+  read-only derived display; `status` dropped from the update payload. Badge keeps the MAINTENANCE colour
+  for graceful legacy rendering. **BE MAINTENANCE (resolver/enum/filter) untouched** — retained for re-enable.
+- **Tests (TDD):** +1 guard `ApartmentServiceImplTest.updateApartment_doesNotChangeStoredStatus` (stored
+  status preserved across update; other fields still applied). Adjusted
+  `ApartmentStatusFilterIntegrationTest.setMaintenance` to persist MAINTENANCE via repo (the update endpoint
+  no longer accepts status). **Backend suite 358→359/359 green.** Admin `tsc && vite build` green.
+- **API-SPEC:** `PUT /api/apartments/{id}` no longer accepts `status`.
+- **Deferred backlog:** *maintenance set flow* — no UI/endpoint sets MAINTENANCE; BE fully supports it.
+  When needed, add a dedicated intentional set path (not a free status field) and unhide the UI filter.
+
+**🔔 SMOKE (CTO, :80):** apartment filter shows only Đã ở / Còn trống / Tất cả; editing an apartment has no
+editable status control (read-only "tự động theo cư dân") and cannot change occupancy; occupancy still
+displays correctly (derived).
+
+---
+
 ## ✅ COMPLETE (pending CTO :80 smoke) — Apartment occupancy now DERIVED, MAINTENANCE priority, 3 surfaces converged (2026-06-22)
 
 **Reports:** `reports/apartment-occupancy-diagnosis.md` (root cause A) + `reports/apartment-occupancy-fix.md`. **DECISIONS:** "Apartment occupancy derived…".

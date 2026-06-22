@@ -80,15 +80,85 @@ public interface ResidentRepository extends JpaRepository<Resident, UUID>, JpaSp
     /**
      * Returns the single active resident record for the given user, if any.
      *
+     * @deprecated UNSAFE under multi-residency. This is an {@link Optional}-returning query with
+     *     <strong>no {@code LIMIT}</strong>: once {@code uq_residents_active_user} is relaxed to
+     *     {@code (user_id, apartment_id)} (residency-lifecycle P2), a user with two active rows makes
+     *     this throw {@code NonUniqueResultException} at runtime. Do NOT call it. Use
+     *     {@link #findAllActiveByUserId(UUID)} for the full set, {@link #findActiveApartmentIdsByUserId(UUID)}
+     *     for the active-apartment id set, {@link #existsActiveByUserIdAndApartmentId(UUID, UUID)} for a
+     *     per-apartment membership check, or {@link #findActiveByUserIdAndApartmentId(UUID, UUID)} when an
+     *     apartment context is known. As of P1 no production code calls this; retained pending a separate
+     *     cleanup (not deleted in P1).
      * @param userId the user UUID to query.
      * @return an {@link Optional} containing the active resident, or empty.
      */
+    @Deprecated
     @Query("""
             SELECT r FROM Resident r
             WHERE r.user.id = :userId
               AND r.moveOutDate IS NULL
             """)
     Optional<Resident> findActiveByUserId(@Param("userId") UUID userId);
+
+    /**
+     * Returns ALL active resident records (no move-out date) for the given user, across every apartment,
+     * with user, apartment, and block fetched eagerly to avoid N+1 in the mapper.
+     *
+     * <p>Multi-residency-safe replacement for {@link #findActiveByUserId(UUID)}: returns 0, 1, or 2+ rows
+     * without throwing. Ordered by primary-contact first, then latest move-in, then id — so callers that
+     * need a single deterministic "default" residency (amenity booking, pending its real attribution rule)
+     * can take the first element.
+     *
+     * @param userId the user UUID to query.
+     * @return all active residencies for the user, ordered (primary, then latest move-in, then id).
+     */
+    @Query("""
+            SELECT r FROM Resident r
+            JOIN FETCH r.user
+            JOIN FETCH r.apartment a
+            JOIN FETCH a.block
+            WHERE r.user.id = :userId
+              AND r.moveOutDate IS NULL
+            ORDER BY r.primaryContact DESC, r.moveInDate DESC, r.id DESC
+            """)
+    List<Resident> findAllActiveByUserId(@Param("userId") UUID userId);
+
+    /**
+     * Returns the IDs of all apartments the given user is currently an active resident of, in a single
+     * query (N+1-safe). Multi-residency-safe: returns the full set, never throws.
+     *
+     * <p>Used by ticket "my tickets" scoping/redaction — "my apartments" is the set the caller actively
+     * resides in, not a single derived apartment.
+     *
+     * @param userId the user UUID to query.
+     * @return distinct-by-construction list of the user's active apartment ids (empty if none).
+     */
+    @Query("""
+            SELECT r.apartment.id FROM Resident r
+            WHERE r.user.id = :userId
+              AND r.moveOutDate IS NULL
+            """)
+    List<UUID> findActiveApartmentIdsByUserId(@Param("userId") UUID userId);
+
+    /**
+     * Returns whether the given user has an active residency in the specified apartment.
+     *
+     * <p>Multi-residency-safe membership check (COUNT&gt;0, no entity load). Replaces the
+     * "load the user's one residency then compare its apartment" pattern in per-context ownership and
+     * visibility guards: the user may act on a target IFF they actively reside in THAT target's apartment.
+     *
+     * @param userId      the user UUID to check.
+     * @param apartmentId the apartment UUID to check membership of.
+     * @return {@code true} if the user has an active residency in that apartment.
+     */
+    @Query("""
+            SELECT COUNT(r) > 0 FROM Resident r
+            WHERE r.user.id = :userId
+              AND r.apartment.id = :apartmentId
+              AND r.moveOutDate IS NULL
+            """)
+    boolean existsActiveByUserIdAndApartmentId(@Param("userId") UUID userId,
+                                               @Param("apartmentId") UUID apartmentId);
 
     /**
      * Returns whether the given user has any active resident assignment in any apartment.

@@ -438,7 +438,7 @@ class ResidentControllerTest extends AbstractIntegrationTest {
     // -------------------------------------------------------------------------
 
     @Test
-    @DisplayName("GET /api/residents/me — active residency returns 200 with apartment")
+    @DisplayName("GET /api/residents/me — active residency returns 200 with a list containing the apartment")
     void getMyResident_activeResidency_returns200() throws Exception {
         UUID blockId = createBlock("ResBlock-Me-" + System.nanoTime());
         UUID apartmentId = createApartment(blockId, "ME101");
@@ -467,13 +467,15 @@ class ResidentControllerTest extends AbstractIntegrationTest {
         mockMvc.perform(get("/api/residents/me")
                         .header("Authorization", "Bearer " + residentToken))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.apartment.id").value(apartmentId.toString()))
-                .andExpect(jsonPath("$.user.email").value(email10));
+                .andExpect(jsonPath("$").isArray())
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].apartment.id").value(apartmentId.toString()))
+                .andExpect(jsonPath("$[0].user.email").value(email10));
     }
 
     @Test
-    @DisplayName("GET /api/residents/me — no active residency returns 404")
-    void getMyResident_noActiveResidency_returns404() throws Exception {
+    @DisplayName("GET /api/residents/me — no active residency returns 200 with empty list (valid state)")
+    void getMyResident_noActiveResidency_returnsEmptyList() throws Exception {
         // Create a user via POST /api/users (NOT via residents endpoint) — has no residency.
         String uid11 = UUID.randomUUID().toString().replace("-", "").substring(0, 8);
         String phone11 = phoneFromUid(uid11);
@@ -492,8 +494,9 @@ class ResidentControllerTest extends AbstractIntegrationTest {
 
         mockMvc.perform(get("/api/residents/me")
                         .header("Authorization", "Bearer " + residentToken))
-                .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.error").value("NOT_FOUND"));
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$").isArray())
+                .andExpect(jsonPath("$.length()").value(0));
     }
 
     // -------------------------------------------------------------------------

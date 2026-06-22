@@ -4,10 +4,12 @@
  */
 package vn.vtit.gemek.module.announcement;
 
+import jakarta.persistence.criteria.Predicate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import vn.vtit.gemek.common.exception.AppException;
@@ -40,6 +42,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 /**
  * Implementation of {@link AnnouncementService}.
@@ -105,19 +108,16 @@ public class AnnouncementServiceImpl implements AnnouncementService {
         log.debug("listAnnouncements — role={}", role);
 
         if ("RESIDENT".equals(role)) {
-            // Residents see only published announcements for their block/floor.
-            java.util.Optional<Resident> residentOpt = residentRepository.findActiveByUserId(principalId);
-            if (residentOpt.isEmpty()) {
+            // Multi-residency: union the published feed across ALL the caller's active apartments,
+            // each announcement at most once (DISTINCT). One batch query for the residencies (N+1-safe).
+            List<Resident> residencies = residentRepository.findAllActiveByUserId(principalId);
+            if (residencies.isEmpty()) {
                 // No active residency — return empty page rather than an error.
                 return PageResponse.of(Page.empty(pageable));
             }
-            Resident resident = residentOpt.get();
-            Apartment apartment = resident.getApartment();
-            UUID blockId = apartment.getBlock().getId();
-            short floor = apartment.getFloor();
 
             Page<Announcement> residentPage = announcementRepository
-                    .findPublishedForApartment(blockId, floor, pageable);
+                    .findAll(publishedForResidenciesSpec(residencies), pageable);
             // One batched read-state query per page — avoids N exists() calls (N+1).
             Set<UUID> readIds = readAnnouncementIds(principalId, residentPage.getContent());
             // One batched creator-name query per page — avoids N user lookups (N+1).
@@ -132,6 +132,54 @@ public class AnnouncementServiceImpl implements AnnouncementService {
         Map<UUID, String> creatorNames = resolveCreatorNames(adminPage.getContent());
         return PageResponse.of(adminPage.map(
                 a -> toResponse(a, readIds.contains(a.getId()), creatorNames)));
+    }
+
+    /**
+     * Builds the resident-feed visibility {@link Specification} unioned across ALL of a caller's
+     * active residencies, returning each matching announcement AT MOST ONCE.
+     *
+     * <p>An announcement is visible when its scope is ALL, or BLOCK matching one of the caller's
+     * active blocks, or FLOOR matching one of the caller's active (block, floor) PAIRS. The FLOOR
+     * predicate is built per-pair on purpose: a naive {@code targetFloor IN floors AND targetBlock IN
+     * blocks} would cross-match (a caller on BlockA/floor3 + BlockB/floor5 would wrongly see a FLOOR
+     * announcement for BlockA/floor5). {@code query.distinct(true)} collapses the row to a single
+     * announcement even when several residencies match it (e.g. an ALL announcement), so a
+     * building-wide announcement appears exactly once regardless of residency count.
+     *
+     * <p>The visibility predicate is the per-apartment mirror of
+     * {@code AnnouncementRepository.findPublishedForApartment} (and thus of the recipient-dispatch
+     * query) — the union here does not change the single-apartment rule, preserving feed↔dispatch
+     * consistency ({@code AnnouncementRecipientConsistencyTest}).
+     *
+     * @param residencies the caller's active residencies; must be non-empty.
+     * @return a specification selecting the distinct published announcements visible to the caller.
+     */
+    private Specification<Announcement> publishedForResidenciesSpec(List<Resident> residencies) {
+        Set<UUID> blockIds = residencies.stream()
+                .map(r -> r.getApartment().getBlock().getId())
+                .collect(Collectors.toSet());
+        return (root, query, cb) -> {
+            // DISTINCT-by-announcement-id — each announcement at most once across all residencies.
+            query.distinct(true);
+            List<Predicate> visibility = new ArrayList<>();
+            // ALL scope — visible to every resident.
+            visibility.add(cb.equal(root.get("scope"), AnnouncementScope.ALL));
+            // BLOCK scope — targetBlock is one of the caller's active blocks.
+            visibility.add(cb.and(
+                    cb.equal(root.get("scope"), AnnouncementScope.BLOCK),
+                    root.get("targetBlock").get("id").in(blockIds)));
+            // FLOOR scope — match per (block, floor) pair to avoid cross-apartment floor leakage.
+            for (Resident r : residencies) {
+                Apartment apt = r.getApartment();
+                visibility.add(cb.and(
+                        cb.equal(root.get("scope"), AnnouncementScope.FLOOR),
+                        cb.equal(root.get("targetBlock").get("id"), apt.getBlock().getId()),
+                        cb.equal(root.get("targetFloor"), apt.getFloor())));
+            }
+            return cb.and(
+                    cb.isNotNull(root.get("publishedAt")),
+                    cb.or(visibility.toArray(new Predicate[0])));
+        };
     }
 
     /**

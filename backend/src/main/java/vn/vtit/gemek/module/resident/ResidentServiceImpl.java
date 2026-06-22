@@ -97,14 +97,14 @@ public class ResidentServiceImpl implements ResidentService {
      * {@inheritDoc}
      */
     @Override
-    public ResidentResponse getMyResident(UUID userId) {
-        log.debug("Getting own resident record — userId={}", userId);
+    public List<ResidentResponse> getMyResident(UUID userId) {
+        log.debug("Getting own resident records — userId={}", userId);
 
-        Resident resident = residentRepository.findActiveByUserId(userId)
-                .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND,
-                        "No active residency found for the current user."));
-
-        return residentMapper.toResponse(resident);
+        // Multi-residency: return ALL active residencies (0, 1, or 2+). An empty list is a valid
+        // state (logged-in user with no active residency) — returned as [], not a 404.
+        return residentRepository.findAllActiveByUserId(userId).stream()
+                .map(residentMapper::toResponse)
+                .toList();
     }
 
     /**

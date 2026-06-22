@@ -279,6 +279,29 @@ public class AmenityServiceImpl implements AmenityService {
     // =========================================================================
 
     /**
+     * Resolves a SINGLE active residency for the principal, deterministically.
+     *
+     * <p>[PLANNED] multi-residency: temporary primary-or-latest selection; real attribution rule
+     * (which apartment a booking is charged to when the user has multiple) is pending CTO ruling.
+     * Selection order — primary contact first, then latest move-in, then id — comes from
+     * {@link vn.vtit.gemek.module.resident.repository.ResidentRepository#findAllActiveByUserId};
+     * taking the first element is therefore deterministic. For a single-residency user the behavior
+     * is identical to the previous single-residency lookup. This is a NON-throwing replacement for
+     * the deprecated {@code findActiveByUserId} (which would throw under multi-residency).
+     *
+     * @param principalId  the authenticated user's UUID.
+     * @param notFoundCode the error code to raise when the user has no active residency.
+     * @param message      the error message to raise when the user has no active residency.
+     * @return the selected active residency.
+     */
+    private Resident resolveActiveResidency(UUID principalId, ErrorCode notFoundCode, String message) {
+        // [PLANNED] multi-residency: temporary primary-or-latest selection; real attribution rule pending CTO ruling
+        return residentRepository.findAllActiveByUserId(principalId).stream()
+                .findFirst()
+                .orElseThrow(() -> new AppException(notFoundCode, message));
+    }
+
+    /**
      * {@inheritDoc}
      *
      * <p>Business rules enforced in order:
@@ -296,9 +319,8 @@ public class AmenityServiceImpl implements AmenityService {
         log.debug("createBooking — amenityId={}, principalId={}", req.getAmenityId(), principalId);
 
         // 1. Resolve the resident record for the principal.
-        Resident resident = residentRepository.findActiveByUserId(principalId)
-                .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND,
-                        "No active resident record found for user: " + principalId));
+        Resident resident = resolveActiveResidency(principalId, ErrorCode.NOT_FOUND,
+                "No active resident record found for user: " + principalId);
 
         Amenity amenity = requireAmenity(req.getAmenityId());
         Apartment apartment = resident.getApartment();
@@ -389,9 +411,8 @@ public class AmenityServiceImpl implements AmenityService {
         // what was supplied in the request — prevents IDOR by ensuring server-side scoping.
         final UUID effectiveResidentId;
         if ("RESIDENT".equals(role)) {
-            Resident resident = residentRepository.findActiveByUserId(principalId)
-                    .orElseThrow(() -> new AppException(ErrorCode.FORBIDDEN,
-                            "No active resident record found for authenticated user."));
+            Resident resident = resolveActiveResidency(principalId, ErrorCode.FORBIDDEN,
+                    "No active resident record found for authenticated user.");
             effectiveResidentId = resident.getId();
         } else {
             effectiveResidentId = residentId;

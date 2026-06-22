@@ -256,10 +256,9 @@ public class VehicleServiceImpl implements VehicleService {
      * @param apartmentId the apartment UUID to verify ownership of.
      */
     private void verifyResidentOwnsApartment(UUID principalId, UUID apartmentId) {
-        boolean owns = residentRepository.findActiveByUserId(principalId)
-                .map(r -> r.getApartment().getId().equals(apartmentId))
-                .orElse(false);
-        if (!owns) {
+        // Per-context membership: active residency in THIS apartment (multi-residency-safe — a
+        // resident of 2+ apartments is verified against each one independently).
+        if (!residentRepository.existsActiveByUserIdAndApartmentId(principalId, apartmentId)) {
             throw new AppException(ErrorCode.FORBIDDEN,
                     "You are not an active resident of this apartment.");
         }

@@ -13,6 +13,7 @@ import vn.vtit.gemek.module.resident.dto.ResidentResponse;
 import vn.vtit.gemek.module.resident.dto.UpdateResidentRequest;
 import vn.vtit.gemek.module.resident.entity.ResidentType;
 
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -21,15 +22,19 @@ import java.util.UUID;
 public interface ResidentService {
 
     /**
-     * Returns the active resident record for the authenticated user.
+     * Returns ALL active resident records for the authenticated user.
      *
      * <p>The caller's identity is derived from the JWT principal; no client-supplied
      * identifier is accepted to prevent IDOR attacks.
      *
+     * <p>A user may hold multiple concurrent active residencies (multi-residency), so this
+     * returns a list. An empty list (no active residency — e.g. between move-out and a return)
+     * is a valid state and is returned as {@code []}, never an error.
+     *
      * @param userId UUID of the authenticated user derived from the JWT principal.
-     * @return the active resident response DTO.
+     * @return all active resident response DTOs for the user (possibly empty), primary first.
      */
-    ResidentResponse getMyResident(UUID userId);
+    List<ResidentResponse> getMyResident(UUID userId);
 
     /**
      * Returns a paginated list of residents filtered by optional criteria.

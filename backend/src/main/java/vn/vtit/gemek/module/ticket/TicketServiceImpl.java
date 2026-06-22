@@ -22,7 +22,6 @@ import vn.vtit.gemek.module.apartment.entity.Apartment;
 import vn.vtit.gemek.module.apartment.repository.ApartmentRepository;
 import vn.vtit.gemek.module.contractor.entity.Contractor;
 import vn.vtit.gemek.module.contractor.repository.ContractorRepository;
-import vn.vtit.gemek.module.resident.entity.Resident;
 import vn.vtit.gemek.module.resident.repository.ResidentRepository;
 import vn.vtit.gemek.module.ticket.dto.AssignTicketRequest;
 import vn.vtit.gemek.module.ticket.dto.CreateTicketRequest;
@@ -56,6 +55,7 @@ import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.EnumSet;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -216,11 +216,13 @@ public class TicketServiceImpl implements TicketService {
         // RESIDENT rows outside the caller's own household can only be public tickets;
         // their summaries are redacted (G8) so the list cannot leak what the detail hides.
         if ("RESIDENT".equals(role)) {
-            UUID myApartmentId = residentRepository.findActiveByUserId(principalId)
-                    .map(resident -> resident.getApartment().getId())
-                    .orElse(null);
+            // Multi-residency: "my" apartments = ALL apartments the caller actively resides in
+            // (one batch query, never a per-row lookup). A ticket is shown un-redacted iff it
+            // belongs to ANY of them; everything else is redacted (G8).
+            Set<UUID> myApartmentIds = new HashSet<>(
+                    residentRepository.findActiveApartmentIdsByUserId(principalId));
             Page<TicketSummaryResponse> page = ticketRepository.findAll(spec, pageable)
-                    .map(ticket -> ticket.getApartment().getId().equals(myApartmentId)
+                    .map(ticket -> myApartmentIds.contains(ticket.getApartment().getId())
                             ? toSummary(ticket) : toRedactedSummary(ticket));
             return PageResponse.of(page);
         }
@@ -355,15 +357,12 @@ public class TicketServiceImpl implements TicketService {
                 .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND,
                         "Apartment not found: " + req.getApartmentId()));
 
-        // RESIDENT callers may only submit for their active apartment.
-        if ("RESIDENT".equals(role)) {
-            Resident activeResident = residentRepository.findActiveByUserId(principalId)
-                    .orElseThrow(() -> new AppException(ErrorCode.FORBIDDEN,
-                            "No active resident record for this user."));
-            if (!activeResident.getApartment().getId().equals(apartment.getId())) {
-                throw new AppException(ErrorCode.FORBIDDEN,
-                        "Residents may only submit tickets for their own apartment.");
-            }
+        // RESIDENT callers may only submit for an apartment they actively reside in (per-context
+        // membership; multi-residency-safe — a resident of 2+ apartments may file under either).
+        if ("RESIDENT".equals(role)
+                && !residentRepository.existsActiveByUserIdAndApartmentId(principalId, apartment.getId())) {
+            throw new AppException(ErrorCode.FORBIDDEN,
+                    "Residents may only submit tickets for their own apartment.");
         }
 
         User submitter = userRepository.findById(principalId)
@@ -602,12 +601,10 @@ public class TicketServiceImpl implements TicketService {
 
         Ticket ticket = requireTicket(id);
 
-        // RESIDENT callers: verify own apartment; phase must be BEFORE.
+        // RESIDENT callers: verify active residency in the ticket's apartment (per-context); phase must be BEFORE.
         if ("RESIDENT".equals(role)) {
-            Resident activeResident = residentRepository.findActiveByUserId(principalId)
-                    .orElseThrow(() -> new AppException(ErrorCode.FORBIDDEN,
-                            "No active resident record for this user."));
-            if (!activeResident.getApartment().getId().equals(ticket.getApartment().getId())) {
+            if (!residentRepository.existsActiveByUserIdAndApartmentId(
+                    principalId, ticket.getApartment().getId())) {
                 throw new AppException(ErrorCode.FORBIDDEN,
                         "Residents may only upload photos for their own apartment's tickets.");
             }
@@ -870,10 +867,10 @@ public class TicketServiceImpl implements TicketService {
             if (ticket.isPublic()) {
                 return;
             }
-            Resident activeResident = residentRepository.findActiveByUserId(principalId)
-                    .orElseThrow(() -> new AppException(ErrorCode.FORBIDDEN,
-                            "No active resident record for this user."));
-            if (!activeResident.getApartment().getId().equals(ticket.getApartment().getId())) {
+            // Per-context: readable iff the caller actively resides in the ticket's apartment
+            // (multi-residency-safe membership check, no singular-residency load).
+            if (!residentRepository.existsActiveByUserIdAndApartmentId(
+                    principalId, ticket.getApartment().getId())) {
                 throw new AppException(ErrorCode.FORBIDDEN,
                         "Access denied to this ticket.");
             }
@@ -903,10 +900,9 @@ public class TicketServiceImpl implements TicketService {
      */
     private void enforcePhotoAccess(Ticket ticket, UUID principalId, String role) {
         if ("RESIDENT".equals(role)) {
-            Resident activeResident = residentRepository.findActiveByUserId(principalId)
-                    .orElseThrow(() -> new AppException(ErrorCode.FORBIDDEN,
-                            "No active resident record for this user."));
-            if (!activeResident.getApartment().getId().equals(ticket.getApartment().getId())) {
+            // Per-context: photo access iff the caller actively resides in the ticket's apartment.
+            if (!residentRepository.existsActiveByUserIdAndApartmentId(
+                    principalId, ticket.getApartment().getId())) {
                 throw new AppException(ErrorCode.FORBIDDEN,
                         "Access denied to this ticket.");
             }
@@ -930,10 +926,9 @@ public class TicketServiceImpl implements TicketService {
      * @return {@code true} when the caller's active residency matches the ticket's apartment.
      */
     private boolean isHouseholdMember(Ticket ticket, UUID principalId) {
-        return residentRepository.findActiveByUserId(principalId)
-                .map(resident -> resident.getApartment().getId()
-                        .equals(ticket.getApartment().getId()))
-                .orElse(false);
+        // Per-context membership: active residency in the ticket's apartment (multi-residency-safe).
+        return residentRepository.existsActiveByUserIdAndApartmentId(
+                principalId, ticket.getApartment().getId());
     }
 
     /**
@@ -942,8 +937,8 @@ public class TicketServiceImpl implements TicketService {
      * <ul>
      *   <li>ADMIN / BOARD_MEMBER — no scope restriction; {@code visibility} ignored.</li>
      *   <li>TECHNICIAN — assigned to principal OR status is NEW; {@code visibility} ignored.</li>
-     *   <li>RESIDENT — {@code null}/"mine": apartment matches the principal's active
-     *       apartment (pre-P5 behavior, keeps the existing FE unchanged);
+     *   <li>RESIDENT — {@code null}/"mine": apartment is ANY of the principal's active
+     *       apartments (multi-residency: the full active-apartment set, one batch query);
      *       "community": public tickets only.</li>
      * </ul>
      *
@@ -964,16 +959,15 @@ public class TicketServiceImpl implements TicketService {
             if (VISIBILITY_COMMUNITY.equals(visibility)) {
                 return (root, query, cb) -> cb.isTrue(root.get("isPublic"));
             }
-            // Default ("mine"): own household only — identical to pre-P5 scoping.
+            // Default ("mine"): tickets of ANY apartment the caller actively resides in
+            // (multi-residency: the set of active apartments, one batch query — not a single apt).
             return (root, query, cb) -> {
-                java.util.Optional<Resident> residentOpt =
-                        residentRepository.findActiveByUserId(principalId);
-                if (residentOpt.isEmpty()) {
+                List<UUID> apartmentIds = residentRepository.findActiveApartmentIdsByUserId(principalId);
+                if (apartmentIds.isEmpty()) {
                     // No active residency — return zero rows.
                     return cb.disjunction();
                 }
-                UUID apartmentId = residentOpt.get().getApartment().getId();
-                return cb.equal(root.get("apartment").get("id"), apartmentId);
+                return root.get("apartment").get("id").in(apartmentIds);
             };
         }
         // ADMIN, BOARD_MEMBER — no restriction.

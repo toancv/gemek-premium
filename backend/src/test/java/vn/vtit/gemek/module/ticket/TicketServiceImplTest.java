@@ -12,8 +12,12 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.jpa.domain.Specification;
 import vn.vtit.gemek.common.exception.AppException;
 import vn.vtit.gemek.common.exception.ErrorCode;
+import vn.vtit.gemek.common.model.PageResponse;
 import vn.vtit.gemek.common.storage.FileStorageService;
 import vn.vtit.gemek.module.apartment.entity.Apartment;
 import vn.vtit.gemek.module.apartment.entity.Block;
@@ -22,10 +26,10 @@ import vn.vtit.gemek.module.contractor.repository.ContractorRepository;
 import vn.vtit.gemek.module.notification.NotificationService;
 import vn.vtit.gemek.module.notification.SubscriptionService;
 import vn.vtit.gemek.module.notification.repository.NotificationRepository;
-import vn.vtit.gemek.module.resident.entity.Resident;
 import vn.vtit.gemek.module.resident.repository.ResidentRepository;
 import vn.vtit.gemek.module.ticket.dto.RateTicketRequest;
 import vn.vtit.gemek.module.ticket.dto.TicketDetailResponse;
+import vn.vtit.gemek.module.ticket.dto.TicketSummaryResponse;
 import vn.vtit.gemek.module.ticket.entity.Ticket;
 import vn.vtit.gemek.module.ticket.entity.TicketPhoto;
 import vn.vtit.gemek.module.ticket.entity.TicketStatus;
@@ -145,11 +149,9 @@ class TicketServiceImplTest {
     @DisplayName("getTicketDetail: RESIDENT caller same apartment — phone included")
     void getTicketDetail_residentSameApartment_phoneIncluded() {
         UUID residentUserId = UUID.randomUUID();
-        Resident resident = new Resident();
-        resident.setApartment(apartment);
-
-        when(residentRepository.findActiveByUserId(residentUserId))
-                .thenReturn(Optional.of(resident));
+        // Per-context guard: active residency in the ticket's apartment.
+        when(residentRepository.existsActiveByUserIdAndApartmentId(residentUserId, apartment.getId()))
+                .thenReturn(true);
 
         TicketDetailResponse response = service.getTicketDetail(ticketId, residentUserId, "RESIDENT");
 
@@ -160,13 +162,9 @@ class TicketServiceImplTest {
     @DisplayName("getTicketDetail: RESIDENT caller different apartment — throws FORBIDDEN (SEC-01 variant)")
     void getTicketDetail_residentDifferentApartment_throwsForbidden() {
         UUID otherResidentUserId = UUID.randomUUID();
-        Apartment otherApartment = new Apartment();
-        otherApartment.setId(UUID.randomUUID());
-        Resident otherResident = new Resident();
-        otherResident.setApartment(otherApartment);
-
-        when(residentRepository.findActiveByUserId(otherResidentUserId))
-                .thenReturn(Optional.of(otherResident));
+        // Per-context guard: NOT an active resident of the ticket's apartment.
+        when(residentRepository.existsActiveByUserIdAndApartmentId(otherResidentUserId, apartment.getId()))
+                .thenReturn(false);
 
         assertThatThrownBy(() -> service.getTicketDetail(ticketId, otherResidentUserId, "RESIDENT"))
                 .isInstanceOf(AppException.class)
@@ -193,17 +191,14 @@ class TicketServiceImplTest {
     @DisplayName("assertPresignAccess: non-owner RESIDENT — throws FORBIDDEN (SEC-01 regression guard)")
     void assertPresignAccess_nonOwnerResident_throwsForbidden() {
         UUID nonOwnerId = UUID.randomUUID();
-        Apartment otherApartment = new Apartment();
-        otherApartment.setId(UUID.randomUUID());
-        Resident nonOwner = new Resident();
-        nonOwner.setApartment(otherApartment);
-
         TicketPhoto photo = new TicketPhoto();
         photo.setTicket(ticket);
         photo.setFileUrl("tickets/secret.jpg");
 
         when(photoRepository.findByFileUrl("tickets/secret.jpg")).thenReturn(Optional.of(photo));
-        when(residentRepository.findActiveByUserId(nonOwnerId)).thenReturn(Optional.of(nonOwner));
+        // Per-context guard: NOT an active resident of the ticket's apartment.
+        when(residentRepository.existsActiveByUserIdAndApartmentId(nonOwnerId, apartment.getId()))
+                .thenReturn(false);
 
         assertThatThrownBy(() -> service.assertPresignAccess("tickets/secret.jpg", nonOwnerId, "RESIDENT"))
                 .isInstanceOf(AppException.class)
@@ -222,6 +217,57 @@ class TicketServiceImplTest {
 
         // ADMIN is unrestricted — must complete without exception
         service.assertPresignAccess("tickets/photo.jpg", UUID.randomUUID(), "ADMIN");
+    }
+
+    // -------------------------------------------------------------------------
+    // Multi-residency (P1): "mine" scope spans ALL active apartments; per-context guards
+    // -------------------------------------------------------------------------
+
+    @Test
+    @DisplayName("getTicketDetail: RESIDENT active in the ticket's apartment among several — allowed (per-context)")
+    void getTicketDetail_residentActiveInThatApartment_allowed() {
+        UUID userWithTwoApts = UUID.randomUUID();
+        // Per-context membership keys on the ticket's specific apartment, regardless of other residencies.
+        when(residentRepository.existsActiveByUserIdAndApartmentId(userWithTwoApts, apartment.getId()))
+                .thenReturn(true);
+
+        TicketDetailResponse response = service.getTicketDetail(ticketId, userWithTwoApts, "RESIDENT");
+
+        assertThat(response.getSubmittedBy().getPhone()).isEqualTo("0901234567");
+    }
+
+    @Test
+    @DisplayName("listTickets (mine): RESIDENT with TWO active apartments — tickets of BOTH are un-redacted")
+    void listTickets_residentTwoApartments_bothApartmentsUnredacted() {
+        UUID userTwoApts = UUID.randomUUID();
+
+        Block blockB = new Block();
+        blockB.setId(UUID.randomUUID());
+        blockB.setName("Block B");
+        Apartment apartmentB = new Apartment();
+        apartmentB.setId(UUID.randomUUID());
+        apartmentB.setBlock(blockB);
+        apartmentB.setUnitNumber("202");
+        Ticket ticketB = new Ticket();
+        ticketB.setId(UUID.randomUUID());
+        ticketB.setApartment(apartmentB);
+        ticketB.setSubmittedBy(submitter);
+        ticketB.setStatus(TicketStatus.NEW);
+        ticketB.setTitle("B Ticket");
+
+        // "My" apartments = the full active-apartment set (one batch query) — A and B.
+        when(residentRepository.findActiveApartmentIdsByUserId(userTwoApts))
+                .thenReturn(List.of(apartment.getId(), apartmentB.getId()));
+        when(ticketRepository.findAll(any(Specification.class), any(PageRequest.class)))
+                .thenReturn(new PageImpl<>(List.of(ticket, ticketB)));
+
+        PageResponse<TicketSummaryResponse> page = service.listTickets(
+                userTwoApts, "RESIDENT", null, null, null, null, null, null, null,
+                PageRequest.of(0, 20));
+
+        // Both tickets un-redacted → real submitter name on both (redacted would be the «Cư dân» label).
+        assertThat(page.getData()).extracting(s -> s.getSubmittedBy().getFullName())
+                .containsExactly("Jane Resident", "Jane Resident");
     }
 
     // -------------------------------------------------------------------------

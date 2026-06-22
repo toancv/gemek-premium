@@ -31,6 +31,7 @@ import vn.vtit.gemek.module.resident.dto.ResidentResponse;
 import vn.vtit.gemek.module.resident.dto.UpdateResidentRequest;
 import vn.vtit.gemek.module.resident.entity.ResidentType;
 
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -56,18 +57,22 @@ public class ResidentController {
     }
 
     /**
-     * Returns the active resident record for the authenticated user.
+     * Returns ALL active resident records for the authenticated user.
      *
      * <p>The user identity is derived exclusively from the JWT principal.
      * No user identifier is accepted as a request parameter.
      *
+     * <p>A user may hold multiple concurrent active residencies (multi-residency). The response is a
+     * list ordered primary-contact first. An empty list (logged-in user with no active residency) is a
+     * valid state and is returned as {@code 200 []} — NOT a 404.
+     *
      * @param principal the authenticated resident principal.
-     * @return 200 OK with the resident response DTO, or 404 if no active residency exists.
+     * @return 200 OK with the list of active resident response DTOs (possibly empty).
      */
     @GetMapping("/residents/me")
     @PreAuthorize("hasRole('RESIDENT')")
-    @Operation(summary = "Get the authenticated resident's own record")
-    public ResponseEntity<ResidentResponse> getMyResident(
+    @Operation(summary = "Get the authenticated resident's own active residencies")
+    public ResponseEntity<List<ResidentResponse>> getMyResident(
             @AuthenticationPrincipal UserPrincipal principal) {
         return ResponseEntity.ok(residentService.getMyResident(principal.getId()));
     }

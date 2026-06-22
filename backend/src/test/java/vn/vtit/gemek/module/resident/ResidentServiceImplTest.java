@@ -33,6 +33,7 @@ import org.mockito.ArgumentCaptor;
 
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -321,30 +322,58 @@ class ResidentServiceImplTest {
     // =========================================================================
 
     @Test
-    @DisplayName("getMyResident — active residency found returns mapped response")
-    void getMyResident_activeResident_returnsResponse() {
-        when(residentRepository.findActiveByUserId(userId)).thenReturn(Optional.of(resident));
-        ResidentResponse expected = ResidentResponse.builder().id(residentId).build();
-        when(residentMapper.toResponse(resident)).thenReturn(expected);
+    @DisplayName("getMyResident — active residency found returns single-element list (multi-residency contract)")
+    void getMyResident_activeResident_returnsList() {
+        when(residentRepository.findAllActiveByUserId(userId)).thenReturn(List.of(resident));
+        ResidentResponse mapped = ResidentResponse.builder().id(residentId).build();
+        when(residentMapper.toResponse(resident)).thenReturn(mapped);
 
-        ResidentResponse result = service.getMyResident(userId);
+        List<ResidentResponse> result = service.getMyResident(userId);
 
-        assertThat(result.getId()).isEqualTo(residentId);
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).getId()).isEqualTo(residentId);
     }
 
     // =========================================================================
-    // getMyResident — no active residency → NOT_FOUND
+    // getMyResident — no active residency → empty list (200 [], NOT 404)
     // =========================================================================
 
     @Test
-    @DisplayName("getMyResident — no active residency throws NOT_FOUND")
-    void getMyResident_noActiveResidency_throwsNotFound() {
-        when(residentRepository.findActiveByUserId(userId)).thenReturn(Optional.empty());
+    @DisplayName("getMyResident — no active residency returns empty list (valid state, not 404)")
+    void getMyResident_noActiveResidency_returnsEmptyList() {
+        when(residentRepository.findAllActiveByUserId(userId)).thenReturn(List.of());
 
-        assertThatThrownBy(() -> service.getMyResident(userId))
-                .isInstanceOf(AppException.class)
-                .satisfies(ex -> assertThat(((AppException) ex).getErrorCode())
-                        .isEqualTo(ErrorCode.NOT_FOUND));
+        assertThat(service.getMyResident(userId)).isEmpty();
+    }
+
+    // =========================================================================
+    // getMyResident — multi-residency: a user with TWO active residencies gets BOTH
+    // =========================================================================
+
+    @Test
+    @DisplayName("getMyResident — user with two active residencies returns BOTH (multi-residency)")
+    void getMyResident_twoActiveResidencies_returnsBoth() {
+        Apartment apartmentB = new Apartment();
+        apartmentB.setId(UUID.randomUUID());
+        Resident residentB = new Resident();
+        UUID residentBId = UUID.randomUUID();
+        residentB.setId(residentBId);
+        residentB.setUser(user);
+        residentB.setApartment(apartmentB);
+        residentB.setType(ResidentType.TENANT);
+        residentB.setMoveInDate(LocalDate.of(2026, 3, 1));
+
+        when(residentRepository.findAllActiveByUserId(userId))
+                .thenReturn(List.of(resident, residentB));
+        when(residentMapper.toResponse(resident))
+                .thenReturn(ResidentResponse.builder().id(residentId).build());
+        when(residentMapper.toResponse(residentB))
+                .thenReturn(ResidentResponse.builder().id(residentBId).build());
+
+        List<ResidentResponse> result = service.getMyResident(userId);
+
+        assertThat(result).extracting(ResidentResponse::getId)
+                .containsExactly(residentId, residentBId);
     }
 
     // =========================================================================

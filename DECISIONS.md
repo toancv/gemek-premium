@@ -758,3 +758,13 @@ Report: `reports/aud1-jpa-auditing.md`. Plan: `reports/audit-columns-investigati
 - **Why keep manual timestamps:** avoid churn — base class adds ONLY actor fields; `@PrePersist`/`@PreUpdate` `created_at`/`updated_at` unchanged. Both entity-listener and entity-method callbacks fire (JPA spec).
 - **Deferred:** Contract/Announcement convergence (AUD.2); `AuditLogAspect`/`@Auditable` removal (AUD.3). No `created_by_user_id` rename (CTO ruling).
 - **Alternatives rejected:** `AuditorAware<User>` (per-save DB hit, can't share a UUID base cleanly); plain UUID without FK (loses integrity, diverges from precedent).
+
+## AUD.2 — Contract/Announcement converge onto Spring Data auditing (Option B1) — 2026-06-22
+
+- **What:** `contracts`/`announcements` `createdBy` migrated from `@ManyToOne User` (set manually) to `@CreatedBy UUID` via `AuditableEntity`; added `@LastModifiedBy UUID updatedBy` (V18 `updated_by` col + FK `users(id) ON DELETE SET NULL`). Manual `setCreatedBy` removed at both entity-write sites → auditing is the sole writer.
+- **Why `@AttributeOverride` over a new column:** CTO ruled `created_by_user_id` is NOT renamed. The inherited `createdBy` field (col `created_by`) is remapped via `@AttributeOverride(column=@Column(name="created_by_user_id", updatable=false))` so the field type changes (`User`→`UUID`) while the DB column name is preserved. `updatable=false` keeps the creator immutable.
+- **Why batch name resolution (not per-row find):** response DTOs still expose `createdBy.fullName`; with `createdBy` now a UUID the name must be resolved app-side. Done in ONE `userRepository.findAllById(distinct ids)` per page (MapStruct `@Context` map for Contract; `resolveCreatorNames` for Announcement) → no N+1. Guarded by two unit tests (findAllById once / findById never).
+- **Report's "3rd manual site" clarified:** `AnnouncementServiceImpl:521` `.createdBy(creatorRef)` is the response-DTO builder, not an entity write. Only 2 real entity-write sites existed; both removed. Post-change grep `setCreatedBy|.createdBy(` over `src/main` = 0 entity writes.
+- **Scheduler ripple:** `ContractExpiryScheduler` / `MaintenanceScheduleRunner` notified `contract.getCreatedBy().getId()`; now `contract.getCreatedBy()` (already the UUID).
+- **API-SPEC:** unchanged — `createdBy:{id,fullName}` shape preserved.
+- **Test fixture note:** entities whose `@CreatedBy` must be a specific actor in a test now authenticate before persist (e.g. `ContractExpiryOnceOnlyTest`) — a manual `setCreatedBy` is overwritten to null by the auditing listener on persist when no principal is present.

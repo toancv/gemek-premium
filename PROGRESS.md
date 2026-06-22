@@ -1,5 +1,15 @@
 # PROGRESS — Apartment Management System
 
+## ✅ AUD.2 DONE — Contract/Announcement converged onto Spring Data auditing (2026-06-22) — awaiting CTO go for AUD.3
+
+**Report:** `reports/aud2-converge.md`. **Plan:** `reports/audit-columns-investigation.md` §2 + §B Option B1.
+
+**Shipped (AUD.2):** `V18__add_contract_announcement_updated_by.sql` adds nullable `updated_by uuid` + FK `users(id) ON DELETE SET NULL` to `contracts` + `announcements` (`created_by_user_id` **NOT renamed** — CTO ruling). `Contract` + `Announcement` now `extends AuditableEntity` with `@AttributeOverride(createdBy → @Column("created_by_user_id", updatable=false))` — field type `User → UUID`, column name preserved; old `@ManyToOne User createdBy` removed. Manual `setCreatedBy` deleted at **both** entity-write sites (`ContractorServiceImpl:259`, `AnnouncementServiceImpl:179`) + their dead creator lookups → single writer (auditing), no double-write. (The report's cited "3rd site" `AnnouncementServiceImpl:521` was the response-DTO builder, not an entity write — reworked, not deleted.) Response mappers resolve creator `fullName` from the UUID in **batch**: MapStruct `ContractorMapper` via `mapCreator(UUID, @Context Map)` fed by `creatorNames(...)` (one `findAllById`/page); `AnnouncementServiceImpl.toResponse` via `resolveCreatorNames(...)` (one `findAllById`/page). Schedulers simplified (`getCreatedBy().getId()` → `getCreatedBy()`).
+
+**Verify:** baseline 331 green → **full suite 336/336 green, BUILD SUCCESS** (+5 new tests: 3 auditing-convergence integration + 2 N+1 guards). Response shape `createdBy:{id,fullName}` **unchanged** → **API-SPEC: no change** (lines 1499/1891 already match). `AuditLogAspect` untouched (AUD.3).
+
+**Next:** **AUD.3** — remove `AuditLogAspect` + `@Auditable` (4 usages + annotation file), keep `audit_logs` table write-idle; DECISIONS + API-SPEC if any creator/modifier field changes.
+
 ## ✅ TEST.1b DONE — suite order-independent; TEST.1 (isolation) COMPLETE (2026-06-22) — awaiting CTO go to resume AUD.2
 
 **Report:** `reports/test1b-isolation.md`. Test-infra only — no production code, no auditing touched.

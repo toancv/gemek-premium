@@ -68,7 +68,7 @@ export function ApartmentsPage() {
           <option value="">{t('apartments.allStatuses')}</option>
           <option value="OCCUPIED">{labelFor('ApartmentStatus', 'OCCUPIED')}</option>
           <option value="AVAILABLE">{labelFor('ApartmentStatus', 'AVAILABLE')}</option>
-          <option value="MAINTENANCE">{labelFor('ApartmentStatus', 'MAINTENANCE')}</option>
+          {/* MAINTENANCE hidden from the UI (no set flow); BE filter/resolver still support it for re-enable. */}
         </select>
         <select value={blockId} onChange={(e) => { setBlockId(e.target.value); setPage(0); }}
           className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
@@ -203,7 +203,6 @@ export function ApartmentsPage() {
                   floor: Number(fd.get('floor')),
                   unitNumber: fd.get('unitNumber') as string,
                   areaSqm: Number(fd.get('areaSqm')),
-                  status: fd.get('status') as string,
                   notes: fd.get('notes') as string,
                 }});
                 setEditApt(null);
@@ -230,12 +229,11 @@ export function ApartmentsPage() {
                 <input name="areaSqm" type="number" step="0.1" defaultValue={editApt.areaSqm} className="block w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
               <div>
+                {/* Status is derived from occupancy — read-only; not client-settable on the BE. */}
                 <label className="block text-sm font-medium text-gray-700 mb-1">{t('common.status')}</label>
-                <select name="status" defaultValue={editApt.status} className="block w-full border border-gray-300 rounded-md px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
-                  <option value="OCCUPIED">{labelFor('ApartmentStatus', 'OCCUPIED')}</option>
-                  <option value="AVAILABLE">{labelFor('ApartmentStatus', 'AVAILABLE')}</option>
-                  <option value="MAINTENANCE">{labelFor('ApartmentStatus', 'MAINTENANCE')}</option>
-                </select>
+                <div className="block w-full border border-gray-200 rounded-md px-3 py-2 text-sm bg-gray-50 text-gray-600">
+                  {labelFor('ApartmentStatus', editApt.status)} <span className="text-xs text-gray-400">(tự động theo cư dân)</span>
+                </div>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">{t('apartments.notes')}</label>

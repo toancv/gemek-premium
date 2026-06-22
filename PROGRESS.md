@@ -1,5 +1,21 @@
 # PROGRESS — Apartment Management System
 
+## ✅ COMPLETE (pending CTO :80 smoke) — Backlog (d) Resident move-out ("Kết thúc cư trú") FE action (Option B) (2026-06-22)
+
+**Reports:** `reports/d-moveout-build.md` (build) + `reports/d-moveout-ui.md` (BE-contract investigation). **Backlog (d): DONE** — BE endpoint already existed; this was the UI.
+
+**CTO ruling: Option B** — date picker (default today, editable) + optional notes (the no-picker plan was dropped because `POST /residents/{id}/move-out` REQUIRES `moveOutDate @NotNull` in the body; BE does NOT stamp now() server-side).
+
+**Surface:** No dedicated admin Resident DETAIL page/route exists — `/residents` (ADMIN-gated, `App.tsx:68`) → `ResidentsPage` (list + create modal) is the ONLY resident admin surface. Move-out action + moved-out state added there per-row (de-facto detail surface; logged in DECISIONS).
+
+**Shipped:** `useMoveOutResident()` hook (`api/hooks.ts`) → `POST /residents/{id}/move-out` `{moveOutDate, notes?}`, `meta.successMessage` (top-right toast) + `skipErrorToast`, `onSuccess` invalidates `['residents']`. `ResidentsPage.tsx`: `ResidentItem.moveOutDate: string|null`; new "Trạng thái cư trú" column (colSpan 6→7) — non-null → badge «Đã chuyển đi · dd/MM/yyyy» (no button); null → "Kết thúc cư trú" button. Confirm dialog (real modal): `VNDatePicker` defaulted to today (`toISODateLocal(new Date())`, editable) + optional notes textarea + VN confirm copy stating the REAL effect (marks moved-out, clears primary-contact, does NOT block login) + irreversibility. Confirm → mutate; error inline via `getVnErrorMessage` (incl. `RESIDENT_ALREADY_MOVED_OUT`, already in shared map — no key added); success → toast + refetch flips row to badge.
+
+**BE effect (documented):** sets `moveOutDate`, clears `primaryContact` flag, appends MOVED_OUT history. Does NOT deactivate account / block login. Re-trigger guarded (`RESIDENT_ALREADY_MOVED_OUT`). **No undo endpoint → irreversible from UI.** `moveOutDate` (pure ISO `yyyy-mm-dd`, no time component — backlog-(b) trap avoided) sent verbatim to BE `LocalDate`.
+
+**Verify:** admin `tsc --noEmit` exit 0; `vite build` 590 modules exit 0. /code-review (medium): no findings.
+
+**🔔 SMOKE (CTO, after `--build nginx`, admin :80, resident detail/list):** "Kết thúc cư trú" opens a dialog with today pre-filled (changeable) + optional notes; confirming sets the «Đã chuyển đi» badge + date and removes the button; `moveOutDate` persists as a pure date in the DB row; a second attempt is impossible (button gone); re-opening an already-moved-out resident shows the badge, no active button.
+
 ## ✅ AUD.3 DONE — AuditLogAspect + @Auditable removed; AUD chain (auditing rework) COMPLETE (2026-06-22)
 
 **Report:** `reports/aud3-remove-aspect.md`. **Plan:** `reports/audit-columns-investigation.md` §5 + §C. **DECISIONS:** "AUD.3 — AuditLogAspect + @Auditable removed".

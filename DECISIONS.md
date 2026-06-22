@@ -5,6 +5,13 @@ Format: Date | Decision | Reasoning | Alternatives
 
 ---
 
+## 2026-06-22 | (d) Resident move-out UI — surface placement + Option B date
+
+- **Decision:** The "Kết thúc cư trú" action + moved-out state live on `ResidentsPage` (the `/residents` list, per-row) — NOT a new resident detail page/route.
+- **Reasoning:** No dedicated admin Resident DETAIL page/route exists; `/residents` (ADMIN-gated) is the only resident admin surface. Adding a per-row status column (badge / action button) + a confirm modal reuses the page's existing load/refetch (`useResidents` + `invalidateQueries(['residents'])`) with zero new routing. Not a fundamentally different architecture → no BLOCKER.
+- **Date handling (CTO Option B):** moveOutDate is a `VNDatePicker` defaulted to today (`toISODateLocal(new Date())`), editable, + optional notes. The original "no picker, BE stamps now()" plan was dropped because `POST /residents/{id}/move-out` requires `moveOutDate @NotNull` in the body (`MoveOutRequest.java:26`) and the service persists the client date (`ResidentServiceImpl.java:265`) — BE does NOT stamp server-side. Payload is a pure ISO `yyyy-mm-dd` (no time) → BE `LocalDate`.
+- **Alternatives considered:** (a) build a new ResidentDetailPage/route — rejected as scope expansion; the list is the established resident surface and the moved-out state reads from the existing `ResidentResponse.moveOutDate`. (b) no-picker + FE auto-fill today (Option A) — CTO chose B (editable date) instead.
+
 ## 2026-06-18 | (e) self-profile endpoint — DTO shape & validation choices
 
 - **Decision:** `PUT /api/auth/me/profile` DTO `UpdateOwnProfileRequest` requires `fullName` and `phone` (`@NotBlank`), `email` optional. role/isActive/password deliberately ABSENT.

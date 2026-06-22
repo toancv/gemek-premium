@@ -861,3 +861,73 @@ intentional set path (not a free status field on the generic update) and unhide 
 TDD: new guard `ApartmentServiceImplTest.updateApartment_doesNotChangeStoredStatus`; adjusted
 `ApartmentStatusFilterIntegrationTest.setMaintenance` to stamp MAINTENANCE via repo. Evidence:
 `reports/apartment-status-lockdown.md`.
+
+### 2026-06-22 | Residency lifecycle — domain model (CTO-approved)
+
+**Context:** A recurring confusion conflates three things as one "resident". Hitting the
+*cannot-register-with-a-moved-out-resident's-phone* problem forced the model to be made explicit. This
+entry records the CTO-approved conceptual model; it builds on (does not contradict) the move-out
+conditional-deactivation decision (`2026-06-22 | (d) follow-up — Move-out conditional user deactivation`)
+and the occupancy-derivation decision (`2026-06-22 | Occupancy fully derived → apartment status is NOT
+client-settable`).
+
+**Decision — three DISTINCT entities:**
+1. **IDENTITY = a human.** Identified by **phone number**, which is **PERMANENT and NON-REUSABLE**: a
+   different person can never reuse an old phone — a new human always registers a new phone. (Corollary: a
+   phone always maps to the same single human, forever.)
+2. **ACCOUNT = login.** One account per identity (`users` row). Can be active/inactive.
+3. **RESIDENCY = one stay of one person in one apartment**, bounded by move-in / move-out dates
+   (`residents` row).
+
+**`residents` is the RESIDENCY HISTORY table.** One user (one permanent-phone identity) may hold
+**MULTIPLE** resident records:
+- **Concurrently** — living in 2+ apartments at once (confirmed allowed). Only one *active* row per
+  (user, apartment) is enforced by the `uq_residents_active_user` partial unique index family; multi-apartment
+  concurrency is permitted.
+- **Over time** — lived in A (moved out), later in B. Move-out is **soft** (set `moveOutDate`); the row is
+  **retained as history**, never deleted.
+
+**MOVE-OUT (already implemented this way):** soft — set `moveOutDate`, retain the record. Deactivate the
+linked account ONLY when the user has **no remaining active residency in ANY apartment**
+(`residentRepository.existsActiveByUserId` checked AFTER `moveOutDate` is set). Conditional, NOT 1-to-1 with
+a single residency — correct under multi-residency.
+
+**MOVE-IN / RETURN (target flow — see backlog):** look up the user **by phone** first.
+- If the user **already exists** (a returning person — *always the same human*, since phone is permanent):
+  **REUSE** that user, add a **NEW** `residents` row, and **reactivate** the account if it was disabled. Do
+  NOT attempt a fresh registration.
+- Only **create a new user** when the phone is **genuinely new**.
+- There is **NO** "new person reusing an old phone" case — explicitly ruled out by the permanent-phone rule.
+
+**OCCUPANCY is fully DERIVED** from active residents (not stored) — see the occupancy-derivation decision.
+Derivation counts active residency presence per apartment, so it supports multi-residency automatically (a
+user active in A and B makes both apartments OCCUPIED with no extra modelling).
+
+**OPEN considerations for the design session (questions, NOT yet decided):**
+- **`primaryContact` scope.** Clearing the primary-contact flag must be scoped **per-residency**, not
+  per-user: moving out of apartment A must NOT clear the primary-contact flag of the same user's active
+  residency in apartment B. Current move-out clears it — verify the scope is per-residency before relying on
+  it under multi-residency.
+- **Other one-user-one-apartment assumptions.** Audit places that may implicitly assume a user lives in
+  exactly one apartment — **notifications** (recipient/apartment fan-out), **parking** (slot↔apartment vs
+  ↔user), **billing/fees** (which residency is charged) — for multi-residency correctness.
+
+---
+
+### Backlog — Residency lifecycle: move-in / return flow + multi-residency  *(NOT STARTED — needs design session)*
+
+**See:** `2026-06-22 | Residency lifecycle — domain model (CTO-approved)` (above).
+
+**Problem already hit:** registration cannot create a user whose phone belongs to a **moved-out** resident
+(phone uniqueness rejects it) — but per the domain model that phone IS the same returning human, so the
+system must **reuse the existing user and add a new residency**, not register a new user. Today there is no
+move-in/return flow that does this; the operator is blocked at "phone already exists".
+
+**Scope (to design):**
+- A **move-in / return** flow keyed on phone: existing user → reuse + new `residents` row + reactivate
+  account if disabled; genuinely-new phone → create user. Replaces the "new registration" assumption for
+  returning residents.
+- **Multi-residency correctness** sweep: `primaryContact` per-residency scoping (move-out of A must not
+  affect B), plus notifications / parking / billing assumptions (see OPEN considerations above).
+
+**Status:** NOT STARTED — requires a dedicated residency-lifecycle design session before implementation.

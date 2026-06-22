@@ -1,5 +1,15 @@
 # PROGRESS — Apartment Management System
 
+## ✅ TEST.1b DONE — suite order-independent; TEST.1 (isolation) COMPLETE (2026-06-22) — awaiting CTO go to resume AUD.2
+
+**Report:** `reports/test1b-isolation.md`. Test-infra only — no production code, no auditing touched.
+
+**What 1b did:** TEST.1a made the suite green *sequentially* via the isolated `gemek_test` DB (per-JVM Flyway clean). 1b makes it **order-independent**. Of the 21 non-`@Transactional` `@SpringBootTest` classes: **18 → `@Transactional` rollback** (safe + complete: production has NO `@Async`/`REQUIRES_NEW`/`AFTER_COMMIT`, so every MockMvc write happens in the test tx and rolls back; no class uses native/JdbcTemplate cross-connection reads); **1 (CorsIntegrationTest) needs none** (0 writes, OPTIONS only); **2 left committing by design** — `NotificationIntegrationTest`, `TicketLifecycleIntegrationTest` assert on **read-back after a bulk `@Modifying` UPDATE** (mark-read / contractor-rating-recalc) → rollback leaves L1 cache stale and would falsely fail; `@Transactional` would mask the real production path. Each has an in-code `NOTE (TEST.1b)`. Their committed rows are harmless (every count assertion is scoped to a unique in-test marker; per-JVM Flyway clean isolates across runs). Done in 4 verified clusters of 5.
+
+**Robustness proof:** added `backend/src/test/resources/junit-platform.properties` → random class+method order (fresh seed each run). **Sequential 331/331; two randomized-order runs 331/331** (distinct orders) = order-independence proven. **Parallel** (one-off CLI, 4 ForkJoinPool threads, NOT committed) = 328 pass / **3 errors**, all `IllegalStateException: Cannot start new transaction without ending existing transaction` — Spring `@Transactional` test-tx is **not parallel-safe in one JVM/context** (hits a pre-existing `@Transactional` class too). **Known limit, framework-level, not data pollution.** Enabling real parallel = CTO call (forked JVMs or explicit-cleanup) — out of 1b scope.
+
+**State:** TEST.1 (suite isolation + order-independence) **COMPLETE** — suite is a reliable safety net again. **AUD.2/AUD.3 still paused; awaiting CTO go to resume AUD.2.** Flagged-resistant classes: NotificationIntegrationTest, TicketLifecycleIntegrationTest (intentional, documented).
+
 ## ✅ AUD.1 DONE — Spring Data JPA auditing foundation (2026-06-18) — awaiting CTO go for AUD.2
 
 **Authoritative plan:** `reports/audit-columns-investigation.md` (§1 entity table, §3 AuditorAware, §4 column type/FK, §A/§B design). **AUD.1 report:** `reports/aud1-jpa-auditing.md`.

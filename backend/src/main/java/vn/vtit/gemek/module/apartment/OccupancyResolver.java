@@ -22,6 +22,12 @@ import vn.vtit.gemek.module.apartment.entity.ApartmentStatus;
  * ONE place the AVAILABLE/OCCUPIED/MAINTENANCE rule is expressed — the apartment list,
  * apartment detail, dashboard KPI, and resident report all route through it so they
  * cannot disagree.
+ *
+ * <p>The apartment list {@code ?status=} <em>filter</em> cannot call this resolver (it runs
+ * in SQL for pagination), so it re-expresses the SAME rule as a CASE/EXISTS predicate in
+ * {@code ApartmentRepository.findAllWithFilters}. That predicate MUST stay in lock-step with
+ * this method; the {@code ApartmentStatusFilterIntegrationTest} filter↔display agreement test
+ * fails if they ever drift.
  */
 public final class OccupancyResolver {
 

@@ -84,6 +84,9 @@ public class ApartmentServiceImpl implements ApartmentService {
             UUID blockId, Short floor, ApartmentStatus status, String search, Pageable pageable) {
         log.debug("Listing apartments — blockId={}, floor={}, status={}, search={}", blockId, floor, status, search);
 
+        // The ?status= filter selects by EFFECTIVE occupancy in SQL (EXISTS on active residents +
+        // MAINTENANCE priority), mirroring OccupancyResolver so the filtered rows always carry the
+        // displayed status. The repository encapsulates the name/MAINTENANCE binding.
         Page<Apartment> apartmentPage =
                 apartmentRepository.findAllWithFilters(blockId, floor, status, search, pageable);
 

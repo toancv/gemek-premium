@@ -76,24 +76,82 @@ public interface ApartmentRepository extends JpaRepository<Apartment, UUID> {
      * Default sort (block.name asc, floor asc, unitNumber asc) must be supplied via
      * the {@link Pageable} argument by the controller.
      *
+     * <p><b>The {@code status} filter matches EFFECTIVE (derived) occupancy, not the stored
+     * column.</b> This SQL effective-status logic MUST mirror
+     * {@link vn.vtit.gemek.module.apartment.OccupancyResolver} exactly so the filter and the
+     * displayed status (list/detail/dashboard all route display through that resolver) cannot
+     * disagree:
+     * <ul>
+     *   <li>{@code MAINTENANCE} → stored status is MAINTENANCE (priority — same as the resolver's
+     *       first branch; residents are irrelevant);</li>
+     *   <li>{@code OCCUPIED} → not maintenance AND an active resident EXISTS
+     *       ({@code move_out_date IS NULL} — the single "occupied" fact, identical to
+     *       {@code hasActiveResident} in the resolver);</li>
+     *   <li>{@code AVAILABLE} → not maintenance AND NO active resident exists.</li>
+     * </ul>
+     * This {@code default} method passes the requested status as its {@link ApartmentStatus} NAME
+     * (a plain string branch selector — no enum type-anchoring needed) and supplies the
+     * {@code MAINTENANCE} constant as a bound enum parameter, which Hibernate anchors against the
+     * {@code a.status} attribute and renders with the correct {@code apartment_status} type.
+     * (A fully-qualified enum LITERAL in JPQL is rejected by Postgres — it casts to a non-existent
+     * {@code apartmentstatus} type.) Spring derives the count query from the SAME JPQL, so the
+     * count and the row query apply the IDENTICAL effective-status predicate — totals can never
+     * disagree with the rows. Any change here MUST be reflected in {@code OccupancyResolver}
+     * (and is locked by the filter↔display agreement test).
+     *
      * @param blockId  optional block filter; {@code null} matches all blocks.
      * @param floor    optional floor filter; {@code null} matches all floors.
-     * @param status   optional status filter; {@code null} matches all statuses.
+     * @param status   optional EFFECTIVE status filter; {@code null} matches all.
      * @param search   optional case-insensitive substring match on unit_number; {@code null} disables.
      * @param pageable pagination and sort parameters.
+     * @return a page of matching apartments with their blocks eagerly loaded.
+     */
+    default Page<Apartment> findAllWithFilters(
+            UUID blockId, Short floor, ApartmentStatus status, String search, Pageable pageable) {
+        // Pass the requested status as its NAME (string branch selector) and MAINTENANCE as a
+        // bound enum param so Hibernate types it correctly against a.status.
+        return findAllByEffectiveStatus(
+                blockId, floor, status == null ? null : status.name(),
+                ApartmentStatus.MAINTENANCE, search, pageable);
+    }
+
+    /**
+     * Backing query for {@link #findAllWithFilters}. Do not call directly — use that default method.
+     *
+     * <p>{@code statusName} is the requested {@link ApartmentStatus} name (branch selector, nullable);
+     * {@code maintenance} is the bound {@code MAINTENANCE} constant, anchored against {@code a.status}.
+     *
+     * @param blockId     optional block filter; {@code null} matches all blocks.
+     * @param floor       optional floor filter; {@code null} matches all floors.
+     * @param statusName  requested effective-status name, or {@code null} for no status filter.
+     * @param maintenance the {@code MAINTENANCE} constant, bound so Hibernate types it correctly.
+     * @param search      optional case-insensitive unit_number substring; {@code null} disables.
+     * @param pageable    pagination and sort parameters.
      * @return a page of matching apartments with their blocks eagerly loaded.
      */
     @Query("""
             SELECT a FROM Apartment a JOIN FETCH a.block b
             WHERE b.id = COALESCE(:blockId, b.id)
               AND a.floor = COALESCE(:floor, a.floor)
-              AND a.status = COALESCE(:status, a.status)
               AND LOWER(a.unitNumber) LIKE LOWER(CONCAT('%', COALESCE(:search, a.unitNumber), '%'))
+              AND (
+                :statusName IS NULL
+                OR (:statusName = 'MAINTENANCE' AND a.status = :maintenance)
+                OR (:statusName = 'OCCUPIED'
+                      AND a.status <> :maintenance
+                      AND EXISTS (SELECT r FROM Resident r
+                                  WHERE r.apartment.id = a.id AND r.moveOutDate IS NULL))
+                OR (:statusName = 'AVAILABLE'
+                      AND a.status <> :maintenance
+                      AND NOT EXISTS (SELECT r FROM Resident r
+                                  WHERE r.apartment.id = a.id AND r.moveOutDate IS NULL))
+              )
             """)
-    Page<Apartment> findAllWithFilters(
+    Page<Apartment> findAllByEffectiveStatus(
             @Param("blockId") UUID blockId,
             @Param("floor") Short floor,
-            @Param("status") ApartmentStatus status,
+            @Param("statusName") String statusName,
+            @Param("maintenance") ApartmentStatus maintenance,
             @Param("search") String search,
             Pageable pageable);
 

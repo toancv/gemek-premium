@@ -1,5 +1,31 @@
 # PROGRESS — Apartment Management System
 
+## ⏸ C2.1 DONE — announcement media presign hole closed (scope-mirroring access) — awaiting CTO smoke (2026-06-23)
+
+Report: `reports/c2-1-announcement-presign-access.md`. **Security gate landed BEFORE any announcement image
+upload exists** (C2.2). Access control ONLY — no upload endpoint, no media table, no render changes.
+**Closed:** the `announcements/` presign branch was a stub letting ANY authenticated user presign; replaced
+with a scope-mirroring check (analogue of `enforcePhotoAccess`, enforced per-context).
+**Key convention DEFINED:** `announcements/{announcementId}/{uuid-filename}` — id is the first path segment;
+single-source prefix `AnnouncementService.MEDIA_KEY_PREFIX` (old private dup in `TicketServiceImpl` removed).
+**Rule:** ADMIN/BOARD unrestricted (drafts incl.); RESIDENT iff announcement PUBLISHED and its ALL/BLOCK/FLOOR
+scope matches an ACTIVE residency (same predicate as the feed — `AnnouncementRepository.existsReadableByResident`,
+JPQL mirror of `findPublishedForApartment`/`findRecipientUserIds`); else deny; malformed/nonexistent → 403, never
+500. `TicketServiceImpl.assertPresignAccess` announcement branch now delegates to
+`AnnouncementService.assertMediaPresignAccess`; `TicketServiceImpl` gains an `AnnouncementService` dep (no cycle).
+**Tests:** +8 unit (`AnnouncementServiceImplTest` — routing/parse), +6 integration
+(`AnnouncementMediaPresignAccessTest` — published/draft/scope via real DB), `PresignPrefixRoutingTest` updated to
+new rule. **Full backend suite GREEN: 397/397.** `AnnouncementRecipientConsistencyTest` untouched. API-SPEC §13 +
+DECISIONS updated.
+
+**Resume pointer → C2.2 — announcement media upload** (ADMIN, drafts only, ≤5 images & ≤50MB total per
+announcement, Tika content-type validation, `cover|inline` kinds) on top of the now-secured presign. Needs the
+`announcement_media` table + `POST /api/announcements/{id}/media` (multipart) + response DTO carrying presigned
+URLs (manual mapping — MapStruct can't presign) + orphan-cleanup on draft/media delete. Keys MUST follow the
+C2.1 convention `announcements/{announcementId}/{uuid-filename}`.
+
+---
+
 ## ⏸ C1 DONE — announcements ("Tin tức") rich TEXT (Markdown) + XSS-safe render — awaiting CTO smoke (2026-06-23)
 
 Plan + exact security config: `reports/c1-announcements-richtext.md`. CTO-ruled Markdown stored raw in

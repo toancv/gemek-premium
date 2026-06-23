@@ -1,6 +1,6 @@
 # PROGRESS — Apartment Management System
 
-## ✅ VERIFIED — test-suite / dev-DB-pollution RESOLVED (repeat + reorder stable) — awaiting CTO ruling to close (2026-06-23)
+## ✅ CLOSED — test-suite / dev-DB-pollution RESOLVED (repeat + reorder stable) — standing issue closed per CTO (2026-06-23)
 
 Report: `reports/test-suite-pollution-verification.md` (raw: `reports/p-run{1,2,3}.raw.txt`). Re-verified at the
 current tree (suite grew 331 → 379). **Isolated test DB confirmed:** dedicated `gemek_test` @5433
@@ -12,8 +12,14 @@ green (random order B, **no DB reset between runs**) → repeat-stable + order-i
 parallel = 0 failures / **10 errors, all the identical** `Cannot start new transaction without ending existing
 transaction` → Spring `@Transactional` test-tx not parallel-safe in one JVM = **framework limit, NOT pollution**
 (verified 10/10 same signature, zero data errors). **Verdict: dev-DB-pollution RESOLVED — standing open issue can
-be CLOSED.** Parallel = known non-blocking limitation; enabling = separate CTO call (forked JVMs / explicit
-cleanup). Keep sequential execution. Awaiting CTO ruling to formally close the issue.
+be CLOSED.** **CLOSED per CTO (2026-06-23)** — removed from the open/standing-issue list. Keep sequential
+execution.
+
+**SEPARATE, non-blocking item (do NOT conflate with the resolved pollution issue):** the suite is not
+parallel-safe — cause is test-framework `@Transactional` nesting (signature `Cannot start new transaction without
+ending existing transaction`), NOT DB pollution. It is a known limitation, not a bug; sequential runs are a
+reliable safety net. Enabling parallel is an OPTIONAL future CTO call that would require resolving the test
+tx-nesting (forked JVMs with per-fork DBs, or dropping `@Transactional` rollback on the parallelized classes).
 
 ---
 

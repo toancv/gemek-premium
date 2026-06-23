@@ -5,6 +5,23 @@ Format: Date | Decision | Reasoning | Alternatives
 
 ---
 
+## 2026-06-23 | Test-suite / dev-DB-pollution standing issue CLOSED; parallel limitation recorded separately
+
+- **CLOSED — dev-DB-pollution RESOLVED.** Re-verified at the current tree (`reports/test-suite-pollution-verification.md`):
+  tests run against a dedicated isolated `gemek_test` @5433 (`application-test.yml`) with per-JVM Flyway
+  clean+migrate (`AbstractIntegrationTest.java:108`) and a clean-guard restricted to `/gemek_test` (`:97-99`) —
+  dev `gemek` is never touched. Two back-to-back full runs with NO DB reset between, each in a different random
+  order, both **379/379 green** → repeat-stable + order-independent, no live pollution. The old
+  142-login-401 / AdminSeeder-skip-on-polluted-shared-DB mode is no longer possible (`AdminSeeder.java:75`
+  skip-if-`existsByRole(ADMIN)` is safe because the per-JVM clean wipes admin first, forcing a fresh re-seed).
+  The standing test-suite "open issue" is removed from the open list.
+- **SEPARATE, non-blocking — parallel execution NOT safe (NOT pollution).** A parallel run yields 0 failures /
+  10 errors, all the identical `IllegalStateException: Cannot start new transaction without ending existing
+  transaction` — Spring `@Transactional` test-transaction nesting across threads in one JVM/context. This is a
+  test-framework limitation, not a data-pollution bug and not conflated with the resolved issue. Enabling
+  parallel is an OPTIONAL future CTO call (forked JVMs with per-fork DBs, or dropping `@Transactional` rollback
+  on the parallelized classes); until then, sequential execution stands as the reliable safety net.
+
 ## 2026-06-23 | Move-out (item d) confirmed COMPLETE & multi-residency-safe
 
 Move-out is fully implemented and verified (NOT net-new): `POST /api/residents/{id}/move-out` is residency-scoped

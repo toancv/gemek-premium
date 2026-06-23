@@ -1,23 +1,26 @@
 # PROGRESS — Apartment Management System
 
-## ⏸ INVESTIGATION — announcements ("Tin tức") rich-content design — awaiting CTO ruling (2026-06-23)
+## ⏸ C1 DONE — announcements ("Tin tức") rich TEXT (Markdown) + XSS-safe render — awaiting CTO smoke (2026-06-23)
 
-Read-only, NO code changed. Report: `reports/announcements-rich-content-investigation.md` (sections A–E +
-open questions). **Current state:** content stored as unbounded **TEXT plain string** (`Announcement.java:57-59`,
-`V7:12-36`), no format/sanitization on write (`CreateAnnouncementRequest @NotBlank` only). **Editable after
-publish? NO** — published immutable (`AnnouncementServiceImpl:260-263`); drafts only → no re-notify problem.
-**Author = ADMIN-only** (`AnnouncementController:111/161`). **Resident render = SAFE plain text** (no XSS surface
-today): `AnnouncementDetailPage.tsx:41` `{announcement.content}` React text-node (auto-escaped, `whitespace-pre-line`);
-zero `dangerouslySetInnerHTML`; admin authoring = plain `<textarea>` (`admin/AnnouncementsPage.tsx:142`).
-Multi-residency feed (P1 DISTINCT, per-active-apartment) intact (`AnnouncementServiceImpl:104-135`, `query.distinct(true)`).
-**Media infra = GENERIC + reusable** (MinIO object-key + `FileStorageService.presign` 10-min expiry `:40`;
-`enforcePhotoAccess` per-context `TicketServiceImpl:901-919`); `ANNOUNCEMENT_KEY_PREFIX` reserved but presign gate
-is an **any-authenticated STUB** (⚠️ must become scope-mirroring before shipping media). Net-new for announcements:
-`announcement_media` table + ADMIN upload endpoint + scoped presign + DTO. **Sanitization/markdown libs: NONE**
-present (BE: only Tika for MIME; FE: no dompurify/marked/react-markdown). Open questions for CTO: format
-(markdown-sanitized / sanitized-HTML / JSON-blocks), sanitize-on-write vs render, media access-scope rule, edit/
-orphan handling, cluster split (C1 rich-text+XSS-safe / C2 images / C3 attachments). Awaiting CTO ruling before
-any cluster is coded.
+Plan + exact security config: `reports/c1-announcements-richtext.md`. CTO-ruled Markdown stored raw in
+`content TEXT` (NO schema change), defense-in-depth XSS. **Shared safe renderer** `MarkdownContent` in
+`@gemek/ui` (`frontend/packages/ui/src/components/MarkdownContent.tsx`) — single source of truth consumed by
+BOTH resident detail and admin preview. Config: react-markdown 9.0.1, **no rehype-raw**, **zero
+`dangerouslySetInnerHTML`**, element allowlist (img excluded — C2), scheme-filtered URLs (http/https/mailto;
+javascript:/data: neutralised), links rel=noopener + external target=_blank, remark-breaks (legacy newlines).
+**Resident:** `AnnouncementDetailPage.tsx` body now `<MarkdownContent>` (was plain `<p whitespace-pre-line>`);
+feed list still title-only. **Admin:** `AnnouncementsPage.tsx` create modal — controlled Markdown textarea +
+format toolbar (Đậm/Nghiêng/Tiêu đề/Danh sách/Liên kết) + live "Xem trước" preview using the SAME renderer.
+**BE write-check:** `AnnouncementServiceImpl.validateContent` (create+update) — max 20000 chars
+(`ANNOUNCEMENT_CONTENT_TOO_LONG`) + raw-HTML reject (`ANNOUNCEMENT_CONTENT_HTML_NOT_ALLOWED`), no heavy dep.
+**Tests:** FE 6 render tests (XSS neutralisation + formatting + legacy newline) green; BE 3 write-check tests
+green (AnnouncementControllerTest 7/7). Both FE apps build clean. API-SPEC + DECISIONS updated; legacy
+plain-text content rendered-as-Markdown accepted by CTO (no migration). **Note:** investigation cited FE paths
+as `apps/…`; real root is `frontend/apps/…`.
+
+**Resume pointer → C2 — announcement cover/inline images** (MUST replace the any-authenticated
+`announcements/` presign stub with scope-mirroring access mirroring `enforcePhotoAccess`; add
+`announcement_media` table + ADMIN upload endpoint drafts-only + scoped presign + DTO).
 
 ---
 

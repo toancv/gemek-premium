@@ -22,6 +22,13 @@ export interface AnnouncementItem {
   readByCount: number;
   /** Per-user read state computed by the BE for the requesting user. */
   isRead: boolean;
+  /**
+   * Detail-only media manifest: each entry maps a media id to a fresh presigned URL (minted
+   * server-side through the C2.1 scope gate). null/absent on list responses and when the caller
+   * may not access the media. The renderer resolves `announcement-media:{id}` placeholders against
+   * these; the COVER entry is shown as a banner.
+   */
+  media?: { id: string; kind: 'COVER' | 'INLINE'; url: string }[] | null;
 }
 
 /**

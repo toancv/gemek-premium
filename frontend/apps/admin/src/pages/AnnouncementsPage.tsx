@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useAnnouncements, useCreateAnnouncement, usePublishAnnouncement, useBlocks } from '../api/hooks';
 import { useRoleFlags } from '../lib/useRoleFlags';
-import { getVnErrorMessage, labelFor, formatVNDate } from '@gemek/ui';
+import { getVnErrorMessage, labelFor, formatVNDate, MarkdownContent } from '@gemek/ui';
 
 const TYPES = ['GENERAL','URGENT','MAINTENANCE','AMENITY','EVENT'];
 
@@ -14,6 +14,11 @@ export function AnnouncementsPage() {
   const [floor, setFloor] = useState('');
   const [pendingPublishId, setPendingPublishId] = useState<string | null>(null);
   const [publishError, setPublishError] = useState('');
+  // Markdown body is controlled so the toolbar can insert syntax at the cursor and the
+  // live preview can render with the SAME safe renderer the resident app uses.
+  const [content, setContent] = useState('');
+  const [showPreview, setShowPreview] = useState(true);
+  const textareaRef = React.useRef<HTMLTextAreaElement>(null);
 
   // Announcement writes (create + publish) are ADMIN-only on the BE (POST/publish = hasRole('ADMIN')).
   // BOARD_MEMBER now reads this page (route opened read-only — backlog (c) #7) but sees NO write
@@ -25,7 +30,24 @@ export function AnnouncementsPage() {
   const create = useCreateAnnouncement();
   const publish = usePublishAnnouncement();
 
-  const resetForm = () => { setScope('ALL'); setBlockId(''); setFloor(''); setFormError(''); };
+  const resetForm = () => { setScope('ALL'); setBlockId(''); setFloor(''); setFormError(''); setContent(''); };
+
+  // Wraps the current selection (or inserts a placeholder) with Markdown syntax, keeping
+  // the textarea controlled and restoring focus/selection after the state update.
+  const insertMarkdown = (before: string, after = '', placeholder = '') => {
+    const ta = textareaRef.current;
+    if (!ta) { setContent((c) => c + before + placeholder + after); return; }
+    const start = ta.selectionStart;
+    const end = ta.selectionEnd;
+    const selected = content.slice(start, end) || placeholder;
+    const next = content.slice(0, start) + before + selected + after + content.slice(end);
+    setContent(next);
+    requestAnimationFrame(() => {
+      ta.focus();
+      const pos = start + before.length;
+      ta.setSelectionRange(pos, pos + selected.length);
+    });
+  };
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -138,8 +160,31 @@ export function AnnouncementsPage() {
             <form onSubmit={handleCreate} className="space-y-3">
               <div><label className="block text-sm font-medium text-gray-700 mb-1">Tiêu đề <span className="text-red-500">*</span></label>
                 <input name="title" className="block w-full border border-gray-300 rounded-md px-3 py-2 text-sm" /></div>
-              <div><label className="block text-sm font-medium text-gray-700 mb-1">Nội dung <span className="text-red-500">*</span></label>
-                <textarea name="content" rows={4} className="block w-full border border-gray-300 rounded-md px-3 py-2 text-sm resize-y" /></div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Nội dung <span className="text-red-500">*</span></label>
+                <div className="flex flex-wrap items-center gap-1 mb-1">
+                  <span className="text-xs text-gray-500 mr-1">Định dạng:</span>
+                  <button type="button" onClick={() => insertMarkdown('**', '**', 'văn bản đậm')} className="px-2 py-1 text-xs font-bold border border-gray-300 rounded hover:bg-gray-50" title="Đậm">Đậm</button>
+                  <button type="button" onClick={() => insertMarkdown('*', '*', 'văn bản nghiêng')} className="px-2 py-1 text-xs italic border border-gray-300 rounded hover:bg-gray-50" title="Nghiêng">Nghiêng</button>
+                  <button type="button" onClick={() => insertMarkdown('## ', '', 'Tiêu đề')} className="px-2 py-1 text-xs border border-gray-300 rounded hover:bg-gray-50" title="Tiêu đề">Tiêu đề</button>
+                  <button type="button" onClick={() => insertMarkdown('- ', '', 'Mục danh sách')} className="px-2 py-1 text-xs border border-gray-300 rounded hover:bg-gray-50" title="Danh sách">Danh sách</button>
+                  <button type="button" onClick={() => insertMarkdown('[', '](https://)', 'văn bản liên kết')} className="px-2 py-1 text-xs border border-gray-300 rounded hover:bg-gray-50" title="Liên kết">Liên kết</button>
+                </div>
+                <textarea ref={textareaRef} name="content" value={content} onChange={(e) => setContent(e.target.value)} rows={6} className="block w-full border border-gray-300 rounded-md px-3 py-2 text-sm font-mono resize-y" placeholder="Hỗ trợ Markdown: **đậm**, *nghiêng*, ## tiêu đề, - danh sách, [liên kết](https://...)" />
+                <div className="mt-2">
+                  <button type="button" onClick={() => setShowPreview((p) => !p)} className="text-xs text-blue-600 hover:underline">
+                    {showPreview ? 'Ẩn xem trước' : 'Xem trước'}
+                  </button>
+                  {showPreview && (
+                    <div className="mt-1 border border-gray-200 rounded-md p-3 bg-gray-50">
+                      <p className="text-xs text-gray-400 mb-1">Xem trước</p>
+                      {content.trim()
+                        ? <MarkdownContent content={content} className="text-sm text-gray-700" />
+                        : <p className="text-sm text-gray-400 italic">Chưa có nội dung.</p>}
+                    </div>
+                  )}
+                </div>
+              </div>
               <div className="grid grid-cols-2 gap-3">
                 <div><label className="block text-sm font-medium text-gray-700 mb-1">Loại</label>
                   <select name="type" className="block w-full border border-gray-300 rounded-md px-3 py-2 text-sm bg-white">

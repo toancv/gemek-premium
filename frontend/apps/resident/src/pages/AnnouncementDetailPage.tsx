@@ -27,7 +27,10 @@ export function AnnouncementDetailPage() {
   if (isError || !announcement) return <div className="p-4 bg-red-50 text-red-700 m-4 rounded-xl">{t('announcements.loadError')}</div>;
 
   // Cover image (if any) renders as a banner above the title; inline images resolve inside the body.
-  const cover = announcement.media?.find((m) => m.kind === 'COVER');
+  // Defense-in-depth: the url is a server-minted presigned URL, but assert an http(s) scheme before
+  // binding it to src so a non-http manifest value can never reach the DOM (matches the renderer's gate).
+  const coverEntry = announcement.media?.find((m) => m.kind === 'COVER');
+  const cover = coverEntry && /^https?:\/\//i.test(coverEntry.url) ? coverEntry : undefined;
 
   return (
     <div className="p-4 space-y-4">

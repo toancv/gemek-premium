@@ -33,6 +33,8 @@ Common error codes:
 | `CONFLICT` | 409 | Duplicate or invalid state transition (generic fallback) |
 | `AMENITY_NAME_EXISTS` | 409 | Amenity name already taken |
 | `BOOKING_NOT_PENDING` | 409 | Approve/reject attempted on non-PENDING booking |
+| `ANNOUNCEMENT_CONTENT_TOO_LONG` | 400 | Announcement Markdown body exceeds 20000 chars |
+| `ANNOUNCEMENT_CONTENT_HTML_NOT_ALLOWED` | 400 | Announcement body contains raw HTML (Markdown only) |
 | `INTERNAL_ERROR` | 500 | Unexpected server error |
 | `RATE_LIMITED` | 429 | Too many requests |
 
@@ -2009,6 +2011,11 @@ Request:
 
 Response `201 Created` — announcement summary object.
 
+**Content format:** `content` is **Markdown** stored raw in the existing `TEXT` column (no schema/content-type
+change). It is rendered XSS-safe on the frontend (React-element render — no raw HTML, scheme-filtered links).
+Write-time secondary guard (defense-in-depth): max length **20000 chars** → `400 ANNOUNCEMENT_CONTENT_TOO_LONG`;
+raw HTML tags rejected → `400 ANNOUNCEMENT_CONTENT_HTML_NOT_ALLOWED` (the stored format is Markdown, not HTML).
+
 **Side effects when `publishNow: true`:**
 - `published_at` set to NOW().
 - FCM push / email / SMS dispatched asynchronously to target audience.
@@ -2029,7 +2036,8 @@ Response `200 OK` — full announcement detail including full `content` text.
 **Auth:** ADMIN
 **Description:** Update a draft announcement. Cannot modify already-published announcements.
 
-Request: same as POST minus `publishNow`.
+Request: same as POST minus `publishNow`. `content` follows the same Markdown contract and write-time
+guards as POST (`400 ANNOUNCEMENT_CONTENT_TOO_LONG` / `400 ANNOUNCEMENT_CONTENT_HTML_NOT_ALLOWED`).
 Response `200 OK`
 Errors: `409 CONFLICT` (announcement is already published)
 

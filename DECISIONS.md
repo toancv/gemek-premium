@@ -1204,3 +1204,36 @@ move-in/return flow that does this; the operator is blocked at "phone already ex
   affect B), plus notifications / parking / billing assumptions (see OPEN considerations above).
 
 **Status:** NOT STARTED — requires a dedicated residency-lifecycle design session before implementation.
+
+---
+
+### 2026-06-23 | Announcements rich content C1 — Markdown body + XSS-safe render (CTO-ruled, implemented)
+
+**Ruling (CTO, authoritative):**
+- **Format = Markdown** stored raw in the existing `content TEXT` column. **NO** schema change, **NO**
+  `content_type` column.
+- **XSS = defense-in-depth:** safe render on FE (primary) + lightweight write-check on BE (secondary).
+- Published announcements remain **IMMUTABLE** (only drafts editable — unchanged). Feed scope query,
+  publish/dispatch tx untouched. C1 does **not** touch media/MinIO/presign.
+
+**Implementation:**
+- Shared `MarkdownContent` renderer in `@gemek/ui` (`packages/ui`) — single source of truth, consumed by
+  BOTH resident detail and admin preview so the safe config cannot drift. Config: `react-markdown` 9.0.1
+  with **no `rehype-raw`** (raw HTML not rendered), **no `dangerouslySetInnerHTML`**, element allowlist
+  (img excluded — images deferred to C2), scheme-filtered URLs (http/https/mailto only; `javascript:`/
+  `data:` neutralised), links `rel="noopener noreferrer"` + external `target="_blank"`, `remark-breaks`
+  for legacy single-newline behavior.
+- BE write-check in `AnnouncementServiceImpl.validateContent` (create + update): max length **20000 chars**
+  (`ANNOUNCEMENT_CONTENT_TOO_LONG`) + raw-HTML reject (`ANNOUNCEMENT_CONTENT_HTML_NOT_ALLOWED`), regex
+  `</?[a-zA-Z][a-zA-Z0-9]*[\s/>]` (does not trip on Markdown `<url>`/`<email>` autolinks or a bare `<`).
+  No heavy BE sanitizer dep added.
+
+**Alternatives considered:** sanitized-HTML + `dangerouslySetInnerHTML` (rejected — introduces the project's
+first innerHTML render = stored-XSS surface on one sanitizer bug); structured JSON blocks (rejected for C1 —
+most net-new work + a content-type migration). Markdown chosen: author-friendly, zero schema change, XSS
+contained at a single audited render component.
+
+**Known low-risk consequence (CTO-accepted — NO migration):** existing published announcements hold plain
+text in `content`; rendered as Markdown they look near-identical, but stray metacharacters (`*`, `_`, `#`,
+leading `>`) may be reinterpreted as formatting. No backfill/escape migration is performed; `remark-breaks`
+preserves their newlines.

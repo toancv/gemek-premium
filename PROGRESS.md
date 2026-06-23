@@ -1,5 +1,22 @@
 # PROGRESS — Apartment Management System
 
+## ✅ VERIFIED — test-suite / dev-DB-pollution RESOLVED (repeat + reorder stable) — awaiting CTO ruling to close (2026-06-23)
+
+Report: `reports/test-suite-pollution-verification.md` (raw: `reports/p-run{1,2,3}.raw.txt`). Re-verified at the
+current tree (suite grew 331 → 379). **Isolated test DB confirmed:** dedicated `gemek_test` @5433
+(`application-test.yml`), per-JVM Flyway clean+migrate (`AbstractIntegrationTest.java:108`), clean-guard restricted
+to `/gemek_test` (`:97-99`); dev `gemek` never touched. AdminSeeder skip-if-`existsByRole(ADMIN)`
+(`AdminSeeder.java:75`) is safe here — the per-JVM clean wipes admin first so it always re-seeds → the old
+142-login-401 failure mode cannot recur. **Decisive runs:** RUN1 379/379 green (random order A); RUN2 379/379
+green (random order B, **no DB reset between runs**) → repeat-stable + order-independent, no live pollution. RUN3
+parallel = 0 failures / **10 errors, all the identical** `Cannot start new transaction without ending existing
+transaction` → Spring `@Transactional` test-tx not parallel-safe in one JVM = **framework limit, NOT pollution**
+(verified 10/10 same signature, zero data errors). **Verdict: dev-DB-pollution RESOLVED — standing open issue can
+be CLOSED.** Parallel = known non-blocking limitation; enabling = separate CTO call (forked JVMs / explicit
+cleanup). Keep sequential execution. Awaiting CTO ruling to formally close the issue.
+
+---
+
 ## ✅ DONE — move-out (item d): BE + admin UI complete, multi-residency-correct (2026-06-23)
 
 Report: `reports/move-out-investigation.md`. **Item (d) CLOSED — already implemented & verified, NOT net-new.**

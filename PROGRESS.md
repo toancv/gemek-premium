@@ -1,5 +1,38 @@
 # PROGRESS — Apartment Management System
 
+## ⏸ C2.2 DONE — announcement media UPLOAD (ADMIN, drafts only) — awaiting CTO smoke (2026-06-23)
+
+Report: `reports/c2-2-announcement-media-upload.md`. Built on the C2.1-secured presign. **Access/upload only —
+NO render, NO `<img>`, NO `announcement-media:` placeholder, NO admin upload UI (all C2.3).**
+**Schema:** `announcement_media` table (migration **V21**) — `object_key` (C2.1 convention
+`announcements/{announcementId}/{uuid}`), `content_type`, `size_bytes`, `kind` (CHECK COVER|INLINE),
+`original_filename`, `created_by`/`created_at`; FK `ON DELETE CASCADE` to announcements; index on `announcement_id`.
+**Endpoints (ADMIN unless noted):** `POST /api/announcements/{id}/media` (multipart `file`+`kind`, draft-only),
+`GET /api/announcements/{id}/media` (ADMIN/BOARD list), `DELETE /api/announcements/{id}/media/{mediaId}` (draft-only).
+**Rules:** Tika-on-bytes type check (jpg/png/webp only — not extension/header); caps **≤5 images & ≤50MB total**
+enforced server-side in-tx; `kind=cover` REPLACES existing cover; draft delete cascades media rows + after-commit
+object cleanup.
+**NEW mechanism:** generic after-commit object cleanup — `ObjectKeysObsoleteEvent` +
+`ObsoleteObjectCleanupListener` (`@TransactionalEventListener(AFTER_COMMIT)`) in `common/storage` (none existed;
+reusable). Object delete is best-effort after commit; row removal is in-tx.
+**Error codes:** `ANNOUNCEMENT_MEDIA_TYPE_NOT_ALLOWED`/`ANNOUNCEMENT_MEDIA_LIMIT_EXCEEDED` (400),
+`ANNOUNCEMENT_NOT_DRAFT` (409) — VN messages.
+**Tests:** +12 service integration (`AnnouncementMediaServiceIntegrationTest`, non-transactional → exercises
+after-commit; full matrix: type/caps/boundaries/cover-replace/delete/cascade), +3 controller security/status
+(`AnnouncementControllerTest`). **Full backend suite GREEN: 412/412.** C2.1 presign tests +
+`AnnouncementRecipientConsistencyTest` untouched. API-SPEC §10 (+3 endpoints) + DECISIONS updated.
+
+**Resume pointer → C2.3 — resident image RENDER + admin authoring UX:**
+1. **Render:** re-enable `<img>` in the shared `MarkdownContent` renderer ONLY for internal announcement-media
+   presigned URLs; resolve an `announcement-media:{id}` placeholder → presigned GET (via C2.1 `/api/files/presign`,
+   scope-gated). Keep all other HTML/`<img>` still excluded. Resident detail renders cover + inline images.
+2. **Admin authoring UX:** upload/insert images into the body; **MOVE create/edit out of the small modal to a
+   dedicated page** — `/announcements/new` + `/announcements/:id/edit` as a **2-column compose|preview** layout
+   (left Markdown editor + media manager, right live preview using the SAME renderer). Wire the C2.2 upload/list/
+   delete endpoints into the media manager. (Admin app real root is `frontend/apps/admin/…`.)
+
+---
+
 ## ⏸ C2.1 DONE — announcement media presign hole closed (scope-mirroring access) — awaiting CTO smoke (2026-06-23)
 
 Report: `reports/c2-1-announcement-presign-access.md`. **Security gate landed BEFORE any announcement image

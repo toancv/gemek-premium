@@ -1237,3 +1237,41 @@ contained at a single audited render component.
 text in `content`; rendered as Markdown they look near-identical, but stray metacharacters (`*`, `_`, `#`,
 leading `>`) may be reinterpreted as formatting. No backfill/escape migration is performed; `remark-breaks`
 preserves their newlines.
+
+---
+
+## 2026-06-23 — C2.1 Announcement media presign: scope-mirroring access (security gate before uploads)
+
+**Context:** The `announcements/` presign branch was a stub letting ANY authenticated user presign
+(in-code "Intentionally no DB-row requirement yet"). No announcement media exists yet, but the hole
+MUST be closed before C2.2 adds uploads, or any logged-in resident could presign any (block/floor-
+targeted) announcement file. C2.1 = access control only (no upload endpoint, no media table, no render).
+
+**Key convention (DEFINED now, consumed by C2.2):** `announcements/{announcementId}/{uuid-filename}` —
+the announcement id is the FIRST path segment after the prefix, so the gate recovers it from the key
+alone and mirrors that announcement's read scope. Single source of the prefix:
+`AnnouncementService.MEDIA_KEY_PREFIX` (the old private duplicate in `TicketServiceImpl` was removed).
+
+**Access rule (mirrors the feed scope; analogue of `enforcePhotoAccess`, enforced per-context,
+independent of the widened announcement-LIST rule):**
+- ADMIN / BOARD_MEMBER → unrestricted (drafts included — authoring preview).
+- RESIDENT → allowed IFF the announcement is PUBLISHED and its ALL/BLOCK/FLOOR scope matches one of the
+  caller's ACTIVE residencies — the SAME predicate as the feed. A DRAFT's media is never resident-visible.
+- Any other role (e.g. TECHNICIAN) → denied.
+- Malformed key / nonexistent announcement id → `403 FORBIDDEN`, never a 500.
+
+**Implementation:** `AnnouncementService.assertMediaPresignAccess(objectKey, principalId, role)` parses the
+id (malformed → deny), routes staff → allow / resident → scope query / else deny;
+`AnnouncementRepository.existsReadableByResident(announcementId, userId)` is a JPQL exists query
+(`publishedAt IS NOT NULL` + EXISTS over active residencies with the ALL/BLOCK/FLOOR clause that textually
+mirrors `findPublishedForApartment` / `findRecipientUserIds`). The `assertPresignAccess` announcement
+branch in `TicketServiceImpl` now delegates to this; `TicketServiceImpl` gains an `AnnouncementService`
+dependency (no cycle).
+
+**Alternatives considered:** (a) keep "any authenticated" (REJECTED — leaks block/floor-targeted media);
+(b) inline the scope check in `TicketServiceImpl` (REJECTED — the scope rule must live next to the feed
+predicate it stays consistent with, guarded by `AnnouncementRecipientConsistencyTest`).
+
+**Tests:** `AnnouncementServiceImplTest` (+8 unit — routing/parse), `AnnouncementMediaPresignAccessTest`
+(+6 integration — published/draft/scope through real DB), `PresignPrefixRoutingTest` updated to the new
+rule. Full backend suite GREEN (397). `AnnouncementRecipientConsistencyTest` untouched.

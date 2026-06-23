@@ -1,5 +1,20 @@
 # PROGRESS — Apartment Management System
 
+## ⏸ INVESTIGATION — move-out (item d) before UI — awaiting CTO ruling (2026-06-23)
+
+Read-only, NO code changed. Report: `reports/move-out-investigation.md`.
+**Verdict: BE fully multi-residency-correct AND admin UI already EXISTS — item (d) is effectively DONE, not
+net-new.** `POST /api/residents/{id}/move-out` (ADMIN, `ResidentController.java:196-203`): `{id}` is a
+**RESIDENCY row id** (`residentRepository.findById(id)`, `ResidentServiceImpl.java:413`) → ends ONE residency
+(one apartment), not the whole user. Conditional deactivation only when no OTHER active residency
+(`existsActiveByUserId`, `:441-442`). Per-row primary-contact clear (`:424-425`), MOVED_OUT history actor=admin
+(`:431`), occupancy derived (no stored field). UI present: `ResidentsPage.tsx` per-row "Kết thúc cư trú" button
+→ confirm dialog (date+notes) → `useMoveOutResident` (`hooks.ts:130`) passing `residents.id` (correct
+residency-scoped id). API-SPEC `:689-692` accurate, no drift. Open Q for CTO: anything additional wanted (e.g.
+resident-detail page) or close (d)? Awaiting ruling.
+
+---
+
 ## ⏸ FIXED (pending CTO Network-tab smoke) — stale-UI-after-mutation (2 bugs) (2026-06-23)
 
 **FIX APPLIED (CTO ruling Option 1 — `refetchType:'all'`).** Root cause: `invalidateQueries` default

@@ -1,5 +1,42 @@
 # PROGRESS — Apartment Management System
 
+## ⏸ C2.3a DONE — resident image RENDER (safe internal `<img>` + cover banner) — awaiting CTO smoke (2026-06-23)
+
+Report: `reports/c2-3a-announcement-image-render.md`. Re-opened the `<img>` surface C1 closed, but ONLY for
+internal announcement media. **NO admin upload/insert UI, NO authoring-page move (all C2.3b).**
+**Shared renderer (`@gemek/ui` `MarkdownContent.tsx`):** a live `<img>` is emitted ONLY when the markdown
+image src is the internal placeholder `announcement-media:{id}` AND `{id}` resolves to a server-minted
+**media manifest** entry — the rendered src is the manifest's presigned URL, never the author's string. Any
+other src (external URL, `javascript:`/`data:`, unknown id) → nothing/alt; raw `<img onerror=…>` HTML stays
+inert escaped text. Only safe attrs (src, escaped alt, `loading=lazy`); no author handlers. **All C1
+protections intact:** no rehype-raw, **zero `dangerouslySetInnerHTML`**, scheme-filtered links (internal
+scheme passes the global urlTransform for images but is STRIPPED on `<a href>`), remark-breaks. New optional
+`mediaManifest` prop (only manifest-dependent piece is `makeImgComponent`); empty manifest → no img (no
+regression for admin C1 preview).
+**Manifest shape:** detail response `media: [{ id, kind(COVER|INLINE), url }]`. Renderer maps
+`announcement-media:{id}` → `url`; the COVER entry is rendered as a **banner** above the title by the
+resident page (NOT inline; banner src guarded to http(s)). Inline entries resolve in the body.
+**Backend:** `AnnouncementResponse.media` (nested `MediaRef`); `getAnnouncement` builds it via
+`buildMediaManifest` — reuses the C2.1 `assertMediaPresignAccess` gate (checked ONCE per announcement) then
+mints `fileStorageService.presign(key)` per row; out-of-scope resident / wrong role → **empty manifest**
+(no 500, no leak). **Detail-only** (list/create/update/publish carry empty media). No feed-LIST change, no
+DISTINCT multi-residency change, no C2.1/C2.2 loosening. Hibernate null-safe.
+**Tests:** UI renderer 12/12 (7 new C2.3a incl. XSS reuse); BE `AnnouncementDetailMediaManifestTest` 4/4
+(in-scope manifest, out-of-scope empty, ADMIN draft, no-media empty). **Full backend suite 416/416 GREEN**
+(412 + 4). C1/C2.1/C2.2 tests + `AnnouncementRecipientConsistencyTest` untouched. resident + admin tsc-clean.
+API-SPEC §10 (detail manifest) + DECISIONS (safe-img rule, placeholder convention, fresh-presign limitation)
+updated. **/code-review: PASS WITH NOTES — 0 Must-fix** (LOW banner-src note applied).
+**Accepted limitation:** presigned URLs minted fresh per detail request (10-min expiry); page open >10 min
+may show a broken image — no refresh mechanism (CTO ruling).
+
+**Resume pointer → C2.3b — admin authoring UX:** upload + insert-image (inserts `announcement-media:{id}`
+placeholders into the body) + cover selection; **MOVE create/edit from the small modal to dedicated pages**
+`/announcements/new` + `/announcements/:id/edit` with a **2-column compose|preview** layout (preview uses the
+SAME safe `MarkdownContent` renderer + a manifest of the draft's uploaded media). Wire the C2.2 upload/list/
+delete endpoints into the media manager. Admin app real root is `frontend/apps/admin/…`.
+
+---
+
 ## ⏸ C2.2 DONE — announcement media UPLOAD (ADMIN, drafts only) — awaiting CTO smoke (2026-06-23)
 
 Report: `reports/c2-2-announcement-media-upload.md`. Built on the C2.1-secured presign. **Access/upload only —

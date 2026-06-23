@@ -1,0 +1,110 @@
+# C2.3a — Announcement image RENDER (resident side, safe internal `<img>`)
+
+**Phase:** C2.3a — re-open the `<img>` surface C1 closed, but ONLY for internal announcement media.
+**Scope:** shared-renderer safe-img + manifest resolution; resident detail cover banner + inline render;
+backend media manifest on the detail response (fresh presigned, C2.1-gated). **NO** admin upload/insert UI,
+**NO** authoring-page move (C2.3b).
+**Verdict:** full backend suite **416/416 green** (412 + 4 new); UI renderer tests 12/12; resident + admin
+apps tsc-clean. C1 / C2.1 / C2.2 tests + `AnnouncementRecipientConsistencyTest` untouched & passing.
+
+---
+
+## XSS posture (the gate this phase re-opens)
+
+C1 deliberately excluded `<img>`. C2.3a re-enables it under a single rule, enforced in the **one shared**
+`MarkdownContent` config (`frontend/packages/ui/src/components/MarkdownContent.tsx`) — no divergent copy:
+
+- **A live `<img>` is emitted ONLY when** the markdown image `src` is the internal placeholder
+  `announcement-media:{id}` **AND** `{id}` resolves to a manifest entry. The rendered `src` is then the
+  **manifest's presigned URL**, never the author's string.
+- Any other `src` renders **nothing** (or the alt text), never a live img:
+  - `![](https://evil.com/x.png)` → not a placeholder → no img (no external/SSRF/tracking fetch).
+  - `![](javascript:alert(1))` / `data:` → neutralised by urlTransform → no img.
+  - `![x](announcement-media:deleted-id)` → id not in manifest → no img.
+- Raw HTML `<img src=x onerror=alert(1)>` stays **inert escaped text** (no rehype-raw) — no live element,
+  no handler.
+- Only safe attributes set: `src` (resolved presigned URL), `alt` (escaped author/`title` text),
+  `loading="lazy"`. **No** author-controlled `onerror`/`onload`, **no** style injection.
+- All C1 protections intact: **no rehype-raw**, **zero `dangerouslySetInnerHTML`**, scheme-filtered links
+  (`http/https/mailto` only), remark-breaks. The internal `announcement-media:` scheme is passed through the
+  **global `urlTransform`** (so the img component can resolve it) but is **stripped on links** by the `a`
+  component's own `safeUrlTransform` — an `[x](announcement-media:id)` link is inert.
+
+Wiring: `makeImgComponent(manifest)` is the only manifest-dependent piece; the static element map and
+`urlTransform` are module-level. `MarkdownContent` takes an optional `mediaManifest` prop; with no/empty
+manifest (admin C1 preview, any other consumer) every placeholder renders nothing — no regression.
+
+## Placeholder → manifest resolution
+
+- **Manifest shape** (chosen): the detail response `media: [{ id, kind, url }]` where `kind` ∈ `COVER|INLINE`
+  and `url` is a fresh presigned GET URL. The renderer maps `announcement-media:{id}` → entry by `id`.
+- **Cover vs inline:** the `COVER` entry is rendered as a **banner** above the title by the resident page
+  (`AnnouncementDetailPage.tsx`), NOT inline. Inline entries resolve inside the Markdown body. The cover is
+  not duplicated inline (seeded/authored content puts only inline placeholders in the body).
+- No raw object keys or long-lived URLs in the body or the client — only short-lived presigned URLs in the
+  manifest, minted per request.
+
+## Backend (minimal for render)
+
+- `AnnouncementResponse` gains `List<MediaRef> media` (`MediaRef{ id, kind, url }`).
+- `getAnnouncement` builds the manifest via `buildMediaManifest(announcement, principalId, role)`:
+  loads media rows, **reuses the C2.1 `assertMediaPresignAccess` gate** (checked ONCE — every row of one
+  announcement shares the same scope decision), and on allow mints `fileStorageService.presign(objectKey)`
+  per row. Denial (out-of-scope resident / wrong role) → **empty manifest**, never a 500.
+- Manifest is **detail-only**: `toResponse(...)` defaults `media` to empty for list / create / update /
+  publish (no per-page presign storms, no leak on list).
+- **No** change to the feed LIST (still scoped, no manifest), **no** change to DISTINCT multi-residency
+  scope (`publishedForResidenciesSpec` untouched), **no** loosening of C2.1 presign, **no** upload/delete
+  change. Hibernate null-safe (rows list guarded; presign only on allow).
+
+## Test matrix
+
+**Renderer** (`MarkdownContent.test.tsx`, 12/12):
+| Case | Expectation |
+|---|---|
+| `announcement-media:{validId}` in manifest | `<img>` with presigned src, escaped alt, `loading=lazy`, no on* |
+| placeholder id NOT in manifest | no img |
+| `![](https://evil.com/track.png)` (+manifest) | no live img to that URL |
+| `![](javascript:alert(1))` | no img, no `javascript:` in DOM |
+| raw `<img src=x onerror=…>` | inert escaped text, no img, no `[onerror]` element |
+| `[x](announcement-media:id)` link | no live `announcement-media:` href |
+| C1 cases (script/js/data link, bold/italic/list/link, `\n`→`<br>`) | unchanged, green |
+
+**Backend** (`AnnouncementDetailMediaManifestTest`, 4/4, real DB, mocked presign):
+| Case | Expectation |
+|---|---|
+| RESIDENT in scope, published + cover&inline | manifest size 2, each url presigned for its key, both kinds present |
+| RESIDENT out of scope (block B) | manifest empty; `presign` never called |
+| ADMIN on DRAFT | manifest present (authoring preview) |
+| published, no media | manifest empty |
+
+Untouched & green: C1 renderer tests, `AnnouncementMediaPresignAccessTest` (6), `AnnouncementMediaServiceIntegrationTest` (12), `AnnouncementControllerTest` (10), `AnnouncementServiceImplTest` (18), `AnnouncementRecipientConsistencyTest` (4). Module 54/54; full suite **416/416**.
+
+## Accepted limitation
+
+Presigned URLs are minted fresh per detail request (10-min expiry). A page left open >10 min may show a
+broken image — **accepted, no refresh mechanism** (CTO ruling).
+
+## /code-review
+
+Focused review (zero `dangerouslySetInnerHTML`, img only for internal resolved media, no arbitrary src,
+C1 protections intact, manifest C2.1-gated & detail-only): **PASS WITH NOTES — 0 Must-fix**. Confirmed no
+`dangerouslySetInnerHTML`/`rehype-raw`; img gate correct; `announcement-media:` stripped on links;
+single-row C2.1 gate sound; out-of-scope → empty manifest, no 500, no leak; manifest detail-only.
+LOW note (cover banner `src` unvalidated — server-minted, not a live vuln) **APPLIED**: banner now asserts
+an `http(s)` scheme before binding `src`. Optional Javadoc note left as-is (method already documents the
+single-row-share-scope rationale).
+
+## No-go confirmed
+
+No admin upload widget, no image-insert UI, no authoring-page move (all C2.3b). To exercise rendering,
+seed a draft (admin-visible) or a published in-scope announcement with cover/inline placeholders + media
+rows directly.
+
+## Commit groups (separate)
+
+1. `feat(ui)` — shared renderer safe-img + manifest resolution + 7 renderer tests.
+2. `feat(be)` — manifest on detail response (`AnnouncementResponse.MediaRef`, `buildMediaManifest`) + 4 tests.
+3. `feat(resident)` — detail cover banner + inline render + `AnnouncementItem.media`.
+4. `docs(api)` — API-SPEC detail manifest + DECISIONS (safe-img rule, placeholder convention, fresh-presign limitation).
+5. `docs(context)` — PROGRESS + this report.

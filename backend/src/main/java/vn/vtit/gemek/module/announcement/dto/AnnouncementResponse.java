@@ -7,10 +7,12 @@ package vn.vtit.gemek.module.announcement.dto;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Builder;
 import lombok.Getter;
+import vn.vtit.gemek.module.announcement.entity.AnnouncementMediaKind;
 import vn.vtit.gemek.module.announcement.entity.AnnouncementScope;
 import vn.vtit.gemek.module.announcement.entity.AnnouncementType;
 
 import java.time.OffsetDateTime;
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -85,9 +87,35 @@ public class AnnouncementResponse {
     @JsonProperty("isRead")
     private final boolean isRead;
 
+    /**
+     * Media manifest for rendering: each entry maps a media row id to a FRESH presigned GET URL
+     * (minted per request through the C2.1 scope gate). Populated ONLY on the detail response and
+     * ONLY for media the caller may access; {@code null}/empty elsewhere (list/create/update/publish).
+     * The resident renderer resolves {@code announcement-media:{id}} placeholders against these
+     * entries and renders the COVER entry as a banner.
+     */
+    private final List<MediaRef> media;
+
     // =========================================================================
     // Nested reference types
     // =========================================================================
+
+    /**
+     * One media manifest entry — a media row id paired with a short-lived presigned URL.
+     */
+    @Getter
+    @Builder
+    public static class MediaRef {
+
+        /** Media row id — the {@code {id}} in an {@code announcement-media:{id}} placeholder. */
+        private final UUID id;
+
+        /** COVER (rendered as a banner) or INLINE (resolved inside the Markdown body). */
+        private final AnnouncementMediaKind kind;
+
+        /** Fresh presigned GET URL (short-lived); never a raw object key or long-lived URL. */
+        private final String url;
+    }
 
     /**
      * Minimal block reference embedded in {@link AnnouncementResponse}.

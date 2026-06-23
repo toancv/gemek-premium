@@ -252,7 +252,44 @@ public class AnnouncementServiceImpl implements AnnouncementService {
 
         // Single-row detail — one exists() check is the batched query's degenerate case.
         boolean isRead = announcementReadRepository.existsByAnnouncementIdAndUserId(id, principalId);
-        return toResponse(announcement, isRead);
+        // Detail-only: attach a media manifest with FRESH presigned URLs, gated by the C2.1 scope
+        // check so an out-of-scope resident gets the text but no media URLs (no leak).
+        List<AnnouncementResponse.MediaRef> manifest = buildMediaManifest(announcement, principalId, role);
+        return toResponse(announcement, isRead, resolveCreatorNames(List.of(announcement)), manifest);
+    }
+
+    /**
+     * Builds the detail media manifest for an announcement: each row mapped to a FRESH presigned GET
+     * URL, minted only when the caller may access the media. Access reuses the C2.1 presign gate
+     * ({@link #assertMediaPresignAccess}) verbatim — checked ONCE because every row of one announcement
+     * shares the same access decision (same announcement id). An out-of-scope resident (or any denied
+     * role) gets an empty manifest, never a leaked URL; a published announcement with no media is empty.
+     *
+     * @param announcement the announcement being detailed.
+     * @param principalId  the caller's UUID.
+     * @param role         the caller's role string.
+     * @return the manifest (possibly empty), never null.
+     */
+    private List<AnnouncementResponse.MediaRef> buildMediaManifest(Announcement announcement,
+                                                                   UUID principalId, String role) {
+        List<AnnouncementMedia> rows =
+                mediaRepository.findByAnnouncementIdOrderByCreatedAtAsc(announcement.getId());
+        if (rows.isEmpty()) {
+            return List.of();
+        }
+        // Gate once via the C2.1 presign access rule; denial → empty manifest (no leak), not a 500.
+        try {
+            assertMediaPresignAccess(rows.get(0).getObjectKey(), principalId, role);
+        } catch (AppException denied) {
+            return List.of();
+        }
+        return rows.stream()
+                .map(m -> AnnouncementResponse.MediaRef.builder()
+                        .id(m.getId())
+                        .kind(m.getKind())
+                        .url(fileStorageService.presign(m.getObjectKey()))
+                        .build())
+                .collect(Collectors.toList());
     }
 
     /**
@@ -933,6 +970,24 @@ public class AnnouncementServiceImpl implements AnnouncementService {
      */
     private AnnouncementResponse toResponse(Announcement announcement, boolean isRead,
                                             Map<UUID, String> creatorNames) {
+        // List/mutation paths carry no media manifest — only the detail path mints presigned URLs.
+        return toResponse(announcement, isRead, creatorNames, List.of());
+    }
+
+    /**
+     * Maps an {@link Announcement} entity to an {@link AnnouncementResponse} DTO, including the media
+     * manifest. Only the detail path passes a non-empty {@code media} list (presigned per request);
+     * all other callers pass an empty list.
+     *
+     * @param announcement the entity to map.
+     * @param isRead       whether the requesting user has read this announcement.
+     * @param creatorNames id&rarr;fullName map covering the createdBy UUIDs being mapped.
+     * @param media        the media manifest (empty for list/mutation responses).
+     * @return the response DTO.
+     */
+    private AnnouncementResponse toResponse(Announcement announcement, boolean isRead,
+                                            Map<UUID, String> creatorNames,
+                                            List<AnnouncementResponse.MediaRef> media) {
         AnnouncementResponse.BlockRef blockRef = null;
         if (announcement.getTargetBlock() != null) {
             Block block = announcement.getTargetBlock();
@@ -969,6 +1024,7 @@ public class AnnouncementServiceImpl implements AnnouncementService {
                 .createdAt(announcement.getCreatedAt())
                 .readByCount(readByCount)
                 .isRead(isRead)
+                .media(media)
                 .build();
     }
 }

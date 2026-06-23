@@ -77,7 +77,10 @@ export const useCreateUser = () => {
   return useMutation({
     mutationFn: (data: unknown) => post('/users', data),
     meta: { skipErrorToast: true, successMessage: 'Đã tạo tài khoản.' },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['users'] }),
+    // refetchType:'all' so an INACTIVE users list (Account tab not currently mounted) is refetched
+    // too, not just marked stale — fixes the stale-status-until-F5 bug. See
+    // reports/stale-ui-after-mutation-diagnosis.md.
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['users'], refetchType: 'all' }),
   });
 };
 
@@ -86,7 +89,10 @@ export const useUpdateUser = () => {
   return useMutation({
     mutationFn: ({ id, data }: { id: string; data: unknown }) => put(`/users/${id}`, data),
     meta: { skipErrorToast: true, successMessage: 'Đã cập nhật tài khoản.' },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['users'] }),
+    // refetchType:'all' so an INACTIVE users list (Account tab not currently mounted) is refetched
+    // too, not just marked stale — fixes the stale-status-until-F5 bug. See
+    // reports/stale-ui-after-mutation-diagnosis.md.
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['users'], refetchType: 'all' }),
   });
 };
 
@@ -95,7 +101,10 @@ export const useDeactivateUser = () => {
   return useMutation({
     mutationFn: (id: string) => del(`/users/${id}`),
     meta: { skipErrorToast: true, successMessage: 'Đã vô hiệu hóa tài khoản.' },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['users'] }),
+    // refetchType:'all' so an INACTIVE users list (Account tab not currently mounted) is refetched
+    // too, not just marked stale — fixes the stale-status-until-F5 bug. See
+    // reports/stale-ui-after-mutation-diagnosis.md.
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['users'], refetchType: 'all' }),
   });
 };
 

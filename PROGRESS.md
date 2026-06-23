@@ -1,6 +1,30 @@
 # PROGRESS — Apartment Management System
 
-## ⏸ OPEN INVESTIGATION — stale-UI-after-mutation (2 bugs) — awaiting CTO ruling (2026-06-23)
+## ⏸ FIXED (pending CTO Network-tab smoke) — stale-UI-after-mutation (2 bugs) (2026-06-23)
+
+**FIX APPLIED (CTO ruling Option 1 — `refetchType:'all'`).** Root cause: `invalidateQueries` default
+`refetchType:'active'` left INACTIVE matching queries marked stale but unrefetched; global `staleTime:30s`
+suppressed the remount refetch → stale until F5. Fix = add `refetchType:'all'` to the invalidating hooks:
+- **admin** `src/api/hooks.ts` — the 3 mutations that invalidate the `['users']` list: `useDeactivateUser`
+  (the reported bug) + `useUpdateUser` (activate/role/isActive) + `useCreateUser` (siblings, same clean prefix,
+  same stale-on-return risk). Commit `4ce4697`.
+- **resident** `src/api/hooks.ts` — `useCreateTicket` (`['tickets']`, covers the inactive HomePage count). No
+  resident siblings needed (follow/unfollow/rate target `['tickets',id]` detail, don't change the count).
+  Commit `fd6878a`.
+No global QueryClient / list-query option changes (per ruling). Prefix audited clean both sides (no heavy
+unrelated query under `['users']`/`['tickets']`). admin `pnpm build` 590 modules + resident 584, both tsc-green;
+backend suite unaffected (FE-only). `/code-review`: **no findings** (syntax valid, scope = exactly the 4 sites,
+no over-refetch). No FE hook-test infra exists → relying on CTO Network-tab smoke.
+
+**Resume pointer:** awaiting CTO smoke (Network tab: deactivate a user → return to Account shows updated status
+without F5; resident submits a phản ánh → HomePage active-tickets count increments without F5). Then back to
+**residency-lifecycle tail items** (DECISIONS open-items): amenity real attribution rule `[PLANNED]`
+(primary-or-latest temporary); move-out admin UI item (d) already PRESENT; deprecated `findActiveByUserId`
+cleanup pending (no callers).
+
+---
+
+### Diagnosis trail (pre-fix, retained)
 
 Read-only diagnosis done, NO fix applied. Report: `reports/stale-ui-after-mutation-diagnosis.md`.
 **Key finding (divergence from the bug framing):** both mutations DO invalidate with prefix-matching keys

@@ -259,4 +259,27 @@ same root cause and the same fix shape, applied per app. **Recommended:** option
 two invalidating hooks) — minimal, matches the precise per-hook invalidation pattern, and fixes both the active
 and inactive cases without changing global fetch frequency.
 
-No code, migration, test, or API-SPEC changes made. Awaiting CTO ruling.
+No code, migration, test, or API-SPEC changes made (at diagnosis time). Fix applied below per CTO ruling.
+
+---
+
+## FIX APPLIED (2026-06-23) — CTO ruling: Option 1 (`refetchType:'all'`)
+
+Closing the investigation. CTO ruled Option 1 (per-hook `refetchType:'all'`; no global QueryClient or
+list-query option changes). Applied:
+- **admin** `frontend/apps/admin/src/api/hooks.ts` — added `refetchType:'all'` to the three mutations that
+  invalidate the `['users']` list: `useDeactivateUser` (reported Bug 1), and siblings `useUpdateUser`
+  (activate/role/isActive change) + `useCreateUser` (same clean `['users']` prefix, same stale-on-return risk).
+  Commit `4ce4697`.
+- **resident** `frontend/apps/resident/src/api/hooks.ts` — added `refetchType:'all'` to `useCreateTicket`
+  (`['tickets']`, covers the inactive HomePage count, Bug 2). No siblings changed: follow/unfollow/rate
+  invalidate only `['tickets',id]` (detail, active surface) and do not affect the active-tickets count.
+  Commit `fd6878a`.
+
+Prefix audit (pre-edit, both clean — no heavy/unrelated query force-refetched): `['users']` → only `useUsers`
+(the list); `['tickets']` → `useMyTickets` (list+count) + `useTicket` (detail). Builds: admin 590 modules,
+resident 584, both tsc-green. `/code-review` (cavecrew-reviewer over the diff): **no findings** — option
+placement valid for react-query 5.56.2, replace scope = exactly the 4 intended sites, all other
+`invalidateQueries` untouched. No FE hook-test infra exists, so no automated assertion was added; verification is
+the CTO Network-tab smoke (deactivate → Account status updates without F5; create phản ánh → count increments
+without F5). **Status: FIXED, pending CTO smoke.**

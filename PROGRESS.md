@@ -1,5 +1,26 @@
 # PROGRESS — Apartment Management System
 
+## ⏸ INVESTIGATION — announcements ("Tin tức") rich-content design — awaiting CTO ruling (2026-06-23)
+
+Read-only, NO code changed. Report: `reports/announcements-rich-content-investigation.md` (sections A–E +
+open questions). **Current state:** content stored as unbounded **TEXT plain string** (`Announcement.java:57-59`,
+`V7:12-36`), no format/sanitization on write (`CreateAnnouncementRequest @NotBlank` only). **Editable after
+publish? NO** — published immutable (`AnnouncementServiceImpl:260-263`); drafts only → no re-notify problem.
+**Author = ADMIN-only** (`AnnouncementController:111/161`). **Resident render = SAFE plain text** (no XSS surface
+today): `AnnouncementDetailPage.tsx:41` `{announcement.content}` React text-node (auto-escaped, `whitespace-pre-line`);
+zero `dangerouslySetInnerHTML`; admin authoring = plain `<textarea>` (`admin/AnnouncementsPage.tsx:142`).
+Multi-residency feed (P1 DISTINCT, per-active-apartment) intact (`AnnouncementServiceImpl:104-135`, `query.distinct(true)`).
+**Media infra = GENERIC + reusable** (MinIO object-key + `FileStorageService.presign` 10-min expiry `:40`;
+`enforcePhotoAccess` per-context `TicketServiceImpl:901-919`); `ANNOUNCEMENT_KEY_PREFIX` reserved but presign gate
+is an **any-authenticated STUB** (⚠️ must become scope-mirroring before shipping media). Net-new for announcements:
+`announcement_media` table + ADMIN upload endpoint + scoped presign + DTO. **Sanitization/markdown libs: NONE**
+present (BE: only Tika for MIME; FE: no dompurify/marked/react-markdown). Open questions for CTO: format
+(markdown-sanitized / sanitized-HTML / JSON-blocks), sanitize-on-write vs render, media access-scope rule, edit/
+orphan handling, cluster split (C1 rich-text+XSS-safe / C2 images / C3 attachments). Awaiting CTO ruling before
+any cluster is coded.
+
+---
+
 ## ✅ CLOSED — test-suite / dev-DB-pollution RESOLVED (repeat + reorder stable) — standing issue closed per CTO (2026-06-23)
 
 Report: `reports/test-suite-pollution-verification.md` (raw: `reports/p-run{1,2,3}.raw.txt`). Re-verified at the

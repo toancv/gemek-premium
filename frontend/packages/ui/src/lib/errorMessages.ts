@@ -41,6 +41,10 @@ const ERROR_MESSAGES: Record<string, string> = {
   TICKET_ALREADY_RATED: 'Yêu cầu này đã được đánh giá.',
   RESIDENT_ALREADY_MOVED_OUT: 'Cư dân này đã rời khỏi căn hộ.',
 
+  // Place-resident (move-in / return / multi-residency)
+  ALREADY_ACTIVE_IN_APARTMENT: 'Cư dân này đang ở căn hộ này rồi.',
+  REUSE_CONFIRMATION_REQUIRED: 'Số điện thoại đã thuộc về một cư dân khác — vui lòng xác nhận dùng lại hồ sơ.',
+
   // Password change
   WRONG_CURRENT_PASSWORD: 'Mật khẩu hiện tại không đúng.',
   PASSWORD_POLICY_VIOLATION: 'Mật khẩu mới phải có tối thiểu 8 ký tự, gồm chữ hoa, chữ thường, số và ký tự đặc biệt.',

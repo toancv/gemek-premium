@@ -550,28 +550,79 @@ Response `200 OK` — paginated list of resident objects. Each resident includes
 
 ---
 
+### GET /api/residents/lookup
+
+**Auth:** ADMIN
+**Description:** Step 1 of the place-resident flow. Resolves a phone (and optional target apartment) to a
+branch status plus the minimum info for an admin to recognize the person. Read-only. The server still
+re-resolves the phone at place-time and never trusts this lookup. PII discipline: returns ONLY the display
+name + active-apartment identifiers — never phone, email, date of birth, password, or audit fields.
+
+Query params: `phone` (required — any VN mobile format, normalized server-side), `apartmentId`
+(optional — when supplied, enables the `ALREADY_HERE` status).
+
+Response `200 OK`:
+```json
+{
+  "status": "NEW | ACTIVE_ELSEWHERE | MOVED_OUT | ALREADY_HERE",
+  "displayName": "string|null (null only for NEW)",
+  "activeApartments": [ { "id": "uuid", "unitNumber": "A301", "blockName": "Block A" } ]
+}
+```
+Status meaning:
+- `NEW` — phone not found; placing will provision a new user + residency.
+- `ACTIVE_ELSEWHERE` — user exists with ≥1 active residency (in other apartment(s)); `activeApartments` lists them.
+- `MOVED_OUT` — user exists but has no active residency (moved out / disabled); `activeApartments` is `[]`.
+- `ALREADY_HERE` — (only when `apartmentId` supplied) user already actively resides in that apartment.
+
+Errors: `400 VALIDATION_ERROR` (malformed phone).
+
+---
+
 ### POST /api/residents
 
 **Auth:** ADMIN
-**Description:** Create a new user account and resident record in one atomic transaction.
-The `userId` field has been removed — the user is provisioned here, not pre-created separately.
-Phone is the login identifier and is normalized server-side (see POST /api/auth/login for accepted formats).
+**Description:** Place a resident into an apartment. The server branches on `phone` (the login identifier,
+normalized server-side — see POST /api/auth/login for formats): an unused phone provisions a new user +
+residency atomically; a phone that already belongs to an existing user REUSES that user (adding a residency,
+reactivating a disabled account) once `confirmReuse=true`. This supports move-in, return, and concurrent
+multi-residency. The server self-resolves the phone — no client-supplied `userId` is accepted (IDOR-safe);
+on reuse, identity (name, dob, etc.) is taken from the existing user and is NEVER overwritten by request
+values. Reactivation re-enables the account only (`is_active = true`) — role and password are untouched (a
+returning user logs in with their old credentials).
 
 Request:
 ```json
 {
-  "fullName": "Nguyen Van A",
-  "phone": "0901234567 (required — any VN mobile format, normalized server-side)",
-  "dateOfBirth": "1990-01-15 (required)",
-  "email": "vana@example.com (optional — unique when provided)",
-  "password": "plaintext — BCrypt-hashed server-side (required)",
+  "phone": "0901234567 (required — any VN mobile format, normalized server-side; the branch key)",
   "apartmentId": "uuid (required)",
   "type": "OWNER|TENANT (required)",
   "moveInDate": "2024-01-01 (required)",
+  "confirmReuse": false,
   "isPrimaryContact": false,
-  "notes": "string|null"
+  "notes": "string|null",
+
+  "fullName": "Nguyen Van A (required for the NEW branch only; ignored on reuse)",
+  "dateOfBirth": "1990-01-15 (required for the NEW branch only; ignored on reuse)",
+  "password": "plaintext — BCrypt-hashed (required for the NEW branch only; ignored on reuse)",
+  "email": "vana@example.com (optional, NEW branch only — unique when provided; ignored on reuse)"
 }
 ```
+> **Conditional fields:** `fullName`, `dateOfBirth`, `password` carry no bean-validation constraints; the
+> service requires them (and enforces password complexity) only when the phone is new. The reuse branch
+> ignores all identity fields.
+
+Branch behavior:
+- **NEW** (phone not found) → create user + residency. `201 Created` with the resident body below.
+- **REUSE, not yet confirmed** (phone matches an existing user not active in the target apartment,
+  `confirmReuse` omitted/false) → `409 REUSE_CONFIRMATION_REQUIRED`, nothing created. The body is the
+  standard error shape PLUS a `matched` object (same shape as `GET /residents/lookup`) so the frontend can
+  show a confirm popup, then re-submit with `confirmReuse: true`.
+- **REUSE, confirmed** (`confirmReuse: true`) → reuse the existing user; reactivate (enabled-only) if
+  disabled; add a new residency. `201 Created`. Adding a residency in a DIFFERENT apartment yields concurrent
+  multi-residency (both active).
+- **Already here** (existing user already active in the TARGET apartment) → `409
+  ALREADY_ACTIVE_IN_APARTMENT` ("Cư dân này đang ở căn hộ này rồi."), nothing created.
 
 Response `201 Created`:
 ```json
@@ -587,7 +638,26 @@ Response `201 Created`:
 }
 ```
 
-Errors: `409 PHONE_ALREADY_EXISTS` (phone already registered), `409 CONFLICT` (email already registered), `404 NOT_FOUND` (apartment not found), `400 VALIDATION_ERROR`
+`409 REUSE_CONFIRMATION_REQUIRED` body:
+```json
+{
+  "error": "REUSE_CONFIRMATION_REQUIRED",
+  "message": "string",
+  "matched": { "status": "ACTIVE_ELSEWHERE|MOVED_OUT", "displayName": "string", "activeApartments": [ ... ] },
+  "timestamp": "ISO8601",
+  "path": "/api/residents"
+}
+```
+
+Errors: `409 REUSE_CONFIRMATION_REQUIRED` (existing phone, reuse not confirmed — carries `matched`),
+`409 ALREADY_ACTIVE_IN_APARTMENT` (existing user already active in the target apartment),
+`409 EMAIL_ALREADY_EXISTS` (NEW branch, email already registered), `404 NOT_FOUND` (apartment not found),
+`400 VALIDATION_ERROR` (malformed phone, or NEW branch missing fullName/password/dateOfBirth or weak password).
+
+> **Contract change (residency-lifecycle P3, 2026-06-23):** the old `409 PHONE_ALREADY_EXISTS` hard block was
+> REMOVED — an existing phone now drives the reuse branch (move-in / return / add-concurrent) instead of being
+> rejected. New field `confirmReuse`; new statuses/errors `REUSE_CONFIRMATION_REQUIRED` and
+> `ALREADY_ACTIVE_IN_APARTMENT`. Identity fields became NEW-branch-only.
 
 ---
 

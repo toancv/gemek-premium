@@ -19,6 +19,7 @@ import vn.vtit.gemek.common.exception.AppException;
 import vn.vtit.gemek.common.exception.ErrorCode;
 import vn.vtit.gemek.common.model.PageResponse;
 import vn.vtit.gemek.common.storage.FileStorageService;
+import vn.vtit.gemek.module.announcement.AnnouncementService;
 import vn.vtit.gemek.module.apartment.entity.Apartment;
 import vn.vtit.gemek.module.apartment.entity.Block;
 import vn.vtit.gemek.module.apartment.repository.ApartmentRepository;
@@ -67,6 +68,7 @@ class TicketServiceImplTest {
     @Mock private NotificationService notificationService;
     @Mock private NotificationRepository notificationRepository;
     @Mock private SubscriptionService subscriptionService;
+    @Mock private AnnouncementService announcementService;
 
     private TicketServiceImpl service;
 
@@ -81,7 +83,7 @@ class TicketServiceImplTest {
                 ticketRepository, photoRepository, historyRepository,
                 apartmentRepository, userRepository, residentRepository,
                 contractorRepository, fileStorageService, notificationService,
-                notificationRepository, subscriptionService);
+                notificationRepository, subscriptionService, announcementService);
 
         ticketId = UUID.randomUUID();
         Block block = new Block();

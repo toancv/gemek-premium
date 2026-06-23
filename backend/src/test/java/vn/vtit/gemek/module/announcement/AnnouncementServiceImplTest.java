@@ -341,4 +341,107 @@ class AnnouncementServiceImplTest {
         a.setCreatedBy(creatorId);
         return a;
     }
+
+    // =========================================================================
+    // assertMediaPresignAccess — C2.1 scope-mirroring presign gate (security)
+    // =========================================================================
+
+    /**
+     * Builds a media object key following the C2.1 convention announcements/{id}/{file}.
+     *
+     * @param announcementId the owning announcement id.
+     * @return a well-formed media object key.
+     */
+    private static String mediaKey(UUID announcementId) {
+        return "announcements/" + announcementId + "/" + UUID.randomUUID() + ".jpg";
+    }
+
+    @Test
+    @DisplayName("assertMediaPresignAccess — RESIDENT in announcement scope is ALLOWED")
+    void assertMediaPresignAccess_residentInScope_allows() {
+        when(announcementRepository.existsReadableByResident(announcementId, principalId))
+                .thenReturn(true);
+
+        // No throw == allowed; the parsed id is forwarded verbatim to the scope query.
+        service.assertMediaPresignAccess(mediaKey(announcementId), principalId, "RESIDENT");
+
+        verify(announcementRepository).existsReadableByResident(announcementId, principalId);
+    }
+
+    @Test
+    @DisplayName("assertMediaPresignAccess — RESIDENT out of scope is DENIED (FORBIDDEN)")
+    void assertMediaPresignAccess_residentOutOfScope_denies() {
+        when(announcementRepository.existsReadableByResident(announcementId, principalId))
+                .thenReturn(false);
+
+        assertThatThrownBy(() ->
+                service.assertMediaPresignAccess(mediaKey(announcementId), principalId, "RESIDENT"))
+                .isInstanceOf(AppException.class)
+                .satisfies(ex -> assertThat(((AppException) ex).getErrorCode())
+                        .isEqualTo(ErrorCode.FORBIDDEN));
+    }
+
+    @Test
+    @DisplayName("assertMediaPresignAccess — RESIDENT on draft/nonexistent (query=false) is DENIED")
+    void assertMediaPresignAccess_residentDraftOrMissing_denies() {
+        // The published-only + existence gate lives in the JPQL: a draft or a nonexistent id
+        // both surface here as existsReadableByResident == false → deny. No 500.
+        when(announcementRepository.existsReadableByResident(any(UUID.class), any(UUID.class)))
+                .thenReturn(false);
+
+        assertThatThrownBy(() ->
+                service.assertMediaPresignAccess(mediaKey(UUID.randomUUID()), principalId, "RESIDENT"))
+                .isInstanceOf(AppException.class)
+                .satisfies(ex -> assertThat(((AppException) ex).getErrorCode())
+                        .isEqualTo(ErrorCode.FORBIDDEN));
+    }
+
+    @Test
+    @DisplayName("assertMediaPresignAccess — ADMIN is unrestricted (no scope query)")
+    void assertMediaPresignAccess_admin_allowsWithoutQuery() {
+        service.assertMediaPresignAccess(mediaKey(announcementId), principalId, "ADMIN");
+
+        verify(announcementRepository, never()).existsReadableByResident(any(), any());
+    }
+
+    @Test
+    @DisplayName("assertMediaPresignAccess — BOARD_MEMBER is unrestricted (no scope query)")
+    void assertMediaPresignAccess_boardMember_allowsWithoutQuery() {
+        service.assertMediaPresignAccess(mediaKey(announcementId), principalId, "BOARD_MEMBER");
+
+        verify(announcementRepository, never()).existsReadableByResident(any(), any());
+    }
+
+    @Test
+    @DisplayName("assertMediaPresignAccess — TECHNICIAN (no announcement audience) is DENIED")
+    void assertMediaPresignAccess_technician_denies() {
+        assertThatThrownBy(() ->
+                service.assertMediaPresignAccess(mediaKey(announcementId), principalId, "TECHNICIAN"))
+                .isInstanceOf(AppException.class)
+                .satisfies(ex -> assertThat(((AppException) ex).getErrorCode())
+                        .isEqualTo(ErrorCode.FORBIDDEN));
+        verify(announcementRepository, never()).existsReadableByResident(any(), any());
+    }
+
+    @Test
+    @DisplayName("assertMediaPresignAccess — malformed key (no id segment) is DENIED, no 500")
+    void assertMediaPresignAccess_malformedNoSegment_denies() {
+        // "announcements/x" has no <id>/<file> shape → deny before any role/query work.
+        assertThatThrownBy(() ->
+                service.assertMediaPresignAccess("announcements/loose-file.jpg", principalId, "RESIDENT"))
+                .isInstanceOf(AppException.class)
+                .satisfies(ex -> assertThat(((AppException) ex).getErrorCode())
+                        .isEqualTo(ErrorCode.FORBIDDEN));
+        verify(announcementRepository, never()).existsReadableByResident(any(), any());
+    }
+
+    @Test
+    @DisplayName("assertMediaPresignAccess — malformed key (non-UUID id) is DENIED, no 500")
+    void assertMediaPresignAccess_malformedBadUuid_denies() {
+        assertThatThrownBy(() ->
+                service.assertMediaPresignAccess("announcements/not-a-uuid/file.jpg", principalId, "ADMIN"))
+                .isInstanceOf(AppException.class)
+                .satisfies(ex -> assertThat(((AppException) ex).getErrorCode())
+                        .isEqualTo(ErrorCode.FORBIDDEN));
+    }
 }

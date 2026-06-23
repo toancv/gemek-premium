@@ -32,11 +32,14 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 /**
  * Hardening H2 — prefix-routed presign access (API-SPEC §13 access matrix, ruling E3).
  *
- * <p>Covers: {@code announcements/} keys presignable by ANY authenticated role
- * (broadcast content), unauthenticated request rejected with 401 by the security
- * filter, unknown prefixes denied 403 by default. The {@code tickets/} branch is
- * regression-guarded by {@code TicketPublicAccessTest} (household/staff rule,
- * presign-denied heart-pair) — only the 404-on-unknown-key path is re-asserted here.
+ * <p>Covers: {@code announcements/} keys routed to the C2.1 scope-mirroring gate
+ * (ADMIN/BOARD unrestricted, outsider RESIDENT/TECHNICIAN denied, legacy id-less key
+ * malformed → denied), unauthenticated request rejected with 401 by the security
+ * filter, unknown prefixes denied 403 by default. Deep scope/draft semantics live in
+ * {@code AnnouncementMediaPresignAccessTest}; this class only guards the dispatch routing.
+ * The {@code tickets/} branch is regression-guarded by {@code TicketPublicAccessTest}
+ * (household/staff rule, presign-denied heart-pair) — only the 404-on-unknown-key path
+ * is re-asserted here.
  *
  * <p>Class-level {@code @Transactional} rolls all fixtures back.
  */
@@ -73,22 +76,38 @@ class PresignPrefixRoutingTest extends AbstractIntegrationTest {
     }
 
     // =========================================================================
-    // announcements/ — any authenticated role may presign (E3)
+    // announcements/ — C2.1 scope-mirroring gate (replaces the any-authenticated stub)
     // =========================================================================
 
     @Test
-    @DisplayName("announcements/ key — outsider resident, technician and admin all pass the access check")
-    void announcementPrefix_allAuthenticatedRoles_pass() {
-        String key = "announcements/" + UUID.randomUUID() + ".jpg";
+    @DisplayName("announcements/ key — ADMIN unrestricted; outsider RESIDENT and TECHNICIAN denied")
+    void announcementPrefix_scopeMirrored_outsiderDenied_adminAllowed() {
+        // Well-formed C2.1 media key: announcements/{announcementId}/{file}. The id is random
+        // (no row) — ADMIN is unrestricted so it still passes the access check; the outsider
+        // resident (NO residency) and the technician (no announcement audience) are denied.
+        String key = "announcements/" + UUID.randomUUID() + "/" + UUID.randomUUID() + ".jpg";
 
-        // The fixture resident has NO residency row at all — the most outsider a
-        // resident can be; the announcement surface must not care.
-        assertThatCode(() -> ticketService.assertPresignAccess(key, resident.getId(), "RESIDENT"))
-                .doesNotThrowAnyException();
-        assertThatCode(() -> ticketService.assertPresignAccess(key, technician.getId(), "TECHNICIAN"))
-                .doesNotThrowAnyException();
         assertThatCode(() -> ticketService.assertPresignAccess(key, admin.getId(), "ADMIN"))
                 .doesNotThrowAnyException();
+        assertThatThrownBy(() -> ticketService.assertPresignAccess(key, resident.getId(), "RESIDENT"))
+                .isInstanceOf(AppException.class)
+                .extracting(e -> ((AppException) e).getErrorCode())
+                .isEqualTo(ErrorCode.FORBIDDEN);
+        assertThatThrownBy(() -> ticketService.assertPresignAccess(key, technician.getId(), "TECHNICIAN"))
+                .isInstanceOf(AppException.class)
+                .extracting(e -> ((AppException) e).getErrorCode())
+                .isEqualTo(ErrorCode.FORBIDDEN);
+    }
+
+    @Test
+    @DisplayName("announcements/ legacy id-less key — malformed, denied even for ADMIN (no 500)")
+    void announcementPrefix_legacyKeyWithoutId_isForbidden() {
+        // The pre-C2.1 shape announcements/{uuid}.jpg has no {announcementId} segment → malformed → deny.
+        String legacyKey = "announcements/" + UUID.randomUUID() + ".jpg";
+        assertThatThrownBy(() -> ticketService.assertPresignAccess(legacyKey, admin.getId(), "ADMIN"))
+                .isInstanceOf(AppException.class)
+                .extracting(e -> ((AppException) e).getErrorCode())
+                .isEqualTo(ErrorCode.FORBIDDEN);
     }
 
     @Test

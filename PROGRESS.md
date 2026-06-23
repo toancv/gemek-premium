@@ -1,6 +1,39 @@
 # PROGRESS — Apartment Management System
 
-## ⏸ P1 DONE — awaiting CTO smoke; next P2 (index relax) — Residency-lifecycle (P0+P1 DONE 2026-06-22)
+## ⏸ P2 DONE — concurrent multi-residency ENABLED at the DB level — awaiting CTO smoke (2026-06-23)
+
+**P2 (index relax) DONE.** `uq_residents_active_user` relaxed from single-active-per-user to
+active-per-`(user, apartment)`. **Migration `V20__relax_uq_residents_active_user_per_apartment.sql`**
+(index-only: `DROP INDEX` + `CREATE UNIQUE INDEX ... ON residents (user_id, apartment_id) WHERE
+move_out_date IS NULL`, same name; NO data DML). Pre-flight dup-pair check on dev `gemek` = **empty** →
+built without violation. Before → after live index def:
+`(user_id) WHERE move_out_date IS NULL` → `(user_id, apartment_id) WHERE move_out_date IS NULL`.
+Applied to dev `gemek` via the normal pipeline (`docker compose up -d --build backend` → Spring Flyway
+migrate; `flyway_schema_history` V20 success=`t`; no `flyway clean`). DB-SCHEMA.sql + `Resident.java`
+entity javadoc updated (single-active → per-(user,apartment)).
+
+**Multi-residency now REAL (proven):** `MultiResidencyIntegrationTest` (gemek_test, `@Transactional`) —
+2 active residencies in 2 different apartments persist via the real repository (the INSERT that
+previously violated the index now succeeds); SAME (user, apartment) pair still rejected
+(`DataIntegrityViolationException`, Postgres 23505); `/residents/me` returns both; ticket per-context
+allows each resided apartment + denies a third (403) + household list shows both; announcement feed
+no-duplicate; amenity primary-or-latest no-throw. **5/5 green; full backend suite 371/371 green
+(0 fail / 0 err, 54 classes; 366 P1 baseline + 5).** `/code-review`: **APPROVED, no Must-fix**
+(the `DROP INDEX IF EXISTS` nit deliberately NOT applied — V20 already ran, editing breaks its Flyway
+checksum; safe because V4 always creates the index first). **Amenity attribution still `[PLANNED]`**
+(primary-or-latest temporary; real rule pending CTO).
+
+**Report:** `reports/p2-index-relax.md`. Raw suite: `reports/p2-suite.raw.txt`. DECISIONS: "Residency
+lifecycle — P2 index relax (AS APPLIED)".
+
+**Resume pointer:** awaiting CTO smoke of **P2 (multi-residency live)**; then **P3 — move-in/return flow**
+(reuse-by-phone: existing user → REUSE + new `residents` row + reactivate disabled account + append
+`resident_history`). Authoritative plan: `DECISIONS.md` phased plan + the P2 as-applied entry. Do NOT
+start P3 until CTO smokes P2.
+
+---
+
+## ✅ P1 DONE (superseded by P2 above) — Residency-lifecycle findActiveByUserId sweep (2026-06-22)
 
 **P1 (findActiveByUserId sweep) DONE** — every consumer of the singular `Optional`-returning
 `findActiveByUserId` was made multi-residency-safe WHILE the index still enforces single-active, so P2 can

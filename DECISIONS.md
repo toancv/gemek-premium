@@ -1018,6 +1018,49 @@ P1 scope). TDD RED→GREEN demonstrated (announcement no-duplicate proof against
 
 ---
 
+### 2026-06-23 | Residency lifecycle — P2 index relax (AS APPLIED)
+
+**See:** the CTO ruling + P1 as-implemented entries above; `reports/p2-index-relax.md`. **Status:** P2 DONE,
+awaiting CTO smoke. Concurrent multi-residency is now ENABLED at the DB level.
+
+**What:** the partial unique index `uq_residents_active_user` was relaxed from **`(user_id)`** to
+**`(user_id, apartment_id)`** (both `WHERE move_out_date IS NULL`, same index name). Migration
+`V20__relax_uq_residents_active_user_per_apartment.sql` — index-only (`DROP INDEX` + `CREATE UNIQUE INDEX`),
+**no data DML**, no table/column change. The **single-active-per-user constraint is RETIRED**; the enforced
+invariant is now "at most one ACTIVE residency per (user, apartment) pair" — a user may hold ≥2 active
+`residents` rows in different apartments simultaneously (the CTO-approved concurrent multi-residency target).
+
+**Ordering honored (sweep-before-relax):** P1 made every singular `findActiveByUserId` consumer multi-safe
+FIRST (confirmed in code: no production caller of the singular query remains). Only then was the index
+relaxed, so no path throws `NonUniqueResultException` under 2 active rows. Pre-flight read-only check on dev
+`gemek` confirmed **zero** duplicate active (user, apartment) pairs, so the new unique index built without
+violation (a same-pair duplicate could not pre-exist — the old `(user_id)` index already forbade ALL
+multi-active rows per user).
+
+**Applied:** dev `gemek` via the normal pipeline (`docker compose up -d --build backend` → Spring Boot Flyway
+migrate on boot; `flyway_schema_history` V20 success=`t`). **No `flyway clean`.** Before→after live index def:
+`(user_id) WHERE move_out_date IS NULL` → `(user_id, apartment_id) WHERE move_out_date IS NULL`.
+
+**Proven (integration, real path):** `MultiResidencyIntegrationTest` (gemek_test, `@Transactional`) inserts the
+2nd active row through the real repository (hitting the live index, not bypassing it) → succeeds; same-pair
+duplicate → `DataIntegrityViolationException` (Postgres 23505); then re-exercises the HIGH P1 surfaces under the
+genuine 2-active state (/residents/me both, ticket per-context allow/deny + household both, announcement
+no-duplicate, amenity no-throw). 5/5 green; full suite 371/371 (0 fail/err). `/code-review`: **APPROVED, no
+Must-fix.**
+
+**Decision — `DROP INDEX IF EXISTS` NOT applied (knowing trade-off).** The reviewer suggested guarding the
+`DROP` with `IF EXISTS`. Deliberately declined: V20 had ALREADY been applied to dev `gemek` and is recorded in
+`flyway_schema_history` with a checksum. Editing the migration file now would cause a Flyway checksum mismatch
+and fail the next backend boot / CTO smoke. The flyway rule "never modify a migration that has run in any
+environment" governs. The unguarded `DROP` is safe in the normal pipeline because V4 always creates the index
+first. A future hardening, if ever wanted, must be a NEW migration, not an edit to V20.
+
+**Still open (unchanged):** amenity booking attribution remains `[PLANNED]` (temporary primary-or-latest;
+real "which apartment is a booking charged to" rule pending CTO). **Next: P3** — move-in/return reuse-by-phone
+flow (existing user → REUSE + new `residents` row + reactivate disabled account + append `resident_history`).
+
+---
+
 ### Backlog — Residency lifecycle: move-in / return flow + multi-residency  *(NOT STARTED — needs design session)*
 
 **See:** `2026-06-22 | Residency lifecycle — domain model (CTO-approved)` (above).

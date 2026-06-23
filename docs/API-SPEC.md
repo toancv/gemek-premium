@@ -2027,7 +2027,29 @@ raw HTML tags rejected → `400 ANNOUNCEMENT_CONTENT_HTML_NOT_ALLOWED` (the stor
 
 **Auth:** Any authenticated role (same scoping rules as list)
 
-Response `200 OK` — full announcement detail including full `content` text.
+Response `200 OK` — full announcement detail including full `content` text **plus a `media` manifest**:
+
+```json
+{
+  "id": "uuid",
+  "title": "string",
+  "content": "Markdown with ![alt](announcement-media:<mediaId>) placeholders",
+  "...": "all other summary fields",
+  "media": [
+    { "id": "uuid", "kind": "COVER",  "url": "https://…presigned…" },
+    { "id": "uuid", "kind": "INLINE", "url": "https://…presigned…" }
+  ]
+}
+```
+
+**Media manifest (C2.3a):** `media` lists the announcement's media (cover + inline). Each `url` is a
+**FRESH presigned GET URL minted per request** (10-min expiry) through the C2.1 scope gate — so the
+manifest is non-empty ONLY for media the caller may access (ADMIN/BOARD always; RESIDENT iff the
+announcement is published AND in their active-residency scope). An out-of-scope resident receives the
+detail text but an **empty `media`**, never a leaked URL. `media` is **detail-only** — list / create /
+update / publish responses carry an empty `media`. The renderer resolves `announcement-media:{id}`
+placeholders in `content` to the matching `url`; the `COVER` entry is rendered as a banner, not inline.
+A page left open >10 min may show a broken image (presigned expiry) — accepted, no refresh mechanism.
 
 ---
 

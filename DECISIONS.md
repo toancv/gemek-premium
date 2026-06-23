@@ -5,6 +5,40 @@ Format: Date | Decision | Reasoning | Alternatives
 
 ---
 
+## 2026-06-23 | C2.3a — announcement image render: safe-img rule + placeholder→manifest + fresh-presign limitation
+
+**Decision.** The shared `MarkdownContent` renderer (`@gemek/ui`) re-enables `<img>` but ONLY for the
+internal `announcement-media:{id}` placeholder, resolved against a server-minted **media manifest** prop.
+- **Safe-img rule:** a live `<img>` is emitted ONLY when the markdown image `src` is
+  `announcement-media:{id}` AND that id is present in the manifest; the `src` is then the manifest's
+  presigned URL, never the author's string. Any other src — external URL, neutralised `javascript:`/
+  `data:`, or raw HTML `<img onerror=…>` — renders nothing (or alt text), never a live img. Only safe
+  attributes set (src, escaped alt, `loading="lazy"`); no author-controlled handlers/styles. C1 posture
+  unchanged: no rehype-raw, zero `dangerouslySetInnerHTML`, scheme-filtered links (the internal scheme is
+  passed through the global urlTransform for images but **stripped on links** so an
+  `[x](announcement-media:id)` link is inert). Single shared config — no divergent copy.
+- **Placeholder→manifest:** `GET /api/announcements/{id}` returns `media: [{id, kind, url}]`. The renderer
+  maps `announcement-media:{id}` → manifest `url`; the `COVER` entry is rendered as a **banner** by the
+  page (not inline), inline entries resolve in the body. A placeholder id absent from the manifest
+  (deleted/foreign) renders nothing.
+- **Access:** manifest URLs are minted via the C2.1 `assertMediaPresignAccess` gate (checked once per
+  announcement — all rows share its scope), so an out-of-scope resident gets the text but an empty
+  manifest. No loosening of the C2.1 presign, no upload/delete change.
+
+**Reasoning.** Keeping `<img src>` bound to an id-resolved, server-minted, scope-gated URL closes the SSRF
+/ tracking-pixel / arbitrary-URL surface that a free `<img>` would reopen, while still rendering legitimate
+announcement images. Reusing the C2.1 gate keeps the access rule single-sourced with the feed scope.
+
+**Accepted limitation.** Presigned URLs are minted **fresh per detail request** (10-min expiry, no schema
+URL storage). A detail page left open >10 min may show a broken image; **no refresh mechanism** is built
+(CTO ruling). Acceptable because images load immediately on render.
+
+**Alternatives rejected.** (a) Allow arbitrary external image URLs — rejected (SSRF/leak/tracking, escapes
+the announcement access scope). (b) Embed long-lived URLs / raw object keys in the body or client —
+rejected (leaks the key, no expiry). (c) Build a client-side presign-refresh loop — rejected per CTO.
+
+---
+
 ## 2026-06-23 | Test-suite / dev-DB-pollution standing issue CLOSED; parallel limitation recorded separately
 
 - **CLOSED — dev-DB-pollution RESOLVED.** Re-verified at the current tree (`reports/test-suite-pollution-verification.md`):

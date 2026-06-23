@@ -5,6 +5,17 @@ Format: Date | Decision | Reasoning | Alternatives
 
 ---
 
+## 2026-06-23 | Move-out (item d) confirmed COMPLETE & multi-residency-safe
+
+Move-out is fully implemented and verified (NOT net-new): `POST /api/residents/{id}/move-out` is residency-scoped
+(`{id}` = `residents.id` via `findById`, ends ONE residency not the user), with conditional account deactivation
+only when no other active residency remains, per-row primary-contact clear, a MOVED_OUT `resident_history` event
+(actor = acting admin), and derived occupancy. Admin UI present (`ResidentsPage` per-row "Kết thúc cư trú" + confirm
+dialog) and lists per-residency (no dedupe-by-user → both apartments of a multi-residency user are independently
+move-out-able). Item (d) is CLOSED. Evidence: `reports/move-out-investigation.md`. **Sole remaining
+residency-lifecycle tail = amenity real attribution rule `[PLANNED]`** (temporary primary-or-latest; deferred LAST
+per CTO, not needed yet).
+
 ## 2026-06-23 | Residency-lifecycle P0–P3 COMPLETE & CTO-smoked end-to-end — closing note + open items
 
 **Closed:** Residency-lifecycle P0–P3 complete & CTO-smoked end-to-end. Concurrent multi-residency is creatable

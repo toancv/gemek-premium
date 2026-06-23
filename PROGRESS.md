@@ -1,17 +1,19 @@
 # PROGRESS — Apartment Management System
 
-## ⏸ INVESTIGATION — move-out (item d) before UI — awaiting CTO ruling (2026-06-23)
+## ✅ DONE — move-out (item d): BE + admin UI complete, multi-residency-correct (2026-06-23)
 
-Read-only, NO code changed. Report: `reports/move-out-investigation.md`.
-**Verdict: BE fully multi-residency-correct AND admin UI already EXISTS — item (d) is effectively DONE, not
-net-new.** `POST /api/residents/{id}/move-out` (ADMIN, `ResidentController.java:196-203`): `{id}` is a
-**RESIDENCY row id** (`residentRepository.findById(id)`, `ResidentServiceImpl.java:413`) → ends ONE residency
-(one apartment), not the whole user. Conditional deactivation only when no OTHER active residency
-(`existsActiveByUserId`, `:441-442`). Per-row primary-contact clear (`:424-425`), MOVED_OUT history actor=admin
-(`:431`), occupancy derived (no stored field). UI present: `ResidentsPage.tsx` per-row "Kết thúc cư trú" button
-→ confirm dialog (date+notes) → `useMoveOutResident` (`hooks.ts:130`) passing `residents.id` (correct
-residency-scoped id). API-SPEC `:689-692` accurate, no drift. Open Q for CTO: anything additional wanted (e.g.
-resident-detail page) or close (d)? Awaiting ruling.
+Report: `reports/move-out-investigation.md`. **Item (d) CLOSED — already implemented & verified, NOT net-new.**
+`POST /api/residents/{id}/move-out` (ADMIN, `ResidentController.java:196-203`): `{id}` is a **RESIDENCY row id**
+(`residentRepository.findById(id)`, `ResidentServiceImpl.java:413`) → ends ONE residency (one apartment), not the
+whole user. Conditional deactivation only when no OTHER active residency (`existsActiveByUserId`, `:441-442`);
+per-row primary-contact clear (`:424-425`); MOVED_OUT history actor=admin (`:431`); occupancy derived (no stored
+field). UI present: `ResidentsPage.tsx` per-row "Kết thúc cư trú" → confirm dialog (date+notes) →
+`useMoveOutResident` (`hooks.ts:130`) passing `residents.id`. API-SPEC `:689-692` accurate, no drift.
+
+**Per-residency-listing UI check (read-only) → Y (correct).** `ResidentsPage` lists straight over the paginated
+`/residents` rows: `data?.data?.map((r) => <tr key={r.id}>)` (`ResidentsPage.tsx:298-299`), `useResidents`
+(`hooks.ts:120`). **No dedupe/groupBy by user** — a user with 2 active apartments shows 2 rows, each with its own
+"Kết thúc cư trú" action → both apartments are independently move-out-able. No collapse-by-user bug.
 
 ---
 
@@ -33,9 +35,9 @@ no over-refetch). No FE hook-test infra exists → relying on CTO Network-tab sm
 
 **Resume pointer:** awaiting CTO smoke (Network tab: deactivate a user → return to Account shows updated status
 without F5; resident submits a phản ánh → HomePage active-tickets count increments without F5). Then back to
-**residency-lifecycle tail items** (DECISIONS open-items): amenity real attribution rule `[PLANNED]`
-(primary-or-latest temporary); move-out admin UI item (d) already PRESENT; deprecated `findActiveByUserId`
-cleanup pending (no callers).
+**residency-lifecycle tail** — now ONE outstanding item: **amenity real attribution rule `[PLANNED]`**
+(primary-or-latest temporary; deferred LAST per CTO — not needed yet). Move-out item (d) = DONE (see top
+section). Minor non-blocking: deprecated `findActiveByUserId` defn cleanup (no production callers).
 
 ---
 
@@ -82,10 +84,9 @@ code/DB this turn, not from memory):
   `ALREADY_ACTIVE_IN_APARTMENT`; `GET /api/residents/lookup` (ADMIN, minimal PII); old `PHONE_ALREADY_EXISTS`
   dead-end removed; two-step admin UI. `reports/p3-place-resident.md`. Suite 379/379 green.
 
-**Resume pointer:** residency-lifecycle core done; remaining tail items tracked in DECISIONS open-items
-(amenity attribution still `[PLANNED]` temporary primary-or-latest; move-out admin UI item (d) — **confirmed
-PRESENT** per this check, `frontend/apps/admin/src/api/hooks.ts:130` + `ResidentsPage.tsx:319`/`:106`; deprecated
-`findActiveByUserId` defn cleanup still pending, no production callers).
+**Resume pointer:** residency-lifecycle core done; move-out item (d) = DONE (closed 2026-06-23, see top section).
+Sole outstanding tail = amenity real attribution rule `[PLANNED]` (deferred LAST per CTO). Minor non-blocking:
+deprecated `findActiveByUserId` defn cleanup (no production callers).
 
 ---
 

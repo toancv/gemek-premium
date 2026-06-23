@@ -17,12 +17,14 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import vn.vtit.gemek.common.exception.AppException;
 import vn.vtit.gemek.common.exception.ErrorCode;
+import vn.vtit.gemek.common.exception.ReuseConfirmationRequiredException;
 import vn.vtit.gemek.common.model.PageResponse;
 import vn.vtit.gemek.module.apartment.entity.Apartment;
 import vn.vtit.gemek.module.apartment.repository.ApartmentRepository;
 import vn.vtit.gemek.module.resident.dto.CreateResidentRequest;
 import vn.vtit.gemek.module.resident.dto.MoveOutRequest;
 import vn.vtit.gemek.module.resident.dto.ResidentHistoryResponse;
+import vn.vtit.gemek.module.resident.dto.ResidentLookupResponse;
 import vn.vtit.gemek.module.resident.dto.ResidentResponse;
 import vn.vtit.gemek.module.resident.dto.UpdateResidentRequest;
 import vn.vtit.gemek.module.resident.entity.Resident;
@@ -43,7 +45,9 @@ import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
+import java.util.regex.Pattern;
 
 /**
  * Implementation of {@link ResidentService}.
@@ -57,6 +61,14 @@ import java.util.UUID;
 public class ResidentServiceImpl implements ResidentService {
 
     private static final Logger log = LoggerFactory.getLogger(ResidentServiceImpl.class);
+
+    /**
+     * Password complexity rule for the NEW branch — min 8 chars with upper, lower, digit, and special.
+     * Mirrors the former {@code @Pattern} on {@code CreateResidentRequest.password}, relocated here because
+     * the password is required only when provisioning a brand-new user (see DTO conditional-validation note).
+     */
+    private static final Pattern PASSWORD_PATTERN =
+            Pattern.compile("^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[^a-zA-Z0-9]).{8,}$");
 
     private final ResidentRepository residentRepository;
     private final ResidentHistoryRepository historyRepository;
@@ -125,26 +137,106 @@ public class ResidentServiceImpl implements ResidentService {
      * {@inheritDoc}
      */
     @Override
+    public ResidentLookupResponse lookupByPhone(String phone, UUID apartmentId) {
+        log.debug("Resident lookup — apartmentId={}", apartmentId);
+
+        // Normalize to canonical 0xxxxxxxxx; throws VALIDATION_ERROR on invalid format.
+        String normalizedPhone = PhoneUtils.normalize(phone);
+
+        Optional<User> existing = userRepository.findByPhone(normalizedPhone);
+        if (existing.isEmpty()) {
+            // Phone is free — a brand-new user/resident will be created on place.
+            return ResidentLookupResponse.builder()
+                    .status(ResidentLookupResponse.LookupStatus.NEW)
+                    .activeApartments(List.of())
+                    .build();
+        }
+        return buildLookup(existing.get(), apartmentId);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
     @Transactional
     public ResidentResponse createResident(CreateResidentRequest req, UUID principalId) {
-        log.debug("Creating resident — phone={}, apartmentId={}", req.getPhone(), req.getApartmentId());
+        log.debug("Place resident — apartmentId={}, confirmReuse={}", req.getApartmentId(), req.isConfirmReuse());
 
         // Normalize to canonical 0xxxxxxxxx; throws VALIDATION_ERROR on invalid format.
         String normalizedPhone = PhoneUtils.normalize(req.getPhone());
 
-        // Phone uniqueness check — must use normalized form to match the uq_users_phone constraint.
-        if (userRepository.existsByPhone(normalizedPhone)) {
-            throw new AppException(ErrorCode.PHONE_ALREADY_EXISTS, "Phone already registered: " + normalizedPhone);
+        Apartment apartment = apartmentRepository.findById(req.getApartmentId())
+                .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND,
+                        "Apartment not found: " + req.getApartmentId()));
+
+        Optional<User> existing = userRepository.findByPhone(normalizedPhone);
+
+        // BRANCH 1 — NEW: the phone is unused → provision a fresh user + residency (today's behavior).
+        if (existing.isEmpty()) {
+            User savedUser = provisionNewUser(req, normalizedPhone);
+            return placeResidentRow(savedUser, apartment, req, principalId);
         }
 
+        // The phone belongs to an existing user → REUSE path. Identity is server-derived from this user and
+        // is NEVER overwritten by request values (IDOR-safe — the client cannot force or alter identity).
+        User user = existing.get();
+
+        // BRANCH 2 — already actively residing in the TARGET apartment: reject, create nothing. (A second
+        // active row for the same (user, apartment) pair is the real invariant the relaxed index still guards;
+        // this explicit pre-check surfaces it as a clean 409 instead of a constraint violation.)
+        if (residentRepository.existsActiveByUserIdAndApartmentId(user.getId(), apartment.getId())) {
+            throw new AppException(ErrorCode.ALREADY_ACTIVE_IN_APARTMENT, "Cư dân này đang ở căn hộ này rồi.");
+        }
+
+        // BRANCH 3 — known user, not active in target, no explicit confirmation: return the matched person's
+        // identifying info so the FE can confirm. Nothing is created. The server NEVER trusts the FE's step-1
+        // lookup — this re-resolves the phone independently before any write.
+        if (!req.isConfirmReuse()) {
+            throw new ReuseConfirmationRequiredException(buildLookup(user, apartment.getId()),
+                    "Phone belongs to an existing user; confirm reuse to add a new residency.");
+        }
+
+        // BRANCH 4 — confirmed reuse: reactivate (enabled-only) when disabled, then add the new residency.
+        // Reactivate touches ONLY the enabled flag — role and password are left untouched (a returning user
+        // logs in with their old credentials); see DECISIONS "[hoãn] force-password-reset" note.
+        if (!user.isActive()) {
+            user.setActive(true);
+            userRepository.save(user);
+            log.info("Place resident — reactivated user {} (enabled-only).", user.getId());
+        }
+        return placeResidentRow(user, apartment, req, principalId);
+    }
+
+    /**
+     * Provisions a brand-new RESIDENT user from the request (NEW branch only).
+     *
+     * <p>Enforces the fields that are required only when the phone is new — {@code fullName},
+     * {@code password} (presence + complexity), {@code dateOfBirth} — here rather than via bean validation,
+     * because validation cannot branch on a DB phone lookup. Email uniqueness is checked for the optional
+     * email before the insert.
+     *
+     * @param req             the place request.
+     * @param normalizedPhone the canonical phone (already normalized).
+     * @return the persisted new user.
+     */
+    private User provisionNewUser(CreateResidentRequest req, String normalizedPhone) {
+        if (req.getFullName() == null || req.getFullName().isBlank()) {
+            throw new AppException(ErrorCode.VALIDATION_ERROR, "fullName is required.");
+        }
+        if (req.getPassword() == null || req.getPassword().isBlank()) {
+            throw new AppException(ErrorCode.VALIDATION_ERROR, "password is required.");
+        }
+        if (!PASSWORD_PATTERN.matcher(req.getPassword()).matches()) {
+            throw new AppException(ErrorCode.VALIDATION_ERROR,
+                    "Password must be at least 8 characters and include upper, lower, digit, and special character.");
+        }
+        if (req.getDateOfBirth() == null) {
+            throw new AppException(ErrorCode.VALIDATION_ERROR, "dateOfBirth is required.");
+        }
         // Email uniqueness check — reject before touching the DB to keep the transaction clean.
         if (req.getEmail() != null && userRepository.existsByEmail(req.getEmail())) {
             throw new AppException(ErrorCode.EMAIL_ALREADY_EXISTS, "Email address is already registered.");
         }
-
-        Apartment apartment = apartmentRepository.findById(req.getApartmentId())
-                .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND,
-                        "Apartment not found: " + req.getApartmentId()));
 
         // Create the user account. Password is logged at DEBUG only as a masked marker; plaintext never logged.
         User user = new User();
@@ -157,7 +249,22 @@ public class ResidentServiceImpl implements ResidentService {
         user.setActive(true);
         User savedUser = userRepository.save(user);
         log.debug("User account created — userId={}, role=RESIDENT", savedUser.getId());
+        return savedUser;
+    }
 
+    /**
+     * Inserts one active residency row for the given user + apartment and writes its history + household
+     * notifications. Shared by the NEW and confirmed-REUSE branches so both produce an identical residency
+     * side-effect (MOVED_IN event, primary-contact handling, household dispatch).
+     *
+     * @param user        the user (newly provisioned or reused) to attach the residency to.
+     * @param apartment   the target apartment.
+     * @param req         the place request (type, moveInDate, primaryContact, notes).
+     * @param principalId the acting admin's UUID (history actor + notification exclusion).
+     * @return the mapped resident response.
+     */
+    private ResidentResponse placeResidentRow(User user, Apartment apartment,
+                                              CreateResidentRequest req, UUID principalId) {
         // When setting as primary contact, clear the flag on all other active residents.
         if (req.isPrimaryContact()) {
             clearPrimaryContactInApartment(apartment.getId());
@@ -165,7 +272,7 @@ public class ResidentServiceImpl implements ResidentService {
 
         OffsetDateTime now = OffsetDateTime.now();
         Resident resident = new Resident();
-        resident.setUser(savedUser);
+        resident.setUser(user);
         resident.setApartment(apartment);
         resident.setType(req.getType());
         resident.setMoveInDate(req.getMoveInDate());
@@ -182,11 +289,60 @@ public class ResidentServiceImpl implements ResidentService {
         }
 
         // C9 (N3): tell the existing household about the new member. Excludes the
-        // new user (their own arrival) and the actor (uniform actor-exclusion rule).
-        dispatchHouseholdNotifications(saved, savedUser, apartment, principalId);
+        // placed user (their own arrival) and the actor (uniform actor-exclusion rule).
+        dispatchHouseholdNotifications(saved, user, apartment, principalId);
 
-        log.info("Resident created — id={}, userId={}", saved.getId(), savedUser.getId());
+        log.info("Resident placed — id={}, userId={}", saved.getId(), user.getId());
         return residentMapper.toResponse(saved);
+    }
+
+    /**
+     * Builds the minimal lookup view for an existing user: branch status + display name + the apartments the
+     * user currently actively resides in. {@code targetApartmentId} (when non-null) lets the result surface
+     * the ALREADY_HERE case. Returns only name + active-apartment identifiers — never full PII.
+     *
+     * @param user              the matched existing user.
+     * @param targetApartmentId optional target apartment for ALREADY_HERE detection; may be null.
+     * @return the lookup result.
+     */
+    private ResidentLookupResponse buildLookup(User user, UUID targetApartmentId) {
+        List<Resident> active = residentRepository.findAllActiveByUserId(user.getId());
+
+        // ALREADY_HERE takes precedence when a target apartment is supplied and the user is active in it.
+        boolean alreadyHere = targetApartmentId != null
+                && active.stream().anyMatch(r -> targetApartmentId.equals(r.getApartment().getId()));
+
+        ResidentLookupResponse.LookupStatus status;
+        if (alreadyHere) {
+            status = ResidentLookupResponse.LookupStatus.ALREADY_HERE;
+        } else if (active.isEmpty()) {
+            status = ResidentLookupResponse.LookupStatus.MOVED_OUT;
+        } else {
+            status = ResidentLookupResponse.LookupStatus.ACTIVE_ELSEWHERE;
+        }
+
+        return ResidentLookupResponse.builder()
+                .status(status)
+                .displayName(user.getFullName())
+                .activeApartments(toApartmentRefs(active))
+                .build();
+    }
+
+    /**
+     * Maps active residency rows to minimal apartment references (id + unit number + block name).
+     *
+     * @param residents active residency rows (apartment + block already fetched).
+     * @return apartment references for the lookup response.
+     */
+    private List<ResidentLookupResponse.ApartmentRef> toApartmentRefs(List<Resident> residents) {
+        return residents.stream()
+                .map(r -> ResidentLookupResponse.ApartmentRef.builder()
+                        .id(r.getApartment().getId())
+                        .unitNumber(r.getApartment().getUnitNumber())
+                        .blockName(r.getApartment().getBlock() != null
+                                ? r.getApartment().getBlock().getName() : null)
+                        .build())
+                .toList();
     }
 
     /**

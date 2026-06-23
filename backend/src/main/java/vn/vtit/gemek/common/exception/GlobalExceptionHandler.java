@@ -42,6 +42,30 @@ public class GlobalExceptionHandler {
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
     /**
+     * Handles {@link ReuseConfirmationRequiredException} from the place-resident flow.
+     *
+     * <p>Returns the standard error body PLUS a {@code matched} object describing the existing user the
+     * phone resolved to (display name + active apartments). The frontend uses {@code matched} to render the
+     * "reuse this profile?" confirm popup, then re-submits with {@code confirmReuse=true}.
+     *
+     * @param ex      the reuse-confirmation-required exception carrying the matched user info.
+     * @param request the current HTTP request.
+     * @return 409 REUSE_CONFIRMATION_REQUIRED with the matched user embedded.
+     */
+    @ExceptionHandler(ReuseConfirmationRequiredException.class)
+    public ResponseEntity<Map<String, Object>> handleReuseConfirmationRequired(
+            ReuseConfirmationRequiredException ex, HttpServletRequest request) {
+        log.warn("Reuse confirmation required on {}: {}", request.getRequestURI(), ex.getMessage());
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("error", ex.getErrorCode().name());
+        body.put("message", ex.getMessage());
+        body.put("matched", ex.getMatched());
+        body.put("timestamp", Instant.now().toString());
+        body.put("path", request.getRequestURI());
+        return ResponseEntity.status(ex.getErrorCode().getHttpStatus()).body(body);
+    }
+
+    /**
      * Handles {@link AppException} thrown by service layer methods.
      *
      * @param ex      the application exception.

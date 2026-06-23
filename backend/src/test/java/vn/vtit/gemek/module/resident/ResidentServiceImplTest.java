@@ -15,6 +15,7 @@ import org.mockito.quality.Strictness;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import vn.vtit.gemek.common.exception.AppException;
 import vn.vtit.gemek.common.exception.ErrorCode;
+import vn.vtit.gemek.common.exception.ReuseConfirmationRequiredException;
 import vn.vtit.gemek.module.apartment.entity.Apartment;
 import vn.vtit.gemek.module.apartment.repository.ApartmentRepository;
 import vn.vtit.gemek.module.resident.dto.CreateResidentRequest;
@@ -102,61 +103,62 @@ class ResidentServiceImplTest {
     }
 
     // =========================================================================
-    // createResident — duplicate email → CONFLICT
+    // createResident (NEW branch) — duplicate email → CONFLICT
     // =========================================================================
 
     @Test
-    @DisplayName("createResident — duplicate email throws CONFLICT")
+    @DisplayName("createResident — NEW phone, duplicate email throws EMAIL_ALREADY_EXISTS")
     void createResident_duplicateEmail_throwsConflict() {
-        when(userRepository.existsByPhone("0900000001")).thenReturn(false);
+        when(apartmentRepository.findById(apartmentId)).thenReturn(Optional.of(apartment));
+        when(userRepository.findByPhone("0900000001")).thenReturn(Optional.empty());
         when(userRepository.existsByEmail("dup@test.com")).thenReturn(true);
 
         CreateResidentRequest request = new CreateResidentRequest(
                 "Test User", "dup@test.com", "Pass@123456",
-                "0900000001", null,
+                "0900000001", LocalDate.of(1990, 1, 1),
                 apartmentId, ResidentType.OWNER,
-                LocalDate.of(2026, 1, 1), false, null);
+                LocalDate.of(2026, 1, 1), false, null, false);
 
         assertThatThrownBy(() -> service.createResident(request, UUID.randomUUID()))
                 .isInstanceOf(AppException.class)
                 .satisfies(ex -> assertThat(((AppException) ex).getErrorCode())
                         .isEqualTo(ErrorCode.EMAIL_ALREADY_EXISTS));
+        verify(userRepository, never()).save(any(User.class));
     }
 
     // =========================================================================
-    // createResident — apartment not found → NOT_FOUND
+    // createResident — apartment not found → NOT_FOUND (before any user touch)
     // =========================================================================
 
     @Test
     @DisplayName("createResident — apartment not found throws NOT_FOUND")
     void createResident_apartmentNotFound_throwsNotFound() {
-        when(userRepository.existsByPhone("0900000001")).thenReturn(false);
-        when(userRepository.existsByEmail("new@test.com")).thenReturn(false);
         when(apartmentRepository.findById(apartmentId)).thenReturn(Optional.empty());
 
         CreateResidentRequest request = new CreateResidentRequest(
                 "Test User", "new@test.com", "Pass@123456",
-                "0900000001", null,
+                "0900000001", LocalDate.of(1990, 1, 1),
                 apartmentId, ResidentType.OWNER,
-                LocalDate.of(2026, 1, 1), false, null);
+                LocalDate.of(2026, 1, 1), false, null, false);
 
         assertThatThrownBy(() -> service.createResident(request, UUID.randomUUID()))
                 .isInstanceOf(AppException.class)
                 .satisfies(ex -> assertThat(((AppException) ex).getErrorCode())
                         .isEqualTo(ErrorCode.NOT_FOUND));
+        verify(userRepository, never()).save(any(User.class));
     }
 
     // =========================================================================
-    // createResident — success path saves user then resident
+    // createResident (NEW branch) — success path saves user then resident
     // =========================================================================
 
     @Test
-    @DisplayName("createResident — valid request saves user and resident, returns mapped response")
+    @DisplayName("createResident — NEW phone, valid request saves user and resident, returns mapped response")
     void createResident_validRequest_savesUserAndResident() {
-        when(userRepository.existsByPhone("0900000001")).thenReturn(false);
+        when(apartmentRepository.findById(apartmentId)).thenReturn(Optional.of(apartment));
+        when(userRepository.findByPhone("0900000001")).thenReturn(Optional.empty());
         when(userRepository.existsByEmail("ok@test.com")).thenReturn(false);
         when(passwordEncoder.encode("Pass@123456")).thenReturn("$2a$hashed");
-        when(apartmentRepository.findById(apartmentId)).thenReturn(Optional.of(apartment));
         when(userRepository.save(any(User.class))).thenReturn(user);
         when(residentRepository.save(any(Resident.class))).thenReturn(resident);
         ResidentResponse expected = ResidentResponse.builder().id(residentId).build();
@@ -164,9 +166,9 @@ class ResidentServiceImplTest {
 
         CreateResidentRequest request = new CreateResidentRequest(
                 "Nguyen Van A", "ok@test.com", "Pass@123456",
-                "0900000001", null,
+                "0900000001", LocalDate.of(1990, 1, 1),
                 apartmentId, ResidentType.OWNER,
-                LocalDate.of(2026, 1, 1), false, null);
+                LocalDate.of(2026, 1, 1), false, null, false);
 
         ResidentResponse result = service.createResident(request, UUID.randomUUID());
 
@@ -174,25 +176,25 @@ class ResidentServiceImplTest {
     }
 
     // =========================================================================
-    // createResident — non-canonical phone stored as canonical
+    // createResident (NEW branch) — non-canonical phone stored as canonical
     // =========================================================================
 
     @Test
     @DisplayName("createResident — non-canonical phone (+84 prefix) is stored as canonical 0xxxxxxxxx")
     void createResident_nonCanonicalPhone_storesCanonical() {
-        when(userRepository.existsByPhone("0900000001")).thenReturn(false);
+        when(apartmentRepository.findById(apartmentId)).thenReturn(Optional.of(apartment));
+        when(userRepository.findByPhone("0900000001")).thenReturn(Optional.empty());
         when(userRepository.existsByEmail("ok@test.com")).thenReturn(false);
         when(passwordEncoder.encode("Pass@123456")).thenReturn("$2a$hashed");
-        when(apartmentRepository.findById(apartmentId)).thenReturn(Optional.of(apartment));
         when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
         when(residentRepository.save(any(Resident.class))).thenReturn(resident);
         when(residentMapper.toResponse(resident)).thenReturn(ResidentResponse.builder().id(residentId).build());
 
         CreateResidentRequest request = new CreateResidentRequest(
                 "Nguyen Van A", "ok@test.com", "Pass@123456",
-                "+84900000001", null,
+                "+84900000001", LocalDate.of(1990, 1, 1),
                 apartmentId, ResidentType.OWNER,
-                LocalDate.of(2026, 1, 1), false, null);
+                LocalDate.of(2026, 1, 1), false, null, false);
 
         service.createResident(request, UUID.randomUUID());
 
@@ -202,15 +204,15 @@ class ResidentServiceImplTest {
     }
 
     // =========================================================================
-    // createResident — null email accepted (email optional since V12 / 4237cba)
+    // createResident (NEW branch) — null email accepted (email optional since V12 / 4237cba)
     // =========================================================================
 
     @Test
     @DisplayName("createResident — null email is accepted; user persisted with null email")
     void createResident_nullEmail_savedWithNullEmail() {
-        when(userRepository.existsByPhone("0900000001")).thenReturn(false);
-        when(passwordEncoder.encode("Pass@123456")).thenReturn("$2a$hashed");
         when(apartmentRepository.findById(apartmentId)).thenReturn(Optional.of(apartment));
+        when(userRepository.findByPhone("0900000001")).thenReturn(Optional.empty());
+        when(passwordEncoder.encode("Pass@123456")).thenReturn("$2a$hashed");
         when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
         when(residentRepository.save(any(Resident.class))).thenReturn(resident);
         when(residentMapper.toResponse(resident)).thenReturn(ResidentResponse.builder().id(residentId).build());
@@ -219,7 +221,7 @@ class ResidentServiceImplTest {
                 "Nguyen Van A", null, "Pass@123456",
                 "0900000001", LocalDate.of(1990, 1, 1),
                 apartmentId, ResidentType.OWNER,
-                LocalDate.of(2026, 1, 1), false, null);
+                LocalDate.of(2026, 1, 1), false, null, false);
 
         service.createResident(request, UUID.randomUUID());
 
@@ -229,24 +231,93 @@ class ResidentServiceImplTest {
     }
 
     // =========================================================================
-    // createResident — duplicate phone → PHONE_ALREADY_EXISTS
+    // createResident (REUSE branch) — existing phone, confirmReuse=false → REUSE_CONFIRMATION_REQUIRED,
+    // nothing created. The old PHONE_ALREADY_EXISTS hard block is removed (residency-lifecycle P3).
     // =========================================================================
 
     @Test
-    @DisplayName("createResident — duplicate phone throws PHONE_ALREADY_EXISTS")
-    void createResident_duplicatePhone_throwsPhoneAlreadyExists() {
-        when(userRepository.existsByPhone("0900000001")).thenReturn(true);
+    @DisplayName("createResident — existing phone, confirmReuse=false throws REUSE_CONFIRMATION_REQUIRED and creates nothing")
+    void createResident_existingPhoneNoConfirm_throwsReuseConfirmationRequired() {
+        when(apartmentRepository.findById(apartmentId)).thenReturn(Optional.of(apartment));
+        when(userRepository.findByPhone("0900000001")).thenReturn(Optional.of(user));
+        // Not active in the target apartment, and no active residency anywhere → MOVED_OUT lookup.
+        when(residentRepository.existsActiveByUserIdAndApartmentId(userId, apartmentId)).thenReturn(false);
+        when(residentRepository.findAllActiveByUserId(userId)).thenReturn(List.of());
 
         CreateResidentRequest request = new CreateResidentRequest(
-                "Test User", "new@test.com", "Pass@123456",
+                null, null, null,
                 "0900000001", null,
                 apartmentId, ResidentType.OWNER,
-                LocalDate.of(2026, 1, 1), false, null);
+                LocalDate.of(2026, 1, 1), false, null, false);
+
+        assertThatThrownBy(() -> service.createResident(request, UUID.randomUUID()))
+                .isInstanceOf(ReuseConfirmationRequiredException.class)
+                .satisfies(ex -> assertThat(((ReuseConfirmationRequiredException) ex).getErrorCode())
+                        .isEqualTo(ErrorCode.REUSE_CONFIRMATION_REQUIRED));
+        verify(userRepository, never()).save(any(User.class));
+        verify(residentRepository, never()).save(any(Resident.class));
+    }
+
+    // =========================================================================
+    // createResident (REUSE branch) — existing phone already active in TARGET apartment → 409 ALREADY_ACTIVE
+    // =========================================================================
+
+    @Test
+    @DisplayName("createResident — existing phone already active in target apartment throws ALREADY_ACTIVE_IN_APARTMENT")
+    void createResident_existingPhoneAlreadyActiveHere_throwsAlreadyActive() {
+        when(apartmentRepository.findById(apartmentId)).thenReturn(Optional.of(apartment));
+        when(userRepository.findByPhone("0900000001")).thenReturn(Optional.of(user));
+        when(residentRepository.existsActiveByUserIdAndApartmentId(userId, apartmentId)).thenReturn(true);
+
+        CreateResidentRequest request = new CreateResidentRequest(
+                null, null, null,
+                "0900000001", null,
+                apartmentId, ResidentType.OWNER,
+                LocalDate.of(2026, 1, 1), false, null, true);
 
         assertThatThrownBy(() -> service.createResident(request, UUID.randomUUID()))
                 .isInstanceOf(AppException.class)
                 .satisfies(ex -> assertThat(((AppException) ex).getErrorCode())
-                        .isEqualTo(ErrorCode.PHONE_ALREADY_EXISTS));
+                        .isEqualTo(ErrorCode.ALREADY_ACTIVE_IN_APARTMENT));
+        verify(userRepository, never()).save(any(User.class));
+        verify(residentRepository, never()).save(any(Resident.class));
+    }
+
+    // =========================================================================
+    // createResident (REUSE branch) — confirmReuse=true reuses identity, does NOT overwrite it,
+    // reactivates a disabled account (enabled-only), and adds a residency.
+    // =========================================================================
+
+    @Test
+    @DisplayName("createResident — confirmReuse=true on a disabled user reactivates (enabled-only), reuses identity, adds residency")
+    void createResident_confirmReuse_reactivatesAndReuses() {
+        user.setActive(false);
+        user.setRole(vn.vtit.gemek.module.user.entity.UserRole.RESIDENT);
+        String originalHash = "$2a$originalHash";
+        user.setPasswordHash(originalHash);
+        when(apartmentRepository.findById(apartmentId)).thenReturn(Optional.of(apartment));
+        when(userRepository.findByPhone("0900000001")).thenReturn(Optional.of(user));
+        when(residentRepository.existsActiveByUserIdAndApartmentId(userId, apartmentId)).thenReturn(false);
+        when(residentRepository.findActiveByApartmentId(apartmentId)).thenReturn(List.of());
+        when(residentRepository.save(any(Resident.class))).thenReturn(resident);
+        when(residentMapper.toResponse(resident)).thenReturn(ResidentResponse.builder().id(residentId).build());
+
+        // Request carries identity values that MUST be ignored (server-derived identity only).
+        CreateResidentRequest request = new CreateResidentRequest(
+                "Smuggled Name", "smuggle@test.com", "Smuggled@123",
+                "0900000001", LocalDate.of(2000, 9, 9),
+                apartmentId, ResidentType.TENANT,
+                LocalDate.of(2026, 6, 1), false, null, true);
+
+        service.createResident(request, UUID.randomUUID());
+
+        // Account re-enabled; identity (name/password) untouched by the request values.
+        assertThat(user.isActive()).isTrue();
+        assertThat(user.getFullName()).isEqualTo("Nguyen Van A");
+        assertThat(user.getPasswordHash()).isEqualTo(originalHash);
+        // A residency row was created; password was never re-encoded.
+        verify(residentRepository).save(any(Resident.class));
+        verify(passwordEncoder, never()).encode(any());
     }
 
     // =========================================================================

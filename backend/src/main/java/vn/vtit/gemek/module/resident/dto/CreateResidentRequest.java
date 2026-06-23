@@ -8,7 +8,6 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Pattern;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -18,11 +17,17 @@ import java.time.LocalDate;
 import java.util.UUID;
 
 /**
- * Request body for creating a new resident record together with a new user account.
+ * Request body for the place-resident flow ({@code POST /api/residents}).
  *
- * <p>User account fields (fullName, email, password) and resident fields are submitted
- * in a single request. The service creates the user and resident atomically in one
- * transaction — no orphan user is ever left without a corresponding resident.
+ * <p>The server branches on {@code phone}: a brand-new phone provisions a user + residency atomically; a
+ * phone that already belongs to an existing user REUSES that user (after {@code confirmReuse=true}) and only
+ * adds a new residency — supporting move-in / return / concurrent multi-residency.
+ *
+ * <p><strong>Conditional validation:</strong> {@code fullName}, {@code password}, and {@code dateOfBirth}
+ * carry no bean-validation constraints here because they are required ONLY for the NEW branch — which bean
+ * validation cannot detect without a DB phone lookup. The service enforces them (presence + password
+ * complexity) for the NEW branch; the reuse branch ignores all identity fields entirely (identity is
+ * server-derived from the existing user, never overwritten by request values — IDOR-safe).
  */
 @Getter
 @NoArgsConstructor
@@ -30,31 +35,24 @@ import java.util.UUID;
 public class CreateResidentRequest {
 
     // -------------------------------------------------------------------------
-    // User account fields
+    // User account fields (required only for the NEW branch — enforced in the service)
     // -------------------------------------------------------------------------
 
-    /** Full display name of the new user. Must not be blank. */
-    @NotBlank(message = "fullName is required.")
+    /** Full display name of the new user (NEW branch only; ignored on reuse). */
     private String fullName;
 
-    /** Optional informational email address. Unique when provided; omit or send null to skip. */
+    /** Optional informational email address. Unique when provided (NEW branch only; ignored on reuse). */
     @Email(message = "email must be a valid address.")
     private String email;
 
-    /** Plain-text password — will be BCrypt-hashed before storage. Must not be blank and must meet complexity requirements. */
-    @NotBlank(message = "password is required.")
-    @Pattern(
-            regexp = "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[^a-zA-Z0-9]).{8,}$",
-            message = "Password must be at least 8 characters and include upper, lower, digit, and special character."
-    )
+    /** Plain-text password — BCrypt-hashed before storage (NEW branch only; ignored on reuse). */
     private String password;
 
-    /** Phone number of the new user. Must not be blank. */
+    /** Phone number — the login identifier and the branch key. Must not be blank. */
     @NotBlank(message = "phone is required.")
     private String phone;
 
-    /** Date of birth of the new user. Must not be null. */
-    @NotNull(message = "dateOfBirth is required.")
+    /** Date of birth of the new user (NEW branch only; ignored on reuse). */
     private LocalDate dateOfBirth;
 
     // -------------------------------------------------------------------------
@@ -82,4 +80,13 @@ public class CreateResidentRequest {
 
     /** Optional free-text notes. */
     private String notes;
+
+    /**
+     * Explicit admin confirmation to REUSE an existing user's profile when {@code phone} already belongs to
+     * one. Defaults to {@code false}. Irrelevant for the NEW branch. When the phone matches an existing user
+     * who is not active in the target apartment and this is {@code false}, the server returns
+     * {@code 409 REUSE_CONFIRMATION_REQUIRED} (creating nothing) so the frontend can confirm; {@code true}
+     * proceeds with reuse (+ reactivate if disabled) and adds the new residency.
+     */
+    private boolean confirmReuse;
 }

@@ -183,7 +183,7 @@ class ResidentHouseholdDispatchTest extends AbstractIntegrationTest {
         String phone = prefix + String.format("%06d", Math.abs(System.nanoTime()) % 1_000_000L);
         return new CreateResidentRequest(
                 fullName, null, "Password@123456", phone, LocalDate.of(1990, 1, 1),
-                apartmentId, ResidentType.TENANT, LocalDate.now(), false, null);
+                apartmentId, ResidentType.TENANT, LocalDate.now(), false, null, false);
     }
 
     /**

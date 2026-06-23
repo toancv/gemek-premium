@@ -9,6 +9,7 @@ import vn.vtit.gemek.common.model.PageResponse;
 import vn.vtit.gemek.module.resident.dto.CreateResidentRequest;
 import vn.vtit.gemek.module.resident.dto.MoveOutRequest;
 import vn.vtit.gemek.module.resident.dto.ResidentHistoryResponse;
+import vn.vtit.gemek.module.resident.dto.ResidentLookupResponse;
 import vn.vtit.gemek.module.resident.dto.ResidentResponse;
 import vn.vtit.gemek.module.resident.dto.UpdateResidentRequest;
 import vn.vtit.gemek.module.resident.entity.ResidentType;
@@ -52,10 +53,27 @@ public interface ResidentService {
                                                   Boolean isActive, String search, Pageable pageable);
 
     /**
-     * Creates a new resident record and writes a MOVED_IN history entry.
+     * Resolves a phone (and optional target apartment) to a place-resident branch status plus the minimum
+     * identifying info for an admin to recognize the person.
      *
-     * @param req         the create request body.
-     * @param principalId UUID of the authenticated user performing the action.
+     * <p>ADMIN-only, read-only. Returns NEW (phone unused), ACTIVE_ELSEWHERE (active in other apartment(s)),
+     * MOVED_OUT (exists, no active residency), or — when {@code apartmentId} is supplied — ALREADY_HERE.
+     * Returns only display name + active-apartment identifiers; never full PII.
+     *
+     * @param phone       the phone to resolve (any VN format; normalized server-side).
+     * @param apartmentId optional target apartment to additionally detect the ALREADY_HERE case; may be null.
+     * @return the lookup result.
+     */
+    ResidentLookupResponse lookupByPhone(String phone, UUID apartmentId);
+
+    /**
+     * Places a resident into an apartment, branching on phone: provisions a new user+residency for an
+     * unknown phone, or REUSES an existing user (adding a residency, reactivating a disabled account) when
+     * the phone is known and {@code confirmReuse=true}. Writes a MOVED_IN history entry in the same
+     * transaction.
+     *
+     * @param req         the place request body.
+     * @param principalId UUID of the authenticated admin performing the action.
      * @return the created resident response DTO.
      */
     ResidentResponse createResident(CreateResidentRequest req, UUID principalId);

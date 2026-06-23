@@ -27,6 +27,7 @@ import vn.vtit.gemek.common.security.UserPrincipal;
 import vn.vtit.gemek.module.resident.dto.CreateResidentRequest;
 import vn.vtit.gemek.module.resident.dto.MoveOutRequest;
 import vn.vtit.gemek.module.resident.dto.ResidentHistoryResponse;
+import vn.vtit.gemek.module.resident.dto.ResidentLookupResponse;
 import vn.vtit.gemek.module.resident.dto.ResidentResponse;
 import vn.vtit.gemek.module.resident.dto.UpdateResidentRequest;
 import vn.vtit.gemek.module.resident.entity.ResidentType;
@@ -107,15 +108,33 @@ public class ResidentController {
     }
 
     /**
-     * Creates a new resident record.
+     * Resolves a phone (and optional target apartment) to a place-resident branch status plus the minimum
+     * info for an admin to recognize the person. Read-only, ADMIN-only. Step 1 of the two-step place flow;
+     * the server still re-resolves the phone at place-time (never trusts this lookup).
      *
-     * @param req       the create request body.
+     * @param phone       the phone to resolve (any VN format; normalized server-side).
+     * @param apartmentId optional target apartment, enabling ALREADY_HERE detection; may be omitted.
+     * @return 200 OK with the lookup result (status + display name + active apartments).
+     */
+    @GetMapping("/residents/lookup")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Look up a resident by phone for the place-resident flow")
+    public ResponseEntity<ResidentLookupResponse> lookupByPhone(
+            @RequestParam String phone,
+            @RequestParam(required = false) UUID apartmentId) {
+        return ResponseEntity.ok(residentService.lookupByPhone(phone, apartmentId));
+    }
+
+    /**
+     * Places a resident into an apartment, branching on phone (new user vs reuse existing).
+     *
+     * @param req       the place request body.
      * @param principal the authenticated admin principal.
      * @return 201 Created with the new resident response DTO.
      */
     @PostMapping("/residents")
     @PreAuthorize("hasRole('ADMIN')")
-    @Operation(summary = "Create a resident record")
+    @Operation(summary = "Place a resident (create new or reuse existing user by phone)")
     public ResponseEntity<ResidentResponse> createResident(
             @Valid @RequestBody CreateResidentRequest req,
             @AuthenticationPrincipal UserPrincipal principal) {

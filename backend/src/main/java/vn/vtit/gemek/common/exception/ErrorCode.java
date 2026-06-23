@@ -84,7 +84,17 @@ public enum ErrorCode {
     AMENITY_NAME_EXISTS(HttpStatus.CONFLICT),
 
     /** Booking cannot be approved or rejected because it is not in PENDING status. */
-    BOOKING_NOT_PENDING(HttpStatus.CONFLICT);
+    BOOKING_NOT_PENDING(HttpStatus.CONFLICT),
+
+    /**
+     * Place-resident: the submitted phone already belongs to an existing user who is not active in the
+     * target apartment. The caller must re-submit with {@code confirmReuse=true} to reuse that profile.
+     * The response body carries the matched user's identifying info under {@code matched}.
+     */
+    REUSE_CONFIRMATION_REQUIRED(HttpStatus.CONFLICT),
+
+    /** Place-resident: the user identified by the phone already has an active residency in the target apartment. */
+    ALREADY_ACTIVE_IN_APARTMENT(HttpStatus.CONFLICT);
 
     /** HTTP status code associated with this error code. */
     private final HttpStatus httpStatus;

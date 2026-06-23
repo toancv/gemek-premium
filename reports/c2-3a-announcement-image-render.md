@@ -95,6 +95,30 @@ LOW note (cover banner `src` unvalidated — server-minted, not a live vuln) **A
 an `http(s)` scheme before binding `src`. Optional Javadoc note left as-is (method already documents the
 single-row-share-scope rationale).
 
+## CTO smoke checklist (PENDING — C2.3a not yet smoked)
+
+Manual verification the CTO must perform before C2.3a is closed. **Setup:** seed (or use an existing) draft
+announcement, upload a `cover` + at least one `inline` image (C2.2 endpoints), insert
+`![alt](announcement-media:{inlineId})` into the body, then publish to an ALL/in-scope target so a test
+resident can open the detail.
+
+XSS attacks (each MUST stay inert — no live `<img>`, no script, no handler firing):
+- [ ] Body `![x](https://evil.example/track.png)` → NO live img to that URL (no external/tracking fetch in Network tab).
+- [ ] Body `![x](javascript:alert(1))` → no img, no alert, no `javascript:` in DOM.
+- [ ] Body `![x](data:text/html;base64,PHNjcmlwdD4=)` → no img, no `data:text/html` in DOM.
+- [ ] Body raw `<img src=x onerror=alert(1)>` → renders as inert escaped text, no element, no alert.
+- [ ] Body `![x](announcement-media:00000000-0000-0000-0000-000000000000)` (unknown id) → renders nothing.
+- [ ] Body `[click](announcement-media:{inlineId})` (link, not image) → inert anchor (no working `announcement-media:` href).
+
+Positive render (MUST work):
+- [ ] Cover image shows as a BANNER above the title; it is NOT also duplicated inline.
+- [ ] Inline `announcement-media:{inlineId}` placeholder renders the image inside the body at its position.
+- [ ] Both image URLs are short-lived presigned MinIO URLs (internal), not raw object keys or external URLs.
+
+Scope / leak (MUST hold):
+- [ ] A resident OUT of the announcement scope opening the detail (if reachable) sees text but NO image URLs (empty manifest).
+- [ ] Page left open >10 min may show a broken image (presigned expiry) — expected, accepted, no refresh.
+
 ## No-go confirmed
 
 No admin upload widget, no image-insert UI, no authoring-page move (all C2.3b). To exercise rendering,

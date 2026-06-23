@@ -1,5 +1,46 @@
 # PROGRESS — Apartment Management System
 
+> Fresh assistant: read **HANDOFF.md** first, then this snapshot, then DECISIONS.md, then the cited reports.
+> The repo files are ground truth — do not trust any chat summary.
+
+## ▶ CURRENT STATE SNAPSHOT (2026-06-23)
+
+**RESUME POINTER (one line):** C2.3a (resident safe image render + `announcement-media:` placeholder→manifest
+resolution + cover banner) is **committed but NOT yet CTO-smoked** — next action is the **manual XSS smoke**
+per the CTO smoke checklist in `reports/c2-3a-announcement-image-render.md`; after it passes, start **C2.3b
+admin authoring UX**. Do NOT start C2.3b until C2.3a is smoked.
+
+**Announcements rich-content cluster:**
+| Phase | What | Status | Boundary commits |
+|---|---|---|---|
+| Investigation | rich-content current-state | DONE | `eb42b03` (report `reports/announcements-rich-content-investigation.md`) |
+| C1 | Markdown body + XSS-safe shared renderer | DONE (smoked) | feat start `315fde7` → done-docs `2451094` |
+| C2.1 | media presign scope-mirror access gate | DONE (smoked) | fix `1099d7d` → done-docs `08d285d` |
+| C2.2 | ADMIN media upload (drafts only, caps, Tika, cover-replace, after-commit cleanup) | DONE (smoked) | feat `458c5f5` → done-docs `265d2e3` |
+| C2.3a | resident image RENDER (safe `<img>` + manifest + cover banner) | **DONE — AWAITING CTO SMOKE** | feat-ui `1f7d58d` → done-docs `2c9e946` (HEAD before this freeze) |
+| C2.3b | admin authoring UX (upload+insert placeholders, cover select, move create/edit to dedicated 2-col pages) | PENDING | — |
+| C3 | file attachments (non-image) | PENDING | — |
+
+**OPEN ITEMS / BACKLOG (priority order):**
+1. **Smoke C2.3a** — manual XSS image attacks + cover banner + inline + presigned-internal-only (checklist in `reports/c2-3a-announcement-image-render.md`).
+2. **C2.3b — admin authoring UX** — upload + insert-image (inserts `announcement-media:{id}` placeholders) + cover selection; **MOVE create/edit out of the small modal to dedicated `/announcements/new` + `/announcements/:id/edit`** as a **2-column compose|preview** layout (preview uses the SAME safe `MarkdownContent` + a manifest of the draft's uploaded media). Wire C2.2 upload/list/delete into the media manager. Admin app root: `frontend/apps/admin/…`.
+3. **C3 — file attachments** (non-image documents on announcements).
+4. **Amenity multi-residency real attribution rule `[PLANNED]`** — currently primary-or-latest temporary; real rule deferred LAST per CTO.
+
+**Smaller debts (do not lose):**
+- **CONFLICT error-code split** — `ErrorCode.CONFLICT` is overloaded (already-published vs already-active-in-apartment etc.); consider splitting for precise FE messaging.
+- **FE any-type on ticket items** — `TicketDetailItem` in resident `api/types.ts` is partially typed (`[key:string]:any` debt); the rest of the detail shape is untyped.
+- **Parking phone-collision flake** — known intermittent test/data collision on phone uniqueness in parking fixtures.
+- **Technician portal access blocker** — technicians have no announcement audience surface (denied by design); revisit if a technician portal is scoped.
+- **Deprecated `findActiveByUserId`** — definition retained with `@deprecated`, no production callers; cleanup optional.
+- **Suite not parallel-safe** — `@Transactional` test-tx nesting (framework limit, NOT pollution); keep sequential runs. See `reports/test-suite-pollution-verification.md`.
+
+**Core platform state (all DONE):** residency-lifecycle core P0–P3 + move-out (multi-residency concurrent,
+creatable end-to-end, CTO-smoked); stale-UI-after-mutation fixes (`refetchType:'all'`) DONE; test-suite /
+dev-DB-pollution standing issue **RESOLVED & CLOSED**. Details in the dated sections below.
+
+---
+
 ## ⏸ C2.3a DONE — resident image RENDER (safe internal `<img>` + cover banner) — awaiting CTO smoke (2026-06-23)
 
 Report: `reports/c2-3a-announcement-image-render.md`. Re-opened the `<img>` surface C1 closed, but ONLY for
@@ -29,8 +70,10 @@ updated. **/code-review: PASS WITH NOTES — 0 Must-fix** (LOW banner-src note a
 **Accepted limitation:** presigned URLs minted fresh per detail request (10-min expiry); page open >10 min
 may show a broken image — no refresh mechanism (CTO ruling).
 
-**Resume pointer → C2.3b — admin authoring UX:** upload + insert-image (inserts `announcement-media:{id}`
-placeholders into the body) + cover selection; **MOVE create/edit from the small modal to dedicated pages**
+**Resume pointer → FIRST smoke C2.3a** (manual XSS attack on image rendering — see the CTO smoke checklist in
+`reports/c2-3a-announcement-image-render.md`), THEN **C2.3b — admin authoring UX:** upload + insert-image
+(inserts `announcement-media:{id}` placeholders into the body) + cover selection; **MOVE create/edit from the
+small modal to dedicated pages**
 `/announcements/new` + `/announcements/:id/edit` with a **2-column compose|preview** layout (preview uses the
 SAME safe `MarkdownContent` renderer + a manifest of the draft's uploaded media). Wire the C2.2 upload/list/
 delete endpoints into the media manager. Admin app real root is `frontend/apps/admin/…`.

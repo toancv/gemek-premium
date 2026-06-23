@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { labelFor, formatVNDate } from '@gemek/ui';
+import { labelFor, formatVNDate, MarkdownContent } from '@gemek/ui';
 import { useAnnouncement, useMarkAnnouncementRead } from '../api/hooks';
 import { t } from '../i18n/vi';
 
@@ -38,7 +38,7 @@ export function AnnouncementDetailPage() {
         {announcement.publishedAt && (
           <p className="text-xs text-gray-400 mb-3">{t('announcements.publishedOn')} {formatVNDate(announcement.publishedAt)}</p>
         )}
-        <p className="text-sm text-gray-700 whitespace-pre-line">{announcement.content}</p>
+        <MarkdownContent content={announcement.content} className="text-sm text-gray-700" />
       </div>
     </div>
   );

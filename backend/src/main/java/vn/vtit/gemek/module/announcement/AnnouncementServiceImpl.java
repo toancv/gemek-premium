@@ -70,6 +70,10 @@ public class AnnouncementServiceImpl implements AnnouncementService {
      * Detects a raw HTML tag (opening or closing) to reject HTML in a Markdown body. Deliberately does
      * NOT match Markdown autolinks ({@code <https://…>} — a scheme's ':' follows the name) nor email
      * autolinks ({@code <a@b.com>} — '@' follows) nor a bare '<' in prose ("a < b").
+     *
+     * <p>Known limitation (accepted for this lightweight guard): an HTML tag written literally inside
+     * a Markdown code span / fenced block (e.g. {@code `<div>`}) is also rejected — this cheap guard
+     * has no code-fence awareness. Embedding raw tags in announcement code blocks is not a real use case.
      */
     private static final Pattern HTML_TAG_PATTERN = Pattern.compile("</?[a-zA-Z][a-zA-Z0-9]*[\\s/>]");
 

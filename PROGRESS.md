@@ -1,5 +1,49 @@
 # PROGRESS — Apartment Management System
 
+## ⏸ P3 DONE — place-resident flow live; multi-residency CREATABLE end-to-end — awaiting CTO smoke (2026-06-23)
+
+**P3 (move-in / return / add-concurrent, keyed by phone) DONE.** `POST /api/residents` now branches
+server-side on phone — NEW (provision user+residency, today's behavior), REUSE (existing user → add a new
+`residents` row + reactivate a disabled account, **enabled-only**), or `ALREADY_ACTIVE_IN_APARTMENT`. The old
+`PHONE_ALREADY_EXISTS` hard block is GONE (the dead-end §C of the investigation removed). New read-only
+`GET /api/residents/lookup?phone=&apartmentId=` (ADMIN) returns a branch status (`NEW` / `ACTIVE_ELSEWHERE` /
+`MOVED_OUT` / `ALREADY_HERE`) + minimal PII (display name + active apartments). **Concurrent multi-residency is
+now CREATABLE through the product** (active-elsewhere + `confirmReuse=true` → 2nd active residency in a different
+apartment). Identity is server-derived on reuse (request identity/password IGNORED — IDOR-safe). New
+`ErrorCode`s `REUSE_CONFIRMATION_REQUIRED` (409, body carries the matched user via
+`ReuseConfirmationRequiredException` + a dedicated handler) and `ALREADY_ACTIVE_IN_APARTMENT` (409, VN
+"Cư dân này đang ở căn hộ này rồi."). NEW-branch field validation (fullName/password/dateOfBirth + complexity)
+moved from bean-validation into the service (the fields are branch-conditional — bean validation can't branch on
+a DB phone lookup).
+
+**Admin FE (:80) two-step UI:** add-resident modal leads with a phone input + "Kiểm tra" (lookup). `NEW` → full
+new-resident form. Existing (`ACTIVE_ELSEWHERE`/`MOVED_OUT`) → matched banner + residency-only fields + an
+explicit reuse confirm popup that submits `confirmReuse=true` (identity reused, not editable).
+`ALREADY_ACTIVE_IN_APARTMENT` → inline VN error. New VN error keys added; success via `meta.successMessage`;
+refetch `['residents']`. Admin `pnpm build` green (590 modules, tsc clean).
+
+**Tests (feat-first green):** new `P3PlaceResidentIntegrationTest` (gemek_test, 6 — NEW, RETURNING reactivate +
+identity-reuse + IDOR, ADD-CONCURRENT 2-active, confirmReuse=false confirmation-required, ALREADY_ACTIVE, lookup
+statuses + minimal PII). `ResidentServiceImplTest` createResident block rewritten to the new contract (reuse /
+already-active / confirmReuse reactivation; old PHONE_ALREADY_EXISTS case removed). **Full backend suite
+379/379 green (0 fail / 0 err).** `/code-review` (high, 2 finder angles + verify): BE "phone-uniqueness removed →
+500" finding **REFUTED** (non-race dups route to reuse; the only race path is caught by the existing
+`DataIntegrityViolationException` → 409 handler — no 500, unique index holds); FE Enter-key-in-reuse-mode finding
+**FIXED** (form submit now routes by branch). No Must-fix remaining.
+
+**Reports:** `reports/p3-place-resident.md` (plan + rationale). Raw suite: `reports/p3-suite.raw.txt`.
+**DECISIONS:** "Residency lifecycle — P3 place-resident flow (AS IMPLEMENTED)" + reactivate `[hoãn]` note +
+conditional-validation note. **API-SPEC:** lookup endpoint + rewritten POST /residents contract.
+
+**Resume pointer:** awaiting CTO smoke of **P3 (place-resident, multi-residency creatable end-to-end)**;
+residency-lifecycle core COMPLETE — remaining: **amenity multi-residency real attribution rule [PLANNED]**
+(primary-or-latest temporary), and **move-out admin UI item (d)** (already DONE — see sections below). Do NOT
+start follow-ups until CTO smokes P3. CTO smoke = on :80, place an existing active resident's phone into a 2nd
+apartment (reuse confirm) → both residencies active; place a moved-out phone → account re-enabled + new residency;
+new phone → new user+residency.
+
+---
+
 ## ⏸ P2 DONE — concurrent multi-residency ENABLED at the DB level — awaiting CTO smoke (2026-06-23)
 
 **P2 (index relax) DONE.** `uq_residents_active_user` relaxed from single-active-per-user to

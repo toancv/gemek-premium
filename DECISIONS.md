@@ -5,6 +5,73 @@ Format: Date | Decision | Reasoning | Alternatives
 
 ---
 
+## 2026-06-23 | Residency lifecycle — P3 place-resident flow (AS IMPLEMENTED)
+
+**See:** `reports/p3-place-resident.md`, PROGRESS "P3 DONE", API-SPEC §Residents (lookup + POST /residents).
+Implements the move-in / return / add-concurrent flow per the CTO rulings — one smart endpoint branching on
+phone (Phương án 1), ADMIN-only, two-step UX with server-side re-resolution.
+
+- **One smart endpoint (Phương án 1).** `POST /api/residents` branches server-side on phone: NEW (provision
+  user+residency), REUSE (existing user → add `residents` row + reactivate if disabled), or
+  `ALREADY_ACTIVE_IN_APARTMENT`. The admin's mental action is "place this phone into this apartment"; the server
+  decides new vs returning vs add-concurrent. The old `PHONE_ALREADY_EXISTS` hard block is REMOVED — it was the
+  dead-end this phase exists to kill (investigation §C).
+- **Lookup endpoint = GET (not POST).** `GET /api/residents/lookup?phone=&apartmentId=` (ADMIN, read-only).
+  RESTful for a read; consistent with the existing `?search=` param endpoints. Phone-in-querystring is acceptable
+  because the endpoint is ADMIN-gated (same exposure as `GET /users?search=<phone>`). PII discipline: returns
+  ONLY status + display name + active-apartment ids — never phone/email/dob/password/audit.
+- **ALREADY_HERE precedence.** When the lookup is given a target `apartmentId` and the user already actively
+  resides in it, `ALREADY_HERE` is returned ahead of `ACTIVE_ELSEWHERE`. Phone-only lookup never returns
+  ALREADY_HERE (it's apartment-specific); the place endpoint validates it at place-time regardless (server never
+  trusts the lookup).
+- **Server never trusts step 1 (IDOR-safe).** The place endpoint re-resolves the phone via `findByPhone` and
+  accepts NO client-supplied userId. On reuse, identity (name, dob, email, password) is taken from the existing
+  user and NEVER overwritten by request values — proven by the integration test that smuggles a different
+  name/password and asserts the old ones survive (login with old password works, smuggled fails).
+- **REUSE_CONFIRMATION_REQUIRED contract.** `confirmReuse != true` on a known phone (not active in target) →
+  409 `REUSE_CONFIRMATION_REQUIRED`, creating nothing. Carried by `ReuseConfirmationRequiredException extends
+  AppException` + a dedicated `@ExceptionHandler` that emits the standard error body PLUS a `matched` object (the
+  lookup DTO) so the FE can render the confirm popup. `ALREADY_ACTIVE_IN_APARTMENT` uses a plain `AppException`
+  (no extra body). Chosen over a 200-with-discriminated-union body to stay consistent with the project's
+  exception-based error architecture.
+- **Same (user, apartment) handled explicitly, not via the index.** An explicit
+  `existsActiveByUserIdAndApartmentId` pre-check surfaces the duplicate as a clean 409
+  `ALREADY_ACTIVE_IN_APARTMENT` instead of letting the relaxed unique index throw a
+  `DataIntegrityViolationException`. The index remains the backstop (and catches true concurrent races via the
+  existing handler → 409). Different-apartment reuse is permitted → concurrent multi-residency.
+- **Alternatives considered:** (a) two separate endpoints (create-new vs add-existing) — rejected, CTO ruled one
+  smart endpoint; (b) client passes the matched userId from step 1 — rejected (IDOR); (c) 200-with-status union
+  response for the confirmation case — rejected (inconsistent with the exception-based error path).
+
+## 2026-06-23 | Residency P3 — reactivate is enabled-only ([hoãn] force-password-reset)
+
+- **Decision:** On the REUSE/return path, reactivating a disabled account sets `user.active = true` ONLY. Role is
+  NOT changed, password is NOT reset/cleared, and NO force-password-reset flag is added.
+- **[hoãn]:** reactivate currently only re-enables the account; returning users log in with their OLD credentials.
+  Revisit a force-password-reset (or admin-set temporary password) later if deemed a security risk — a returning
+  resident's old password may have been shared/rotated during their absence. Deferred per CTO ruling; not a P3
+  concern.
+- **Reasoning:** minimal, reversible, and matches the move-out side (which only flips `active=false`). Anything
+  more (credential rotation) is a separate product/security decision, not implied by "let them back in".
+
+## 2026-06-23 | Residency P3 — conditional NEW-branch validation moved into the service
+
+- **Decision:** Removed `@NotBlank`/`@Pattern`/`@NotNull` from `CreateResidentRequest.fullName` / `password` /
+  `dateOfBirth`. The service enforces them (presence + password complexity, via `PASSWORD_PATTERN`) ONLY in the
+  NEW branch (`provisionNewUser`), throwing `VALIDATION_ERROR` (400) — preserving the existing weak-password
+  contract (`createResident_weakPassword_400`). Always-required fields (phone, apartmentId, type, moveInDate)
+  keep their bean constraints.
+- **Reasoning:** these three fields are required only when the phone is new; the reuse branch must accept a body
+  WITHOUT them (identity is reused). Bean validation cannot branch on a DB phone lookup, so the conditional
+  requirement has to live in the service. This is a deliberate, logged exception to the standing "every DTO that
+  accepts a password carries `@Pattern`" rule — the complexity check is relocated, not dropped.
+- **Alternatives considered:** (a) keep the constraints + have the FE send a dummy password on reuse — rejected
+  (sending an ignored password is a security smell and would still need a valid-looking value); (b) a second DTO
+  / endpoint — rejected (CTO ruled one endpoint); (c) class-level cross-field `@AssertTrue` — rejected (still
+  can't see the DB to know the branch).
+
+---
+
 ## 2026-06-22 | (d) follow-up — Move-out conditional user deactivation: rule + deactivation mechanism
 
 - **Decision (rule):** On move-out, deactivate the linked user account (`user.active = false`) ONLY when the user has no remaining active residency — checked via `residentRepository.existsActiveByUserId(userId)` AFTER `moveOutDate` is set (so the just-moved-out residency no longer counts). Implemented as the general "no other active residency" check even though the model is effectively 1-active-residency today, so it stays correct if multi-residency arises.

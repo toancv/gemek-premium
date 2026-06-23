@@ -8,10 +8,14 @@ Read-only diagnosis done, NO fix applied. Report: `reports/stale-ui-after-mutati
 `useCreateTicket` invalidates `['tickets']` (covers the HomePage count query `['tickets',{size:5,status:[...]}]`).
 The central `MutationCache` is toast-only; per-hook `onSuccess` invalidation is the established pattern and is
 correctly wired in BOTH cases. So the assumed "missing/mismatched refetch" is **refuted by the code**; the
-resident count is the SAME list query's `total` (no separate uninvalidated stat query). Residual cause needs a
-runtime repro (DevTools Network) — leading hypothesis is an **HTTP/proxy response cache** on `GET /api/users` &
-`/api/tickets` (uniquely explains "F5 fixes it, SPA refetch doesn't"); Bug 1 also possibly the `isActive=true`
-filter making the row leave the set. NOT a shared invalidation defect. Awaiting CTO ruling before any fix.
+resident count is the SAME list query's `total` (no separate uninvalidated stat query). NOT a shared invalidation
+defect. **HTTP/proxy-cache hypothesis now REFUTED** (verification section in the report): live headers on both
+`GET /api/users` & `/api/tickets` = `Cache-Control: no-cache, no-store, max-age=0, must-revalidate` (Spring
+Security default writer, NOT disabled in `SecurityConfig.java:94-103`); nginx `/api/` is pass-through, no
+`proxy_cache`. Responses are non-cacheable → browser/proxy cache is NOT the cause; BE header + nginx already
+correct, no fix there. Open question for the CTO's Network tab: does the list/count query actually **re-fire** on
+the mutation? yes-but-stale → React Query observer/render; no → inactive-query/navigation timing. Awaiting CTO
+Network-tab confirmation + ruling before any fix.
 
 ---
 

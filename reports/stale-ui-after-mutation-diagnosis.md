@@ -124,3 +124,63 @@ and it is shared.
 4. Bug 1 only: confirm whether the repro used the `isActive=true` filter (row-leaves-set, not a true bug).
 
 No code, migration, test, or API-SPEC changes made. Awaiting CTO ruling.
+
+---
+
+## HTTP-cache hypothesis verification (2026-06-23) — **VERDICT: REFUTED**
+
+Tested the "HTTP/proxy response cache" hypothesis (the leading shared candidate from the diagnosis above) at the
+config level AND with live response headers. It does NOT hold — the API GETs are explicitly non-cacheable.
+
+### 1. Backend (Spring Security) — effective `Cache-Control`
+- `SecurityConfig` (`backend/src/main/java/vn/vtit/gemek/config/SecurityConfig.java:94-103`) customizes
+  `.headers(...)` (contentTypeOptions, frameOptions.deny, HSTS, CSP) but does **NOT** call
+  `.cacheControl().disable()` or `.headers().defaultsDisabled()`. In Spring Security 6 the default
+  `CacheControlHeadersWriter` therefore **stays active** (customizing individual writers does not remove the
+  others). It emits, on every secured response:
+  `Cache-Control: no-cache, no-store, max-age=0, must-revalidate` + `Pragma: no-cache` + `Expires: 0`.
+- `GET /api/users` and `GET /api/tickets` are both `.anyRequest().authenticated()`
+  (`SecurityConfig.java:118`) → they get these headers. No controller sets its own `Cache-Control`, no
+  `ShallowEtagHeaderFilter`, no `@EnableCaching`, no `WebMvcConfigurer` cache config anywhere (grep = none).
+
+### 2. nginx (ports 80/81) — `/api/` proxy
+- `nginx/nginx.conf:30-39` (admin :80) and `:70-79` (resident :81): the `/api/` location is a **pure reverse
+  proxy** — `proxy_pass http://backend:8080` + `proxy_set_header` only. **No** `proxy_cache`, `proxy_cache_path`,
+  `expires`, or `add_header Cache-Control`. nginx passes backend headers through untouched and does not cache.
+
+### 3. Live response headers (decisive) — via nginx :80
+```
+$ curl -sD - -o /dev/null http://localhost:80/api/users
+HTTP/1.1 401
+Cache-Control: no-cache, no-store, max-age=0, must-revalidate
+Pragma: no-cache
+Expires: 0
+
+$ curl -sD - -o /dev/null http://localhost:80/api/tickets
+HTTP/1.1 401
+Cache-Control: no-cache, no-store, max-age=0, must-revalidate
+Pragma: no-cache
+Expires: 0
+```
+No `ETag`, no `Via`/`X-Cache`/`Age` (no nginx cache layer). Both endpoints return `no-store`. (Captured on the
+unauthenticated 401 — Spring Security's `HeaderWriterFilter` writes these unconditionally on every response
+through the chain, so the authenticated `200` carries the identical headers. `[TODO: verify]` exact 200 headers
+if the CTO wants belt-and-braces, but the writer is status-agnostic.)
+
+### Verdict
+**REFUTED.** `Cache-Control: no-store` on both GETs means the browser CANNOT serve an XHR/fetch refetch from HTTP
+cache — every React Query refetch hits the network and gets fresh JSON. nginx does not cache `/api`. So neither
+the browser nor the proxy can be the source of the staleness. **No fix is needed at the BE header / nginx layer**
+(it is already correct).
+
+### What this leaves (next candidate — for the CTO's Network-tab check)
+Since (a) the invalidation keys are correct (diagnosis above) and (b) responses are `no-store`, the only way
+staleness can persist is if the list/count query **does not actually re-fire** on the mutation, OR the refetched
+fresh data does not re-render the count/badge. The Network-tab repro must answer the single open question:
+**does `GET /api/users` / `GET /api/tickets` re-fire immediately after the mutation?**
+- **If it re-fires** (expected) and the UI is still stale → the bug is in React Query observer/render or component
+  state, NOT data freshness — and may not reproduce at all under a clean repro.
+- **If it does NOT re-fire** → the invalidation isn't reaching an active observer at that moment (e.g. the count
+  query is inactive and only refetches on Home remount — a navigation-timing perception, not a cache bug).
+Recommended fix location IF a real gap is confirmed: the FE query layer (e.g. `await` the invalidate, or
+`refetchType:'all'`/predicate) — **NOT** the BE header or nginx (both verified correct here).

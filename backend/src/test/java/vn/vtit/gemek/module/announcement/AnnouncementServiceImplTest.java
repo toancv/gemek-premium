@@ -24,7 +24,10 @@ import vn.vtit.gemek.module.announcement.repository.AnnouncementRepository;
 import vn.vtit.gemek.module.apartment.entity.Apartment;
 import vn.vtit.gemek.module.apartment.entity.Block;
 import vn.vtit.gemek.module.apartment.repository.BlockRepository;
+import vn.vtit.gemek.common.storage.FileStorageService;
+import vn.vtit.gemek.module.announcement.repository.AnnouncementMediaRepository;
 import vn.vtit.gemek.module.notification.repository.NotificationRepository;
+import org.springframework.context.ApplicationEventPublisher;
 import vn.vtit.gemek.module.resident.entity.Resident;
 import vn.vtit.gemek.module.resident.entity.ResidentType;
 import vn.vtit.gemek.module.resident.repository.ResidentRepository;
@@ -67,6 +70,9 @@ class AnnouncementServiceImplTest {
     @Mock private UserRepository userRepository;
     @Mock private ResidentRepository residentRepository;
     @Mock private NotificationRepository notificationRepository;
+    @Mock private AnnouncementMediaRepository mediaRepository;
+    @Mock private FileStorageService fileStorageService;
+    @Mock private ApplicationEventPublisher eventPublisher;
 
     private AnnouncementServiceImpl service;
 
@@ -80,7 +86,8 @@ class AnnouncementServiceImplTest {
         service = new AnnouncementServiceImpl(
                 announcementRepository, announcementReadRepository,
                 blockRepository, userRepository, residentRepository,
-                notificationRepository);
+                notificationRepository, mediaRepository, fileStorageService,
+                eventPublisher);
 
         announcementId = UUID.randomUUID();
         principalId = UUID.randomUUID();

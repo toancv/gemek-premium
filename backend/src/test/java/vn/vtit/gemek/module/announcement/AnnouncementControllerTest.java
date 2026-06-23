@@ -14,6 +14,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.test.web.servlet.MockMvc;
@@ -36,6 +37,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -383,5 +385,71 @@ class AnnouncementControllerTest extends AbstractIntegrationTest {
                         .content(objectMapper.writeValueAsString(req)))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.id").isNotEmpty());
+    }
+
+    // =========================================================================
+    // Media (C2.2) — controller security / status (deep logic in
+    // AnnouncementMediaServiceIntegrationTest)
+    // =========================================================================
+
+    /** Minimal valid JPEG (SOI + APP0/JFIF + EOI) — Tika detects image/jpeg from these bytes. */
+    private static final byte[] JPEG_BYTES = new byte[]{
+            (byte) 0xFF, (byte) 0xD8, (byte) 0xFF, (byte) 0xE0, 0x00, 0x10,
+            'J', 'F', 'I', 'F', 0x00, 0x01, 0x01, 0x00, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00,
+            (byte) 0xFF, (byte) 0xD9};
+
+    @Test
+    @DisplayName("POST /api/announcements/{id}/media — ADMIN uploads to a draft, returns 201")
+    void uploadMedia_adminDraft_returns201() throws Exception {
+        UUID announcementId = createAnnouncement(adminToken, "Media draft " + System.nanoTime());
+        MockMultipartFile file = new MockMultipartFile("file", "cover.jpg", "image/jpeg", JPEG_BYTES);
+
+        mockMvc.perform(multipart("/api/announcements/" + announcementId + "/media")
+                        .file(file)
+                        .param("kind", "inline")
+                        .header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.id").isNotEmpty())
+                .andExpect(jsonPath("$.kind").value("INLINE"))
+                .andExpect(jsonPath("$.contentType").value("image/jpeg"))
+                .andExpect(jsonPath("$.objectKey").value(
+                        org.hamcrest.Matchers.startsWith("announcements/" + announcementId + "/")));
+    }
+
+    @Test
+    @DisplayName("POST /api/announcements/{id}/media — RESIDENT caller is forbidden (403)")
+    void uploadMedia_resident_returns403() throws Exception {
+        UUID announcementId = createAnnouncement(adminToken, "Media forbid " + System.nanoTime());
+
+        String uid = UUID.randomUUID().toString().replace("-", "").substring(0, 8);
+        String phone = phoneFromUid(uid);
+        UUID blockId = createBlock("MediaBlock-" + uid);
+        UUID apartmentId = createApartment(blockId, "MR301");
+        assignResident(phone, apartmentId);
+        String residentToken = login(phone, "Password@123456");
+
+        MockMultipartFile file = new MockMultipartFile("file", "x.jpg", "image/jpeg", JPEG_BYTES);
+        mockMvc.perform(multipart("/api/announcements/" + announcementId + "/media")
+                        .file(file)
+                        .param("kind", "inline")
+                        .header("Authorization", "Bearer " + residentToken))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @DisplayName("POST /api/announcements/{id}/media — upload to a PUBLISHED announcement is rejected (409)")
+    void uploadMedia_published_returns409() throws Exception {
+        UUID announcementId = createAnnouncement(adminToken, "Media published " + System.nanoTime());
+        mockMvc.perform(post("/api/announcements/" + announcementId + "/publish")
+                        .header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isOk());
+
+        MockMultipartFile file = new MockMultipartFile("file", "x.jpg", "image/jpeg", JPEG_BYTES);
+        mockMvc.perform(multipart("/api/announcements/" + announcementId + "/media")
+                        .file(file)
+                        .param("kind", "inline")
+                        .header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.error").value("ANNOUNCEMENT_NOT_DRAFT"));
     }
 }

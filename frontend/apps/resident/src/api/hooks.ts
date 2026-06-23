@@ -45,7 +45,10 @@ export const useCreateTicket = () => {
   return useMutation({
     mutationFn: (data: unknown) => post('/tickets', data),
     meta: { skipErrorToast: true, successMessage: 'Đã gửi phản ánh.' },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['tickets'] }),
+    // refetchType:'all' so the INACTIVE HomePage active-tickets count query (['tickets',{...}], unmounted
+    // while creating from MyTicketsPage) is refetched, not just marked stale — fixes the stale-count-until-F5
+    // bug. See reports/stale-ui-after-mutation-diagnosis.md.
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['tickets'], refetchType: 'all' }),
   });
 };
 

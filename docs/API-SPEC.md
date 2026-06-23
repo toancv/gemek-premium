@@ -2084,6 +2084,72 @@ Response `200 OK`:
 
 ---
 
+### POST /api/announcements/{id}/media
+
+**Auth:** ADMIN
+**Description:** Upload ONE image to a **draft** announcement (C2.2). Published announcements are immutable
+(reject). `multipart/form-data`.
+
+Request parts:
+- `file` (required) — the image. Real content type is validated by **Tika on the bytes** (magic number),
+  NOT the filename extension or client `Content-Type`. Allowed: **jpg / png / webp** only.
+- `kind` (required) — `cover` | `inline` (case-insensitive). At most ONE `cover` per announcement: a second
+  `cover` upload **REPLACES** the existing one (old row removed + old object deleted after commit).
+
+Server-enforced caps (per announcement, inside the upload transaction): **≤5 images** AND **≤50 MB total**.
+The stored object key follows the C2.1 convention `announcements/{announcementId}/{uuid}` so the presign gate
+(`GET /api/files/presign`, §13) can parse the announcement id. The servlet multipart limit is 10 MB/file.
+
+Response `201 Created`:
+```json
+{
+  "id": "uuid",
+  "kind": "COVER",
+  "contentType": "image/jpeg",
+  "sizeBytes": 184320,
+  "originalFilename": "cover.jpg",
+  "objectKey": "announcements/{announcementId}/{uuid}.jpg",
+  "createdAt": "2026-06-23T10:00:00Z"
+}
+```
+> No presigned URL is returned here — clients fetch a short-lived URL on read via `GET /api/files/presign`
+> with the `objectKey` (C2.1 scope gate).
+
+Errors:
+- `400 ANNOUNCEMENT_MEDIA_TYPE_NOT_ALLOWED` — detected type is not jpg/png/webp (VN: *"Chỉ chấp nhận ảnh JPG, PNG hoặc WEBP."*)
+- `400 ANNOUNCEMENT_MEDIA_LIMIT_EXCEEDED` — would exceed 5 images (VN: *"Tối đa 5 ảnh mỗi thông báo."*) or 50 MB total (VN: *"Tổng dung lượng ảnh của thông báo vượt quá 50MB."*)
+- `400 VALIDATION_ERROR` — missing/invalid `kind`
+- `409 ANNOUNCEMENT_NOT_DRAFT` — announcement is published (VN: *"Không thể chỉnh sửa ảnh của thông báo đã xuất bản."*)
+- `403 FORBIDDEN` — caller is not ADMIN
+- `404 NOT_FOUND` — announcement does not exist
+
+---
+
+### GET /api/announcements/{id}/media
+
+**Auth:** ADMIN, BOARD_MEMBER
+**Description:** List an announcement's media metadata (authoring view), oldest first. Resident read of media
+happens via the detail/render path (C2.3) gated by the C2.1 presign check — not this endpoint.
+
+Response `200 OK`: array of the media object shown above (no presigned URLs).
+
+---
+
+### DELETE /api/announcements/{id}/media/{mediaId}
+
+**Auth:** ADMIN
+**Description:** Delete one media row from a **draft** announcement. The DB row is removed in-transaction; the
+MinIO object is deleted **after commit** (best-effort — an orphaned object never rolls back the delete). The
+`mediaId` must belong to `{id}` (dual-key — no cross-announcement delete).
+
+Response `204 No Content`
+Errors: `409 ANNOUNCEMENT_NOT_DRAFT` (published), `404 NOT_FOUND` (no such media in this announcement), `403 FORBIDDEN` (not ADMIN)
+
+> **Draft delete cascade:** `DELETE /api/announcements/{id}` on a draft also removes all its media rows
+> (FK `ON DELETE CASCADE`) and schedules every object for after-commit cleanup.
+
+---
+
 ## 11. Reports and Dashboard
 
 All report endpoints require `ADMIN` or `BOARD_MEMBER` role.

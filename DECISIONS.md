@@ -1275,3 +1275,47 @@ predicate it stays consistent with, guarded by `AnnouncementRecipientConsistency
 **Tests:** `AnnouncementServiceImplTest` (+8 unit — routing/parse), `AnnouncementMediaPresignAccessTest`
 (+6 integration — published/draft/scope through real DB), `PresignPrefixRoutingTest` updated to the new
 rule. Full backend suite GREEN (397). `AnnouncementRecipientConsistencyTest` untouched.
+
+---
+
+## 2026-06-23 — C2.2 Announcement media upload (ADMIN, drafts only) on the C2.1-secured presign
+
+**Context:** With the presign hole closed (C2.1), C2.2 adds the actual upload path. CTO rulings: ADMIN-only;
+drafts only (published immutable); ≤5 images AND ≤50MB total per announcement (server-enforced in-tx); jpg/png/
+webp only validated by Tika on the bytes; kind ∈ {cover, inline} with ≤1 cover. NO render / placeholder / admin
+UI (C2.3).
+
+**Media model:** new `announcement_media` table (V21) — `object_key TEXT` (C2.1 convention
+`announcements/{announcementId}/{uuid}`), `content_type`, `size_bytes`, `kind` (VARCHAR + CHECK COVER|INLINE),
+`original_filename`, `created_by` (auditing via `CreatableEntity`), `created_at`. FK
+`ON DELETE CASCADE` to announcements (mirrors `ticket_photos`→`tickets`); the service ALSO collects object keys
+before delete to schedule MinIO cleanup, so rows and objects stay consistent. Index on `announcement_id`.
+
+**Cover-replace ruling (chosen REPLACE, not reject):** a second `cover` upload deletes the old cover row in-tx
+and schedules the old object for after-commit delete, then saves the new cover. Caps are computed against the
+post-replace baseline so replacing a cover never trips the 5/50MB limits.
+
+**Tika-on-bytes:** `TIKA.detect(file.getInputStream())` is the source of truth for the allowed-type check AND the
+stored `content_type` AND the key extension — the client `Content-Type`/filename are never trusted. Allowed set
+`{image/jpeg, image/png, image/webp}`.
+
+**After-commit object cleanup (NEW mechanism — none existed):** introduced generic, reusable
+`ObjectKeysObsoleteEvent` + `ObsoleteObjectCleanupListener`
+(`@TransactionalEventListener(phase = AFTER_COMMIT)`) in `common/storage`. Service methods (cover-replace, delete
+media, draft delete) publish the event inside their tx; the listener best-effort deletes each object only after
+commit (`FileStorageService.delete` already logs+swallows; an orphaned object is harmless and must never roll back
+the business op). On rollback the listener never fires. Ticket-photo delete stays in-tx (unchanged); future
+surfaces can reuse this event.
+
+**Error codes added:** `ANNOUNCEMENT_MEDIA_TYPE_NOT_ALLOWED` (400), `ANNOUNCEMENT_MEDIA_LIMIT_EXCEEDED` (400),
+`ANNOUNCEMENT_NOT_DRAFT` (409) — all with VN messages. `AnnouncementService` gained `uploadMedia`/`listMedia`/
+`deleteMedia`; `AnnouncementServiceImpl` constructor gained `AnnouncementMediaRepository`, `FileStorageService`,
+`ApplicationEventPublisher` (its C2.1 unit-test constructor updated accordingly).
+
+**Alternatives considered:** (a) reject second cover (REJECTED — replace is the better authoring UX, CTO-chosen);
+(b) in-tx MinIO delete like ticket photos (REJECTED for media — a storage failure or a rollback would then either
+abort the business op or orphan/destroy inconsistently; after-commit is the CTO ruling); (c) trust client
+Content-Type (REJECTED — spoofable; Tika on bytes).
+
+**Tests:** `AnnouncementMediaServiceIntegrationTest` (+12, non-transactional to exercise after-commit),
+`AnnouncementControllerTest` (+3 security/status). Full backend suite GREEN (412).

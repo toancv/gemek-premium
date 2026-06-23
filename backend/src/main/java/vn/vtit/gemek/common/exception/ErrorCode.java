@@ -94,7 +94,13 @@ public enum ErrorCode {
     REUSE_CONFIRMATION_REQUIRED(HttpStatus.CONFLICT),
 
     /** Place-resident: the user identified by the phone already has an active residency in the target apartment. */
-    ALREADY_ACTIVE_IN_APARTMENT(HttpStatus.CONFLICT);
+    ALREADY_ACTIVE_IN_APARTMENT(HttpStatus.CONFLICT),
+
+    /** Announcement Markdown body exceeds the maximum allowed length. */
+    ANNOUNCEMENT_CONTENT_TOO_LONG(HttpStatus.BAD_REQUEST),
+
+    /** Announcement body contains raw HTML tags; only Markdown is accepted. */
+    ANNOUNCEMENT_CONTENT_HTML_NOT_ALLOWED(HttpStatus.BAD_REQUEST);
 
     /** HTTP status code associated with this error code. */
     private final HttpStatus httpStatus;

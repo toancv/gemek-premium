@@ -320,4 +320,68 @@ class AnnouncementControllerTest extends AbstractIntegrationTest {
                 .anyMatch(a -> draftTitle.equals(a.get("title")));
         assertTrue(!draftFound, "Draft announcement must not appear in resident list");
     }
+
+    // =========================================================================
+    // Test — write-check: raw HTML in content is rejected (secondary XSS guard)
+    // =========================================================================
+
+    @Test
+    @DisplayName("POST /api/announcements — raw HTML body rejected with 400 ANNOUNCEMENT_CONTENT_HTML_NOT_ALLOWED")
+    void createAnnouncement_rawHtmlContent_returns400() throws Exception {
+        CreateAnnouncementRequest req = new CreateAnnouncementRequest();
+        req.setTitle("XSS attempt " + System.nanoTime());
+        req.setContent("Hello <script>alert(1)</script> world");
+        req.setType(AnnouncementType.GENERAL);
+        req.setTargetScope(AnnouncementScope.ALL);
+
+        mockMvc.perform(post("/api/announcements")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(req)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("ANNOUNCEMENT_CONTENT_HTML_NOT_ALLOWED"));
+    }
+
+    // =========================================================================
+    // Test — write-check: over-length content is rejected
+    // =========================================================================
+
+    @Test
+    @DisplayName("POST /api/announcements — over-length body rejected with 400 ANNOUNCEMENT_CONTENT_TOO_LONG")
+    void createAnnouncement_overLengthContent_returns400() throws Exception {
+        CreateAnnouncementRequest req = new CreateAnnouncementRequest();
+        req.setTitle("Long body " + System.nanoTime());
+        // One char over the 20000 limit.
+        req.setContent("a".repeat(20001));
+        req.setType(AnnouncementType.GENERAL);
+        req.setTargetScope(AnnouncementScope.ALL);
+
+        mockMvc.perform(post("/api/announcements")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(req)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("ANNOUNCEMENT_CONTENT_TOO_LONG"));
+    }
+
+    // =========================================================================
+    // Test — write-check: normal Markdown is accepted
+    // =========================================================================
+
+    @Test
+    @DisplayName("POST /api/announcements — normal Markdown body accepted, returns 201")
+    void createAnnouncement_markdownContent_returns201() throws Exception {
+        CreateAnnouncementRequest req = new CreateAnnouncementRequest();
+        req.setTitle("Markdown body " + System.nanoTime());
+        req.setContent("# Tiêu đề\n\nNội dung **đậm**, *nghiêng* và [liên kết](https://vtit.vn).\n\n- mục 1\n- mục 2");
+        req.setType(AnnouncementType.GENERAL);
+        req.setTargetScope(AnnouncementScope.ALL);
+
+        mockMvc.perform(post("/api/announcements")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(req)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.id").isNotEmpty());
+    }
 }

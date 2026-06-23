@@ -42,6 +42,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 /**
@@ -58,6 +59,19 @@ import java.util.stream.Collectors;
 public class AnnouncementServiceImpl implements AnnouncementService {
 
     private static final Logger log = LoggerFactory.getLogger(AnnouncementServiceImpl.class);
+
+    /**
+     * Maximum allowed length of an announcement Markdown body. A single broadcast body never needs
+     * more than this; the bound is a cheap guard against TEXT-column abuse, not a product limit.
+     */
+    private static final int MAX_CONTENT_LENGTH = 20_000;
+
+    /**
+     * Detects a raw HTML tag (opening or closing) to reject HTML in a Markdown body. Deliberately does
+     * NOT match Markdown autolinks ({@code <https://…>} — a scheme's ':' follows the name) nor email
+     * autolinks ({@code <a@b.com>} — '@' follows) nor a bare '<' in prose ("a < b").
+     */
+    private static final Pattern HTML_TAG_PATTERN = Pattern.compile("</?[a-zA-Z][a-zA-Z0-9]*[\\s/>]");
 
     private final AnnouncementRepository announcementRepository;
     private final AnnouncementReadRepository announcementReadRepository;
@@ -217,6 +231,7 @@ public class AnnouncementServiceImpl implements AnnouncementService {
         log.debug("createAnnouncement — type={}, scope={}", req.getType(), req.getTargetScope());
 
         validateScopeConstraints(req.getTargetScope(), req.getTargetBlockId(), req.getTargetFloor());
+        validateContent(req.getContent());
 
         Announcement announcement = new Announcement();
         announcement.setTitle(req.getTitle());
@@ -267,6 +282,7 @@ public class AnnouncementServiceImpl implements AnnouncementService {
             announcement.setTitle(req.getTitle());
         }
         if (req.getContent() != null) {
+            validateContent(req.getContent());
             announcement.setContent(req.getContent());
         }
         if (req.getType() != null) {
@@ -492,6 +508,27 @@ public class AnnouncementServiceImpl implements AnnouncementService {
                 && (targetBlockId == null || targetFloor == null)) {
             throw new AppException(ErrorCode.VALIDATION_ERROR,
                     "targetBlockId and targetFloor required for FLOOR scope.");
+        }
+    }
+
+    /**
+     * Lightweight secondary guard on the Markdown body. The frontend safe renderer is the primary XSS
+     * defense; this rejects two cheap classes of bad input on write: over-length bodies and raw HTML
+     * tags (the stored format is Markdown, not HTML).
+     *
+     * @param content the Markdown body to validate; may be null (treated as no-op).
+     */
+    private void validateContent(String content) {
+        if (content == null) {
+            return;
+        }
+        if (content.length() > MAX_CONTENT_LENGTH) {
+            throw new AppException(ErrorCode.ANNOUNCEMENT_CONTENT_TOO_LONG,
+                    "Announcement content exceeds the maximum length of " + MAX_CONTENT_LENGTH + " characters.");
+        }
+        if (HTML_TAG_PATTERN.matcher(content).find()) {
+            throw new AppException(ErrorCode.ANNOUNCEMENT_CONTENT_HTML_NOT_ALLOWED,
+                    "Announcement content must be Markdown and may not contain raw HTML tags.");
         }
     }
 

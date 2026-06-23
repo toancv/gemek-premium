@@ -55,6 +55,10 @@ const ERROR_MESSAGES: Record<string, string> = {
   // Booking lifecycle
   BOOKING_NOT_PENDING: 'Chỉ có thể duyệt hoặc từ chối đặt chỗ đang chờ xử lý.',
 
+  // Announcement rich content (Markdown)
+  ANNOUNCEMENT_CONTENT_TOO_LONG: 'Nội dung quá dài (tối đa 20.000 ký tự).',
+  ANNOUNCEMENT_CONTENT_HTML_NOT_ALLOWED: 'Nội dung không được chứa mã HTML. Vui lòng dùng định dạng Markdown.',
+
   // Rate / server
   RATE_LIMITED: 'Bạn thao tác quá nhanh, vui lòng thử lại sau.',
   INTERNAL_ERROR: 'Có lỗi xảy ra, vui lòng thử lại.',

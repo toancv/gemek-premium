@@ -13,9 +13,16 @@ defect. **HTTP/proxy-cache hypothesis now REFUTED** (verification section in the
 `GET /api/users` & `/api/tickets` = `Cache-Control: no-cache, no-store, max-age=0, must-revalidate` (Spring
 Security default writer, NOT disabled in `SecurityConfig.java:94-103`); nginx `/api/` is pass-through, no
 `proxy_cache`. Responses are non-cacheable → browser/proxy cache is NOT the cause; BE header + nginx already
-correct, no fix there. Open question for the CTO's Network tab: does the list/count query actually **re-fire** on
-the mutation? yes-but-stale → React Query observer/render; no → inactive-query/navigation timing. Awaiting CTO
-Network-tab confirmation + ruling before any fix.
+correct, no fix there. CTO Network tab CONFIRMED: NO `GET /api/users` fires on return to Account → query stale-but-not-refetched.
+**ROOT CAUSE pinned (report "Refetch-on-return" section):** `invalidateQueries` uses the default
+`refetchType:'active'` (admin `hooks.ts:99`, resident `hooks.ts:48`) → INACTIVE matching queries are marked
+stale but NOT refetched; the global `staleTime: 30_000` (admin `main.tsx:15`, resident `main.tsx:13`, no
+`refetchOnMount:'always'`) then suppresses the remount refetch → stale until staleTime lapses or F5. Resident
+count query is inactive at create (created on MyTicketsPage); admin users query effectively inactive at
+invalidate on the observed path. **Fix options:** (1) per-hook `refetchType:'all'` on the 2 invalidating hooks
+[recommended — matches per-hook pattern, fixes both]; (2) `refetchOnMount:'always'` on the 2 list queries;
+(3) lower `staleTime`. Same root cause both apps but lands in 2 files (separate QueryClients). Awaiting CTO
+ruling before any fix.
 
 ---
 

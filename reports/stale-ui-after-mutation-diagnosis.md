@@ -184,3 +184,79 @@ fresh data does not re-render the count/badge. The Network-tab repro must answer
   query is inactive and only refetches on Home remount — a navigation-timing perception, not a cache bug).
 Recommended fix location IF a real gap is confirmed: the FE query layer (e.g. `await` the invalidate, or
 `refetchType:'all'`/predicate) — **NOT** the BE header or nginx (both verified correct here).
+
+---
+
+## Refetch-on-return root cause (2026-06-23) — **CONFIRMED: `refetchType:'active'` + `staleTime` leaves inactive queries unrefetched**
+
+CTO Network-tab observation (decisive): on deactivate, `['users']` is invalidated (confirmed wired) but **NO
+`GET /api/users` fires** when returning to the Account tab. HTTP cache already refuted (responses `no-store`). So
+the query is marked stale yet never refetched. Root cause is React Query refetch behavior, pinned below.
+
+### Config facts (file:line)
+- **QueryClient defaults — admin** `frontend/apps/admin/src/main.tsx:14-16`:
+  `defaultOptions.queries = { retry: 1, staleTime: 30_000 }`. **No** `refetchOnMount`, `gcTime`,
+  `refetchOnWindowFocus`, or `refetchOnReconnect` set → all React Query v5 defaults
+  (`refetchOnMount: true`, `refetchOnWindowFocus: true`, `gcTime: 5 min`).
+- **QueryClient defaults — resident** `frontend/apps/resident/src/main.tsx:13`: identical
+  `{ retry: 1, staleTime: 30_000 }`, no other overrides. (Two SEPARATE QueryClients — one per app.)
+- **List queries have no per-query overrides:** `useUsers` (`admin/src/api/hooks.ts:72-73`, key `['users', params]`),
+  `useMyTickets` (`resident/src/api/hooks.ts:14-15`, key `['tickets', params]`). No `enabled`/`refetchOnMount`/
+  `staleTime`/`select` on either.
+- **Invalidate calls use the DEFAULT `refetchType` (= `'active'`):** `useDeactivateUser`
+  (`admin/src/api/hooks.ts:99`) → `invalidateQueries({ queryKey: ['users'] })`; `useCreateTicket`
+  (`resident/src/api/hooks.ts:48`) → `invalidateQueries({ queryKey: ['tickets'] })`. Neither passes
+  `refetchType`.
+- **Routing remounts pages:** real routes (`admin/src/App.tsx:69` `path="users"`), `NavLink` nav
+  (`admin/src/components/Layout.tsx:68`) rendered through `<Outlet/>` (`Layout.tsx:117`). No keep-alive / CSS tab
+  toggle — UsersPage unmounts on nav-away and remounts on return.
+
+### The chain (why no refetch)
+`invalidateQueries` with the default `refetchType: 'active'` does two things: (1) marks all matching queries
+`invalidated`; (2) refetches **only the ACTIVE ones** (queries with a currently-mounted observer). Inactive
+matches are left marked-stale but **not refetched**.
+
+- **Bug 2 (resident count) — clean fit.** The HomePage count query `['tickets', {size:5,status:[...]}]` is
+  **INACTIVE** when the ticket is created (creation happens on `MyTicketsPage`; HomePage is unmounted). So the
+  create's `invalidate(['tickets'])` marks it stale but does not refetch it. On return to HomePage the query
+  remounts; `refetchOnMount` default would refire a stale query — **but** because the entry was created/last
+  fetched within `staleTime: 30_000` and the navigation round-trip is fast, the observed effect is no refetch
+  until staleTime lapses (or F5, which drops the in-memory cache entirely). Net: the count is the SAME list
+  query's `total` (no separate stat query), left stale.
+- **Bug 1 (admin user status) — same mechanism.** The status badge reads `['users', params]` (active only while
+  on UsersPage). The CTO's "no GET on switching to the Account menu" is the inactive-query path: the
+  `['users']` query is not the active observer at the moment the refetch would matter, so `refetchType:'active'`
+  does not refire it, and `staleTime: 30_000` suppresses the remount refetch within the window. `[TODO: verify]`
+  whether, in the exact repro, the deactivate fires while UsersPage is still mounted (active) — if so the
+  active-refetch *should* update the badge in place; the CTO trace showing no GET indicates the query is
+  effectively inactive at invalidate time on the path used. Either way the fix below covers it.
+
+**Single root cause:** `invalidateQueries` default `refetchType:'active'` does not refetch INACTIVE matching
+queries, and the global `staleTime: 30_000` (with no `refetchOnMount:'always'`) suppresses the would-be
+remount refetch — so an invalidated-but-inactive list/count query stays stale on return until staleTime lapses
+or a full reload (F5). The deciding lines: `refetchType` omitted at `admin/src/api/hooks.ts:99` &
+`resident/src/api/hooks.ts:48`, against `staleTime: 30_000` at `admin/src/main.tsx:15` & `resident/src/main.tsx:13`.
+
+### Fix options (described, NOT applied) — with tradeoffs
+1. **Per-hook `refetchType: 'all'`** — `invalidateQueries({ queryKey: ['users'], refetchType: 'all' })` (and
+   `['tickets']`). Refetches inactive matches too, so the data is refreshed even before the user returns.
+   *Tradeoff:* a few extra background fetches of currently-unmounted queries. **Best fit to the project's
+   established per-hook precise-invalidation pattern** (MutationCache is toast-only; each hook owns its
+   invalidate). Smallest, most targeted change. Applied in 2 files (one per app).
+2. **`refetchOnMount: 'always'` on the two list queries** (`useUsers`, `useMyTickets`) — forces a refetch on
+   every remount regardless of staleness, so returning to the page always re-fetches. *Tradeoff:* an extra
+   fetch on every visit even without a preceding mutation; per-query, doesn't help if the surface stays mounted.
+3. **Lower/zero `staleTime`** (per-query on these lists, or global in `main.tsx`) — makes the query stale
+   immediately so `refetchOnMount: true` refires. *Tradeoff:* global change refetches app-wide far more often;
+   per-query is narrower but still adds fetches; doesn't refresh inactive queries until they remount.
+4. **Explicit `refetch()` / awaited invalidate in `onSuccess`** — heaviest, least idiomatic; only refreshes the
+   active surface, so it would NOT fix Bug 2 (count query inactive at create). Not recommended.
+
+### One fix for both? — Conceptually yes, mechanically TWO files
+The two apps have **separate** QueryClients and separate hooks files, so any fix lands in BOTH
+`admin/src/api/hooks.ts` and `resident/src/api/hooks.ts` (option 1) or both `main.tsx` (options 2/3). It is the
+same root cause and the same fix shape, applied per app. **Recommended:** option 1 (`refetchType:'all'` on the
+two invalidating hooks) — minimal, matches the precise per-hook invalidation pattern, and fixes both the active
+and inactive cases without changing global fetch frequency.
+
+No code, migration, test, or API-SPEC changes made. Awaiting CTO ruling.

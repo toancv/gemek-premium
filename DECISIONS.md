@@ -5,6 +5,37 @@ Format: Date | Decision | Reasoning | Alternatives
 
 ---
 
+## 2026-06-23 | Residency-lifecycle P0–P3 COMPLETE & CTO-smoked end-to-end — closing note + open items
+
+**Closed:** Residency-lifecycle P0–P3 complete & CTO-smoked end-to-end. Concurrent multi-residency is creatable
+via the place-resident flow (existing active phone + `confirmReuse=true` → 2nd active residency in a different
+apartment; relaxed index `uq_residents_active_user (user_id, apartment_id) WHERE move_out_date IS NULL` permits
+it, same `(user, apartment)` still blocked). Reactivate on return is **enabled-only** (`[hoãn]` force-reset — a
+returning user logs in with old credentials; revisit later if deemed a risk). State verified against code/DB this
+turn (live index from `pg_indexes`; lookup + branching endpoints in `ResidentController`/`ResidentServiceImpl`),
+not from memory. Phase commits: P0 `2c2f8e6`/`7d378d7`, P1 `dbd4848`, P2 `bc85522`, P3 `f464397`+`c907a0e`.
+
+**OPEN items (carry forward — a future session should pick these up):**
+- **(a) Amenity real attribution rule — `[PLANNED]`, NOT decided.** Booking/listBookings still use the temporary
+  deterministic *primary-or-latest* residency. Markers live at
+  `backend/.../module/amenity/AmenityServiceImpl.java:284` + `:298`
+  (`// [PLANNED] multi-residency: temporary primary-or-latest selection; real attribution rule pending CTO ruling`);
+  API-SPEC carries the matching `[PLANNED — multi-residency attribution]` note. The real "which apartment is a
+  booking charged to" rule needs a CTO ruling.
+- **(b) Move-out admin UI item (d) — PRESENT (done).** Confirmed this turn:
+  `frontend/apps/admin/src/api/hooks.ts:130` (`useMoveOutResident` → `POST /api/residents/{id}/move-out`) wired
+  into `frontend/apps/admin/src/pages/ResidentsPage.tsx` ("Kết thúc cư trú" button `:319` → `openMoveOut` →
+  `mutateAsync` `:106`, with date-picker + notes confirm dialog). BE conditional account-deactivation on move-out
+  also landed earlier. Item (d) is NOT an open gap; recorded here only to retire the question.
+- **(c) Deprecated `findActiveByUserId` cleanup — PENDING.** The `@Deprecated` `Optional`-returning query remains
+  at `backend/.../module/resident/repository/ResidentRepository.java:101` with **no production callers** (verified
+  by grep this turn). Retained since P1 pending a separate cleanup pass; safe to delete when convenient.
+- **(d) FE `any`-type debt.** Pre-existing `any` usage on list-item handlers (e.g. ticket/resident pages) is
+  unrelated to residency correctness and out of this chain's scope; noted only so it isn't mistaken for residency
+  debt. No action required for residency-lifecycle.
+
+---
+
 ## 2026-06-23 | Residency lifecycle — P3 place-resident flow (AS IMPLEMENTED)
 
 **See:** `reports/p3-place-resident.md`, PROGRESS "P3 DONE", API-SPEC §Residents (lookup + POST /residents).

@@ -1,5 +1,29 @@
 # PROGRESS — Apartment Management System
 
+## ✅ RESIDENCY-LIFECYCLE CORE (P0–P3) COMPLETE — CTO-smoked end-to-end (2026-06-23)
+
+Concurrent multi-residency is real and creatable through the product. Phase recap (each verified against
+code/DB this turn, not from memory):
+
+- **P0 — docs reconcile** (`2c2f8e6` investigation, `7d378d7` model reconcile): corrected the domain model vs
+  the verified index truth; produced `reports/residency-lifecycle-investigation.md` + the phased plan.
+- **P1 — `findActiveByUserId` sweep** (`dbd4848` feat, `f5e3f07` test, `eb2237e` docs): every singular
+  `Optional`-returning consumer made multi-residency-safe BEFORE relaxing the index. `reports/p1-findactivebyuserid-sweep.md`.
+- **P2 — index relax** (`bc85522` feat V20, `9a9b746` test, `1fc319c` docs): `uq_residents_active_user` relaxed
+  to **`(user_id, apartment_id) WHERE move_out_date IS NULL`** — VERIFIED live in dev DB this turn (`pg_indexes`).
+  `reports/p2-index-relax.md`.
+- **P3 — place-resident + admin UI** (`f464397` feat BE, `bb1b6a0` test, `c907a0e` feat FE, `3ce08de` api-spec,
+  `1eb8de3` docs): `POST /api/residents` branches NEW / RETURNING (reactivate enabled-only) / ADD-CONCURRENT /
+  `ALREADY_ACTIVE_IN_APARTMENT`; `GET /api/residents/lookup` (ADMIN, minimal PII); old `PHONE_ALREADY_EXISTS`
+  dead-end removed; two-step admin UI. `reports/p3-place-resident.md`. Suite 379/379 green.
+
+**Resume pointer:** residency-lifecycle core done; remaining tail items tracked in DECISIONS open-items
+(amenity attribution still `[PLANNED]` temporary primary-or-latest; move-out admin UI item (d) — **confirmed
+PRESENT** per this check, `frontend/apps/admin/src/api/hooks.ts:130` + `ResidentsPage.tsx:319`/`:106`; deprecated
+`findActiveByUserId` defn cleanup still pending, no production callers).
+
+---
+
 ## ⏸ P3 DONE — place-resident flow live; multi-residency CREATABLE end-to-end — awaiting CTO smoke (2026-06-23)
 
 **P3 (move-in / return / add-concurrent, keyed by phone) DONE.** `POST /api/residents` now branches

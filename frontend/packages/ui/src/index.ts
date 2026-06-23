@@ -17,3 +17,5 @@ export type { EnumLabelType } from './lib/enumLabels';
 export { formatVNDate, formatVNDateTime, parseISODateLocal, toISODateLocal } from './lib/dateFormat';
 export { VNDatePicker } from './components/VNDatePicker';
 export type { VNDatePickerProps } from './components/VNDatePicker';
+export { MarkdownContent, MARKDOWN_ALLOWED_ELEMENTS } from './components/MarkdownContent';
+export type { MarkdownContentProps } from './components/MarkdownContent';

@@ -34,8 +34,9 @@ import java.util.UUID;
  *
  * <p>A resident record links a user account to an apartment for a specific period.
  * When {@code moveOutDate} is {@code null} the resident is considered active.
- * At most one resident per user may be active at any time, enforced by the
- * partial unique index {@code uq_residents_active_user}.
+ * A user may be active in multiple apartments concurrently; uniqueness is per
+ * {@code (user, apartment)} — at most one active resident row per user+apartment pair,
+ * enforced by the partial unique index {@code uq_residents_active_user} (relaxed in V20).
  */
 @Getter
 @Setter

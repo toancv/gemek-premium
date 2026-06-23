@@ -245,8 +245,9 @@ CREATE TABLE residents (
 CREATE INDEX idx_residents_user_id      ON residents (user_id);
 CREATE INDEX idx_residents_apartment_id ON residents (apartment_id);
 CREATE INDEX idx_residents_type         ON residents (type);
--- Partial unique index: a user may only be active in one apartment at a time
-CREATE UNIQUE INDEX uq_residents_active_user ON residents (user_id) WHERE move_out_date IS NULL;
+-- Partial unique index (relaxed in V20): a user may be active in multiple apartments
+-- concurrently; uniqueness is per (user, apartment) — no two active rows for the same pair.
+CREATE UNIQUE INDEX uq_residents_active_user ON residents (user_id, apartment_id) WHERE move_out_date IS NULL;
 -- Partial index for current active residents of an apartment
 CREATE INDEX idx_residents_active       ON residents (apartment_id) WHERE move_out_date IS NULL;
 

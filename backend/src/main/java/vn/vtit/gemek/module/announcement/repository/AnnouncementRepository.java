@@ -56,6 +56,39 @@ public interface AnnouncementRepository extends JpaRepository<Announcement, UUID
             Pageable pageable);
 
     /**
+     * Tests whether a resident may READ a given announcement per its ALL/BLOCK/FLOOR scope —
+     * the access predicate backing {@code AnnouncementService.assertMediaPresignAccess} (C2.1).
+     *
+     * <p>True iff the announcement exists, is PUBLISHED ({@code publishedAt} non-null), and at least
+     * one of the caller's ACTIVE residencies ({@code moveOutDate IS NULL}) matches the scope. The
+     * scope clause is the textual mirror of {@link #findPublishedForApartment} and of
+     * {@code ResidentRepository.findRecipientUserIds} — feed↔dispatch↔media visibility stay one rule
+     * (guarded by {@code AnnouncementRecipientConsistencyTest}). A nonexistent id, a draft, or an
+     * out-of-scope caller all yield false (deny), null-safe — no JPQL nullable-param anchoring needed
+     * because {@code a.scope} is a real entity attribute the literal compares against.
+     *
+     * @param announcementId the announcement UUID parsed from the media object key.
+     * @param userId         the calling resident's user UUID.
+     * @return true iff the resident may read (and thus presign media for) the announcement.
+     */
+    @Query("""
+            SELECT CASE WHEN COUNT(a) > 0 THEN true ELSE false END
+            FROM Announcement a
+            WHERE a.id = :announcementId
+              AND a.publishedAt IS NOT NULL
+              AND EXISTS (
+                SELECT 1 FROM Resident r
+                WHERE r.user.id = :userId
+                  AND r.moveOutDate IS NULL
+                  AND (a.scope = 'ALL'
+                    OR (a.scope = 'BLOCK' AND a.targetBlock.id = r.apartment.block.id)
+                    OR (a.scope = 'FLOOR' AND a.targetBlock.id = r.apartment.block.id
+                          AND a.targetFloor = r.apartment.floor)))
+            """)
+    boolean existsReadableByResident(@Param("announcementId") UUID announcementId,
+                                     @Param("userId") UUID userId);
+
+    /**
      * Atomically publishes a draft announcement (compare-and-set on {@code publishedAt}).
      *
      * <p>Returns 1 only for the single request that transitions the row from draft to

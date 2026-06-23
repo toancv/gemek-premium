@@ -219,6 +219,67 @@ public class AnnouncementServiceImpl implements AnnouncementService {
         return toResponse(announcement, isRead);
     }
 
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void assertMediaPresignAccess(String objectKey, UUID principalId, String role) {
+        // Parse the owning announcement id FIRST — a malformed key is denied for every role
+        // (FORBIDDEN, never a 500 from a bad UUID reaching MinIO).
+        UUID announcementId = parseAnnouncementIdFromKey(objectKey);
+        if (announcementId == null) {
+            log.warn("Denied announcement-media presign — malformed key.");
+            throw new AppException(ErrorCode.FORBIDDEN, "Access denied to announcement media.");
+        }
+
+        // ADMIN / BOARD_MEMBER are unrestricted, mirroring announcement read (drafts included —
+        // they author/preview draft media). Direct analogue of enforcePhotoAccess's staff bypass.
+        if ("ADMIN".equals(role) || "BOARD_MEMBER".equals(role)) {
+            return;
+        }
+
+        // Only RESIDENT may reach a scope check; every other role (e.g. TECHNICIAN) is denied —
+        // announcements are not a technician surface.
+        if (!"RESIDENT".equals(role)) {
+            log.warn("Denied announcement-media presign — role {} has no announcement audience.", role);
+            throw new AppException(ErrorCode.FORBIDDEN, "Access denied to announcement media.");
+        }
+
+        // Scope mirror: the single exists query also enforces published-only (draft media is
+        // never resident-visible) and nonexistent-id → false (deny). No 500 path.
+        if (!announcementRepository.existsReadableByResident(announcementId, principalId)) {
+            throw new AppException(ErrorCode.FORBIDDEN, "Access denied to announcement media.");
+        }
+    }
+
+    /**
+     * Recovers the announcement UUID from a media object key per {@link AnnouncementService#MEDIA_KEY_PREFIX}.
+     *
+     * <p>Convention: {@code announcements/{announcementId}/{uuid-filename}} — the id is the first path
+     * segment after the prefix. Returns {@code null} (caller denies) for any key that lacks a segment or
+     * whose first segment is not a UUID, so a malformed key never produces a 500.
+     *
+     * @param objectKey the MinIO object key (already known to start with the media prefix).
+     * @return the parsed announcement UUID, or {@code null} if the key is malformed.
+     */
+    private static UUID parseAnnouncementIdFromKey(String objectKey) {
+        if (objectKey == null || !objectKey.startsWith(AnnouncementService.MEDIA_KEY_PREFIX)) {
+            return null;
+        }
+        String remainder = objectKey.substring(AnnouncementService.MEDIA_KEY_PREFIX.length());
+        int slash = remainder.indexOf('/');
+        // Require a non-empty id segment followed by a filename ("<id>/<file>") — reject "announcements/x".
+        if (slash <= 0 || slash == remainder.length() - 1) {
+            return null;
+        }
+        try {
+            return UUID.fromString(remainder.substring(0, slash));
+        } catch (IllegalArgumentException ex) {
+            // First segment is not a UUID — malformed key, deny.
+            return null;
+        }
+    }
+
     // =========================================================================
     // Write operations
     // =========================================================================

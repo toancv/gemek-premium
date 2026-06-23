@@ -18,6 +18,7 @@ import vn.vtit.gemek.common.exception.AppException;
 import vn.vtit.gemek.common.exception.ErrorCode;
 import vn.vtit.gemek.common.model.PageResponse;
 import vn.vtit.gemek.common.storage.FileStorageService;
+import vn.vtit.gemek.module.announcement.AnnouncementService;
 import vn.vtit.gemek.module.apartment.entity.Apartment;
 import vn.vtit.gemek.module.apartment.repository.ApartmentRepository;
 import vn.vtit.gemek.module.contractor.entity.Contractor;
@@ -78,9 +79,6 @@ public class TicketServiceImpl implements TicketService {
 
     /** MinIO key prefix for ticket photos — matches the upload key generator. */
     private static final String TICKET_KEY_PREFIX = "tickets/";
-
-    /** MinIO key prefix for announcement images (N2) — public-read surface per E3. */
-    private static final String ANNOUNCEMENT_KEY_PREFIX = "announcements/";
 
     /** List-visibility filter value: caller's own household tickets only (default). */
     private static final String VISIBILITY_MINE = "mine";
@@ -143,6 +141,7 @@ public class TicketServiceImpl implements TicketService {
     private final NotificationService notificationService;
     private final NotificationRepository notificationRepository;
     private final SubscriptionService subscriptionService;
+    private final AnnouncementService announcementService;
 
     /**
      * Constructs the service with all required dependencies via explicit constructor injection.
@@ -158,6 +157,7 @@ public class TicketServiceImpl implements TicketService {
      * @param notificationService    the notification service for single-recipient alerts.
      * @param notificationRepository the notification JPA repository for batched dispatch.
      * @param subscriptionService    the notification-thread membership service (N3).
+     * @param announcementService    the announcement service — owns announcement-media presign scope (C2.1).
      */
     public TicketServiceImpl(TicketRepository ticketRepository,
                              TicketPhotoRepository photoRepository,
@@ -169,7 +169,8 @@ public class TicketServiceImpl implements TicketService {
                              FileStorageService fileStorageService,
                              NotificationService notificationService,
                              NotificationRepository notificationRepository,
-                             SubscriptionService subscriptionService) {
+                             SubscriptionService subscriptionService,
+                             AnnouncementService announcementService) {
         this.ticketRepository = ticketRepository;
         this.photoRepository = photoRepository;
         this.historyRepository = historyRepository;
@@ -181,6 +182,7 @@ public class TicketServiceImpl implements TicketService {
         this.notificationService = notificationService;
         this.notificationRepository = notificationRepository;
         this.subscriptionService = subscriptionService;
+        this.announcementService = announcementService;
     }
 
     // =========================================================================
@@ -805,11 +807,12 @@ public class TicketServiceImpl implements TicketService {
             enforcePhotoAccess(photo.getTicket(), principalId, role);
             return;
         }
-        if (fileUrl != null && fileUrl.startsWith(ANNOUNCEMENT_KEY_PREFIX)) {
-            // E3: announcements are broadcast content — any authenticated user may
-            // presign. Intentionally no DB-row requirement yet: keys are random UUIDs
-            // and a nonexistent key simply 404s at MinIO; N2 adds a row check when
-            // its attachment table exists.
+        if (fileUrl != null && fileUrl.startsWith(AnnouncementService.MEDIA_KEY_PREFIX)) {
+            // C2.1: the any-authenticated stub is GONE. Announcement-media presign now mirrors
+            // the owning announcement's read scope (block/floor) — the direct analogue of
+            // enforcePhotoAccess for tickets — enforced inside the announcement module so the
+            // scope rule lives next to the feed predicate it must stay consistent with.
+            announcementService.assertMediaPresignAccess(fileUrl, principalId, role);
             return;
         }
         throw new AppException(ErrorCode.FORBIDDEN, "Unknown file surface.");

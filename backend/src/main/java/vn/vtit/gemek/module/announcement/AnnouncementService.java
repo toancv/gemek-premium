@@ -23,6 +23,40 @@ import java.util.UUID;
 public interface AnnouncementService {
 
     /**
+     * MinIO object-key prefix for announcement media (cover/inline images, attachments).
+     *
+     * <p>Key convention — DEFINED by C2.1, consumed by the upload path (C2.2):
+     * {@code announcements/{announcementId}/{uuid-filename}}. The announcement id is the FIRST
+     * path segment after this prefix, so {@link #assertMediaPresignAccess} can recover it from the
+     * key alone and mirror the owning announcement's read scope. This is the single source of the
+     * convention; the presign dispatcher routes on this same constant.
+     */
+    String MEDIA_KEY_PREFIX = "announcements/";
+
+    /**
+     * Authorizes a presign request for an announcement media object, mirroring the owning
+     * announcement's own read scope — the direct analogue of the ticket-photo presign gate
+     * ({@code enforcePhotoAccess}), enforced independently of the (widened) announcement-LIST rule.
+     *
+     * <p>The owning announcement id is parsed from {@code objectKey} per {@link #MEDIA_KEY_PREFIX}.
+     * Access rule:
+     * <ul>
+     *   <li>ADMIN / BOARD_MEMBER → allowed (unrestricted), matching announcement read.</li>
+     *   <li>RESIDENT → allowed iff the announcement is PUBLISHED and its ALL/BLOCK/FLOOR scope
+     *       matches one of the caller's ACTIVE residencies (the SAME predicate as the resident feed).</li>
+     *   <li>Any other role → denied.</li>
+     * </ul>
+     * A DRAFT announcement's media is visible to ADMIN/BOARD only (drafts have no resident recipients).
+     * A malformed key, or a key referencing a nonexistent announcement, is DENIED — never a 500.
+     *
+     * @param objectKey   the MinIO object key being presigned (must start with {@link #MEDIA_KEY_PREFIX}).
+     * @param principalId the calling user's UUID.
+     * @param role        the caller's role name (no {@code ROLE_} prefix).
+     * @throws vn.vtit.gemek.common.exception.AppException with {@code FORBIDDEN} when access is denied.
+     */
+    void assertMediaPresignAccess(String objectKey, UUID principalId, String role);
+
+    /**
      * Returns a paginated list of announcements filtered by the caller's role and scope.
      *
      * @param principalId the caller's UUID.

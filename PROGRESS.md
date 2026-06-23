@@ -1,5 +1,20 @@
 # PROGRESS — Apartment Management System
 
+## ⏸ OPEN INVESTIGATION — stale-UI-after-mutation (2 bugs) — awaiting CTO ruling (2026-06-23)
+
+Read-only diagnosis done, NO fix applied. Report: `reports/stale-ui-after-mutation-diagnosis.md`.
+**Key finding (divergence from the bug framing):** both mutations DO invalidate with prefix-matching keys
+(react-query 5.56.2) — `useDeactivateUser` invalidates `['users']` (covers `['users',params]`) and
+`useCreateTicket` invalidates `['tickets']` (covers the HomePage count query `['tickets',{size:5,status:[...]}]`).
+The central `MutationCache` is toast-only; per-hook `onSuccess` invalidation is the established pattern and is
+correctly wired in BOTH cases. So the assumed "missing/mismatched refetch" is **refuted by the code**; the
+resident count is the SAME list query's `total` (no separate uninvalidated stat query). Residual cause needs a
+runtime repro (DevTools Network) — leading hypothesis is an **HTTP/proxy response cache** on `GET /api/users` &
+`/api/tickets` (uniquely explains "F5 fixes it, SPA refetch doesn't"); Bug 1 also possibly the `isActive=true`
+filter making the row leave the set. NOT a shared invalidation defect. Awaiting CTO ruling before any fix.
+
+---
+
 ## ✅ RESIDENCY-LIFECYCLE CORE (P0–P3) COMPLETE — CTO-smoked end-to-end (2026-06-23)
 
 Concurrent multi-residency is real and creatable through the product. Phase recap (each verified against

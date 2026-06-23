@@ -54,15 +54,17 @@ export function AnnouncementsPage() {
     setFormError('');
     const fd = new FormData(e.target as HTMLFormElement);
     const title = (fd.get('title') as string).trim();
-    const content = (fd.get('content') as string).trim();
+    // Read the body from the controlled `content` state (single source of truth) — not FormData —
+    // to avoid shadowing the state variable with a divergent local.
+    const body = content.trim();
     const shouldPublish = fd.get('publishNow') === 'true';
-    if (!title || !content) { setFormError('Tiêu đề và nội dung là bắt buộc.'); return; }
+    if (!title || !body) { setFormError('Tiêu đề và nội dung là bắt buộc.'); return; }
     if (scope !== 'ALL' && !blockId) { setFormError('Vui lòng chọn tòa.'); return; }
     if (scope === 'FLOOR' && !floor.trim()) { setFormError('Vui lòng nhập số tầng.'); return; }
     try {
       const created: any = await create.mutateAsync({
         title,
-        content,
+        content: body,
         type: fd.get('type'),
         targetScope: scope,
         targetBlockId: scope !== 'ALL' ? blockId : null,

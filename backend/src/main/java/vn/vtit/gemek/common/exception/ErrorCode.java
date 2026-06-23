@@ -100,7 +100,16 @@ public enum ErrorCode {
     ANNOUNCEMENT_CONTENT_TOO_LONG(HttpStatus.BAD_REQUEST),
 
     /** Announcement body contains raw HTML tags; only Markdown is accepted. */
-    ANNOUNCEMENT_CONTENT_HTML_NOT_ALLOWED(HttpStatus.BAD_REQUEST);
+    ANNOUNCEMENT_CONTENT_HTML_NOT_ALLOWED(HttpStatus.BAD_REQUEST),
+
+    /** Announcement media upload rejected — detected byte content-type is not an allowed image type. */
+    ANNOUNCEMENT_MEDIA_TYPE_NOT_ALLOWED(HttpStatus.BAD_REQUEST),
+
+    /** Announcement media upload rejected — would exceed the per-announcement count or total-size cap. */
+    ANNOUNCEMENT_MEDIA_LIMIT_EXCEEDED(HttpStatus.BAD_REQUEST),
+
+    /** Announcement media mutation rejected — the announcement is published (media is editable on drafts only). */
+    ANNOUNCEMENT_NOT_DRAFT(HttpStatus.CONFLICT);
 
     /** HTTP status code associated with this error code. */
     private final HttpStatus httpStatus;

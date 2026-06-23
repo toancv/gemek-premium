@@ -5,23 +5,32 @@
 package vn.vtit.gemek.module.announcement;
 
 import jakarta.persistence.criteria.Predicate;
+import org.apache.tika.Tika;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 import vn.vtit.gemek.common.exception.AppException;
 import vn.vtit.gemek.common.exception.ErrorCode;
 import vn.vtit.gemek.common.model.PageResponse;
+import vn.vtit.gemek.common.storage.FileStorageService;
+import vn.vtit.gemek.common.storage.ObjectKeysObsoleteEvent;
+import vn.vtit.gemek.module.announcement.dto.AnnouncementMediaResponse;
 import vn.vtit.gemek.module.announcement.dto.AnnouncementResponse;
 import vn.vtit.gemek.module.announcement.dto.CreateAnnouncementRequest;
 import vn.vtit.gemek.module.announcement.dto.MarkReadResponse;
 import vn.vtit.gemek.module.announcement.dto.UpdateAnnouncementRequest;
 import vn.vtit.gemek.module.announcement.entity.Announcement;
+import vn.vtit.gemek.module.announcement.entity.AnnouncementMedia;
+import vn.vtit.gemek.module.announcement.entity.AnnouncementMediaKind;
 import vn.vtit.gemek.module.announcement.entity.AnnouncementRead;
 import vn.vtit.gemek.module.announcement.entity.AnnouncementScope;
+import vn.vtit.gemek.module.announcement.repository.AnnouncementMediaRepository;
 import vn.vtit.gemek.module.announcement.repository.AnnouncementReadRepository;
 import vn.vtit.gemek.module.announcement.repository.AnnouncementRepository;
 import vn.vtit.gemek.module.apartment.entity.Apartment;
@@ -35,11 +44,13 @@ import vn.vtit.gemek.module.resident.repository.ResidentRepository;
 import vn.vtit.gemek.module.user.entity.User;
 import vn.vtit.gemek.module.user.repository.UserRepository;
 
+import java.io.IOException;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.regex.Pattern;
@@ -77,12 +88,28 @@ public class AnnouncementServiceImpl implements AnnouncementService {
      */
     private static final Pattern HTML_TAG_PATTERN = Pattern.compile("</?[a-zA-Z][a-zA-Z0-9]*[\\s/>]");
 
+    /** Maximum image rows per announcement (C2.2 cap, server-enforced in-tx). */
+    private static final int MAX_MEDIA_PER_ANNOUNCEMENT = 5;
+
+    /** Maximum total media bytes per announcement (50 MB, C2.2 cap, server-enforced in-tx). */
+    private static final long MAX_MEDIA_TOTAL_BYTES = 50L * 1024 * 1024;
+
+    /** Allowed media content types, validated by Tika on the bytes (not the client header/extension). */
+    private static final Set<String> ALLOWED_MEDIA_MIME_TYPES =
+            Set.of("image/jpeg", "image/png", "image/webp");
+
+    /** Tika instance for magic-byte content-type detection (thread-safe). */
+    private static final Tika TIKA = new Tika();
+
     private final AnnouncementRepository announcementRepository;
     private final AnnouncementReadRepository announcementReadRepository;
     private final BlockRepository blockRepository;
     private final UserRepository userRepository;
     private final ResidentRepository residentRepository;
     private final NotificationRepository notificationRepository;
+    private final AnnouncementMediaRepository mediaRepository;
+    private final FileStorageService fileStorageService;
+    private final ApplicationEventPublisher eventPublisher;
 
     /**
      * Constructs the service with all required dependencies via constructor injection.
@@ -93,19 +120,28 @@ public class AnnouncementServiceImpl implements AnnouncementService {
      * @param userRepository             the user JPA repository.
      * @param residentRepository         the resident JPA repository.
      * @param notificationRepository     the notification JPA repository for publish dispatch.
+     * @param mediaRepository            the announcement media JPA repository (C2.2).
+     * @param fileStorageService         the MinIO storage service for media upload/delete (C2.2).
+     * @param eventPublisher             publisher for the after-commit object-cleanup event (C2.2).
      */
     public AnnouncementServiceImpl(AnnouncementRepository announcementRepository,
                                    AnnouncementReadRepository announcementReadRepository,
                                    BlockRepository blockRepository,
                                    UserRepository userRepository,
                                    ResidentRepository residentRepository,
-                                   NotificationRepository notificationRepository) {
+                                   NotificationRepository notificationRepository,
+                                   AnnouncementMediaRepository mediaRepository,
+                                   FileStorageService fileStorageService,
+                                   ApplicationEventPublisher eventPublisher) {
         this.announcementRepository = announcementRepository;
         this.announcementReadRepository = announcementReadRepository;
         this.blockRepository = blockRepository;
         this.userRepository = userRepository;
         this.residentRepository = residentRepository;
         this.notificationRepository = notificationRepository;
+        this.mediaRepository = mediaRepository;
+        this.fileStorageService = fileStorageService;
+        this.eventPublisher = eventPublisher;
     }
 
     // =========================================================================
@@ -496,13 +532,228 @@ public class AnnouncementServiceImpl implements AnnouncementService {
                     "Cannot delete a published announcement.");
         }
 
+        // Collect media object keys BEFORE the delete; the rows go via FK ON DELETE CASCADE, but the
+        // MinIO objects must be cleaned up separately — schedule them for best-effort after-commit delete.
+        List<String> mediaKeys = mediaRepository.findByAnnouncementIdOrderByCreatedAtAsc(id).stream()
+                .map(AnnouncementMedia::getObjectKey)
+                .collect(Collectors.toList());
+
         announcementRepository.delete(announcement);
-        log.info("Announcement draft deleted — id={}", id);
+        scheduleObjectCleanup(mediaKeys);
+        log.info("Announcement draft deleted — id={}, mediaObjects={}", id, mediaKeys.size());
+    }
+
+    // =========================================================================
+    // Media (C2.2) — ADMIN, drafts only
+    // =========================================================================
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    @Transactional
+    public AnnouncementMediaResponse uploadMedia(UUID announcementId, MultipartFile file,
+                                                 String kind, UUID principalId) {
+        log.debug("uploadMedia — announcementId={}, kind={}", announcementId, kind);
+
+        Announcement announcement = requireDraftForMedia(announcementId);
+        AnnouncementMediaKind mediaKind = parseKind(kind);
+
+        // Magic-byte validation: trust the bytes, never the filename extension or client Content-Type.
+        String detectedMime = detectImageMime(file);
+
+        long fileSize = file.getSize();
+
+        // Cover-replace: a second cover REPLACES the first — account for the freed slot/bytes BEFORE
+        // the cap check so replacing an existing cover never trips the count/size limits.
+        Optional<AnnouncementMedia> replacedCover = mediaKind == AnnouncementMediaKind.COVER
+                ? mediaRepository.findByAnnouncementIdAndKind(announcementId, AnnouncementMediaKind.COVER)
+                : Optional.empty();
+        long replacedCount = replacedCover.isPresent() ? 1 : 0;
+        long replacedBytes = replacedCover.map(m -> m.getSizeBytes() != null ? m.getSizeBytes() : 0L)
+                .orElse(0L);
+
+        long effectiveCount = mediaRepository.countByAnnouncementId(announcementId) - replacedCount;
+        long effectiveBytes = mediaRepository.sumSizeBytesByAnnouncementId(announcementId) - replacedBytes;
+
+        if (effectiveCount + 1 > MAX_MEDIA_PER_ANNOUNCEMENT) {
+            throw new AppException(ErrorCode.ANNOUNCEMENT_MEDIA_LIMIT_EXCEEDED,
+                    "Tối đa " + MAX_MEDIA_PER_ANNOUNCEMENT + " ảnh mỗi thông báo.");
+        }
+        if (effectiveBytes + fileSize > MAX_MEDIA_TOTAL_BYTES) {
+            throw new AppException(ErrorCode.ANNOUNCEMENT_MEDIA_LIMIT_EXCEEDED,
+                    "Tổng dung lượng ảnh của thông báo vượt quá 50MB.");
+        }
+
+        // Remove the old cover row in-tx and schedule its object for after-commit delete.
+        replacedCover.ifPresent(old -> {
+            mediaRepository.delete(old);
+            mediaRepository.flush();
+            scheduleObjectCleanup(List.of(old.getObjectKey()));
+        });
+
+        // Key per C2.1 convention announcements/{announcementId}/{uuid}{ext} — id is the first segment.
+        String objectKey = AnnouncementService.MEDIA_KEY_PREFIX + announcementId + "/"
+                + UUID.randomUUID() + extensionFor(detectedMime);
+
+        try {
+            fileStorageService.upload(objectKey, file.getInputStream(), detectedMime, fileSize);
+        } catch (IOException e) {
+            log.error("Failed to read announcement media upload stream: {}", e.getMessage(), e);
+            throw new AppException(ErrorCode.INTERNAL_ERROR, "Không thể đọc tệp tải lên.");
+        }
+
+        AnnouncementMedia media = new AnnouncementMedia();
+        media.setAnnouncement(announcement);
+        media.setObjectKey(objectKey);
+        media.setContentType(detectedMime);
+        media.setSizeBytes(fileSize);
+        media.setKind(mediaKind);
+        media.setOriginalFilename(file.getOriginalFilename());
+        AnnouncementMedia saved = mediaRepository.save(media);
+
+        log.info("Announcement {} media uploaded — kind={}, size={}B, key={}",
+                announcementId, mediaKind, fileSize, objectKey);
+        return toMediaResponse(saved);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public List<AnnouncementMediaResponse> listMedia(UUID announcementId) {
+        log.debug("listMedia — announcementId={}", announcementId);
+
+        // Existence check so a missing announcement is a clean 404 rather than an empty list.
+        requireAnnouncement(announcementId);
+        return mediaRepository.findByAnnouncementIdOrderByCreatedAtAsc(announcementId).stream()
+                .map(this::toMediaResponse)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    @Transactional
+    public void deleteMedia(UUID announcementId, UUID mediaId) {
+        log.debug("deleteMedia — announcementId={}, mediaId={}", announcementId, mediaId);
+
+        requireDraftForMedia(announcementId);
+        // Dual-key lookup: the row must belong to the announcement in the path (no cross-announcement delete).
+        AnnouncementMedia media = mediaRepository.findByAnnouncementIdAndId(announcementId, mediaId)
+                .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND,
+                        "Announcement media not found: " + mediaId));
+
+        String objectKey = media.getObjectKey();
+        mediaRepository.delete(media);
+        scheduleObjectCleanup(List.of(objectKey));
+        log.info("Announcement {} media deleted — mediaId={}", announcementId, mediaId);
     }
 
     // =========================================================================
     // Private helpers
     // =========================================================================
+
+    /**
+     * Loads an announcement and asserts it is a DRAFT (media is mutable on drafts only).
+     *
+     * @param announcementId the announcement id.
+     * @return the draft announcement.
+     * @throws AppException NOT_FOUND if missing, ANNOUNCEMENT_NOT_DRAFT if already published.
+     */
+    private Announcement requireDraftForMedia(UUID announcementId) {
+        Announcement announcement = requireAnnouncement(announcementId);
+        if (announcement.getPublishedAt() != null) {
+            throw new AppException(ErrorCode.ANNOUNCEMENT_NOT_DRAFT,
+                    "Không thể chỉnh sửa ảnh của thông báo đã xuất bản.");
+        }
+        return announcement;
+    }
+
+    /**
+     * Parses the request kind string into the enum, case-insensitively.
+     *
+     * @param kind the raw {@code kind} request param.
+     * @return the parsed {@link AnnouncementMediaKind}.
+     * @throws AppException VALIDATION_ERROR if null/blank/unrecognised.
+     */
+    private AnnouncementMediaKind parseKind(String kind) {
+        if (kind == null || kind.isBlank()) {
+            throw new AppException(ErrorCode.VALIDATION_ERROR, "Thiếu loại ảnh (kind).");
+        }
+        try {
+            return AnnouncementMediaKind.valueOf(kind.trim().toUpperCase());
+        } catch (IllegalArgumentException ex) {
+            throw new AppException(ErrorCode.VALIDATION_ERROR,
+                    "Loại ảnh không hợp lệ: phải là cover hoặc inline.");
+        }
+    }
+
+    /**
+     * Detects the real image content type from the file bytes via Tika and asserts it is allowed.
+     *
+     * @param file the uploaded multipart file.
+     * @return the detected, allowed MIME type (the value stored as content_type).
+     * @throws AppException ANNOUNCEMENT_MEDIA_TYPE_NOT_ALLOWED if not jpg/png/webp; INTERNAL_ERROR on read failure.
+     */
+    private String detectImageMime(MultipartFile file) {
+        try {
+            String detected = TIKA.detect(file.getInputStream());
+            if (!ALLOWED_MEDIA_MIME_TYPES.contains(detected)) {
+                throw new AppException(ErrorCode.ANNOUNCEMENT_MEDIA_TYPE_NOT_ALLOWED,
+                        "Chỉ chấp nhận ảnh JPG, PNG hoặc WEBP.");
+            }
+            return detected;
+        } catch (IOException e) {
+            throw new AppException(ErrorCode.INTERNAL_ERROR, "Không thể kiểm tra định dạng tệp.");
+        }
+    }
+
+    /**
+     * Maps an allowed image MIME type to its canonical file extension.
+     *
+     * @param mime the detected MIME type (already validated as allowed).
+     * @return the extension including the dot, e.g. {@code ".jpg"}.
+     */
+    private String extensionFor(String mime) {
+        return switch (mime) {
+            case "image/jpeg" -> ".jpg";
+            case "image/png" -> ".png";
+            case "image/webp" -> ".webp";
+            default -> "";
+        };
+    }
+
+    /**
+     * Publishes an after-commit MinIO object-cleanup event for the given keys (no-op if empty).
+     *
+     * @param objectKeys the object keys to delete after the current transaction commits.
+     */
+    private void scheduleObjectCleanup(List<String> objectKeys) {
+        if (objectKeys == null || objectKeys.isEmpty()) {
+            return;
+        }
+        eventPublisher.publishEvent(new ObjectKeysObsoleteEvent(objectKeys));
+    }
+
+    /**
+     * Maps a media entity to its response DTO.
+     *
+     * @param media the media entity.
+     * @return the response DTO.
+     */
+    private AnnouncementMediaResponse toMediaResponse(AnnouncementMedia media) {
+        return AnnouncementMediaResponse.builder()
+                .id(media.getId())
+                .kind(media.getKind())
+                .contentType(media.getContentType())
+                .sizeBytes(media.getSizeBytes())
+                .originalFilename(media.getOriginalFilename())
+                .objectKey(media.getObjectKey())
+                .createdAt(media.getCreatedAt())
+                .build();
+    }
 
     /**
      * Creates one in-app notification row per scoped recipient in a single batched insert.

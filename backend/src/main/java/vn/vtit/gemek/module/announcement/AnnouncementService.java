@@ -5,12 +5,15 @@
 package vn.vtit.gemek.module.announcement;
 
 import org.springframework.data.domain.Pageable;
+import org.springframework.web.multipart.MultipartFile;
 import vn.vtit.gemek.common.model.PageResponse;
+import vn.vtit.gemek.module.announcement.dto.AnnouncementMediaResponse;
 import vn.vtit.gemek.module.announcement.dto.AnnouncementResponse;
 import vn.vtit.gemek.module.announcement.dto.CreateAnnouncementRequest;
 import vn.vtit.gemek.module.announcement.dto.MarkReadResponse;
 import vn.vtit.gemek.module.announcement.dto.UpdateAnnouncementRequest;
 
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -121,11 +124,54 @@ public interface AnnouncementService {
     MarkReadResponse markRead(UUID id, UUID principalId);
 
     /**
-     * Deletes a draft announcement.
+     * Deletes a draft announcement, plus its media rows (DB cascade) and MinIO objects
+     * (scheduled AFTER-COMMIT).
      *
      * <p>Only ADMIN may delete. Rejects with {@code 409 CONFLICT} if the announcement is published.
      *
      * @param id the announcement UUID.
      */
     void deleteAnnouncement(UUID id);
+
+    // =========================================================================
+    // Media (C2.2) — ADMIN, drafts only
+    // =========================================================================
+
+    /**
+     * Uploads one image to a DRAFT announcement.
+     *
+     * <p>ADMIN only; the announcement MUST be a draft (published = immutable). The file's real
+     * content type is validated by Tika on the bytes (jpg/png/webp only — the client header and
+     * filename extension are NOT trusted). Per-announcement caps are enforced inside the
+     * transaction: ≤5 images AND ≤50MB total. {@code kind=cover} REPLACES any existing cover
+     * (old row removed + old object scheduled for after-commit delete); {@code kind=inline} may
+     * repeat within the caps. The object key follows the C2.1 convention
+     * {@code announcements/{announcementId}/{uuid}}.
+     *
+     * @param announcementId the owning announcement id.
+     * @param file           the uploaded image.
+     * @param kind           the media kind, {@code "cover"} or {@code "inline"} (case-insensitive).
+     * @param principalId    the uploading admin's UUID.
+     * @return the persisted media metadata (no presigned URL).
+     */
+    AnnouncementMediaResponse uploadMedia(UUID announcementId, MultipartFile file, String kind, UUID principalId);
+
+    /**
+     * Lists the media rows of an announcement (ADMIN/BOARD authoring view).
+     *
+     * @param announcementId the owning announcement id.
+     * @return the announcement's media metadata, oldest first.
+     */
+    List<AnnouncementMediaResponse> listMedia(UUID announcementId);
+
+    /**
+     * Deletes one media row from a DRAFT announcement.
+     *
+     * <p>ADMIN only; the announcement MUST be a draft. The DB row is removed inside the
+     * transaction and the MinIO object is scheduled for best-effort AFTER-COMMIT delete.
+     *
+     * @param announcementId the owning announcement id.
+     * @param mediaId        the media row id (must belong to the announcement).
+     */
+    void deleteMedia(UUID announcementId, UUID mediaId);
 }

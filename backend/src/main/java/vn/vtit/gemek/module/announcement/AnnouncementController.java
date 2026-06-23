@@ -11,6 +11,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -23,13 +24,16 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 import vn.vtit.gemek.common.model.PageResponse;
 import vn.vtit.gemek.common.security.UserPrincipal;
+import vn.vtit.gemek.module.announcement.dto.AnnouncementMediaResponse;
 import vn.vtit.gemek.module.announcement.dto.AnnouncementResponse;
 import vn.vtit.gemek.module.announcement.dto.CreateAnnouncementRequest;
 import vn.vtit.gemek.module.announcement.dto.MarkReadResponse;
 import vn.vtit.gemek.module.announcement.dto.UpdateAnnouncementRequest;
 
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -237,6 +241,73 @@ public class AnnouncementController {
             @AuthenticationPrincipal UserPrincipal principal) {
 
         return ResponseEntity.ok(announcementService.markRead(id, principal.getId()));
+    }
+
+    // =========================================================================
+    // Media (C2.2) — ADMIN upload/delete (drafts only), ADMIN/BOARD list
+    // =========================================================================
+
+    /**
+     * Uploads one image to a draft announcement.
+     *
+     * <p>ADMIN only; the announcement must be a draft. Type is validated by Tika on the bytes
+     * (jpg/png/webp); per-announcement caps (≤5 images, ≤50MB total) are enforced server-side;
+     * {@code kind=cover} replaces an existing cover.
+     *
+     * @param id        the announcement UUID path variable.
+     * @param file      the uploaded image (multipart part {@code file}).
+     * @param kind      the media kind, {@code cover} or {@code inline} (case-insensitive).
+     * @param principal the authenticated admin.
+     * @return 201 Created with the persisted media metadata.
+     */
+    @PostMapping(value = "/{id}/media", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Upload an image to a draft announcement")
+    public ResponseEntity<AnnouncementMediaResponse> uploadMedia(
+            @PathVariable UUID id,
+            @RequestParam("file") MultipartFile file,
+            @RequestParam("kind") String kind,
+            @AuthenticationPrincipal UserPrincipal principal) {
+
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(announcementService.uploadMedia(id, file, kind, principal.getId()));
+    }
+
+    /**
+     * Lists the media of an announcement (authoring view).
+     *
+     * @param id        the announcement UUID path variable.
+     * @param principal the authenticated caller.
+     * @return 200 OK with the announcement's media metadata.
+     */
+    @GetMapping("/{id}/media")
+    @PreAuthorize("hasAnyRole('ADMIN','BOARD_MEMBER')")
+    @Operation(summary = "List an announcement's media")
+    public ResponseEntity<List<AnnouncementMediaResponse>> listMedia(
+            @PathVariable UUID id,
+            @AuthenticationPrincipal UserPrincipal principal) {
+
+        return ResponseEntity.ok(announcementService.listMedia(id));
+    }
+
+    /**
+     * Deletes one media row from a draft announcement.
+     *
+     * @param id        the announcement UUID path variable.
+     * @param mediaId   the media row UUID path variable.
+     * @param principal the authenticated admin.
+     * @return 204 No Content on success.
+     */
+    @DeleteMapping("/{id}/media/{mediaId}")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Delete a media row from a draft announcement")
+    public ResponseEntity<Void> deleteMedia(
+            @PathVariable UUID id,
+            @PathVariable UUID mediaId,
+            @AuthenticationPrincipal UserPrincipal principal) {
+
+        announcementService.deleteMedia(id, mediaId);
+        return ResponseEntity.noContent().build();
     }
 
     // =========================================================================

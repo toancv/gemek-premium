@@ -45,12 +45,17 @@ esac
 
 API="${BASE_URL%/}/api"
 
-# Minimal valid 1x1 PNG (real PNG magic bytes — Tika detects image/png from these).
-PNG_B64="iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
+# Two DISTINCT, eyeball-able 64x64 solid-colour PNGs (real PNG magic bytes — Tika accepts image/png):
+# COVER = blue (#2176FF), INLINE = orange (#FF6D21), so a smoker can tell the cover banner from the
+# inline image at a glance. Larger than the old 1x1 (which rendered as an invisible dot).
+COVER_B64="iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAIAAAAlC+aJAAAATklEQVR42u3PQQkAAAgEsKtiSetrBN/CYAWW6nktAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgKXBTAeYXjHRmbVAAAAAElFTkSuQmCC"
+INLINE_B64="iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAIAAAAlC+aJAAAAT0lEQVR42u3PQQkAAAgEsKtiQPs/NYJvYbACy3S9FgEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQGBywImJdFpAMTM7wAAAABJRU5ErkJggg=="
 TMP_DIR="$(mktemp -d)"
 trap 'rm -rf "$TMP_DIR"' EXIT
-PNG_FILE="$TMP_DIR/img.png"
-printf '%s' "$PNG_B64" | base64 -d > "$PNG_FILE"
+COVER_FILE="$TMP_DIR/cover.png"
+INLINE_FILE="$TMP_DIR/inline.png"
+printf '%s' "$COVER_B64"  | base64 -d > "$COVER_FILE"
+printf '%s' "$INLINE_B64" | base64 -d > "$INLINE_FILE"
 
 say() { printf '%s\n' "$*" >&2; }
 fail() { printf 'FAILED at step: %s\n' "$*" >&2; exit 1; }
@@ -108,12 +113,12 @@ ANN_ID="$(jq -r '.id // .data.id // empty' <<<"$CREATE_JSON")"
 # --- 4) upload one COVER + one INLINE via the real C2.2 endpoint -------------
 say "[4/7] Uploading COVER + INLINE images (real multipart endpoint) ..."
 COVER_JSON="$(curl -fsS "${AUTH[@]}" -X POST "$API/announcements/$ANN_ID/media" \
-  -F "file=@$PNG_FILE" -F "kind=cover")" || fail "4 upload cover"
+  -F "file=@$COVER_FILE" -F "kind=cover")" || fail "4 upload cover"
 COVER_ID="$(jq -r '.id // .data.id // empty' <<<"$COVER_JSON")"
 [ -n "$COVER_ID" ] || fail "4 upload cover (no id: $COVER_JSON)"
 
 INLINE_JSON="$(curl -fsS "${AUTH[@]}" -X POST "$API/announcements/$ANN_ID/media" \
-  -F "file=@$PNG_FILE" -F "kind=inline")" || fail "4 upload inline"
+  -F "file=@$INLINE_FILE" -F "kind=inline")" || fail "4 upload inline"
 INLINE_ID="$(jq -r '.id // .data.id // empty' <<<"$INLINE_JSON")"
 [ -n "$INLINE_ID" ] || fail "4 upload inline (no id: $INLINE_JSON)"
 

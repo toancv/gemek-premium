@@ -5,7 +5,9 @@
 
 ## ▶ CURRENT STATE SNAPSHOT (2026-06-25)
 
-**RESUME POINTER (one line):** **C2.3b P1 DONE — committed, awaiting CTO :80 smoke.** Admin announcement
+**RESUME POINTER (one line):** **C2.3b P1.5 DONE — committed, awaiting CTO DB-level smoke; NEXT = P2 (media manager).** P1.5 = BE correctness fix: `updateAnnouncement` now DERIVES target block/floor from scope (clears stale on downgrade; ALL→both null, BLOCK→floor null, FLOOR→both) + validation parity with create; severity was harmless-hygiene not live-mis-target (both resolvers branch strictly on scope — see DECISIONS 2026-06-25 P1.5) so no published announcement affected; 4 Mockito tests (RED→GREEN shown), suite **422/422**; API-SPEC PUT updated (target derived-from-scope); FE authoring pages widened (`max-w-7xl`, taller editor/preview), tsc+build green. Below = P1 history.
+
+**(P1) RESUME POINTER:** **C2.3b P1 DONE — committed, awaiting CTO :80 smoke.** Admin announcement
 create/edit moved out of the modal into dedicated pages `/announcements/new` (save-first: "Lưu nháp" creates
 draft → redirects to edit; "Tạo & đăng" creates+publishes) + `/announcements/:id/edit` (load draft, "Lưu"
 update / "Đăng" save-then-publish, published=blocked read-only), both 2-col compose|preview, same role guard
@@ -36,7 +38,8 @@ refetch-after-upload, COVER banner. C2.3a CLOSED (smoked PASS 2026-06-25). See
 | C2.1 | media presign scope-mirror access gate | DONE (smoked) | fix `1099d7d` → done-docs `08d285d` |
 | C2.2 | ADMIN media upload (drafts only, caps, Tika, cover-replace, after-commit cleanup) | DONE (smoked) | feat `458c5f5` → done-docs `265d2e3` |
 | C2.3a | resident image RENDER (safe `<img>` + manifest + cover banner) | **DONE (smoked 2026-06-25)** | feat-ui `1f7d58d` → smoke-close `1443624`+ |
-| C2.3b P1 | move create/edit to dedicated 2-col pages + draft-update hook + drafts-only "Sửa" + remove modal (NO media) | **DONE — awaiting CTO :80 smoke** | feat (this phase) |
+| C2.3b P1 | move create/edit to dedicated 2-col pages + draft-update hook + drafts-only "Sửa" + remove modal (NO media) | DONE | `3d53580` / `c4ae28a` |
+| C2.3b P1.5 | BE: announcement UPDATE derives target block/floor from scope (close scope-downgrade desync) + tests + FE layout widen | **DONE — awaiting CTO DB-level smoke** | fix/test/style/docs (this phase) |
 | C2.3b P2/P3 | media manager + insert-image placeholders + cover toggle (P2); preview manifest + COVER banner (P3) | PENDING | — |
 | C3 | file attachments (non-image) | PENDING | — |
 
@@ -46,7 +49,6 @@ refetch-after-upload, COVER banner. C2.3a CLOSED (smoked PASS 2026-06-25). See
 3. **Amenity multi-residency real attribution rule `[PLANNED]`** — currently primary-or-latest temporary; real rule deferred LAST per CTO.
 
 **Smaller debts (do not lose):**
-- **Announcement draft scope-downgrade leaves stale target (BE)** — `PUT /announcements/{id}` (`AnnouncementServiceImpl.updateAnnouncement`) applies `targetBlockId`/`targetFloor` only when non-null, so downgrading a draft's scope to ALL (FE sends null) does NOT clear the old block/floor → the row persists scope=ALL with a stale target. **Not fixable FE-only** (PUT treats null as no-change); needs a small BE fix (clear block/floor when scope=ALL / not-FLOOR). Found by C2.3b P1 /code-review (the new edit flow first exposes it). Deferred — out of C2.3b P1's FE-only scope. **Flag to CTO at smoke.**
 - **Announcement edit concurrency (minor)** — edit draft-only guard keys on the loaded `publishedAt`; if another admin publishes concurrently, the open form's Lưu fails on the BE (safe reject) but typed edits aren't auto-recovered. Rare; accept for now.
 - **Malformed-body → 500 not 400** — `GlobalExceptionHandler` has no `@ExceptionHandler(HttpMessageNotReadableException.class)`; an unparseable/invalid-UTF-8 request body falls to the catch-all and returns `500 INTERNAL_ERROR` instead of `400`. Benign (no security impact; a correct client never sends it), cosmetic — separate gated change. See `reports/c2-2-media-upload-500-diagnosis.md`.
 - **Smoke leaves throwaway drafts** — each `scripts/smoke-c2-3a.sh` run creates a fresh published `[C2.3a SMOKE]` announcement (+2 media objects in MinIO); no cleanup. Deferred — prune later if dev data clutters.

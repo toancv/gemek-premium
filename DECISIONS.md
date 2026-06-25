@@ -5,6 +5,51 @@ Format: Date | Decision | Reasoning | Alternatives
 
 ---
 
+## 2026-06-25 | C2.3b P1.5 — announcement UPDATE derives target block/floor from scope (close scope-downgrade desync)
+
+**Decision (CTO ruling, locked).** `AnnouncementServiceImpl.updateAnnouncement` now NORMALIZES the target
+fields by the incoming/effective `targetScope` (scope = source of truth) instead of the prior
+null-means-leave-unchanged binding: ALL → block+floor cleared; BLOCK → block kept/required, floor cleared;
+FLOOR → block+floor kept/required. Block/floor are set authoritatively **regardless of what the client
+sent**, so even a stale block with scope=ALL gets nulled. `validateScopeConstraints` (already shared with
+create) enforces block-required-for-BLOCK/FLOOR + floor-required-for-FLOOR → validation parity. The null
+handling for the OTHER fields (title/content/type/sendPush/Email/Sms) is UNCHANGED — only the scope/block/
+floor trio is scope-derived. FE also adds a floor upper-bound (≤32767) guard in P1's review pass.
+
+**/code-review follow-ups folded in (P1.5 review):** (1) the SAME scope-derived normalization was extended to
+`createAnnouncement` — a stray block/floor sent alongside a less-specific scope is now NOT persisted on create
+either (closes the create-side asymmetry the review CONFIRMED; the CTO task explicitly allowed unifying
+create+update). (2) The update block resolution was hardened against a regression the first cut introduced:
+it now re-fetches the block ONLY when the client supplies a (changed) `targetBlockId`, and otherwise REUSES the
+already-attached managed entity — so a content-only or floor-only edit of a BLOCK/FLOOR draft never 404s if
+that block row was later deleted (the naive `effectiveBlockId != null` gate would have re-fetched on every edit).
+Two tests added for these (content-only edit keeps block without re-fetch; create ALL+stray-block → block null).
+
+**SEVERITY finding (Step-1 investigation, cited HEAD `c4ae28a`).** The stranded target was **harmless
+hygiene, NOT a live mis-target.** Both recipient-resolution paths branch STRICTLY on `scope` and read
+block/floor ONLY inside the matching branch: resident feed `publishedForResidenciesSpec`
+(`AnnouncementServiceImpl.java:217-231` — `scope==ALL` predicate reads no target) and dispatch
+`ResidentRepository.findRecipientUserIdsByScopeName` (`:272-274` — `:scope='ALL' OR (BLOCK AND block=…) OR
+(FLOOR AND block=… AND floor=…)`). So a scope=ALL record with a stale `targetBlock` resolves as ALL
+(everyone) — the stale block is ignored at dispatch + feed. Consequence was cosmetic only (admin list label
+rendered "Tất cả - BlockX") + a latent data-integrity smell. Also the edit page is brand-new (P1, never
+CTO-smoked) → **no production announcement was ever updated via this path** → nothing was affected. Fixed
+anyway per CTO ruling: data integrity + future-proofing against any later code that reads target
+unconditionally. **Closes the scope-downgrade desync** (was a P1 /code-review CONFIRMED finding).
+
+**Tests (Mockito unit, RED→GREEN shown).** 4 added to `AnnouncementServiceImplTest`: BLOCK→ALL clears both;
+FLOOR→BLOCK clears floor keeps block; ALL→BLOCK sets block; BLOCK with no block → VALIDATION_ERROR. The two
+downgrade tests FAIL on the pre-fix code (verified by stashing the service change: 2 failures / 22), PASS
+after. Full suite **422/422** (was 418, +4), sequential + order-independent.
+
+**Alternatives rejected.** (a) Fix in BE binding only when client explicitly sends null — fragile, still
+null-coupled, doesn't defend against a stale value sent alongside ALL. (b) A shared create+update
+"normalize target by scope" helper — cleaner long-term but widens blast radius into create's passing tests
+for a gate fix; kept the change tight to update per the CTO "keep tight" allowance. (c) Leave as hygiene-only
+(no fix) — rejected by CTO: a record whose stored target contradicts its scope is a latent correctness trap.
+
+---
+
 ## 2026-06-25 | C2.3b — admin authoring UX: 3 CTO rulings + FE-only scope + P1/P2/P3 split
 
 **Decision (CTO rulings, locked).** Move admin announcement create/edit out of the modal into dedicated

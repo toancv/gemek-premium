@@ -2060,8 +2060,19 @@ A page left open >10 min may show a broken image (presigned expiry) — accepted
 
 Request: same as POST minus `publishNow`. `content` follows the same Markdown contract and write-time
 guards as POST (`400 ANNOUNCEMENT_CONTENT_TOO_LONG` / `400 ANNOUNCEMENT_CONTENT_HTML_NOT_ALLOWED`).
+
+**Target fields are DERIVED from `targetScope`, not partial-update-preserved.** `targetScope` is the source
+of truth: the server normalizes `targetBlockId`/`targetFloor` to exactly what the scope uses and **clears the
+rest**, regardless of what the client sends — so a scope downgrade always leaves a consistent record:
+- `targetScope = ALL`   → `targetBlockId` and `targetFloor` are cleared (set null).
+- `targetScope = BLOCK` → `targetBlockId` required (`400 VALIDATION_ERROR` if absent); `targetFloor` cleared.
+- `targetScope = FLOOR` → `targetBlockId` **and** `targetFloor` required (`400 VALIDATION_ERROR` if absent).
+
+(Other fields — `title`/`content`/`type`/`sendPush`/`sendEmail`/`sendSms` — remain null-means-leave-unchanged.
+Only the scope/block/floor trio is scope-derived.)
+
 Response `200 OK`
-Errors: `409 CONFLICT` (announcement is already published)
+Errors: `409 CONFLICT` (announcement is already published) · `400 VALIDATION_ERROR` (scope/target mismatch)
 
 ---
 

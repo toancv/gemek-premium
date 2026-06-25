@@ -14,6 +14,7 @@ import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 import vn.vtit.gemek.common.exception.AppException;
 import vn.vtit.gemek.common.exception.ErrorCode;
+import vn.vtit.gemek.module.announcement.dto.AnnouncementResponse;
 import vn.vtit.gemek.module.announcement.dto.CreateAnnouncementRequest;
 import vn.vtit.gemek.module.announcement.dto.UpdateAnnouncementRequest;
 import vn.vtit.gemek.module.announcement.entity.Announcement;
@@ -250,6 +251,141 @@ class AnnouncementServiceImplTest {
                 .isInstanceOf(AppException.class)
                 .satisfies(ex -> assertThat(((AppException) ex).getErrorCode())
                         .isEqualTo(ErrorCode.VALIDATION_ERROR));
+    }
+
+    // =========================================================================
+    // updateAnnouncement — target block/floor are DERIVED from scope (P1.5):
+    // a scope downgrade must CLEAR the now-irrelevant target columns.
+    // =========================================================================
+
+    @Test
+    @DisplayName("updateAnnouncement — scope downgrade BLOCK->ALL clears stale targetBlock and targetFloor")
+    void updateAnnouncement_downgradeBlockToAll_clearsBlockAndFloor() {
+        UUID blockId = UUID.randomUUID();
+        Block block = new Block();
+        block.setId(blockId);
+        block.setName("Block A");
+        draftAnnouncement.setScope(AnnouncementScope.BLOCK);
+        draftAnnouncement.setTargetBlock(block);
+        // Stale floor on a BLOCK draft — must also be cleared on the downgrade to ALL.
+        draftAnnouncement.setTargetFloor((short) 3);
+        when(announcementRepository.findById(announcementId)).thenReturn(Optional.of(draftAnnouncement));
+        when(announcementRepository.save(draftAnnouncement)).thenReturn(draftAnnouncement);
+
+        UpdateAnnouncementRequest request = new UpdateAnnouncementRequest();
+        request.setTargetScope(AnnouncementScope.ALL);
+        // Client sends no block/floor — the fix must clear them regardless.
+
+        service.updateAnnouncement(announcementId, request);
+
+        assertThat(draftAnnouncement.getScope()).isEqualTo(AnnouncementScope.ALL);
+        assertThat(draftAnnouncement.getTargetBlock()).isNull();
+        assertThat(draftAnnouncement.getTargetFloor()).isNull();
+    }
+
+    @Test
+    @DisplayName("updateAnnouncement — scope downgrade FLOOR->BLOCK clears floor, keeps block")
+    void updateAnnouncement_downgradeFloorToBlock_clearsFloorKeepsBlock() {
+        UUID blockId = UUID.randomUUID();
+        Block block = new Block();
+        block.setId(blockId);
+        block.setName("Block B");
+        draftAnnouncement.setScope(AnnouncementScope.FLOOR);
+        draftAnnouncement.setTargetBlock(block);
+        draftAnnouncement.setTargetFloor((short) 5);
+        when(announcementRepository.findById(announcementId)).thenReturn(Optional.of(draftAnnouncement));
+        when(announcementRepository.save(draftAnnouncement)).thenReturn(draftAnnouncement);
+        when(blockRepository.findById(blockId)).thenReturn(Optional.of(block));
+
+        UpdateAnnouncementRequest request = new UpdateAnnouncementRequest();
+        request.setTargetScope(AnnouncementScope.BLOCK);
+
+        service.updateAnnouncement(announcementId, request);
+
+        assertThat(draftAnnouncement.getScope()).isEqualTo(AnnouncementScope.BLOCK);
+        assertThat(draftAnnouncement.getTargetBlock()).isEqualTo(block);
+        assertThat(draftAnnouncement.getTargetFloor()).isNull();
+    }
+
+    @Test
+    @DisplayName("updateAnnouncement — scope upgrade ALL->BLOCK with a block sets the target block")
+    void updateAnnouncement_upgradeAllToBlock_setsBlock() {
+        UUID blockId = UUID.randomUUID();
+        Block block = new Block();
+        block.setId(blockId);
+        block.setName("Block C");
+        draftAnnouncement.setScope(AnnouncementScope.ALL);
+        when(announcementRepository.findById(announcementId)).thenReturn(Optional.of(draftAnnouncement));
+        when(announcementRepository.save(draftAnnouncement)).thenReturn(draftAnnouncement);
+        when(blockRepository.findById(blockId)).thenReturn(Optional.of(block));
+
+        UpdateAnnouncementRequest request = new UpdateAnnouncementRequest();
+        request.setTargetScope(AnnouncementScope.BLOCK);
+        request.setTargetBlockId(blockId);
+
+        service.updateAnnouncement(announcementId, request);
+
+        assertThat(draftAnnouncement.getScope()).isEqualTo(AnnouncementScope.BLOCK);
+        assertThat(draftAnnouncement.getTargetBlock()).isEqualTo(block);
+    }
+
+    @Test
+    @DisplayName("updateAnnouncement — BLOCK scope with no block (none provided, none existing) throws VALIDATION_ERROR")
+    void updateAnnouncement_blockScopeWithoutBlock_throwsValidationError() {
+        draftAnnouncement.setScope(AnnouncementScope.ALL);
+        when(announcementRepository.findById(announcementId)).thenReturn(Optional.of(draftAnnouncement));
+
+        UpdateAnnouncementRequest request = new UpdateAnnouncementRequest();
+        request.setTargetScope(AnnouncementScope.BLOCK);
+        // No block provided and the draft has none — parity with create validation.
+
+        assertThatThrownBy(() -> service.updateAnnouncement(announcementId, request))
+                .isInstanceOf(AppException.class)
+                .satisfies(ex -> assertThat(((AppException) ex).getErrorCode())
+                        .isEqualTo(ErrorCode.VALIDATION_ERROR));
+    }
+
+    @Test
+    @DisplayName("updateAnnouncement — content-only edit of a BLOCK draft keeps the block WITHOUT re-fetching it")
+    void updateAnnouncement_contentOnlyEditOfBlockDraft_keepsBlockNoRefetch() {
+        UUID blockId = UUID.randomUUID();
+        Block block = new Block();
+        block.setId(blockId);
+        block.setName("Block D");
+        draftAnnouncement.setScope(AnnouncementScope.BLOCK);
+        draftAnnouncement.setTargetBlock(block);
+        when(announcementRepository.findById(announcementId)).thenReturn(Optional.of(draftAnnouncement));
+        when(announcementRepository.save(draftAnnouncement)).thenReturn(draftAnnouncement);
+        // blockRepository.findById intentionally NOT stubbed — a re-fetch would return empty -> NOT_FOUND.
+
+        UpdateAnnouncementRequest request = new UpdateAnnouncementRequest();
+        request.setTitle("Edited title only"); // no scope/block/floor
+
+        service.updateAnnouncement(announcementId, request);
+
+        assertThat(draftAnnouncement.getTitle()).isEqualTo("Edited title only");
+        assertThat(draftAnnouncement.getScope()).isEqualTo(AnnouncementScope.BLOCK);
+        assertThat(draftAnnouncement.getTargetBlock()).isEqualTo(block);
+        verify(blockRepository, never()).findById(any());
+    }
+
+    @Test
+    @DisplayName("createAnnouncement — ALL scope with a stray targetBlockId persists no target block (scope-derived)")
+    void createAnnouncement_allScopeWithStrayBlock_clearsBlock() {
+        when(announcementRepository.save(any(Announcement.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        CreateAnnouncementRequest request = new CreateAnnouncementRequest();
+        request.setTitle("All-scope announcement");
+        request.setContent("Content");
+        request.setType(AnnouncementType.GENERAL);
+        request.setTargetScope(AnnouncementScope.ALL);
+        request.setTargetBlockId(UUID.randomUUID()); // stray — ALL must ignore it
+
+        AnnouncementResponse resp = service.createAnnouncement(request, principalId);
+
+        assertThat(resp.getTargetBlock()).isNull();
+        assertThat(resp.getTargetFloor()).isNull();
+        verify(blockRepository, never()).findById(any());
     }
 
     // =========================================================================

@@ -112,7 +112,7 @@ export function AnnouncementComposeFields({ form }: { form: AnnouncementForm }) 
   const { data: blocksData } = useBlocks();
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8">
       {/* ── Left: compose ─────────────────────────────────────────── */}
       <div className="space-y-3">
         <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Soạn</h2>
@@ -134,8 +134,8 @@ export function AnnouncementComposeFields({ form }: { form: AnnouncementForm }) 
             ref={form.textareaRef}
             value={form.content}
             onChange={(e) => form.setContent(e.target.value)}
-            rows={14}
-            className="block w-full border border-gray-300 rounded-md px-3 py-2 text-sm font-mono resize-y"
+            rows={20}
+            className="block w-full min-h-[28rem] border border-gray-300 rounded-md px-3 py-2 text-sm font-mono resize-y"
             placeholder="Hỗ trợ Markdown: **đậm**, *nghiêng*, ## tiêu đề, - danh sách, [liên kết](https://...)"
           />
         </div>
@@ -177,7 +177,7 @@ export function AnnouncementComposeFields({ form }: { form: AnnouncementForm }) 
       {/* ── Right: live preview (same safe renderer the resident app uses) ── */}
       <div className="space-y-3">
         <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Xem trước</h2>
-        <div className="border border-gray-200 rounded-md p-4 bg-gray-50 min-h-[12rem]">
+        <div className="border border-gray-200 rounded-md p-4 bg-gray-50 min-h-[28rem]">
           {form.content.trim()
             ? <MarkdownContent content={form.content} className="text-sm text-gray-700" />
             : <p className="text-sm text-gray-400 italic">Chưa có nội dung.</p>}

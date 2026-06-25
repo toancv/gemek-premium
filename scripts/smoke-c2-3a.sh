@@ -9,7 +9,8 @@
 #
 # Requirements: bash, curl, jq.
 # Config (env, with defaults — NO secrets hardcoded):
-#   BASE_URL        default http://localhost
+#   BASE_URL          default http://localhost   (admin/nginx :80 — used for /api calls)
+#   RESIDENT_BASE_URL default http://localhost:81 (resident portal — used only for the printed detail URL)
 #   ADMIN_PHONE     required (admin login identifier; phone-based)
 #   ADMIN_PASSWORD  required (read from env; never committed)
 #
@@ -20,6 +21,10 @@ set -euo pipefail
 
 # --- config -----------------------------------------------------------------
 BASE_URL="${BASE_URL:-http://localhost}"
+# Resident portal is served on a SEPARATE nginx vhost/port (:81) from the admin portal (:80).
+# The seeded announcement is only deep-linkable on the RESIDENT app (route announcements/:id);
+# opening it on the admin port hits the admin SPA fallback (a dashboard), not the detail page.
+RESIDENT_BASE_URL="${RESIDENT_BASE_URL:-http://localhost:81}"
 ADMIN_PHONE="${ADMIN_PHONE:?set ADMIN_PHONE (admin login phone)}"
 ADMIN_PASSWORD="${ADMIN_PASSWORD:?set ADMIN_PASSWORD (do not hardcode)}"
 
@@ -167,7 +172,7 @@ Announcement id : $ANN_ID
 Target block    : $TARGET_BLOCK_NAME  ($TARGET_BLOCK_ID)
 Cover media id  : $COVER_ID   (rendered as BANNER, not in body)
 Inline media id : $INLINE_ID  (rendered inline in body)
-Resident detail : ${BASE_URL%/}/announcements/$ANN_ID   (resident app path)
+Resident detail : ${RESIDENT_BASE_URL%/}/announcements/$ANN_ID   (resident portal :81; log in as the in-scope resident first)
 
 Residents for the manual smoke (demo residents password: Demo@1234):
 EOF

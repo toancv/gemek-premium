@@ -39,11 +39,26 @@ printf '%s' "$PNG_B64" | base64 -d > "$PNG_FILE"
 say() { printf '%s\n' "$*" >&2; }
 fail() { printf 'FAILED at step: %s\n' "$*" >&2; exit 1; }
 
+# Auth header array — empty until login succeeds (login itself sends no auth header).
+AUTH=()
+
+# Send a JSON request body via a temp file + curl --data-binary, NOT -d "$VAR".
+# On Windows Git-Bash/MSYS, non-ASCII bytes in a curl command-line ARGUMENT are
+# transcoded to the ANSI codepage (em-dash U+2014 -> single byte 0x97), corrupting the
+# body to invalid UTF-8 (server then 500s on parse). Reading the bytes from a file
+# avoids the argument layer entirely. Echoes the response body to stdout.
+send_json() {  # $1=method  $2=url  $3=json-body
+  local bf
+  bf="$(mktemp "$TMP_DIR/body.XXXXXX.json")"
+  printf '%s' "$3" > "$bf"
+  curl -fsS "${AUTH[@]}" -X "$1" "$2" \
+    -H 'Content-Type: application/json' --data-binary @"$bf"
+}
+
 # --- 1) admin login (phone-based) -------------------------------------------
 say "[1/7] Logging in as ADMIN ($ADMIN_PHONE) ..."
-LOGIN_JSON="$(curl -fsS -X POST "$API/auth/login" \
-  -H 'Content-Type: application/json' \
-  -d "$(jq -n --arg p "$ADMIN_PHONE" --arg pw "$ADMIN_PASSWORD" '{phone:$p, password:$pw}')")" \
+LOGIN_JSON="$(send_json POST "$API/auth/login" \
+  "$(jq -n --arg p "$ADMIN_PHONE" --arg pw "$ADMIN_PASSWORD" '{phone:$p, password:$pw}')")" \
   || fail "1 admin login (HTTP error — check BASE_URL/stack up/credentials)"
 TOKEN="$(jq -r '.accessToken // .data.accessToken // empty' <<<"$LOGIN_JSON")"
 [ -n "$TOKEN" ] || fail "1 admin login (no accessToken in response: $LOGIN_JSON)"
@@ -70,8 +85,7 @@ CREATE_BODY="$(jq -n --arg blk "$TARGET_BLOCK_ID" '{
   sendSms: false,
   publishNow: false
 }')"
-CREATE_JSON="$(curl -fsS "${AUTH[@]}" -X POST "$API/announcements" \
-  -H 'Content-Type: application/json' -d "$CREATE_BODY")" || fail "3 create draft"
+CREATE_JSON="$(send_json POST "$API/announcements" "$CREATE_BODY")" || fail "3 create draft"
 ANN_ID="$(jq -r '.id // .data.id // empty' <<<"$CREATE_JSON")"
 [ -n "$ANN_ID" ] || fail "3 create draft (no id in response: $CREATE_JSON)"
 
@@ -90,13 +104,17 @@ INLINE_ID="$(jq -r '.id // .data.id // empty' <<<"$INLINE_JSON")"
 # --- 5) update draft body to carry every checklist case ---------------------
 say "[5/7] Updating draft body with all XSS + legit cases ..."
 # One announcement exercises every CTO-checklist case. COVER stays a banner (NOT in body).
+# ASCII-only body (no em-dash) carrying the 6 API-storable checklist cases. The raw-HTML
+# case (<img onerror>) is intentionally OMITTED: it is write-blocked by the server
+# (400 ANNOUNCEMENT_CONTENT_HTML_NOT_ALLOWED) so it cannot reach the renderer via the API;
+# its render inertness is covered by the UI unit tests, not this fixture.
 BODY_MD="$(cat <<EOF
 # C2.3a XSS image-render smoke
 
 legit inline (MUST render):
 ![alt](announcement-media:${INLINE_ID})
 
-external url attack (MUST be inert — no external fetch):
+external url attack (MUST be inert, no external fetch):
 ![x](https://evil.example/track.png)
 
 javascript attack (MUST be inert):
@@ -104,9 +122,6 @@ javascript attack (MUST be inert):
 
 data-uri attack (MUST be inert):
 ![x](data:text/html;base64,PHNjcmlwdD4=)
-
-raw html attack (MUST stay escaped text):
-<img src=x onerror=alert(1)>
 
 unknown-id attack (MUST render nothing):
 ![x](announcement-media:00000000-0000-0000-0000-000000000000)
@@ -126,8 +141,7 @@ UPDATE_BODY="$(jq -n --arg blk "$TARGET_BLOCK_ID" --arg content "$BODY_MD" '{
   sendEmail: false,
   sendSms: false
 }')"
-curl -fsS "${AUTH[@]}" -X PUT "$API/announcements/$ANN_ID" \
-  -H 'Content-Type: application/json' -d "$UPDATE_BODY" >/dev/null || fail "5 update body"
+send_json PUT "$API/announcements/$ANN_ID" "$UPDATE_BODY" >/dev/null || fail "5 update body"
 
 # --- 6) publish to the single in-scope block --------------------------------
 say "[6/7] Publishing to block '$TARGET_BLOCK_NAME' ..."

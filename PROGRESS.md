@@ -13,7 +13,7 @@ passes, start **C2.3b admin authoring UX**. Do NOT start C2.3b until C2.3a is sm
 
 **Latest seeded fixture (2026-06-25, re-run helper any time for a fresh one):**
 - Helper: `ADMIN_PHONE=0901100001 ADMIN_PASSWORD='Demo@1234' ./scripts/smoke-c2-3a.sh` (env `BASE_URL` default `http://localhost`).
-- Announcement id: `f526ca49-b740-4748-9286-2a7e6c949df9`; resident detail path: `http://localhost/announcements/f526ca49-b740-4748-9286-2a7e6c949df9`.
+- Announcement id: `f526ca49-b740-4748-9286-2a7e6c949df9`; resident detail URL: `http://localhost:81/announcements/f526ca49-b740-4748-9286-2a7e6c949df9` (**resident portal = port :81**, route `announcements/:id`, deep-linkable but `RequireAuth`). Admin is :80 — opening the URL there hits the admin SPA fallback (a dashboard), NOT the detail. Browser smoke must use a **clean/incognito session logged in as the in-scope resident on :81**.
 - IN-SCOPE resident (sees images): `0909616883` [block `ABBlock-0837bb3a`]; OUT-OF-SCOPE (empty manifest): `0922333111` [block `ABBlock-15a406c4`]. Demo password `Demo@1234`.
 - Verified: detail `media` = 2 presigned entries (COVER + INLINE); stored `content` holds all 6 storable lines, ASCII-clean.
 - Earlier blockers RESOLVED: (a) MinIO `gemek` bucket created (was missing → upload 500); (b) fixture encoding fix — JSON bodies sent via `curl --data-binary @file`, em-dash removed, write-blocked raw `<img>` line dropped (was step-5 500). Diagnosis: `reports/c2-2-media-upload-500-diagnosis.md`.

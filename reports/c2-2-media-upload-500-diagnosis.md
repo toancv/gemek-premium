@@ -188,3 +188,7 @@ now seeds **end-to-end** (steps 1-7, exit 0). Verified as ADMIN on the new annou
 entries (COVER + INLINE)**, and the stored `content` holds all **6 storable lines intact, ASCII-clean (no
 UTF-8 parse error)**. The secondary app gap (`HttpMessageNotReadableException` → 500 not 400) is left as a
 benign, separately-gated cosmetic item — not fixed here.
+
+The seed summary's printed detail URL initially used the admin port/route (`http://localhost/…` = :80 admin
+SPA fallback → dashboard); corrected to the resident portal `http://localhost:81/announcements/{id}` (route
+`announcements/:id`, `RequireAuth`) and the script now derives it from `RESIDENT_BASE_URL` (default `:81`).

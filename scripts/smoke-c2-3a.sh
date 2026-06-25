@@ -28,9 +28,20 @@ RESIDENT_BASE_URL="${RESIDENT_BASE_URL:-http://localhost:81}"
 ADMIN_PHONE="${ADMIN_PHONE:?set ADMIN_PHONE (admin login phone)}"
 ADMIN_PASSWORD="${ADMIN_PASSWORD:?set ADMIN_PASSWORD (do not hardcode)}"
 
+# Known password this script FORCES onto the residents it picks (via the admin reset endpoint),
+# so the printed logins actually work. Meets the BE complexity rule (>=8, upper+lower+digit+special).
+SMOKE_PASSWORD="Smoke@1234"
+
 for bin in curl jq; do
   command -v "$bin" >/dev/null 2>&1 || { echo "FATAL: '$bin' not found on PATH" >&2; exit 1; }
 done
+
+# SAFETY GUARD: this script MUTATES user passwords (admin reset on the picked residents). Refuse to
+# run against anything but a local dev stack — never a shared/staging/prod host.
+case "$BASE_URL" in
+  http://localhost|http://localhost:*|http://127.0.0.1|http://127.0.0.1:*) : ;;
+  *) echo "FATAL: refusing to run — BASE_URL='$BASE_URL' is not localhost/127.0.0.1. This script resets resident passwords and must only target a local dev stack." >&2; exit 1 ;;
+esac
 
 API="${BASE_URL%/}/api"
 
@@ -152,17 +163,32 @@ send_json PUT "$API/announcements/$ANN_ID" "$UPDATE_BODY" >/dev/null || fail "5 
 say "[6/7] Publishing to block '$TARGET_BLOCK_NAME' ..."
 curl -fsS "${AUTH[@]}" -X POST "$API/announcements/$ANN_ID/publish" >/dev/null || fail "6 publish"
 
-# --- 7) best-effort: pick one in-scope + one out-of-scope resident ----------
-say "[7/7] Deriving in-scope / out-of-scope residents (best-effort) ..."
-IN_PHONE=""; OUT_PHONE=""; OUT_BLOCK=""
+# --- 7) pick one in-scope + one out-of-scope resident, reset each to a known pw -
+say "[7/7] Picking in-scope / out-of-scope residents and resetting their passwords ..."
+IN_PHONE=""; IN_ID=""; OUT_PHONE=""; OUT_ID=""; OUT_BLOCK=""
 if RES_JSON="$(curl -fsS "${AUTH[@]}" "$API/residents?isActive=true&size=200" 2>/dev/null)"; then
   IN_PHONE="$(jq -r --arg b "$TARGET_BLOCK_NAME" \
     'first(.data[] | select(.apartment.block.name == $b) | .user.phone) // empty' <<<"$RES_JSON")"
+  IN_ID="$(jq -r --arg b "$TARGET_BLOCK_NAME" \
+    'first(.data[] | select(.apartment.block.name == $b) | .user.id) // empty' <<<"$RES_JSON")"
   OUT_PHONE="$(jq -r --arg b "$TARGET_BLOCK_NAME" \
     'first(.data[] | select(.apartment.block.name != $b) | .user.phone) // empty' <<<"$RES_JSON")"
+  OUT_ID="$(jq -r --arg b "$TARGET_BLOCK_NAME" \
+    'first(.data[] | select(.apartment.block.name != $b) | .user.id) // empty' <<<"$RES_JSON")"
   OUT_BLOCK="$(jq -r --arg b "$TARGET_BLOCK_NAME" \
     'first(.data[] | select(.apartment.block.name != $b) | .apartment.block.name) // empty' <<<"$RES_JSON")"
 fi
+
+# Force a known password on each picked resident via the admin reset endpoint (PUT
+# /api/users/{id}/reset-password, body {newPassword}), so the printed creds actually log in.
+reset_pw() {  # $1=userId  $2=label
+  [ -n "$1" ] || return 0
+  send_json PUT "$API/users/$1/reset-password" \
+    "$(jq -n --arg pw "$SMOKE_PASSWORD" '{newPassword:$pw}')" >/dev/null \
+    || fail "7 reset password for $2 resident (id=$1)"
+}
+reset_pw "$IN_ID" "in-scope"
+reset_pw "$OUT_ID" "out-of-scope"
 
 # --- summary ----------------------------------------------------------------
 cat <<EOF
@@ -174,17 +200,17 @@ Cover media id  : $COVER_ID   (rendered as BANNER, not in body)
 Inline media id : $INLINE_ID  (rendered inline in body)
 Resident detail : ${RESIDENT_BASE_URL%/}/announcements/$ANN_ID   (resident portal :81; log in as the in-scope resident first)
 
-Residents for the manual smoke (demo residents password: Demo@1234):
+Residents for the manual smoke (password reset by this script to: $SMOKE_PASSWORD):
 EOF
 if [ -n "$IN_PHONE" ]; then
-  echo "  IN-SCOPE     (sees images) : $IN_PHONE   [block '$TARGET_BLOCK_NAME']"
+  echo "  IN-SCOPE     (sees images) : $IN_PHONE / $SMOKE_PASSWORD   [block '$TARGET_BLOCK_NAME']"
 else
-  echo "  IN-SCOPE     : could not derive — log in any resident whose apartment is in block '$TARGET_BLOCK_NAME'."
+  echo "  IN-SCOPE     : could not derive — no active resident found in block '$TARGET_BLOCK_NAME'."
 fi
 if [ -n "$OUT_PHONE" ]; then
-  echo "  OUT-OF-SCOPE (empty media) : $OUT_PHONE   [block '$OUT_BLOCK']"
+  echo "  OUT-OF-SCOPE (empty media) : $OUT_PHONE / $SMOKE_PASSWORD   [block '$OUT_BLOCK']"
 else
-  echo "  OUT-OF-SCOPE : could not derive — log in any resident whose apartment is NOT in block '$TARGET_BLOCK_NAME'."
+  echo "  OUT-OF-SCOPE : could not derive — no active resident found outside block '$TARGET_BLOCK_NAME'."
 fi
 cat <<EOF
 

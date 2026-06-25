@@ -27,7 +27,7 @@ export function AnnouncementEditPage() {
 
   if (isError || !data) {
     return (
-      <div className="max-w-7xl">
+      <div className="w-full">
         <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-700 mb-4">Không tìm thấy thông báo.</div>
         <button type="button" onClick={() => navigate('/announcements')} className="px-4 py-2 text-sm border border-gray-300 rounded-md hover:bg-gray-50">Quay lại danh sách</button>
       </div>
@@ -37,7 +37,7 @@ export function AnnouncementEditPage() {
   // Published announcements are immutable (PUT is draft-only) — block editing, offer a way back.
   if (data.publishedAt) {
     return (
-      <div className="max-w-7xl">
+      <div className="w-full">
         <h1 className="text-2xl font-bold text-gray-900 mb-4">{data.title}</h1>
         <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 text-yellow-800 mb-4">
           Thông báo đã được đăng nên không thể chỉnh sửa.
@@ -116,7 +116,7 @@ function AnnouncementEditForm({ announcement }: { announcement: any }) {
   };
 
   return (
-    <div className="max-w-7xl">
+    <div className="w-full">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Chỉnh sửa thông báo</h1>
       </div>

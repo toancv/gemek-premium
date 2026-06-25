@@ -84,3 +84,95 @@ Optional hardening (separate decision, a real code change — do NOT bundle with
 touches production code and should be its own gated change, not part of unblocking the smoke.
 
 **C2.3a smoke remains BLOCKED until the bucket exists.**
+
+---
+
+## Step-5 body-update 500 (after bucket created)
+
+**Date:** 2026-06-25. With the `gemek` bucket created, the smoke now passes step 4 (upload succeeds —
+log: `MinIO upload succeeded … kind=COVER/INLINE`) but fails at **step 5 "Updating draft body"** with
+`curl: (22) … returned error: 500` on `PUT /api/announcements/{id}`. Step 5 is the first request whose
+body carries the hostile payloads (`javascript:`, `data:`, raw `<img onerror>`, `announcement-media:`).
+
+### Step 1 — Stacktrace (class: malformed request, NOT a deep app exception)
+
+Backend log (`scratchpad/step5-500-logslice.txt`), first exception on the failed PUT:
+
+```
+ERROR GlobalExceptionHandler : Unhandled exception on /api/announcements/eb1f8964-…
+org.springframework.http.converter.HttpMessageNotReadableException:
+        JSON parse error: Invalid UTF-8 start byte 0x97
+Caused by: com.fasterxml.jackson.databind.JsonMappingException: Invalid UTF-8 start byte 0x97
+  at [Source: REDACTED …; line: 3, column: 181]
+        (through reference chain: …dto.UpdateAnnouncementRequest["content"])
+Caused by: com.fasterxml.jackson.core.JsonParseException: Invalid UTF-8 start byte 0x97
+```
+
+This is a **request-parse** failure (`HttpMessageNotReadableException`) — the body bytes are not valid
+UTF-8 — NOT a validation / DataIntegrity / markdown / NPE exception. Byte `0x97` is the Windows-1252
+(CP1252) encoding of an em-dash `—` (U+2014); valid UTF-8 for `—` is `0xE2 0x80 0x94`.
+
+### Step 2 — What the server actually received (request-shape)
+
+The script builds the body **correctly with jq** (`smoke-c2-3a.sh:118` `jq -n --arg content "$BODY_MD"`),
+so the JSON is structurally well-formed — this is **NOT** a string-concatenation / quote-escaping bug. The
+defect is a **character-encoding** one, proven by isolation on this Windows Git-Bash host:
+
+| Transport of the *same* em-dash body | On-wire bytes | Result |
+|---|---|---|
+| `curl --data-binary @tmpfile` | `e2 80 94` (UTF-8) | **200**, content stored as `inert — dash test` |
+| `curl -d "$VAR"` (script line 130) | `97` (CP1252) | **500** `Invalid UTF-8 start byte 0x97` |
+
+Root mechanism: **Git-Bash/MSYS transcodes non-ASCII bytes in a curl command-line argument to the active
+ANSI codepage (CP1252)**. The seed body contains a literal em-dash at `smoke-c2-3a.sh:99`
+("MUST be inert — no external fetch", bytes `e2 80 94` in the file — the *file* is valid UTF-8), but
+passing it through `-d "$UPDATE_BODY"` (line 130) mangles `—` to `0x97`, so the server receives invalid
+UTF-8. jq itself preserves UTF-8 (verified: `jq --arg` output keeps `e2 80 94`).
+
+### Step 3 — Endpoint contract (read-only)
+
+- `PUT /api/announcements/{id}` (ADMIN), `docs/API-SPEC.md:2056-2064`. Same body as POST minus
+  `publishNow`; `409 CONFLICT` if already published. Write-time content guards (API-SPEC:2017/2062):
+  `400 ANNOUNCEMENT_CONTENT_TOO_LONG` (>20000) and `400 ANNOUNCEMENT_CONTENT_HTML_NOT_ALLOWED` (raw HTML).
+- DTO `UpdateAnnouncementRequest.java:30` — `content` is a plain `String` with **no** `@NotBlank`/`@Size`;
+  the length + HTML guards are service-level in `AnnouncementServiceImpl.java:879` (too-long) and `:883`
+  (raw-HTML reject). The script supplies all fields the controller needs — **no required field is omitted**.
+- `GlobalExceptionHandler.java` has **no** `@ExceptionHandler(HttpMessageNotReadableException.class)`; an
+  unparseable body therefore falls through to the catch-all `@ExceptionHandler(Exception.class)`
+  (lines 188-192) → logged "Unhandled exception" → **500 INTERNAL_ERROR** (a 400 would be more correct).
+
+### Step 4 — Verdict
+
+**Primary root cause: hypothesis (2) — a fixture/script defect, but NOT the jq-escaping form hypothesised.**
+A literal **em-dash (non-ASCII) in the seed body** (`smoke-c2-3a.sh:99`), sent via `curl -d "$VAR"`
+(`:130`) on Windows Git-Bash, is transcoded to invalid UTF-8 (`0x97`); the server cannot parse it. Cited:
+stacktrace `HttpMessageNotReadableException: Invalid UTF-8 start byte 0x97` + the transport isolation table
++ file bytes at `:99`. **Hypothesis (1) — app bug on a valid request — is RULED OUT:** a clean-UTF-8 body
+containing the same `javascript:` / `data:` / `announcement-media:` payloads stores fine (**200**, verified).
+
+Two secondary findings (neither blocks, both for CTO awareness):
+1. **Mild app gap (a touch of hypothesis 1):** `HttpMessageNotReadableException` is unmapped, so a malformed
+   body returns **500 instead of 400** (`GlobalExceptionHandler.java:188-192` catch-all). Benign — only
+   reachable with a malformed request a correct client never sends; **no security relevance**.
+2. **Fixture design vs write-guard:** even after the encoding fix, the raw `<img src=x onerror=alert(1)>`
+   line (`smoke-c2-3a.sh:109`) is **correctly** rejected by the write-time HTML guard
+   (`AnnouncementServiceImpl.java:883` → `400 ANNOUNCEMENT_CONTENT_HTML_NOT_ALLOWED`, verified on a
+   clean-UTF-8 repro). Raw HTML **cannot** be stored via the API by design — so that XSS vector is closed
+   at *write* time (stronger than render-time inertness). The renderer's raw-HTML inertness is covered by
+   the UI unit tests, not seedable through the update endpoint.
+
+**Leftover (NOT cleaned, per instruction):** draft `eb1f8964-cfbb-470d-aeb1-4f61208f18c6` from the real
+script run (has 2 media rows from the successful step 4); plus `[DIAG step5]` repro drafts.
+
+### Recommended fix (script/fixture — for CTO approval, NOT applied)
+
+1. **Make the seed body ASCII-only** (replace `—` with `-` at `smoke-c2-3a.sh:99`) **and/or** send the body
+   via `curl --data-binary @tmpfile` instead of `-d "$VAR"` (`:130`) so MSYS cannot transcode the argument —
+   the latter is the robust, portable fix.
+2. **Drop the raw `<img>` line** (`:109`) from the seeded body, since the write guard legitimately rejects
+   it (400); add a note that raw-HTML-in-stored-content is impossible by design and its render inertness is
+   covered by UI tests.
+3. Optional, separate CTO decision (real code change, do NOT bundle): map
+   `HttpMessageNotReadableException → 400` in `GlobalExceptionHandler`. Cosmetic.
+
+**C2.3a smoke remains BLOCKED at step 5 pending the fixture fix (items 1-2 above).**

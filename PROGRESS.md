@@ -6,19 +6,17 @@
 ## ▶ CURRENT STATE SNAPSHOT (2026-06-23)
 
 **RESUME POINTER (one line):** C2.3a (resident safe image render + `announcement-media:` placeholder→manifest
-resolution + cover banner) is **committed but NOT yet CTO-smoked** — next action is the **manual XSS smoke**
-per the CTO smoke checklist in `reports/c2-3a-announcement-image-render.md`; after it passes, start **C2.3b
-admin authoring UX**. Do NOT start C2.3b until C2.3a is smoked.
+resolution + cover banner) is committed; **fixture now seeds clean end-to-end — AWAITING the CTO manual
+BROWSER smoke** (5 storable attacks: external-url / `javascript:` / `data:` / unknown-id / link-form, plus
+positive render + scope/leak) per the checklist in `reports/c2-3a-announcement-image-render.md`. After it
+passes, start **C2.3b admin authoring UX**. Do NOT start C2.3b until C2.3a is smoked.
 
-**Smoke fixture helper (2026-06-25):** `scripts/smoke-c2-3a.sh` seeds ONE re-runnable XSS fixture against
-the running dev stack — run `ADMIN_PHONE=0901100001 ADMIN_PASSWORD='Demo@1234' ./scripts/smoke-c2-3a.sh`
-(env: `BASE_URL` default `http://localhost`). It only drives real endpoints (login/create/C2.2 upload/
-update/publish); seeds nothing in DB/MinIO directly; no prod-code/schema/API-SPEC change. The helper only
-SEEDS the fixture — **C2.3a smoke is STILL PENDING the manual browser checklist.** Self-verify is BLOCKED
-at the upload step by a dev-env gap: the MinIO bucket **`gemek` does not exist** in this instance
-("first-run bucket setup" never done), which blocks C2.2/C2.3 uploads generally. Create the `gemek` bucket,
-then re-run the helper to complete the ADMIN-detail manifest check. Detail in
-`reports/c2-3a-announcement-image-render.md` → "Smoke-seed helper".
+**Latest seeded fixture (2026-06-25, re-run helper any time for a fresh one):**
+- Helper: `ADMIN_PHONE=0901100001 ADMIN_PASSWORD='Demo@1234' ./scripts/smoke-c2-3a.sh` (env `BASE_URL` default `http://localhost`).
+- Announcement id: `f526ca49-b740-4748-9286-2a7e6c949df9`; resident detail path: `http://localhost/announcements/f526ca49-b740-4748-9286-2a7e6c949df9`.
+- IN-SCOPE resident (sees images): `0909616883` [block `ABBlock-0837bb3a`]; OUT-OF-SCOPE (empty manifest): `0922333111` [block `ABBlock-15a406c4`]. Demo password `Demo@1234`.
+- Verified: detail `media` = 2 presigned entries (COVER + INLINE); stored `content` holds all 6 storable lines, ASCII-clean.
+- Earlier blockers RESOLVED: (a) MinIO `gemek` bucket created (was missing → upload 500); (b) fixture encoding fix — JSON bodies sent via `curl --data-binary @file`, em-dash removed, write-blocked raw `<img>` line dropped (was step-5 500). Diagnosis: `reports/c2-2-media-upload-500-diagnosis.md`.
 
 **Announcements rich-content cluster:**
 | Phase | What | Status | Boundary commits |
@@ -32,12 +30,14 @@ then re-run the helper to complete the ADMIN-detail manifest check. Detail in
 | C3 | file attachments (non-image) | PENDING | — |
 
 **OPEN ITEMS / BACKLOG (priority order):**
-1. **Smoke C2.3a** — manual XSS image attacks + cover banner + inline + presigned-internal-only (checklist in `reports/c2-3a-announcement-image-render.md`). **BLOCKED, now at step 5 (body update).** Step-4 upload fixed by creating the `gemek` MinIO bucket. Step 5 now 500s: root cause = **fixture defect**, NOT an app bug — a literal em-dash in the seed body (`smoke-c2-3a.sh:99`) sent via `curl -d "$VAR"` is transcoded to invalid UTF-8 by Windows Git-Bash → server `HttpMessageNotReadable` → 500. App is correct (clean-UTF-8 body with the XSS payloads stores 200; raw `<img>` correctly rejected 400). Diagnosis + recommended script fix: `reports/c2-2-media-upload-500-diagnosis.md` → "## Step-5 body-update 500". Awaiting CTO ruling before editing the script.
+1. **Smoke C2.3a** — manual BROWSER XSS smoke (5 storable attacks + positive render + scope/leak) per `reports/c2-3a-announcement-image-render.md`. **Fixture seeds clean end-to-end** (helper fixed + `gemek` bucket created); see the "Latest seeded fixture" block above for the announcement id, resident detail path, and in/out-of-scope logins. AWAITING the CTO browser smoke; nothing else blocks it.
 2. **C2.3b — admin authoring UX** — upload + insert-image (inserts `announcement-media:{id}` placeholders) + cover selection; **MOVE create/edit out of the small modal to dedicated `/announcements/new` + `/announcements/:id/edit`** as a **2-column compose|preview** layout (preview uses the SAME safe `MarkdownContent` + a manifest of the draft's uploaded media). Wire C2.2 upload/list/delete into the media manager. Admin app root: `frontend/apps/admin/…`.
 3. **C3 — file attachments** (non-image documents on announcements).
 4. **Amenity multi-residency real attribution rule `[PLANNED]`** — currently primary-or-latest temporary; real rule deferred LAST per CTO.
 
 **Smaller debts (do not lose):**
+- **Malformed-body → 500 not 400** — `GlobalExceptionHandler` has no `@ExceptionHandler(HttpMessageNotReadableException.class)`; an unparseable/invalid-UTF-8 request body falls to the catch-all and returns `500 INTERNAL_ERROR` instead of `400`. Benign (no security impact; a correct client never sends it), cosmetic — separate gated change. See `reports/c2-2-media-upload-500-diagnosis.md`.
+- **Smoke leaves throwaway drafts** — each `scripts/smoke-c2-3a.sh` run creates a fresh published `[C2.3a SMOKE]` announcement (+2 media objects in MinIO); no cleanup. Deferred — prune later if dev data clutters.
 - **CONFLICT error-code split** — `ErrorCode.CONFLICT` is overloaded (already-published vs already-active-in-apartment etc.); consider splitting for precise FE messaging.
 - **FE any-type on ticket items** — `TicketDetailItem` in resident `api/types.ts` is partially typed (`[key:string]:any` debt); the rest of the detail shape is untyped.
 - **Parking phone-collision flake** — known intermittent test/data collision on phone uniqueness in parking fixtures.

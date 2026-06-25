@@ -97,16 +97,21 @@ single-row-share-scope rationale).
 
 ## CTO smoke checklist (PENDING — C2.3a not yet smoked)
 
-Manual verification the CTO must perform before C2.3a is closed. **Setup:** seed (or use an existing) draft
-announcement, upload a `cover` + at least one `inline` image (C2.2 endpoints), insert
-`![alt](announcement-media:{inlineId})` into the body, then publish to an ALL/in-scope target so a test
-resident can open the detail.
+Manual verification the CTO must perform before C2.3a is closed. **Setup:** run the seed helper —
+`ADMIN_PHONE=… ADMIN_PASSWORD=… scripts/smoke-c2-3a.sh` — which creates a fresh published draft with the
+cover banner + inline image + the 5 storable attack/edge cases below, and prints the resident detail path
+plus one in-scope and one out-of-scope resident login.
+
+**Raw-HTML note:** the raw `<img src=x onerror=alert(1)>` case is **NOT browser-smokeable** — it is rejected
+at WRITE time (`400 ANNOUNCEMENT_CONTENT_HTML_NOT_ALLOWED`, `AnnouncementServiceImpl.java:883`), so raw HTML
+never reaches the renderer via the API. That vector is closed at write time (stronger than render-time
+inertness); the renderer's raw-HTML escaping is covered by the UI unit tests, not this browser smoke. The
+browser smoke therefore covers the **5 storable** attack/edge cases below + positive render + scope/leak.
 
 XSS attacks (each MUST stay inert — no live `<img>`, no script, no handler firing):
 - [ ] Body `![x](https://evil.example/track.png)` → NO live img to that URL (no external/tracking fetch in Network tab).
 - [ ] Body `![x](javascript:alert(1))` → no img, no alert, no `javascript:` in DOM.
 - [ ] Body `![x](data:text/html;base64,PHNjcmlwdD4=)` → no img, no `data:text/html` in DOM.
-- [ ] Body raw `<img src=x onerror=alert(1)>` → renders as inert escaped text, no element, no alert.
 - [ ] Body `![x](announcement-media:00000000-0000-0000-0000-000000000000)` (unknown id) → renders nothing.
 - [ ] Body `[click](announcement-media:{inlineId})` (link, not image) → inert anchor (no working `announcement-media:` href).
 

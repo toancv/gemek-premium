@@ -176,3 +176,15 @@ script run (has 2 media rows from the successful step 4); plus `[DIAG step5]` re
    `HttpMessageNotReadableException → 400` in `GlobalExceptionHandler`. Cosmetic.
 
 **C2.3a smoke remains BLOCKED at step 5 pending the fixture fix (items 1-2 above).**
+
+### Resolution (2026-06-25)
+
+Fixture fix applied to `scripts/smoke-c2-3a.sh` (script only, no app change): all JSON request bodies now go
+through a `send_json` helper that writes the jq-built body to a temp file and sends it with
+`curl --data-binary @file` instead of `-d "$VAR"` — so MSYS never transcodes argument bytes — and the
+em-dash in the seed body was replaced with ASCII; the write-blocked raw `<img>` line was dropped. The smoke
+now seeds **end-to-end** (steps 1-7, exit 0). Verified as ADMIN on the new announcement
+`f526ca49-b740-4748-9286-2a7e6c949df9`: `GET /api/announcements/{id}` returns `media` with **2 presigned
+entries (COVER + INLINE)**, and the stored `content` holds all **6 storable lines intact, ASCII-clean (no
+UTF-8 parse error)**. The secondary app gap (`HttpMessageNotReadableException` → 500 not 400) is left as a
+benign, separately-gated cosmetic item — not fixed here.

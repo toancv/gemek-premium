@@ -11,6 +11,7 @@ import io.minio.RemoveObjectArgs;
 import io.minio.http.Method;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import vn.vtit.gemek.common.exception.AppException;
 import vn.vtit.gemek.common.exception.ErrorCode;
@@ -40,16 +41,21 @@ public class FileStorageService {
     static final int PRESIGN_EXPIRY_SECONDS = 600;
 
     private final MinioClient minioClient;
+    private final MinioClient minioPresignClient;
     private final MinioConfig minioConfig;
 
     /**
-     * Constructs the service with MinIO client and configuration dependencies.
+     * Constructs the service with the internal byte-ops client, the public presign client, and config.
      *
-     * @param minioClient the configured MinIO client bean.
-     * @param minioConfig the MinIO configuration holding the target bucket name.
+     * @param minioClient        the INTERNAL MinIO client (byte ops — put/delete).
+     * @param minioPresignClient the PUBLIC presign client (presigned URLs signed for the browser host).
+     * @param minioConfig        the MinIO configuration holding the target bucket name.
      */
-    public FileStorageService(MinioClient minioClient, MinioConfig minioConfig) {
+    public FileStorageService(@Qualifier("minioClient") MinioClient minioClient,
+                              @Qualifier("minioPresignClient") MinioClient minioPresignClient,
+                              MinioConfig minioConfig) {
         this.minioClient = minioClient;
+        this.minioPresignClient = minioPresignClient;
         this.minioConfig = minioConfig;
     }
 
@@ -88,7 +94,8 @@ public class FileStorageService {
      */
     public String presign(String objectKey) {
         try {
-            return minioClient.getPresignedObjectUrl(GetPresignedObjectUrlArgs.builder()
+            // Sign with the PUBLIC client so the URL host is browser-reachable (offline SigV4).
+            return minioPresignClient.getPresignedObjectUrl(GetPresignedObjectUrlArgs.builder()
                     .bucket(minioConfig.getBucket())
                     .object(objectKey)
                     .method(Method.GET)

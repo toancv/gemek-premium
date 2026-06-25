@@ -208,11 +208,27 @@ export const useUpdateContractor = () => {
 export const useAnnouncements = (params?: Record<string, unknown>) =>
   useQuery({ queryKey: ['announcements', params], queryFn: () => get('/announcements', params) });
 
+// Single-announcement detail (incl. full content + media manifest). Used by the edit page to
+// populate the form. Same key family as the list (['announcements', ...]) so a write invalidates both.
+export const useAnnouncement = (id: string) =>
+  useQuery({ queryKey: ['announcements', id], queryFn: () => get(`/announcements/${id}`), enabled: !!id });
+
 export const useCreateAnnouncement = () => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (data: unknown) => post('/announcements', data),
     meta: { skipErrorToast: true, successMessage: 'Đã tạo thông báo.' },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['announcements'] }),
+  });
+};
+
+// Update a DRAFT announcement (BE PUT /announcements/{id}, ADMIN, draft-only — published is immutable).
+// Invalidates the whole ['announcements'] family so both the list and this draft's detail refetch.
+export const useUpdateAnnouncement = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: unknown }) => put(`/announcements/${id}`, data),
+    meta: { skipErrorToast: true, successMessage: 'Đã cập nhật thông báo.' },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['announcements'] }),
   });
 };

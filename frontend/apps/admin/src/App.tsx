@@ -12,6 +12,8 @@ import { TicketsPage } from './pages/TicketsPage';
 import { TicketDetailPage } from './pages/TicketDetailPage';
 import { ContractorsPage } from './pages/ContractorsPage';
 import { AnnouncementsPage } from './pages/AnnouncementsPage';
+import { AnnouncementCreatePage } from './pages/AnnouncementCreatePage';
+import { AnnouncementEditPage } from './pages/AnnouncementEditPage';
 // TEMP_HIDDEN_DEFERRED: amenities import — feature deferred, see PROGRESS.md
 // import { AmenitiesPage } from './pages/AmenitiesPage';
 // TEMP_HIDDEN_DEFERRED: parking import — feature deferred, see PROGRESS.md
@@ -71,6 +73,8 @@ export default function App() {
           <Route path="tickets/:id" element={<RequireRole roles={['ADMIN','BOARD_MEMBER','TECHNICIAN']}><TicketDetailPage /></RequireRole>} />
           <Route path="contractors" element={<RequireRole roles={['ADMIN','BOARD_MEMBER']}><ContractorsPage /></RequireRole>} />
           <Route path="announcements" element={<RequireRole roles={['ADMIN','BOARD_MEMBER']}><AnnouncementsPage /></RequireRole>} />
+          <Route path="announcements/new" element={<RequireRole roles={['ADMIN','BOARD_MEMBER']}><AnnouncementCreatePage /></RequireRole>} />
+          <Route path="announcements/:id/edit" element={<RequireRole roles={['ADMIN','BOARD_MEMBER']}><AnnouncementEditPage /></RequireRole>} />
           {/* TEMP_HIDDEN_DEFERRED: amenities route — feature deferred, see PROGRESS.md */}
           <Route path="amenities" element={<HomeRedirect />} />
           {/* TEMP_HIDDEN_DEFERRED: parking route — feature deferred, see PROGRESS.md */}

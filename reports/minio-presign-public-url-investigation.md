@@ -97,3 +97,19 @@ the prod delivery shape if exposing 9000 directly is undesirable — it builds o
 **This is a pre-existing C2.1/C2.2 gap** (internal host baked into every presign), surfaced now by the first
 browser load. It blocks the C2.3a positive-render + out-of-scope-visual smoke; awaiting CTO ruling before any
 code/config change.
+
+## Resolution (Option B applied — 2026-06-25)
+
+CTO ruled **Option B** (nginx front, do NOT publish raw 9000). Implemented: dual `MinioClient`
+(internal byte-ops + public presign, `@Qualifier`-wired), region pinned `us-east-1` so presign is offline
+(the SDK 8.5.9 otherwise made a region network call that fails for the unreachable public host — caught by
+the new `PresignPublicHostTest`), nginx `server listen 8090` proxying `minio:9000` with `Host $http_host`
+(full host incl. port), compose publishes `8090:8090`, `MINIO_PUBLIC_ENDPOINT=http://localhost:8090`. Suite
+**418/418**. Full ruling + rejected alternatives: `DECISIONS.md` (2026-06-25).
+
+**HTTP self-verify (host shell):**
+1. detail `media[].url` host → `http://localhost:8090` (public; was `minio:9000`). PASS
+2. `GET` that presigned URL → **HTTP 200**. PASS
+3. same path with forged `Host: evil:1234` → **HTTP 403** (SignedHeaders=host binding intact). PASS
+
+New seeded fixture: announcement `f711e9fd-e8a3-431c-96cf-166337b896c3`; both media urls on `localhost:8090`.

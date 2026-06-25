@@ -5,6 +5,34 @@ Format: Date | Decision | Reasoning | Alternatives
 
 ---
 
+## 2026-06-25 | MinIO presign public host — Option B (nginx front + dual MinioClient)
+
+**Decision (CTO ruling).** Make announcement/ticket presigned URLs browser-reachable by fronting MinIO
+behind nginx, NOT by publishing raw 9000.
+- **Dual `MinioClient`** (`MinioConfig.java`): internal `minioClient` (`@Primary`, byte ops put/delete,
+  endpoint `minio:9000`) + presign-only `minioPresignClient` (endpoint `MINIO_PUBLIC_ENDPOINT`, defaults
+  to internal when unset). `FileStorageService.presign()` uses the public client (wired via explicit
+  `@Qualifier` — two same-type beans + `@Primary` would otherwise inject the internal into both params);
+  `upload()`/`delete()` keep the internal client.
+- **Region pinned** (`minio.region`, default `us-east-1`, set on both builders): the minio SDK 8.5.9
+  presign otherwise issues a GetBucketLocation **network call** to resolve region — which fails for the
+  public client (its host is unreachable from the backend container). Pinning makes presign truly offline.
+- **nginx** (`nginx.conf`): new `server { listen 8090; location / { proxy_pass http://minio:9000; } }`
+  with `proxy_set_header Host $http_host` — the FULL host **including port**, since the presign signs
+  `SignedHeaders=host` for `localhost:8090`; `$host` (no port) would mismatch → 403. Dev compose publishes
+  `8090:8090`; raw `9000` stays unpublished.
+- **Env:** `MINIO_PUBLIC_ENDPOINT=http://localhost:8090` (dev). Prod object delivery via a real
+  subdomain/TLS is **[PLANNED]**, not decided here.
+
+**Verified (HTTP, host shell):** detail `media[].url` host = `localhost:8090`; GET that URL → **200**; same
+path with a forged `Host: evil:1234` → **403** (signature host-binding intact). Suite 418/418.
+
+**Alternatives rejected.** (a) Publish raw `9000:9000` — exposes MinIO directly, CTO declined. (b) Single
+client + nginx/client **host-rewrite** of an already-signed URL — breaks `SignedHeaders=host` → 403; the
+host must be the one the URL is *signed* for, so a second presign client is unavoidable.
+
+---
+
 ## 2026-06-23 | C2.3a — announcement image render: safe-img rule + placeholder→manifest + fresh-presign limitation
 
 **Decision.** The shared `MarkdownContent` renderer (`@gemek/ui`) re-enables `<img>` but ONLY for the

@@ -225,3 +225,8 @@ Either (a) as ADMIN, reset a chosen in-scope resident's password via `PUT /api/u
 block/resident whose password is known (or to provision a throwaway resident with a known password) so the
 printed login is actually usable. Do NOT rely on `Demo@1234` for residents in this DB. (Separate follow-up:
 the script's `Demo@1234` hint should be removed/conditioned — it only ever held for `seed-demo-local.sql`.)
+
+**Resolution (2026-06-25):** login fixed script-side — `smoke-c2-3a.sh` now resets each picked resident
+(in-scope + out-of-scope) to `Smoke@1234` via `PUT /api/users/{id}/reset-password` (admin) and prints the
+real working creds; the wrong `Demo@1234` hint was removed and a localhost-only safety guard was added
+(the script now mutates passwords). Re-run verified end-to-end: both printed logins probe `200`+JWT.

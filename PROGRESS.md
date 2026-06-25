@@ -3,16 +3,23 @@
 > Fresh assistant: read **HANDOFF.md** first, then this snapshot, then DECISIONS.md, then the cited reports.
 > The repo files are ground truth — do not trust any chat summary.
 
-## ▶ CURRENT STATE SNAPSHOT (2026-06-23)
+## ▶ CURRENT STATE SNAPSHOT (2026-06-25)
 
-**RESUME POINTER (one line):** C2.3a (resident safe image render + `announcement-media:` placeholder→manifest
-+ cover banner) is **DONE — CTO-smoked PASS 2026-06-25** (5 inert attacks + positive render with distinct
-cover/inline images on public host `:8090` + out-of-scope empty manifest; verdict in
-`reports/c2-3a-announcement-image-render.md`). **CLOSED.** Next = **C2.3b — admin authoring UX:** upload +
-insert-image (inserts `announcement-media:{id}` placeholders) + cover selection; **MOVE create/edit out of
-the small modal to dedicated `/announcements/new` + `/announcements/:id/edit`** as a **2-column
-compose|preview** layout (preview uses the SAME safe `MarkdownContent` + a manifest of the draft's uploaded
-media). Wire C2.2 upload/list/delete into the media manager. Admin app root: `frontend/apps/admin/…`.
+**RESUME POINTER (one line):** **C2.3b P1 DONE — committed, awaiting CTO :80 smoke.** Admin announcement
+create/edit moved out of the modal into dedicated pages `/announcements/new` (save-first: "Lưu nháp" creates
+draft → redirects to edit; "Tạo & đăng" creates+publishes) + `/announcements/:id/edit` (load draft, "Lưu"
+update / "Đăng" save-then-publish, published=blocked read-only), both 2-col compose|preview, same role guard
+`['ADMIN','BOARD_MEMBER']`; new FE `useUpdateAnnouncement` (→ existing `PUT /announcements/{id}`) +
+`useAnnouncement` detail query; drafts-only per-row "Sửa" entry; **create modal removed atomically**. Shared
+form/cursor-toolbar in `components/AnnouncementComposer.tsx` (preserves `insertMarkdown` ref+RAF). tsc +
+vite build green; no media yet (P2). Files: `apps/admin/src/components/AnnouncementComposer.tsx`,
+`pages/AnnouncementCreatePage.tsx`, `pages/AnnouncementEditPage.tsx`, `pages/AnnouncementsPage.tsx`,
+`App.tsx`, `api/hooks.ts`. **NEXT = C2.3b P2** (one line): media manager — wire C2.2
+`POST/GET/DELETE .../media` on the edit page, insert-image dropping `announcement-media:{id}` at the cursor
+from the upload-response id, cover kind-at-upload toggle; gated on the save-first id (a draft now exists on
+`/edit`). Then **P3**: preview consumes detail `media` manifest (map BE `id`→renderer `mediaId`),
+refetch-after-upload, COVER banner. C2.3a CLOSED (smoked PASS 2026-06-25). See
+`reports/c2-3b-authoring-ux-investigation.md` + DECISIONS 2026-06-25 C2.3b entry.
 
 **Latest seeded fixture (2026-06-25, re-run helper any time for a fresh one):**
 - Helper: `ADMIN_PHONE=0901100001 ADMIN_PASSWORD='Demo@1234' ./scripts/smoke-c2-3a.sh` (env `BASE_URL` default `http://localhost`).
@@ -29,16 +36,18 @@ media). Wire C2.2 upload/list/delete into the media manager. Admin app root: `fr
 | C2.1 | media presign scope-mirror access gate | DONE (smoked) | fix `1099d7d` → done-docs `08d285d` |
 | C2.2 | ADMIN media upload (drafts only, caps, Tika, cover-replace, after-commit cleanup) | DONE (smoked) | feat `458c5f5` → done-docs `265d2e3` |
 | C2.3a | resident image RENDER (safe `<img>` + manifest + cover banner) | **DONE (smoked 2026-06-25)** | feat-ui `1f7d58d` → smoke-close `1443624`+ |
-| C2.3b | admin authoring UX (upload+insert placeholders, cover select, move create/edit to dedicated 2-col pages) | INVESTIGATED — awaiting CTO ruling | investigation `reports/c2-3b-authoring-ux-investigation.md` |
+| C2.3b P1 | move create/edit to dedicated 2-col pages + draft-update hook + drafts-only "Sửa" + remove modal (NO media) | **DONE — awaiting CTO :80 smoke** | feat (this phase) |
+| C2.3b P2/P3 | media manager + insert-image placeholders + cover toggle (P2); preview manifest + COVER banner (P3) | PENDING | — |
 | C3 | file attachments (non-image) | PENDING | — |
 
 **OPEN ITEMS / BACKLOG (priority order):**
-1. **C2.3b — admin authoring UX** (NEXT) — upload + insert-image (inserts `announcement-media:{id}` placeholders) + cover selection; **MOVE create/edit out of the small modal to dedicated `/announcements/new` + `/announcements/:id/edit`** as a **2-column compose|preview** layout (preview uses the SAME safe `MarkdownContent` + a manifest of the draft's uploaded media). Wire C2.2 upload/list/delete into the media manager. Admin app root: `frontend/apps/admin/…`. **INVESTIGATION DONE (2026-06-25) — `reports/c2-3b-authoring-ux-investigation.md`; awaiting CTO ruling on 5 OPEN RULINGS** (new-draft-id strategy a/b/c [no orphan-cleanup job exists → (b) save-first lowest-risk]; remove modal vs keep; cover-select UX; placeholder insert reuses existing cursor-aware `insertMarkdown`; field/behaviour-at-risk list incl. BE `MediaRef.id` vs renderer prop `mediaId` mismatch). Key facts: upload response RETURNS media `id` (insert needs no extra call); BE already has `PUT /announcements/{id}` + draft `DELETE` (only FE edit hook/UI missing); ADMIN-on-DRAFT detail manifest is non-empty (preview source). Proposed phases P1 routing+move → P2 media manager+insert → P3 preview+cover (pending ruling). (C2.3a CLOSED — smoked PASS 2026-06-25; seed helper `scripts/smoke-c2-3a.sh` now seeds visible distinct cover/inline PNGs + resets resident creds; latest fixture announcement `5d5eec4c-f040-43fb-bb83-93f5b2c7ebbb`, detail `http://localhost:81/announcements/5d5eec4c-f040-43fb-bb83-93f5b2c7ebbb`, IN `0909616883` / OUT `0922333111` / `Smoke@1234`.)
-2. **C2.3b — admin authoring UX** — upload + insert-image (inserts `announcement-media:{id}` placeholders) + cover selection; **MOVE create/edit out of the small modal to dedicated `/announcements/new` + `/announcements/:id/edit`** as a **2-column compose|preview** layout (preview uses the SAME safe `MarkdownContent` + a manifest of the draft's uploaded media). Wire C2.2 upload/list/delete into the media manager. Admin app root: `frontend/apps/admin/…`.
-3. **C3 — file attachments** (non-image documents on announcements).
-4. **Amenity multi-residency real attribution rule `[PLANNED]`** — currently primary-or-latest temporary; real rule deferred LAST per CTO.
+1. **C2.3b P2 — media manager + insert-image** (NEXT) — on the new `/announcements/:id/edit` page (draft exists post save-first), wire C2.2 `POST/GET/DELETE /announcements/{id}/media`: upload control (Tika-allowed types + 5-img/50MB caps surfaced), **insert-image drops `announcement-media:{id}` at the cursor** via the preserved `insertMarkdown` (ref+RAF) from the upload-response id, **cover = kind-at-upload toggle**. Then **P3 — preview + cover:** preview pane consumes the detail `media` manifest (map BE `MediaRef.id` → renderer prop `mediaId`), refetch `GET /announcements/{id}` after each upload/delete, render COVER as a banner. Plan: `reports/c2-3b-authoring-ux-investigation.md` + DECISIONS 2026-06-25 C2.3b entry. **P1 DONE (pages move + draft-update hook + drafts-only "Sửa" + modal removed; tsc + vite build green; awaiting CTO :80 smoke).**
+2. **C3 — file attachments** (non-image documents on announcements).
+3. **Amenity multi-residency real attribution rule `[PLANNED]`** — currently primary-or-latest temporary; real rule deferred LAST per CTO.
 
 **Smaller debts (do not lose):**
+- **Announcement draft scope-downgrade leaves stale target (BE)** — `PUT /announcements/{id}` (`AnnouncementServiceImpl.updateAnnouncement`) applies `targetBlockId`/`targetFloor` only when non-null, so downgrading a draft's scope to ALL (FE sends null) does NOT clear the old block/floor → the row persists scope=ALL with a stale target. **Not fixable FE-only** (PUT treats null as no-change); needs a small BE fix (clear block/floor when scope=ALL / not-FLOOR). Found by C2.3b P1 /code-review (the new edit flow first exposes it). Deferred — out of C2.3b P1's FE-only scope. **Flag to CTO at smoke.**
+- **Announcement edit concurrency (minor)** — edit draft-only guard keys on the loaded `publishedAt`; if another admin publishes concurrently, the open form's Lưu fails on the BE (safe reject) but typed edits aren't auto-recovered. Rare; accept for now.
 - **Malformed-body → 500 not 400** — `GlobalExceptionHandler` has no `@ExceptionHandler(HttpMessageNotReadableException.class)`; an unparseable/invalid-UTF-8 request body falls to the catch-all and returns `500 INTERNAL_ERROR` instead of `400`. Benign (no security impact; a correct client never sends it), cosmetic — separate gated change. See `reports/c2-2-media-upload-500-diagnosis.md`.
 - **Smoke leaves throwaway drafts** — each `scripts/smoke-c2-3a.sh` run creates a fresh published `[C2.3a SMOKE]` announcement (+2 media objects in MinIO); no cleanup. Deferred — prune later if dev data clutters.
 - **CONFLICT error-code split** — `ErrorCode.CONFLICT` is overloaded (already-published vs already-active-in-apartment etc.); consider splitting for precise FE messaging.

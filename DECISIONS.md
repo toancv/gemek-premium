@@ -5,6 +5,47 @@ Format: Date | Decision | Reasoning | Alternatives
 
 ---
 
+## 2026-06-25 | C2.3b — admin authoring UX: 3 CTO rulings + FE-only scope + P1/P2/P3 split
+
+**Decision (CTO rulings, locked).** Move admin announcement create/edit out of the modal into dedicated
+pages with a 2-column compose|preview layout. Three rulings:
+1. **New-draft-id = SAVE-FIRST (option b).** `/announcements/new` shows compose + "Lưu nháp"; saving
+   `POST /announcements` creates the draft, then redirects to `/announcements/:id/edit`. Media controls are
+   a later phase (P2) — `/new` has no media controls. ("Tạo & đăng" = create then publish, same page.)
+2. **Remove the create modal FULLY and ATOMICALLY in P1.** Entry points (the "Tạo thông báo" button +
+   a new drafts-only per-row "Sửa") navigate to the pages; the modal code + its state/handlers are deleted
+   in the same change. No transitional fallback, no dead code.
+3. **Cover selection = kind-at-upload toggle — DEFERRED to P2** (not built in P1).
+
+**Scope: C2.3b is FE-only.** No backend/contract change. The BE `PUT /announcements/{id}` (draft-only,
+ADMIN), `POST /{id}/publish`, `POST /announcements`, and the C2.2 media endpoints + draft manifest all
+**pre-exist**; P1 only adds the missing FE `useUpdateAnnouncement` hook wired to the existing PUT, the
+`useAnnouncement` detail query, and the two pages. `docs/API-SPEC.md` unchanged.
+
+**P1/P2/P3 breakdown.** P1 (this phase) = routing + modal→pages move, no behaviour change, no media:
+two pages porting the modal form 1:1 (all fields, validation, cursor-aware `insertMarkdown` ref+RAF
+toolbar, two-stage create→publish recovery, 2-col compose|preview), `useUpdateAnnouncement` + drafts-only
+"Sửa" entry, modal removed. P2 = media manager (wire C2.2 upload/list/delete) + insert-image dropping
+`announcement-media:{id}` at the cursor from the upload response id + cover toggle. P3 = preview pane
+consumes the detail `media` manifest (map BE `id`→renderer `mediaId`), refetch-after-upload, COVER banner.
+
+**Reasoning.** Save-first picked because **no orphan-draft cleanup job exists** (no `@Scheduled` for
+announcements) and the 4 `@NotBlank/@NotNull` draft fields — so a draft should exist only after a
+deliberate save. Modal removed (not kept) to avoid two authoring surfaces drifting. Cursor `insertMarkdown`
+reused (no rich-editor swap) to keep the C1/C2.3a XSS bounds and because P2's insert-image needs that exact
+mechanism. **Edit "Đăng" saves current edits before publishing** so publish never ships a stale draft
+(mirrors the create→publish two-stage pattern; draft survives a publish failure).
+
+**Alternatives rejected.** (a) auto-create empty draft on `/new` entry → **orphans with no janitor** +
+dummy values to satisfy required fields → junk drafts visible in the list. (c) client-stage uploads,
+attach after first save → a **second (blob) render path** diverging from the single safe-manifest path
+C2.3a unified, plus temp-id→real-id rewriting and partial-failure-on-replay complexity. Both rejected for
+P1's new-draft-id; (b) is lowest orphan + lowest complexity. **No admin test harness exists** (apps/admin
+has no vitest/jsdom/testing-library, build = `tsc && vite build`) → P1 verification is tsc + vite build, no
+new unit test (standing up a harness is out-of-scope cost the task explicitly says not to force).
+
+---
+
 ## 2026-06-25 | MinIO presign public host — Option B (nginx front + dual MinioClient)
 
 **Decision (CTO ruling).** Make announcement/ticket presigned URLs browser-reachable by fronting MinIO

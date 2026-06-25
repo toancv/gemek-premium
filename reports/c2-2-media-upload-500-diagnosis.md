@@ -192,3 +192,36 @@ benign, separately-gated cosmetic item — not fixed here.
 The seed summary's printed detail URL initially used the admin port/route (`http://localhost/…` = :80 admin
 SPA fallback → dashboard); corrected to the resident portal `http://localhost:81/announcements/{id}` (route
 `announcements/:id`, `RequireAuth`) and the script now derives it from `RESIDENT_BASE_URL` (default `:81`).
+
+## Resident login failure after rebuild
+
+Symptom: resident login on :81 for `0909616883` / `Demo@1234` returns "wrong account/password".
+
+**Data survived the rebuild (hypothesis 1 — RULED OUT).** Dev db `gemek`:
+- `0909616883` exists — `RESIDENT`, `is_active=t`, `password_hash` present (email empty). `0922333111` also
+  exists (RESIDENT, active). Announcement `f526ca49-…` still present with **2** `announcement_media` rows.
+  Total users **2083** (a large imported dataset, blocks `ABBlock-xxxx` + `Block A/B`), NOT the small
+  `scripts/seed-demo-local.sql`. Nothing was wiped.
+
+**Login field is phone, and the phone is correct (hypothesis 2 — RULED OUT).** Backend `LoginRequest`
+(`record` field `@NotBlank String phone`, lines 18-19) and the resident form
+(`frontend/apps/resident/src/pages/LoginPage.tsx:12,27,48` — "Số điện thoại", `type="tel"`) both key on
+**phone**. Typing `0909616883` is the right thing to type.
+
+**Primary cause: hypothesis 4 — wrong password.** Live read-only auth probes:
+`POST /api/auth/login {phone:"0909616883", password:"Demo@1234"}` → **401**; a demo resident
+`0901200001` / `Demo@1234` → **401** too. `Demo@1234` is valid only for the **admin** `0901100001` (the smoke
+logs in as admin with it every run). `0909616883` is **not** in `seed-demo-local.sql` (grep = 0) — `Demo@1234`
+there applies only to its `09012000xx` demo residents, which are not the users in this DB. The smoke script
+does **not create** the in-scope resident: it auto-derives `IN_PHONE` from `GET /api/residents` and picks an
+arbitrary in-scope resident in the target block (`smoke-c2-3a.sh:158-159`); the hardcoded
+"demo residents password: Demo@1234" hint (`:177`) is wrong for these imported residents, whose passwords are
+unknown. Hypothesis 3 (role/portal gate) — not the cause: the user is `RESIDENT`+active; failure is a 401 at
+credential check, before any portal gate.
+
+**Recommended recovery (NOT applied — CTO ruling):** the picked in-scope resident has no known password.
+Either (a) as ADMIN, reset a chosen in-scope resident's password via `PUT /api/users/{id}/reset-password`
+(API-SPEC:332) to a known value, then log in on :81 as that resident; or (b) enhance the smoke to target a
+block/resident whose password is known (or to provision a throwaway resident with a known password) so the
+printed login is actually usable. Do NOT rely on `Demo@1234` for residents in this DB. (Separate follow-up:
+the script's `Demo@1234` hint should be removed/conditioned — it only ever held for `seed-demo-local.sql`.)

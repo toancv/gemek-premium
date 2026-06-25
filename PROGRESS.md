@@ -6,14 +6,17 @@
 ## ▶ CURRENT STATE SNAPSHOT (2026-06-23)
 
 **RESUME POINTER (one line):** C2.3a (resident safe image render + `announcement-media:` placeholder→manifest
-resolution + cover banner) is committed; **fixture now seeds clean end-to-end — AWAITING the CTO manual
-BROWSER smoke** (5 storable attacks: external-url / `javascript:` / `data:` / unknown-id / link-form, plus
-positive render + scope/leak) per the checklist in `reports/c2-3a-announcement-image-render.md`. After it
-passes, start **C2.3b admin authoring UX**. Do NOT start C2.3b until C2.3a is smoked.
++ cover banner) is **DONE — CTO-smoked PASS 2026-06-25** (5 inert attacks + positive render with distinct
+cover/inline images on public host `:8090` + out-of-scope empty manifest; verdict in
+`reports/c2-3a-announcement-image-render.md`). **CLOSED.** Next = **C2.3b — admin authoring UX:** upload +
+insert-image (inserts `announcement-media:{id}` placeholders) + cover selection; **MOVE create/edit out of
+the small modal to dedicated `/announcements/new` + `/announcements/:id/edit`** as a **2-column
+compose|preview** layout (preview uses the SAME safe `MarkdownContent` + a manifest of the draft's uploaded
+media). Wire C2.2 upload/list/delete into the media manager. Admin app root: `frontend/apps/admin/…`.
 
 **Latest seeded fixture (2026-06-25, re-run helper any time for a fresh one):**
 - Helper: `ADMIN_PHONE=0901100001 ADMIN_PASSWORD='Demo@1234' ./scripts/smoke-c2-3a.sh` (env `BASE_URL` default `http://localhost`).
-- Latest run announcement id: `dde9ebc7-ea30-4935-9b89-029a2ffc2b5a`; resident detail URL: `http://localhost:81/announcements/dde9ebc7-ea30-4935-9b89-029a2ffc2b5a` (**resident portal = port :81**, route `announcements/:id`, deep-linkable but `RequireAuth`). Admin is :80 — opening the URL there hits the admin SPA fallback (a dashboard), NOT the detail.
+- Latest run announcement id: `5d5eec4c-f040-43fb-bb83-93f5b2c7ebbb`; resident detail URL: `http://localhost:81/announcements/5d5eec4c-f040-43fb-bb83-93f5b2c7ebbb` (**resident portal = port :81**, route `announcements/:id`, deep-linkable but `RequireAuth`). Admin is :80 — opening the URL there hits the admin SPA fallback (a dashboard), NOT the detail. Media now seed as VISIBLE distinct PNGs (blue cover / orange inline) on public host `:8090`.
 - IN-SCOPE resident (sees images): `0909616883` / `Smoke@1234` [block `ABBlock-0837bb3a`]; OUT-OF-SCOPE (empty manifest): `0922333111` / `Smoke@1234` [block `ABBlock-15a406c4`]. The helper RESETS these passwords each run (was: imported residents had unknown passwords; `Demo@1234` is admin-only here).
 - Verified: detail `media` = 2 presigned entries (COVER + INLINE); stored `content` holds all 6 storable lines, ASCII-clean; both resident logins probe `200`+JWT.
 - Earlier blockers RESOLVED: (a) MinIO `gemek` bucket created (was missing → upload 500); (b) fixture encoding fix — JSON bodies sent via `curl --data-binary @file`, em-dash removed, write-blocked raw `<img>` line dropped (was step-5 500). Diagnosis: `reports/c2-2-media-upload-500-diagnosis.md`.
@@ -25,12 +28,12 @@ passes, start **C2.3b admin authoring UX**. Do NOT start C2.3b until C2.3a is sm
 | C1 | Markdown body + XSS-safe shared renderer | DONE (smoked) | feat start `315fde7` → done-docs `2451094` |
 | C2.1 | media presign scope-mirror access gate | DONE (smoked) | fix `1099d7d` → done-docs `08d285d` |
 | C2.2 | ADMIN media upload (drafts only, caps, Tika, cover-replace, after-commit cleanup) | DONE (smoked) | feat `458c5f5` → done-docs `265d2e3` |
-| C2.3a | resident image RENDER (safe `<img>` + manifest + cover banner) | **DONE — AWAITING CTO SMOKE** | feat-ui `1f7d58d` → done-docs `2c9e946` (HEAD before this freeze) |
+| C2.3a | resident image RENDER (safe `<img>` + manifest + cover banner) | **DONE (smoked 2026-06-25)** | feat-ui `1f7d58d` → smoke-close `1443624`+ |
 | C2.3b | admin authoring UX (upload+insert placeholders, cover select, move create/edit to dedicated 2-col pages) | PENDING | — |
 | C3 | file attachments (non-image) | PENDING | — |
 
 **OPEN ITEMS / BACKLOG (priority order):**
-1. **Smoke C2.3a** — manual BROWSER XSS smoke per `reports/c2-3a-announcement-image-render.md`. **UNBLOCKED — ready for full CTO browser smoke (positive render + out-of-scope visual now work).** The presign public-host gap is fixed (Option B: MinIO fronted by nginx :8090, dual `MinioClient`, region-pinned offline presign; `DECISIONS.md` 2026-06-25, `reports/minio-presign-public-url-investigation.md` → Resolution). HTTP-verified: detail media urls on `http://localhost:8090`, GET → 200, forged-host → 403. Suite 418/418. Latest fixture: announcement `f711e9fd-e8a3-431c-96cf-166337b896c3`, detail `http://localhost:81/announcements/f711e9fd-e8a3-431c-96cf-166337b896c3` (resident portal :81, incognito). IN-SCOPE `0909616883` / `Smoke@1234` (sees cover banner + inline image); OUT-OF-SCOPE `0922333111` / `Smoke@1234` (text only, empty manifest). Inert-attack DOM/Network checks (external-url / `javascript:` / `data:` / unknown-id render nothing; link-form inert anchor) were already verified green and are unaffected.
+1. **C2.3b — admin authoring UX** (NEXT) — upload + insert-image (inserts `announcement-media:{id}` placeholders) + cover selection; **MOVE create/edit out of the small modal to dedicated `/announcements/new` + `/announcements/:id/edit`** as a **2-column compose|preview** layout (preview uses the SAME safe `MarkdownContent` + a manifest of the draft's uploaded media). Wire C2.2 upload/list/delete into the media manager. Admin app root: `frontend/apps/admin/…`. (C2.3a CLOSED — smoked PASS 2026-06-25; seed helper `scripts/smoke-c2-3a.sh` now seeds visible distinct cover/inline PNGs + resets resident creds; latest fixture announcement `5d5eec4c-f040-43fb-bb83-93f5b2c7ebbb`, detail `http://localhost:81/announcements/5d5eec4c-f040-43fb-bb83-93f5b2c7ebbb`, IN `0909616883` / OUT `0922333111` / `Smoke@1234`.)
 2. **C2.3b — admin authoring UX** — upload + insert-image (inserts `announcement-media:{id}` placeholders) + cover selection; **MOVE create/edit out of the small modal to dedicated `/announcements/new` + `/announcements/:id/edit`** as a **2-column compose|preview** layout (preview uses the SAME safe `MarkdownContent` + a manifest of the draft's uploaded media). Wire C2.2 upload/list/delete into the media manager. Admin app root: `frontend/apps/admin/…`.
 3. **C3 — file attachments** (non-image documents on announcements).
 4. **Amenity multi-residency real attribution rule `[PLANNED]`** — currently primary-or-latest temporary; real rule deferred LAST per CTO.

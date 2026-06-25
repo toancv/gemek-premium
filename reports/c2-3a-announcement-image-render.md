@@ -95,7 +95,11 @@ LOW note (cover banner `src` unvalidated — server-minted, not a live vuln) **A
 an `http(s)` scheme before binding `src`. Optional Javadoc note left as-is (method already documents the
 single-row-share-scope rationale).
 
-## CTO smoke checklist (PENDING — C2.3a not yet smoked)
+## CTO smoke checklist — PASS (2026-06-25, CTO-smoked)
+
+**Smoke verdict: PASS (2026-06-25), CTO-smoked on :81 incognito, in-scope `0909616883` / out-of-scope
+`0922333111`.**
+
 
 Manual verification the CTO must perform before C2.3a is closed. **Setup:** run the seed helper —
 `ADMIN_PHONE=… ADMIN_PASSWORD=… scripts/smoke-c2-3a.sh` — which creates a fresh published draft with the
@@ -109,20 +113,20 @@ inertness); the renderer's raw-HTML escaping is covered by the UI unit tests, no
 browser smoke therefore covers the **5 storable** attack/edge cases below + positive render + scope/leak.
 
 XSS attacks (each MUST stay inert — no live `<img>`, no script, no handler firing):
-- [ ] Body `![x](https://evil.example/track.png)` → NO live img to that URL (no external/tracking fetch in Network tab).
-- [ ] Body `![x](javascript:alert(1))` → no img, no alert, no `javascript:` in DOM.
-- [ ] Body `![x](data:text/html;base64,PHNjcmlwdD4=)` → no img, no `data:text/html` in DOM.
-- [ ] Body `![x](announcement-media:00000000-0000-0000-0000-000000000000)` (unknown id) → renders nothing.
-- [ ] Body `[click](announcement-media:{inlineId})` (link, not image) → inert anchor (no working `announcement-media:` href).
+- [x] Body `![x](https://evil.example/track.png)` → **PASS** — no live img; Network tab clean, no fetch to evil.example.
+- [x] Body `![x](javascript:alert(1))` → **PASS** — no img, no alert; DOM search for `javascript:` empty.
+- [x] Body `![x](data:text/html;base64,PHNjcmlwdD4=)` → **PASS** — no img; DOM search for `data:text/html` empty.
+- [x] Body `![x](announcement-media:00000000-0000-0000-0000-000000000000)` (unknown id) → **PASS** — renders nothing.
+- [x] Body `[click](announcement-media:{inlineId})` (link, not image) → **PASS** — inert anchor, no working `announcement-media:` href; no `onerror` in DOM.
 
 Positive render (MUST work):
-- [ ] Cover image shows as a BANNER above the title; it is NOT also duplicated inline.
-- [ ] Inline `announcement-media:{inlineId}` placeholder renders the image inside the body at its position.
-- [ ] Both image URLs are short-lived presigned MinIO URLs (internal), not raw object keys or external URLs.
+- [x] Cover image shows as a BANNER above the title, NOT duplicated inline → **PASS** (verified with the distinct blue cover vs orange inline images — only after seeding visible PNGs; the prior 1×1 seed rendered invisibly, now fixed in `scripts/smoke-c2-3a.sh`).
+- [x] Inline `announcement-media:{inlineId}` placeholder renders the image in the body at its position → **PASS**.
+- [x] Both image URLs are short-lived presigned URLs on the public host (`localhost:8090`, `X-Amz-…` signed), NOT a raw object key or external URL → **PASS**.
 
 Scope / leak (MUST hold):
-- [ ] A resident OUT of the announcement scope opening the detail (if reachable) sees text but NO image URLs (empty manifest).
-- [ ] Page left open >10 min may show a broken image (presigned expiry) — expected, accepted, no refresh.
+- [x] Out-of-scope resident `0922333111` on the same detail URL → **PASS** — `media: []`, no banner/inline, no image URLs, no 500.
+- [~] Page left open >10 min may show a broken image (presigned expiry) → **accepted limitation, not re-tested** (unchanged CTO ruling).
 
 ## No-go confirmed
 

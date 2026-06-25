@@ -10,6 +10,16 @@ resolution + cover banner) is **committed but NOT yet CTO-smoked** — next acti
 per the CTO smoke checklist in `reports/c2-3a-announcement-image-render.md`; after it passes, start **C2.3b
 admin authoring UX**. Do NOT start C2.3b until C2.3a is smoked.
 
+**Smoke fixture helper (2026-06-25):** `scripts/smoke-c2-3a.sh` seeds ONE re-runnable XSS fixture against
+the running dev stack — run `ADMIN_PHONE=0901100001 ADMIN_PASSWORD='Demo@1234' ./scripts/smoke-c2-3a.sh`
+(env: `BASE_URL` default `http://localhost`). It only drives real endpoints (login/create/C2.2 upload/
+update/publish); seeds nothing in DB/MinIO directly; no prod-code/schema/API-SPEC change. The helper only
+SEEDS the fixture — **C2.3a smoke is STILL PENDING the manual browser checklist.** Self-verify is BLOCKED
+at the upload step by a dev-env gap: the MinIO bucket **`gemek` does not exist** in this instance
+("first-run bucket setup" never done), which blocks C2.2/C2.3 uploads generally. Create the `gemek` bucket,
+then re-run the helper to complete the ADMIN-detail manifest check. Detail in
+`reports/c2-3a-announcement-image-render.md` → "Smoke-seed helper".
+
 **Announcements rich-content cluster:**
 | Phase | What | Status | Boundary commits |
 |---|---|---|---|

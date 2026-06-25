@@ -132,3 +132,54 @@ rows directly.
 3. `feat(resident)` — detail cover banner + inline render + `AnnouncementItem.media`.
 4. `docs(api)` — API-SPEC detail manifest + DECISIONS (safe-img rule, placeholder convention, fresh-presign limitation).
 5. `docs(context)` — PROGRESS + this report.
+
+## Smoke-seed helper
+
+`scripts/smoke-c2-3a.sh` — re-runnable helper that seeds ONE fresh fixture against the running dev
+stack so the CTO can run the checklist above. It only drives real, in-contract endpoints (login,
+create, C2.2 media upload, update, publish, detail); it does **not** touch the DB, MinIO, Flyway, or
+`gemek_test` directly, and changes no production code/schema/API-SPEC.
+
+**Run:**
+```bash
+ADMIN_PHONE=0901100001 ADMIN_PASSWORD='Demo@1234' ./scripts/smoke-c2-3a.sh
+```
+
+**Env (documented defaults; no secrets hardcoded):**
+- `BASE_URL` (default `http://localhost`)
+- `ADMIN_PHONE` (required — admin login phone; demo admin is `0901100001`)
+- `ADMIN_PASSWORD` (required — read from env; demo seed password is `Demo@1234`)
+
+What it does: admin login → pick block[0] as the single in-scope `targetScope:BLOCK` target → create a
+fresh DRAFT (no id collision per run) → upload one COVER + one INLINE via `POST /announcements/{id}/media`
+(genuine 1×1 PNG bytes; Tika detects `image/png` from the magic bytes, so no client `Content-Type` is
+sent) → `PUT` the body with all 7 checklist cases (legit inline, external-url, `javascript:`, `data:`,
+raw `<img onerror>`, unknown-id, link-form) substituting the real `{inlineId}` → publish → print the new
+announcement id, the resident detail path, and best-effort one in-scope + one out-of-scope resident phone.
+All seed text is **ASCII by design**.
+
+### Self-verify (HTTP level, 2026-06-25) — BLOCKED by a dev-env gap, NOT a helper/prod defect
+
+Stack is UP (`gemek-backend` healthy on :80). Helper verified correct through publish-body:
+`POST /auth/login` → `accessToken` ✓; `GET /blocks` ✓; `POST /announcements` → `201` with a minted id ✓
+(confirmed by manual reproduction). **Step 4 (media upload) fails with `500 "File upload failed."`** The
+backend log gives the unambiguous root cause:
+
+```
+FileStorageService : MinIO upload failed for key announcements/<id>/<uuid>.png:
+  The specified bucket does not exist
+io.minio.errors.ErrorResponseException: The specified bucket does not exist
+```
+
+The configured bucket is `gemek` (`application.yml` → `MINIO_BUCKET:gemek`). `gemek-minio` is healthy,
+but the bucket was never created in this dev instance — `docker-compose.yml` documents 9001 console as
+"first-run bucket setup only", a manual step not performed here. **This blocks C2.2/C2.3 media uploads
+generally, not just this helper.** The task forbids touching MinIO directly, so the bucket was NOT
+created and the ADMIN-detail `media` manifest verification is **PENDING**: after the `gemek` bucket
+exists, re-run the helper and `GET /api/announcements/{id}` should return `media` with 2 presigned
+entries (COVER + INLINE). No success was fabricated.
+
+> Secondary observation (out of scope, lower confidence): `POST`/`PUT` announcement with non-ASCII
+> `content` (Vietnamese diacritics, `…`) returned `500 "Invalid UTF-8 middle byte"` (Jackson) in this
+> environment — possibly a client-encoding artifact under Git-Bash curl rather than a backend defect.
+> The seed body is ASCII, so the helper is unaffected. Flagged for a separate look, not fixed here.

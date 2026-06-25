@@ -253,3 +253,23 @@ unconstrained** (upload immediately); the tension is **only on `/new`**.
 All §1–§6 claims are file:line-cited against HEAD `4f22989`. No `[TODO: kiểm tra]` outstanding — the one risk flagged
 (`id` vs `mediaId` field-name mismatch between BE `MediaRef` and the renderer prop) is confirmed, not assumed. No code
 written, no pages scaffolded; this report stops for the CTO ruling on §7.
+
+---
+
+## P1.5 dev-DB smoke (agent-run, 2026-06-25)
+
+CTO-acceptance: exercised the REAL `PUT /api/announcements/{id}` over nginx :80 (ADMIN `0901100001`), read back
+the persisted rows from dev DB `gemek` (user `gemek`, NOT `gemek_test`) via `psql`. Block used:
+`c801d08e-abd0-4c64-b2e6-6ff04b4b851f`. Columns: `scope`, `target_block_id`, `target_floor`. **All 5 PASS.**
+
+| # | Case | HTTP | DB `scope \| target_block_id \| target_floor` | Expected | Verdict |
+|---|------|------|----------------------------------------------|----------|---------|
+| 1 | create BLOCK+block → PUT scope=ALL | 200 | `ALL \| NULL \| NULL` | ALL,NULL,NULL | ✅ stale block+floor cleared |
+| 2 | create FLOOR+block+floor7 → PUT scope=BLOCK | 200 | `BLOCK \| c801d08e… \| NULL` | BLOCK,block,NULL | ✅ floor nulled, block kept |
+| 3 | create ALL → PUT scope=BLOCK+block | 200 | `BLOCK \| c801d08e… \| NULL` | BLOCK,block,NULL | ✅ block set |
+| 4 | case-2 draft → PUT title/content only (scope=BLOCK, no block resent) | **200** | `BLOCK \| c801d08e… \| NULL` (unchanged) | 200, no 404 | ✅ reuse-existing block, no re-fetch |
+| 5 | create ALL → PUT scope=BLOCK, NO block | **400** | row unchanged `ALL \| NULL \| NULL` | 400 VALIDATION, not 500 | ✅ `{"error":"VALIDATION_ERROR","message":"targetBlockId required for BLOCK scope."}` |
+
+Raw: `scratchpad/p15-smoke.out`. Conclusion: scope-derived target normalization is correct at the DB level
+end-to-end; the content-only-edit no-refetch path and the BLOCK-without-block parity (400 not 500) both hold.
+**P1.5 ACCEPTED — ready for P2.**

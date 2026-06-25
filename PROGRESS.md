@@ -5,7 +5,7 @@
 
 ## ▶ CURRENT STATE SNAPSHOT (2026-06-25)
 
-**RESUME POINTER (one line):** **C2.3b P1.5 DONE — committed, awaiting CTO DB-level smoke; NEXT = P2 (media manager).** P1.5 = BE correctness fix: `updateAnnouncement` now DERIVES target block/floor from scope (clears stale on downgrade; ALL→both null, BLOCK→floor null, FLOOR→both) + validation parity with create; severity was harmless-hygiene not live-mis-target (both resolvers branch strictly on scope — see DECISIONS 2026-06-25 P1.5) so no published announcement affected; 4 Mockito tests (RED→GREEN shown), suite **422/422**; API-SPEC PUT updated (target derived-from-scope); FE authoring pages widened (`max-w-7xl`, taller editor/preview), tsc+build green. Below = P1 history.
+**RESUME POINTER (one line):** **C2.3b P1.5 ACCEPTED (dev-DB smoke PASS) + authoring pages full-width — NEXT = P2 (media manager).** P1.5 = BE correctness fix: create+update DERIVE target block/floor from scope (clears stale on downgrade; ALL→both null, BLOCK→floor null, FLOOR→both) + validation parity + content-only-edit reuses attached block (no re-fetch/404). Severity was harmless-hygiene not live-mis-target (both resolvers branch strictly on scope — DECISIONS 2026-06-25 P1.5). **Dev-DB smoke 5/5 PASS** (real PUT→psql `gemek`: BLOCK→ALL = `ALL|NULL|NULL`; FLOOR→BLOCK = `BLOCK|block|NULL`; ALL→BLOCK set; content-only=200 unchanged; BLOCK-noblock=400 VALIDATION not 500; evidence in `reports/c2-3b-authoring-ux-investigation.md` §P1.5 dev-DB smoke + `scratchpad/p15-smoke.out`). 6 Mockito tests, suite **424/424**. FE authoring pages now FULL-WIDTH 50/50 (`w-full` + equal 2-col grid, stacks on narrow), tsc+build green. **NEXT = P2** (one line): media manager on `/:id/edit` — wire C2.2 `POST/GET/DELETE .../media`, insert-image dropping `announcement-media:{id}` at cursor from upload-response id (reuse preserved `insertMarkdown`), cover kind-at-upload toggle; then P3 preview manifest (`id`→`mediaId`) + COVER banner. Below = P1 history.
 
 **(P1) RESUME POINTER:** **C2.3b P1 DONE — committed, awaiting CTO :80 smoke.** Admin announcement
 create/edit moved out of the modal into dedicated pages `/announcements/new` (save-first: "Lưu nháp" creates
@@ -39,7 +39,7 @@ refetch-after-upload, COVER banner. C2.3a CLOSED (smoked PASS 2026-06-25). See
 | C2.2 | ADMIN media upload (drafts only, caps, Tika, cover-replace, after-commit cleanup) | DONE (smoked) | feat `458c5f5` → done-docs `265d2e3` |
 | C2.3a | resident image RENDER (safe `<img>` + manifest + cover banner) | **DONE (smoked 2026-06-25)** | feat-ui `1f7d58d` → smoke-close `1443624`+ |
 | C2.3b P1 | move create/edit to dedicated 2-col pages + draft-update hook + drafts-only "Sửa" + remove modal (NO media) | DONE | `3d53580` / `c4ae28a` |
-| C2.3b P1.5 | BE: announcement UPDATE derives target block/floor from scope (close scope-downgrade desync) + tests + FE layout widen | **DONE — awaiting CTO DB-level smoke** | fix/test/style/docs (this phase) |
+| C2.3b P1.5 | BE: create+update derive target block/floor from scope (close scope-downgrade desync) + tests + FE full-width 50/50 layout | **ACCEPTED — dev-DB smoke 5/5 PASS** | `4549bed`/`91a0e58`/`0ecef7a`/`22f1b9e` + this phase |
 | C2.3b P2/P3 | media manager + insert-image placeholders + cover toggle (P2); preview manifest + COVER banner (P3) | PENDING | — |
 | C3 | file attachments (non-image) | PENDING | — |
 

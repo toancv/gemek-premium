@@ -382,14 +382,17 @@ public class AnnouncementServiceImpl implements AnnouncementService {
         // createdBy is set by Spring Data auditing from the authenticated actor — no manual write.
         // publishedAt intentionally null — announcement starts as a draft.
 
-        if (req.getTargetBlockId() != null) {
+        // Target block/floor are DERIVED from scope (parity with updateAnnouncement): a stray block/floor
+        // sent alongside a less-specific scope is NOT persisted, so a created row can never contradict its
+        // scope. Required-presence is already enforced by validateScopeConstraints above.
+        AnnouncementScope scope = req.getTargetScope();
+        if (scope != AnnouncementScope.ALL && req.getTargetBlockId() != null) {
             Block block = blockRepository.findById(req.getTargetBlockId())
                     .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND,
                             "Block not found: " + req.getTargetBlockId()));
             announcement.setTargetBlock(block);
         }
-
-        if (req.getTargetFloor() != null) {
+        if (scope == AnnouncementScope.FLOOR && req.getTargetFloor() != null) {
             announcement.setTargetFloor(req.getTargetFloor());
         }
 
@@ -427,29 +430,54 @@ public class AnnouncementServiceImpl implements AnnouncementService {
             announcement.setType(req.getType());
         }
 
-        // If scope or targeting fields change, re-validate the combination.
+        // Target block/floor are DERIVED from scope, not partial-update-preserved: scope is the
+        // source of truth. A downgrade (e.g. BLOCK->ALL or FLOOR->BLOCK) must CLEAR the now-irrelevant
+        // target columns even if the client omitted them (sends null) or sent stale values — otherwise
+        // a null-means-unchanged binding would strand a block/floor that contradicts the new scope.
         AnnouncementScope newScope = req.getTargetScope() != null ? req.getTargetScope() : announcement.getScope();
-        UUID newBlockId = req.getTargetBlockId() != null
+        // Effective candidates: prefer the incoming value, else keep the existing — then normalize by scope.
+        UUID effectiveBlockId = req.getTargetBlockId() != null
                 ? req.getTargetBlockId()
                 : (announcement.getTargetBlock() != null ? announcement.getTargetBlock().getId() : null);
-        Short newFloor = req.getTargetFloor() != null ? req.getTargetFloor() : announcement.getTargetFloor();
+        Short effectiveFloor = req.getTargetFloor() != null ? req.getTargetFloor() : announcement.getTargetFloor();
 
-        validateScopeConstraints(newScope, newBlockId, newFloor);
-
-        if (req.getTargetScope() != null) {
-            announcement.setScope(req.getTargetScope());
+        // Normalize the target fields to exactly what the scope uses (clear the rest).
+        switch (newScope) {
+            case ALL:
+                // ALL targets everyone — no block, no floor.
+                effectiveBlockId = null;
+                effectiveFloor = null;
+                break;
+            case BLOCK:
+                // BLOCK uses the block only — floor is irrelevant.
+                effectiveFloor = null;
+                break;
+            case FLOOR:
+                // FLOOR uses both block and floor — keep both (validated below).
+                break;
+            default:
+                break;
         }
 
-        if (req.getTargetBlockId() != null) {
-            Block block = blockRepository.findById(req.getTargetBlockId())
+        // Parity with create: block required for BLOCK/FLOOR, floor required for FLOOR.
+        validateScopeConstraints(newScope, effectiveBlockId, effectiveFloor);
+
+        announcement.setScope(newScope);
+        // Set block/floor authoritatively — including clearing them on a downgrade.
+        if (effectiveBlockId == null) {
+            // ALL scope (or no block) → clear.
+            announcement.setTargetBlock(null);
+        } else if (req.getTargetBlockId() != null) {
+            // Client supplied a (possibly changed) block → load + validate it.
+            final UUID blockIdToLoad = req.getTargetBlockId();
+            Block block = blockRepository.findById(blockIdToLoad)
                     .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND,
-                            "Block not found: " + req.getTargetBlockId()));
+                            "Block not found: " + blockIdToLoad));
             announcement.setTargetBlock(block);
         }
-
-        if (req.getTargetFloor() != null) {
-            announcement.setTargetFloor(req.getTargetFloor());
-        }
+        // else: BLOCK/FLOOR keeping the existing block — reuse the already-attached managed entity, NO
+        // re-fetch, so a content-only or floor-only edit never 404s if that block row was later deleted.
+        announcement.setTargetFloor(effectiveFloor);
 
         if (req.getSendPush() != null) {
             announcement.setSendPush(req.getSendPush());

@@ -32,7 +32,7 @@ then re-run the helper to complete the ADMIN-detail manifest check. Detail in
 | C3 | file attachments (non-image) | PENDING | — |
 
 **OPEN ITEMS / BACKLOG (priority order):**
-1. **Smoke C2.3a** — manual XSS image attacks + cover banner + inline + presigned-internal-only (checklist in `reports/c2-3a-announcement-image-render.md`).
+1. **Smoke C2.3a** — manual XSS image attacks + cover banner + inline + presigned-internal-only (checklist in `reports/c2-3a-announcement-image-render.md`). **BLOCKED** on the media-upload 500: root cause = MinIO bucket `gemek` never created on dev (NOT a code/migration defect — V21 present, table exists). Diagnosis: `reports/c2-2-media-upload-500-diagnosis.md`. Unblock = create the `gemek` bucket once (CTO ruling), then re-run `scripts/smoke-c2-3a.sh`.
 2. **C2.3b — admin authoring UX** — upload + insert-image (inserts `announcement-media:{id}` placeholders) + cover selection; **MOVE create/edit out of the small modal to dedicated `/announcements/new` + `/announcements/:id/edit`** as a **2-column compose|preview** layout (preview uses the SAME safe `MarkdownContent` + a manifest of the draft's uploaded media). Wire C2.2 upload/list/delete into the media manager. Admin app root: `frontend/apps/admin/…`.
 3. **C3 — file attachments** (non-image documents on announcements).
 4. **Amenity multi-residency real attribution rule `[PLANNED]`** — currently primary-or-latest temporary; real rule deferred LAST per CTO.

@@ -112,6 +112,9 @@ export function useAnnouncementForm(initial?: Partial<AnnouncementFormValue>) {
 
 export type AnnouncementForm = ReturnType<typeof useAnnouncementForm>;
 
+/** Stable empty-manifest identity for the default prop — avoids a fresh `[]` each render. */
+const EMPTY_MANIFEST: AnnouncementMediaManifestEntry[] = [];
+
 /**
  * The 2-column compose|preview body shared by both authoring pages: left = "Soạn" (form + toolbar +
  * textarea), right = "Xem trước" (live MarkdownContent). Stacks on narrow viewports. The edit page
@@ -120,7 +123,7 @@ export type AnnouncementForm = ReturnType<typeof useAnnouncementForm>;
  */
 export function AnnouncementComposeFields({
   form,
-  mediaManifest = [],
+  mediaManifest = EMPTY_MANIFEST,
 }: {
   form: AnnouncementForm;
   mediaManifest?: AnnouncementMediaManifestEntry[];
@@ -128,17 +131,20 @@ export function AnnouncementComposeFields({
   const { data: blocksData } = useBlocks();
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8">
-      {/* ── Left: compose ─────────────────────────────────────────── */}
-      <div className="space-y-3">
-        <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Soạn</h2>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Tiêu đề <span className="text-red-500">*</span></label>
-          <input value={form.title} onChange={(e) => form.setTitle(e.target.value)} className="block w-full border border-gray-300 rounded-md px-3 py-2 text-sm" />
-        </div>
-        <div>
+    <div className="space-y-6">
+      {/* ── Title spans the full width above the compose|preview row ── */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">Tiêu đề <span className="text-red-500">*</span></label>
+        <input value={form.title} onChange={(e) => form.setTitle(e.target.value)} className="block w-full border border-gray-300 rounded-md px-3 py-2 text-sm" />
+      </div>
+
+      {/* ── Body editor | live preview, tops aligned (items-start). Both columns lead with a label + a
+            same-height toolbar row so the textarea and the preview box start at the same Y. ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8 items-start">
+        {/* Left: compose body */}
+        <div className="flex flex-col">
           <label className="block text-sm font-medium text-gray-700 mb-1">Nội dung <span className="text-red-500">*</span></label>
-          <div className="flex flex-wrap items-center gap-1 mb-1">
+          <div className="flex flex-wrap items-center gap-1 mb-1 min-h-[2.25rem]">
             <span className="text-xs text-gray-500 mr-1">Định dạng:</span>
             <button type="button" onClick={() => form.insertMarkdown('**', '**', 'văn bản đậm')} className="px-2 py-1 text-xs font-bold border border-gray-300 rounded hover:bg-gray-50" title="Đậm">Đậm</button>
             <button type="button" onClick={() => form.insertMarkdown('*', '*', 'văn bản nghiêng')} className="px-2 py-1 text-xs italic border border-gray-300 rounded hover:bg-gray-50" title="Nghiêng">Nghiêng</button>
@@ -156,7 +162,23 @@ export function AnnouncementComposeFields({
             placeholder="Hỗ trợ Markdown: **đậm**, *nghiêng*, ## tiêu đề, - danh sách, [liên kết](https://...)"
           />
         </div>
-        <div className="grid grid-cols-2 gap-3">
+
+        {/* Right: live preview (same safe renderer the resident app uses). The label + spacer match the
+            left column's label + toolbar height so the preview box top aligns with the textarea top. */}
+        <div className="flex flex-col">
+          <label className="block text-sm font-medium text-gray-700 mb-1">Xem trước</label>
+          <div className="mb-1 min-h-[2.25rem]" aria-hidden="true" />
+          <div className="border border-gray-200 rounded-md p-4 bg-gray-50 min-h-[28rem]">
+            {form.content.trim()
+              ? <MarkdownContent content={form.content} className="text-sm text-gray-700" mediaManifest={mediaManifest} />
+              : <p className="text-sm text-gray-400 italic">Chưa có nội dung.</p>}
+          </div>
+        </div>
+      </div>
+
+      {/* ── Type / scope / block / floor span the full width below the editor row ── */}
+      <div className="space-y-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Loại</label>
             <select value={form.type} onChange={(e) => form.setType(e.target.value)} className="block w-full border border-gray-300 rounded-md px-3 py-2 text-sm bg-white">
@@ -189,16 +211,6 @@ export function AnnouncementComposeFields({
             <input type="number" min="1" value={form.floor} onChange={(e) => form.setFloor(e.target.value)} className="block w-full border border-gray-300 rounded-md px-3 py-2 text-sm" placeholder="Số tầng" />
           </div>
         )}
-      </div>
-
-      {/* ── Right: live preview (same safe renderer the resident app uses) ── */}
-      <div className="space-y-3">
-        <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Xem trước</h2>
-        <div className="border border-gray-200 rounded-md p-4 bg-gray-50 min-h-[28rem]">
-          {form.content.trim()
-            ? <MarkdownContent content={form.content} className="text-sm text-gray-700" mediaManifest={mediaManifest} />
-            : <p className="text-sm text-gray-400 italic">Chưa có nội dung.</p>}
-        </div>
       </div>
     </div>
   );

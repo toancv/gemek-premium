@@ -5,6 +5,70 @@ Format: Date | Decision | Reasoning | Alternatives
 
 ---
 
+## 2026-06-26 | C3 P2.5 (FE admin) — lazy-save on /new (first upload auto-creates draft) — implements CTO ruling A
+
+**Decision (CTO ruling A, locked; FE-only, NO backend/contract change).** On `/announcements/new` BOTH the
+image media manager and the attachments manager now render (same as `/:id/edit`) — showing their upload
+controls + constraints + empty state (grid/list/insert/delete only have content post-upload, by which point
+we've already navigated to edit). Because uploads need a draft id and `/new` has none, the create page
+provides an `ensureDraftThenUpload` orchestrator wired into each manager via a new optional `onLazyUpload`
+prop. On the FIRST upload (image OR attachment) with no id: **validate** the create form (same `validate()`
+as "Lưu nháp": title/content/scope + conditional block/floor) → if invalid, NO draft + NO upload, the inline
+VN error shows; if valid → **POST /announcements** (draft with current form values) → **upload** the file to
+that id → **`navigate('/announcements/{id}/edit', { replace: true })`** so the edit page refetches and shows
+the result. The edit page's direct-upload path is UNCHANGED (id exists → no create; managers omit
+`onLazyUpload` → existing `mutateAsync` runs). "Lưu nháp"/"Tạo & đăng" keep the C2.3b save-first behaviour.
+
+**No-orphan + single-draft guarantees.** A draft is created ONLY on a real upload or an explicit save —
+merely visiting/leaving `/new` creates nothing. The **oversize file-size pre-check runs in the manager BEFORE
+`onLazyUpload`**, so an over-cap file is rejected without creating a draft (no orphan from an invalid file —
+preserves the 2026-06-26 oversize-fix ordering). A **synchronous `inFlight` ref** (not state) guards BOTH
+`submit()` and `ensureDraftThenUpload`: a second trigger in the same tick sees it set and bails, so a
+double-click or a quick second picked file creates EXACTLY ONE draft. `lazyBusy` state + `externalBusy={busy}`
+on both managers disable every upload trigger and both save buttons while a lazy-save is in flight (the ref is
+the real guarantee; the disabled UI is cosmetic).
+
+**Partial-failure (reuses the C2.3b create→publish recovery shape).** create FAILS → `setFormError`, abort, NO
+upload, NO draft. create OK + upload FAILS → STILL `navigate(replace)` to `/:id/edit` (the draft IS saved) with
+a `state.notice` carrying the upload error (the edit page already renders `notice`) — never strands the admin
+on `/new`, never deletes the draft.
+
+**`/code-review` (high, workflow) — 16 findings; APPLIED 1, rest by-design/debt.** APPLIED (correctness): the
+lazy path no longer seeds the detail cache with the pre-upload create response — `created` has EMPTY
+media/attachments, so seeding flashed an empty edit page until the upload's refetch landed (the just-uploaded
+file looked lost). Leaving the cache unseeded lets the edit page's `useAnnouncement` fetch FRESH detail (which
+already includes the uploaded item, since the upload completes before navigate) behind its spinner. The
+explicit-save `submit()` KEEPS its seed (no upload there → `created` is the accurate full state).
+**By-design / accepted (not bugs — they implement the locked ruling):** (a) picking a file on an invalid form
+"drops" it (input reset) and shows the inline error — this is the mandated "validate before upload, no draft"
+behaviour; the admin re-picks after filling the form. (b) a second rapid pick during an in-flight lazy-save is
+intentionally rejected by the single-draft guard. (c) upload-failure feedback is surfaced on the EDIT page via
+`state.notice` (not the manager's inline error) — this is the mandated navigate-on-upload-fail recovery; the
+edit page renders it. **DEBT (logged, non-blocking):** (1) no "Đang tải lên..." progress label on the /new
+managers during a lazy upload (the page's upload hook is pending, not the manager's; buttons are disabled =
+feedback) — adding a dedicated `uploading` prop would misfire during an explicit draft-save, so deferred.
+(2) the 413→"10MB" size string is now in three places (both managers' `errorText` + the page's
+`uploadErrNotice`) — a shared `@gemek/ui` helper would centralise it (same DRY debt the managers already
+carry from the oversize fix). (3) `ensureDraftThenUpload` has no `finally` reset of `inFlight`/`lazyBusy` — it
+relies on `navigate(replace)` unmounting `/new`; not constructible today (every post-create exit navigates and
+no route guard blocks it), the create-fail exit DOES reset. (4) validation error renders at the page bottom
+while the managers sit at the top — consistent with the edit-page layout (CTO-locked); scrolling the error
+into view on a /new lazy-validation-fail would improve it.
+
+**Verification.** admin `tsc --noEmit` clean; admin `vite build` green (765 modules; the known transient
+Windows esbuild temp-file unlink lock cleared on retry — not a code error). `@gemek/ui` UNTOUCHED (no vitest
+re-run needed). Admin has **no vitest harness** → no admin unit test. **API-SPEC unchanged** (no endpoint
+change; create/upload endpoints already documented in C3 P1/C2.2).
+
+**Alternatives rejected.** (a) Orchestrator only "ensures id" while the manager keeps owning upload + the
+post-upload navigation — rejected; spreads the create/upload/navigate/error routing across the manager
+boundary and complicates the upload-fail-still-navigate recovery. The manager delegates the validated file;
+the page owns create→upload→navigate→errors. (b) Seed the cache then patch it after upload — rejected; the
+unseeded fetch is simpler and always correct (upload is done before navigate). (c) Delete the draft on upload
+failure — rejected by the ruling (the draft survives; the admin retries on edit).
+
+---
+
 ## 2026-06-26 | Multipart oversize handling — clean 413 + finite swallow + FE pre-validate (all uploads)
 
 **Decision (CTO rulings, locked; applies to EVERY multipart upload).** Fixes the C3 P2 oversize-upload hang

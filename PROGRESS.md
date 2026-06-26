@@ -5,6 +5,27 @@
 
 ## ▶ CURRENT STATE SNAPSHOT (2026-06-26)
 
+**C3 P2.5 (FE admin) — LAZY-SAVE on /announcements/new DONE (committed `843010c`), awaiting CTO :80 DB-level smoke. NEXT = P3 (resident download list).**
+Implements CTO ruling A (DECISIONS 2026-06-26 "C3 P2.5"). Both the image media manager AND the attachments
+manager now render on `/new` (same as `/:id/edit`) — upload controls + constraints + empty state. The create
+page provides an `ensureDraftThenUpload` orchestrator wired into each manager via a new optional `onLazyUpload`
+prop: on the FIRST upload (image OR attachment) with no id → **validate** create form (same as "Lưu nháp";
+invalid → no draft, no upload, inline VN error) → **POST /announcements** → **upload** to the new id →
+**`navigate('/:id/edit', { replace:true })`** (edit refetches + shows the result). **No-orphan:** a draft is
+created ONLY on a real upload or explicit save; the **oversize file-size pre-check runs BEFORE create** (over-cap
+file rejected without a draft). **Single-draft:** a synchronous `inFlight` ref guards both `submit()` and the
+orchestrator → exactly ONE draft under double-click / quick 2nd file; `externalBusy` disables both managers'
+triggers + save buttons while in flight. **Partial-failure:** create fails → form error, no draft; create OK +
+upload fails → still navigate(replace) to edit with a `state.notice` (draft survives, retry there). Edit-page
+direct-upload path UNCHANGED (id exists → managers omit `onLazyUpload` → existing `mutateAsync`). Files:
+`pages/AnnouncementCreatePage.tsx` (+ orchestrator), `components/AnnouncementMediaManager.tsx`,
+`components/AnnouncementAttachmentsManager.tsx` (both: `onLazyUpload?` + `externalBusy?` props). admin
+tsc+vite build green; `@gemek/ui` UNTOUCHED; no admin vitest harness. `/code-review` (high, workflow): 16
+findings — APPLIED 1 (drop the stale pre-upload cache-seed in the lazy path so the edit page fetches fresh
+detail incl. the upload, no empty flash); rest by-design (validate-before-upload drops the picked file;
+upload-fail surfaced on edit via notice) or debt (no "Đang tải lên" label on /new; triple-dup 413→size string;
+no finally reset — nav always unmounts). **API-SPEC unchanged.** Below = C3 P2 oversize-fix + ship details.
+
 **C3 P2 smoke — OVERSIZE UPLOAD HANG FIXED (BE handler + tomcat swallow + FE pre-check, both managers), awaiting CTO browser smoke.**
 Root cause was: over-cap upload (10–20MB) tripped Spring multipart `max-file-size 10MB` →
 `MaxUploadSizeExceededException` with NO handler → 500 (curl) / connection-reset hang (browser, `max-swallow-size`

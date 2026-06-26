@@ -5,6 +5,15 @@
 
 ## ▶ CURRENT STATE SNAPSHOT (2026-06-26)
 
+**C3 (announcement file ATTACHMENTS) — INVESTIGATION DONE, awaiting CTO ruling.** Read-only map of the reusable
+media infra + document-serving security model + (A) extend `announcement_media` ATTACHMENT-kind vs (B) new
+`announcement_attachment` table options + type/caps options + FE surfaces. Security crux: presign serves
+**inline, no Content-Disposition** (`FileStorageService.presign` `:95-108`), nginx :8090 front sets **no nosniff/CSP**
+(`nginx.conf:93-107`) → recommend forced-download + nosniff + block renderable types. Report:
+`reports/c3-announcement-attachments-investigation.md` (ends with OPEN RULINGS FOR CTO). **No code/schema changed.**
+NEXT = CTO ruling on architecture (A vs B) + serving posture + types/caps, then P1 BE.
+
+
 **POST-C2.3b AUTHORING FIXES (3, committed — awaiting CTO smoke; resume pointer STILL → C3):**
 (1) **Adjacent inline-image render bug — FIXED in the admin composer (NOT the shared renderer).** Root cause:
 `AnnouncementComposer` `insertMarkdown` left the inserted placeholder SELECTED; a second consecutive "Chèn

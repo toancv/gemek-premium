@@ -242,6 +242,43 @@ export const usePublishAnnouncement = () => {
   });
 };
 
+// Announcement media (C2.2 endpoints, draft-only, ADMIN). Used by the media manager on /:id/edit.
+// Both mutations refetch the draft detail (['announcements', id]) so the manifest — thumbnails AND
+// the preview's presigned URLs — refreshes after every upload/delete. refetchType:'all' is required
+// because the detail query may be inactive at the moment of invalidation (same stale-after-mutation
+// fix applied to the user/ticket lists).
+
+// Upload one image. FormData carries `file` + `kind` (COVER|INLINE — case-insensitive on the BE);
+// axios sets the multipart boundary automatically for a FormData body. Returns the created media
+// row (incl. `id`) so the caller can drop an `announcement-media:{id}` placeholder at the cursor.
+export const useUploadAnnouncementMedia = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, file, kind }: { id: string; file: File; kind: 'COVER' | 'INLINE' }) => {
+      const fd = new FormData();
+      fd.append('file', file);
+      fd.append('kind', kind);
+      return post(`/announcements/${id}/media`, fd) as Promise<{ id: string; kind: 'COVER' | 'INLINE' }>;
+    },
+    meta: { skipErrorToast: true },
+    onSuccess: (_res, { id }) =>
+      qc.invalidateQueries({ queryKey: ['announcements', id], refetchType: 'all' }),
+  });
+};
+
+// Delete one media row (204). Body text is NOT auto-rewritten — a placeholder left behind simply
+// resolves to nothing (C2.3a unknown-id behaviour). Refetches the draft detail to refresh the grid.
+export const useDeleteAnnouncementMedia = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, mediaId }: { id: string; mediaId: string }) =>
+      del(`/announcements/${id}/media/${mediaId}`),
+    meta: { skipErrorToast: true },
+    onSuccess: (_res, { id }) =>
+      qc.invalidateQueries({ queryKey: ['announcements', id], refetchType: 'all' }),
+  });
+};
+
 // Amenities
 export const useAmenities = () =>
   useQuery({ queryKey: ['amenities'], queryFn: () => get('/amenities') });

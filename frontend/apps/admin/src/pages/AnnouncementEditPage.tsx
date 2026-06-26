@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useAnnouncement, useUpdateAnnouncement, usePublishAnnouncement } from '../api/hooks';
 import { getVnErrorMessage } from '@gemek/ui';
 import { useAnnouncementForm, AnnouncementComposeFields } from '../components/AnnouncementComposer';
+import { AnnouncementMediaManager, type AnnouncementMediaItem } from '../components/AnnouncementMediaManager';
 
 /**
  * Loader/guard wrapper for the edit page. Resolves the draft before mounting the form so the
@@ -78,6 +79,22 @@ function AnnouncementEditForm({ announcement }: { announcement: any }) {
     floor: announcement.targetFloor != null ? String(announcement.targetFloor) : '',
   });
 
+  // The draft detail manifest (ADMIN-on-draft → non-empty, presigned). Drives the media grid AND the
+  // preview: map the BE `id` → the renderer's `mediaId` prop (same mapping the resident detail page
+  // does — AnnouncementDetailPage.tsx). Refetched after each upload/delete, so it stays current.
+  // Memoised on announcement.media so a stable array identity reaches the preview — otherwise a fresh
+  // array each keystroke would defeat MarkdownContent's useMemo and re-parse the whole preview.
+  const media: AnnouncementMediaItem[] = useMemo(() => announcement.media ?? [], [announcement.media]);
+  const mediaManifest = useMemo(
+    () => media.map((m) => ({ mediaId: m.id, kind: m.kind, url: m.url })),
+    [media],
+  );
+
+  // Insert-image: reuse the composer's cursor-aware insertMarkdown (ref+RAF) to drop the internal
+  // `announcement-media:{id}` placeholder at the cursor — no duplicated textarea/RAF logic.
+  const insertImage = (mediaId: string) =>
+    form.insertMarkdown('![', `](announcement-media:${mediaId})`, 'mô tả ảnh');
+
   const save = async () => {
     if (!form.validate()) return;
     setNotice('');
@@ -123,7 +140,11 @@ function AnnouncementEditForm({ announcement }: { announcement: any }) {
 
       {notice && <div className="mb-4 bg-yellow-50 border border-yellow-200 rounded-lg p-4 text-yellow-800">{notice}</div>}
 
-      <AnnouncementComposeFields form={form} />
+      <div className="mb-6">
+        <AnnouncementMediaManager announcementId={announcement.id} media={media} onInsert={insertImage} />
+      </div>
+
+      <AnnouncementComposeFields form={form} mediaManifest={mediaManifest} />
 
       {form.formError && <p className="mt-4 text-sm text-red-600 bg-red-50 px-3 py-2 rounded">{form.formError}</p>}
 

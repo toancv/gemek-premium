@@ -59,6 +59,11 @@ const ERROR_MESSAGES: Record<string, string> = {
   ANNOUNCEMENT_CONTENT_TOO_LONG: 'Nội dung quá dài (tối đa 20.000 ký tự).',
   ANNOUNCEMENT_CONTENT_HTML_NOT_ALLOWED: 'Nội dung không được chứa mã HTML. Vui lòng dùng định dạng Markdown.',
 
+  // Announcement media (upload/insert/delete — C2.2 endpoints)
+  ANNOUNCEMENT_MEDIA_TYPE_NOT_ALLOWED: 'Định dạng ảnh không hợp lệ. Chỉ chấp nhận JPG, PNG hoặc WebP.',
+  ANNOUNCEMENT_MEDIA_LIMIT_EXCEEDED: 'Vượt quá giới hạn ảnh (tối đa 5 ảnh, tổng dung lượng tối đa 50MB).',
+  ANNOUNCEMENT_NOT_DRAFT: 'Chỉ có thể thay đổi ảnh khi thông báo còn ở trạng thái nháp.',
+
   // Rate / server
   RATE_LIMITED: 'Bạn thao tác quá nhanh, vui lòng thử lại sau.',
   INTERNAL_ERROR: 'Có lỗi xảy ra, vui lòng thử lại.',

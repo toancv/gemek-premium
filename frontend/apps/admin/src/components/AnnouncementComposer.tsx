@@ -1,6 +1,7 @@
 import React, { useRef, useState } from 'react';
 import { useBlocks } from '../api/hooks';
 import { labelFor, MarkdownContent } from '@gemek/ui';
+import type { AnnouncementMediaManifestEntry } from '@gemek/ui';
 
 // Announcement type options — kept in sync with the BE AnnouncementType enum.
 export const ANNOUNCEMENT_TYPES = ['GENERAL', 'URGENT', 'MAINTENANCE', 'AMENITY', 'EVENT'];
@@ -38,13 +39,20 @@ export function useAnnouncementForm(initial?: Partial<AnnouncementFormValue>) {
   const [floor, setFloor] = useState(initial?.floor ?? EMPTY.floor);
   const [formError, setFormError] = useState('');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  // Whether the textarea has ever held focus. Until it has, its selectionStart is 0, which would make
+  // a toolbar/insert action prepend to the very start of the body — wrong for the media manager's
+  // "Chèn vào bài" (a sibling component) when the author hasn't clicked into the editor yet. While
+  // unfocused we append at the end instead. Set true on the textarea's onFocus (markFocused).
+  const focusedRef = useRef(false);
+  const markFocused = () => { focusedRef.current = true; };
 
   // Wraps the current selection (or inserts a placeholder) with Markdown syntax, keeping
   // the textarea controlled and restoring focus/selection after the state update. This exact
-  // ref + requestAnimationFrame mechanism is what P2's insert-image will reuse — do not regress it.
+  // ref + requestAnimationFrame mechanism is what P2's insert-image reuses — do not regress it.
   const insertMarkdown = (before: string, after = '', placeholder = '') => {
     const ta = textareaRef.current;
-    if (!ta) { setContent((c) => c + before + placeholder + after); return; }
+    // No live selection to anchor to (ref missing, or never focused) → append at the end.
+    if (!ta || !focusedRef.current) { setContent((c) => c + before + placeholder + after); return; }
     const start = ta.selectionStart;
     const end = ta.selectionEnd;
     const selected = content.slice(start, end) || placeholder;
@@ -95,6 +103,7 @@ export function useAnnouncementForm(initial?: Partial<AnnouncementFormValue>) {
     floor, setFloor,
     formError, setFormError,
     textareaRef,
+    markFocused,
     insertMarkdown,
     validate,
     toPayload,
@@ -105,10 +114,17 @@ export type AnnouncementForm = ReturnType<typeof useAnnouncementForm>;
 
 /**
  * The 2-column compose|preview body shared by both authoring pages: left = "Soạn" (form + toolbar +
- * textarea), right = "Xem trước" (live MarkdownContent). Stacks on narrow viewports. NO mediaManifest
- * yet (P2) — placeholder images won't resolve in the preview, same as the retired modal.
+ * textarea), right = "Xem trước" (live MarkdownContent). Stacks on narrow viewports. The edit page
+ * passes the draft's `mediaManifest` (id→mediaId mapped) so inserted `announcement-media:{id}`
+ * placeholders resolve to live INLINE images in the preview; /new passes none (no media before save).
  */
-export function AnnouncementComposeFields({ form }: { form: AnnouncementForm }) {
+export function AnnouncementComposeFields({
+  form,
+  mediaManifest = [],
+}: {
+  form: AnnouncementForm;
+  mediaManifest?: AnnouncementMediaManifestEntry[];
+}) {
   const { data: blocksData } = useBlocks();
 
   return (
@@ -134,6 +150,7 @@ export function AnnouncementComposeFields({ form }: { form: AnnouncementForm }) 
             ref={form.textareaRef}
             value={form.content}
             onChange={(e) => form.setContent(e.target.value)}
+            onFocus={form.markFocused}
             rows={20}
             className="block w-full min-h-[28rem] border border-gray-300 rounded-md px-3 py-2 text-sm font-mono resize-y"
             placeholder="Hỗ trợ Markdown: **đậm**, *nghiêng*, ## tiêu đề, - danh sách, [liên kết](https://...)"
@@ -179,7 +196,7 @@ export function AnnouncementComposeFields({ form }: { form: AnnouncementForm }) 
         <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Xem trước</h2>
         <div className="border border-gray-200 rounded-md p-4 bg-gray-50 min-h-[28rem]">
           {form.content.trim()
-            ? <MarkdownContent content={form.content} className="text-sm text-gray-700" />
+            ? <MarkdownContent content={form.content} className="text-sm text-gray-700" mediaManifest={mediaManifest} />
             : <p className="text-sm text-gray-400 italic">Chưa có nội dung.</p>}
         </div>
       </div>

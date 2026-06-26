@@ -118,6 +118,18 @@ describe('getVnErrorMessage', () => {
     expect(getVnErrorMessage('BOOKING_NOT_PENDING')).toBe('Chỉ có thể duyệt hoặc từ chối đặt chỗ đang chờ xử lý.');
   });
 
+  it('ANNOUNCEMENT_MEDIA_TYPE_NOT_ALLOWED returns VN message about allowed image formats', () => {
+    expect(getVnErrorMessage('ANNOUNCEMENT_MEDIA_TYPE_NOT_ALLOWED')).toBe('Định dạng ảnh không hợp lệ. Chỉ chấp nhận JPG, PNG hoặc WebP.');
+  });
+
+  it('ANNOUNCEMENT_MEDIA_LIMIT_EXCEEDED returns VN message about the image caps', () => {
+    expect(getVnErrorMessage('ANNOUNCEMENT_MEDIA_LIMIT_EXCEEDED')).toBe('Vượt quá giới hạn ảnh (tối đa 5 ảnh, tổng dung lượng tối đa 50MB).');
+  });
+
+  it('ANNOUNCEMENT_NOT_DRAFT returns VN message about draft-only media changes', () => {
+    expect(getVnErrorMessage('ANNOUNCEMENT_NOT_DRAFT')).toBe('Chỉ có thể thay đổi ảnh khi thông báo còn ở trạng thái nháp.');
+  });
+
   it('never returns empty string for any known code', () => {
     const knownCodes = [
       'PHONE_ALREADY_EXISTS', 'EMAIL_ALREADY_EXISTS', 'INVALID_CREDENTIALS',
@@ -128,6 +140,7 @@ describe('getVnErrorMessage', () => {
       'LICENSE_PLATE_ALREADY_EXISTS', 'SLOT_NUMBER_ALREADY_EXISTS',
       'TICKET_ALREADY_RATED', 'RESIDENT_ALREADY_MOVED_OUT', 'WRONG_CURRENT_PASSWORD',
       'PASSWORD_POLICY_VIOLATION', 'AMENITY_NAME_EXISTS', 'BOOKING_NOT_PENDING',
+      'ANNOUNCEMENT_MEDIA_TYPE_NOT_ALLOWED', 'ANNOUNCEMENT_MEDIA_LIMIT_EXCEEDED', 'ANNOUNCEMENT_NOT_DRAFT',
     ];
     for (const code of knownCodes) {
       const msg = getVnErrorMessage(code);

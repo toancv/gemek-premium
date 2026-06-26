@@ -103,10 +103,12 @@ public class ContractorServiceImpl implements ContractorService {
 
         if (search != null && !search.isBlank()) {
             String pattern = "%" + search.toLowerCase() + "%";
-            // Match on company name OR contact person (case-insensitive).
+            // Match on company name OR contact person OR phone (case-insensitive).
+            // phone is a nullable column; LIKE over NULL yields NULL (no match), never an error — pattern is non-null.
             spec = spec.and((root, query, cb) -> cb.or(
                     cb.like(cb.lower(root.get("companyName")), pattern),
-                    cb.like(cb.lower(root.get("contactPerson")), pattern)
+                    cb.like(cb.lower(root.get("contactPerson")), pattern),
+                    cb.like(cb.lower(root.get("phone")), pattern)
             ));
         }
         if (specialty != null) {

@@ -79,7 +79,8 @@ public class UserServiceImpl implements UserService {
                 String pattern = "%" + search.toLowerCase() + "%";
                 predicates.add(cb.or(
                         cb.like(cb.lower(root.get("fullName")), pattern),
-                        cb.like(cb.lower(root.get("email")), pattern)
+                        cb.like(cb.lower(root.get("email")), pattern),
+                        cb.like(cb.lower(root.get("phone")), pattern)
                 ));
             }
             return cb.and(predicates.toArray(new Predicate[0]));

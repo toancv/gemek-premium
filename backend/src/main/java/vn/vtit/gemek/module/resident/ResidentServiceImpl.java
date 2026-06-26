@@ -532,7 +532,8 @@ public class ResidentServiceImpl implements ResidentService {
                 String pattern = "%" + search.toLowerCase() + "%";
                 predicates.add(cb.or(
                         cb.like(cb.lower(root.get("user").get("fullName")), pattern),
-                        cb.like(cb.lower(root.get("user").get("email")), pattern)
+                        cb.like(cb.lower(root.get("user").get("email")), pattern),
+                        cb.like(cb.lower(root.get("user").get("phone")), pattern)
                 ));
             }
 

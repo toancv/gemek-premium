@@ -5,6 +5,38 @@ Format: Date | Decision | Reasoning | Alternatives
 
 ---
 
+## 2026-06-26 | Authoring layout — row-aligned 2-col MIRROR (supersedes "title full-width on top")
+
+**Decision (CTO ruling, locked; FE style only).** The admin announcement composer (`AnnouncementComposeFields`,
+shared by `/new` + `/:id/edit`) is a row-aligned 2-column mirror: ONE CSS grid (`grid-cols-1 lg:grid-cols-2`,
+`items-start`) with the Soạn/Xem trước section headers (row 0) then THREE rows that align left↔right —
+(1) **cover slot** at a FIXED admin-side height (`h-40`): left = a subtle dashed hint "Ảnh bìa quản lý ở Thư
+viện ảnh phía trên" (not a control), right = the cover banner if present else a muted "Chưa có ảnh bìa" box of
+the same height (so title/body stay aligned regardless of cover state); (2) **title**: left = the "Tiêu đề"
+input (now INSIDE the left column, ~half width), right = the preview `<h1>`; (3) **body**: left =
+label+toolbar+textarea, right = the markdown render. The compact Loại/Phạm vi/Tòa/Tầng selects stay below
+(conditional Tòa/Tầng preserved).
+
+**Supersedes** the close-out "Tiêu đề full-width on top" layout and the post-fix "title under the banner in a
+single preview box" — the title is no longer full-width and the preview is no longer one stacked box; cover,
+title, and body are now three aligned grid rows.
+
+**Admin-side banner height + cover-slot hint.** The fixed banner height (`h-40`) is applied ADMIN-SIDE (a
+wrapper around the `<img>` in the composer), NOT by editing the shared `@gemek/ui` `MarkdownContent`/renderer —
+the cover banner in the preview is composer-rendered, not via the markdown renderer. The left cover-slot hint
+exists purely to keep the left column's title/body rows aligned with the right when no cover control lives on
+the left (cover is managed in the full-width media library above).
+
+**Responsive.** A single grid can't both row-align on desktop AND cleanly stack on mobile, so mobile uses
+Tailwind `order-*` to regroup cells into compose-first then preview-second; `lg:order-none` restores the
+DOM-order column pairing for the desktop row mirror. (/code-review-applied: the mobile interleave and a
+title-preview-vs-input vertical misalignment.)
+
+**No BE/contract/`@gemek/ui`/resident change; API-SPEC unchanged.** Commit `d4e99bd` (style). admin + resident
+tsc+build green (shared components untouched).
+
+---
+
 ## 2026-06-26 | Post-C2.3b — image insert COLLAPSES the caret (no nested-image markdown); shared renderer was not the bug
 
 **Decision (locked rule).** Announcement image insertion (`AnnouncementComposer.insertImage` → shared

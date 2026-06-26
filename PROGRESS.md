@@ -25,6 +25,16 @@ insert with NO selection ships the generic alt "mô tả ảnh" (type-to-replace
 the no-nesting guarantee; a real selection still becomes the alt) · the composer insert has no unit test (admin
 has no vitest harness — renderer contract guarded instead, CTO smoke covers the rest). API-SPEC unchanged.
 
+**AUTHORING LAYOUT RESHAPE (2026-06-26, style-only `d4e99bd` — supersedes prior "title full-width on top"):**
+admin announcement composer is now a row-aligned 2-col MIRROR — one grid (`grid-cols-1 lg:grid-cols-2`,
+`items-start`) with section headers (Soạn/Xem trước) then 3 rows that line up left↔right: cover-slot (left
+dashed hint / right cover banner-or-placeholder, fixed admin-side `h-40`) · title (left input / right preview
+`<h1>`) · body (left label+toolbar+textarea / right markdown render). Title moved INTO the left column (~half
+width). Compact selects below unchanged; conditional Tòa/Tầng preserved. Mobile: `order-*` regroups cells to
+compose-then-preview (`lg:order-none` restores the row mirror on desktop). FE style only — no `@gemek/ui` /
+resident / behavior change; admin+resident tsc+build green. `/code-review` (high): applied mobile-order +
+title-preview alignment fixes. API-SPEC unchanged.
+
 **RESUME POINTER (one line):** **C2.3b CLOSED — close-out committed (`2a3f4b0` style + `38e7196` feat), awaiting CTO :80 smoke — NEXT = C3 (file attachments).** C2.3b = admin announcement authoring UX, all sub-phases DONE: P1 (modal→2-col pages + draft-update hook + drafts-only "Sửa" + modal removed) · P1.5 (BE scope-derived target normalization + tests + full-width layout) · P2 (media manager: upload/insert/delete + inline preview render) · **close-out** (this phase). **Close-out (4 FE refinements, no BE/contract change):** (1) TWO kind-specific upload buttons — "Tải lên ảnh bìa" (kind=COVER) / "Tải lên ảnh bài viết" (kind=INLINE) — replacing the cover checkbox (cover stays enabled at the 5-cap ONLY when a cover already exists, since cover-replace is net-zero; inline disabled at cap); (2) media delete now STRIPS the deleted id's inline placeholder from the body (id-keyed tempered-token regex, handles `]`-in-alt + repeats; UNSAVED until "Lưu", same as any body edit) — supersedes P2's leave-as-is; (3) layout: "Tiêu đề" full-width on top, the [body editor | preview] row top-aligned (label+toolbar/spacer match), Loại/Phạm vi/Tòa/Tầng full-width below; (4) preview now renders the COVER manifest entry as a **banner** above the body (http(s)-guarded, mirrors resident `AnnouncementDetailPage.tsx:40-47`). admin tsc+vite build green; `@gemek/ui` vitest unaffected (untouched). `/code-review` (high, workflow): 0 Must-fix; applied 5 FE-fixable (regex `]`-in-alt tempered token, cover-cap gate via hasCover, per-kind busy label, EMPTY_MANIFEST const, shared `ANNOUNCEMENT_MEDIA_SCHEME` constant); debts logged. **NEXT = C3** (one line): non-image file attachments on announcements. Below = P1/P1.5/P2 history.
 
 **(P1) RESUME POINTER:** **C2.3b P1 DONE — committed, awaiting CTO :80 smoke.** Admin announcement

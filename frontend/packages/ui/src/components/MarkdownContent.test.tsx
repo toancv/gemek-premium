@@ -124,6 +124,35 @@ describe('MarkdownContent — safe internal images (C2.3a)', () => {
     expect(container.querySelector('[onerror]')).toBeNull();
   });
 
+  it('renders BOTH of two ADJACENT inline placeholders as distinct <img> (regression: consecutive images)', () => {
+    // Root cause of the original bug was upstream (the admin insert wrapped the first placeholder's
+    // still-selected alt → nested markdown `![![…](b)](a)`, only one image). This guards the renderer
+    // contract: well-formed adjacent placeholders MUST both resolve, so the composer fix keeps working.
+    const adjacent = '![ảnh 1](announcement-media:inline-1)![ảnh 2](announcement-media:inline-2)';
+    const MANY = [
+      { mediaId: 'inline-1', kind: 'INLINE' as const, url: 'https://minio.local/presigned/inline-1?sig=abc' },
+      { mediaId: 'inline-2', kind: 'INLINE' as const, url: 'https://minio.local/presigned/inline-2?sig=xyz' },
+    ];
+    const { container } = render(<MarkdownContent content={adjacent} mediaManifest={MANY} />);
+    const imgs = Array.from(container.querySelectorAll('img'));
+    expect(imgs.length).toBe(2);
+    expect(imgs.map((i) => i.getAttribute('src'))).toEqual([
+      'https://minio.local/presigned/inline-1?sig=abc',
+      'https://minio.local/presigned/inline-2?sig=xyz',
+    ]);
+  });
+
+  it('a nested image placeholder (image inside another image alt) still keeps XSS bounds — no extra/foreign img', () => {
+    // The malformed nested form the old insert produced: the inner image is flattened into the outer
+    // alt (CommonMark). Renderer must not invent a second img nor leak a non-manifest/arbitrary src.
+    const nested = '![![x](announcement-media:inline-1)](announcement-media:deleted-99)';
+    const { container } = render(<MarkdownContent content={nested} mediaManifest={MANIFEST} />);
+    const imgs = Array.from(container.querySelectorAll('img'));
+    // Outer id is absent → renders nothing; inner is flattened into alt text → no live img either.
+    expect(imgs.every((i) => i.getAttribute('src')?.startsWith('https://minio.local/presigned/'))).toBe(true);
+    expect(container.innerHTML.toLowerCase()).not.toContain('announcement-media:');
+  });
+
   it('renders NO live img for an announcement-media link (placeholders are images, not links)', () => {
     const { container } = render(
       <MarkdownContent content={'[click](announcement-media:inline-1)'} mediaManifest={MANIFEST} />,

@@ -4,6 +4,7 @@ import { useAnnouncement, useUpdateAnnouncement, usePublishAnnouncement } from '
 import { getVnErrorMessage, ANNOUNCEMENT_MEDIA_SCHEME } from '@gemek/ui';
 import { useAnnouncementForm, AnnouncementComposeFields } from '../components/AnnouncementComposer';
 import { AnnouncementMediaManager, type AnnouncementMediaItem } from '../components/AnnouncementMediaManager';
+import { AnnouncementAttachmentsManager, type AnnouncementAttachmentItem } from '../components/AnnouncementAttachmentsManager';
 
 /**
  * Loader/guard wrapper for the edit page. Resolves the draft before mounting the form so the
@@ -90,6 +91,13 @@ function AnnouncementEditForm({ announcement }: { announcement: any }) {
     [media],
   );
 
+  // Downloadable document attachments (C3) — a flat list from the same detail manifest. Independent of
+  // the image media path (no cover/inline/insert). Refetched after each upload/delete.
+  const attachments: AnnouncementAttachmentItem[] = useMemo(
+    () => announcement.attachments ?? [],
+    [announcement.attachments],
+  );
+
   // Insert-image: drop the internal `announcement-media:{id}` placeholder at the cursor via the
   // composer's insertImage (collapses the caret AFTER the snippet) — NOT insertMarkdown, whose
   // leave-selected behaviour would make a second consecutive insert wrap the first placeholder's alt
@@ -160,6 +168,10 @@ function AnnouncementEditForm({ announcement }: { announcement: any }) {
 
       <div className="mb-6">
         <AnnouncementMediaManager announcementId={announcement.id} media={media} onInsert={insertImage} onDeleted={stripPlaceholder} />
+      </div>
+
+      <div className="mb-6">
+        <AnnouncementAttachmentsManager announcementId={announcement.id} attachments={attachments} />
       </div>
 
       <AnnouncementComposeFields form={form} mediaManifest={mediaManifest} />

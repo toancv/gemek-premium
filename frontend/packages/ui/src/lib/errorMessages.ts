@@ -64,6 +64,11 @@ const ERROR_MESSAGES: Record<string, string> = {
   ANNOUNCEMENT_MEDIA_LIMIT_EXCEEDED: 'Vượt quá giới hạn ảnh (tối đa 5 ảnh, tổng dung lượng tối đa 50MB).',
   ANNOUNCEMENT_NOT_DRAFT: 'Chỉ có thể thay đổi ảnh khi thông báo còn ở trạng thái nháp.',
 
+  // Announcement attachments (document upload/delete — C3 endpoints)
+  ANNOUNCEMENT_ATTACHMENT_TYPE_NOT_ALLOWED: 'Định dạng tệp không hợp lệ. Chỉ chấp nhận PDF, Word, Excel, PowerPoint hoặc TXT.',
+  ANNOUNCEMENT_ATTACHMENT_TOO_LARGE: 'Tệp đính kèm quá lớn (tối đa 10MB mỗi tệp).',
+  ANNOUNCEMENT_ATTACHMENT_LIMIT_EXCEEDED: 'Vượt quá giới hạn tệp đính kèm (tối đa 5 tệp, tổng dung lượng tối đa 50MB).',
+
   // Rate / server
   RATE_LIMITED: 'Bạn thao tác quá nhanh, vui lòng thử lại sau.',
   INTERNAL_ERROR: 'Có lỗi xảy ra, vui lòng thử lại.',

@@ -130,6 +130,12 @@ describe('getVnErrorMessage', () => {
     expect(getVnErrorMessage('ANNOUNCEMENT_NOT_DRAFT')).toBe('Chỉ có thể thay đổi ảnh khi thông báo còn ở trạng thái nháp.');
   });
 
+  it('ANNOUNCEMENT_ATTACHMENT_* codes return VN messages about document attachments', () => {
+    expect(getVnErrorMessage('ANNOUNCEMENT_ATTACHMENT_TYPE_NOT_ALLOWED')).toBe('Định dạng tệp không hợp lệ. Chỉ chấp nhận PDF, Word, Excel, PowerPoint hoặc TXT.');
+    expect(getVnErrorMessage('ANNOUNCEMENT_ATTACHMENT_TOO_LARGE')).toBe('Tệp đính kèm quá lớn (tối đa 10MB mỗi tệp).');
+    expect(getVnErrorMessage('ANNOUNCEMENT_ATTACHMENT_LIMIT_EXCEEDED')).toBe('Vượt quá giới hạn tệp đính kèm (tối đa 5 tệp, tổng dung lượng tối đa 50MB).');
+  });
+
   it('never returns empty string for any known code', () => {
     const knownCodes = [
       'PHONE_ALREADY_EXISTS', 'EMAIL_ALREADY_EXISTS', 'INVALID_CREDENTIALS',
@@ -141,6 +147,7 @@ describe('getVnErrorMessage', () => {
       'TICKET_ALREADY_RATED', 'RESIDENT_ALREADY_MOVED_OUT', 'WRONG_CURRENT_PASSWORD',
       'PASSWORD_POLICY_VIOLATION', 'AMENITY_NAME_EXISTS', 'BOOKING_NOT_PENDING',
       'ANNOUNCEMENT_MEDIA_TYPE_NOT_ALLOWED', 'ANNOUNCEMENT_MEDIA_LIMIT_EXCEEDED', 'ANNOUNCEMENT_NOT_DRAFT',
+      'ANNOUNCEMENT_ATTACHMENT_TYPE_NOT_ALLOWED', 'ANNOUNCEMENT_ATTACHMENT_TOO_LARGE', 'ANNOUNCEMENT_ATTACHMENT_LIMIT_EXCEEDED',
     ];
     for (const code of knownCodes) {
       const msg = getVnErrorMessage(code);

@@ -279,6 +279,36 @@ export const useDeleteAnnouncementMedia = () => {
   });
 };
 
+// Upload one document attachment (C3). FormData carries `file` only (no kind — attachments are a flat
+// list, not cover/inline). Type is validated by Tika magic-byte on the BE (pdf/docx/xlsx/pptx/txt).
+// Refetches the draft detail so the attachments[] list (incl. forced-download URLs) refreshes.
+export const useUploadAnnouncementAttachment = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, file }: { id: string; file: File }) => {
+      const fd = new FormData();
+      fd.append('file', file);
+      return post(`/announcements/${id}/attachments`, fd);
+    },
+    meta: { skipErrorToast: true },
+    onSuccess: (_res, { id }) =>
+      qc.invalidateQueries({ queryKey: ['announcements', id], refetchType: 'all' }),
+  });
+};
+
+// Delete one attachment row (204, draft-only). No body placeholder to strip (attachments are never
+// inline). Refetches the draft detail to refresh the list.
+export const useDeleteAnnouncementAttachment = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, attachmentId }: { id: string; attachmentId: string }) =>
+      del(`/announcements/${id}/attachments/${attachmentId}`),
+    meta: { skipErrorToast: true },
+    onSuccess: (_res, { id }) =>
+      qc.invalidateQueries({ queryKey: ['announcements', id], refetchType: 'all' }),
+  });
+};
+
 // Amenities
 export const useAmenities = () =>
   useQuery({ queryKey: ['amenities'], queryFn: () => get('/amenities') });

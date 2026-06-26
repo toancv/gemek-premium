@@ -5,6 +5,65 @@ Format: Date | Decision | Reasoning | Alternatives
 
 ---
 
+## 2026-06-26 | C2.3b CLOSE-OUT — cover-UX final shape (two upload buttons) + delete-strips-placeholder + layout + cover banner (C2.3b CLOSED)
+
+**Decision (CTO rulings, locked). FE-only, NO backend/contract change** (`docs/API-SPEC.md` unchanged). Four
+refinements close C2.3b:
+
+1. **Cover-UX FINAL = two kind-specific upload buttons, NO checkbox** (supersedes P2's single button + "Đặt
+   làm bìa" checkbox). "Tải lên ảnh bìa" uploads `kind=COVER`; "Tải lên ảnh bài viết" uploads `kind=INLINE`.
+   Still kind-at-upload — **no new BE endpoint**; cover-replace (2nd COVER replaces the 1st in-tx) is
+   unchanged C2.2 behaviour. The implementation uses a `kindRef` set by whichever button opened the shared
+   hidden file input. **Cap interaction:** the ≤5-image / ≤50MB caps are shared across both kinds (the
+   `x/5 ảnh` counter counts all media). The INLINE button disables at the 5-cap; the COVER button stays
+   enabled at the cap **only when a cover already exists** (`hasCover` — a replace is net-zero), and disables
+   at the cap when none exists (a net-new 6th would exceed the cap). [/code-review CONFIRMED fix — the first
+   cut gated COVER on `busy` only, allowing a net-new 6th past the cap.]
+
+2. **Media delete now STRIPS the inline placeholder from the body** (supersedes P2's deliberate leave-as-is).
+   On a successful delete, every `![alt](announcement-media:{deletedId})` occurrence is removed from the editor
+   content, keyed by id (robust to edited alt text + repeats). The strip is an **UNSAVED editor-state change**
+   — the admin still clicks "Lưu" to persist, identical to any other body edit; the confirm dialog VN text now
+   says the insertion will be removed and to save. A COVER id never appears in the body → no-op for cover
+   deletes. **Regex hardened (/code-review CONFIRMED):** a naive `!\[[^\]]*\]` cannot match a placeholder whose
+   alt contains `]` (CommonMark allows balanced brackets in image alt); replaced with a tempered-token pattern
+   `!\[(?:(?!\]\(scheme)[^\n])*\]\(scheme:id\)` anchored on the unique `](scheme:id)` suffix, so a `]`-in-alt
+   is handled and the match never spans into a *different* placeholder. Insert + strip both build off the
+   shared `ANNOUNCEMENT_MEDIA_SCHEME` constant from `@gemek/ui` so the two formats can't drift.
+
+3. **Layout (style):** "Tiêu đề" spans full width on top; below it the [body editor | preview] row is
+   top-aligned (each column leads with a label + a same-height toolbar/spacer so the textarea and the preview
+   box start at the same Y — fixes the CTO-flagged preview floating up to title level); Loại/Phạm vi/Tòa/Tầng
+   moved full-width below the row. Pure layout — no field/behaviour change, committed separately as `style(admin)`.
+
+4. **Preview COVER banner (the remaining P3):** the preview pane now renders the COVER manifest entry as a
+   banner above the markdown body, **mirroring the resident `AnnouncementDetailPage.tsx:40-47`** (same
+   `^https?://` defense-in-depth guard before binding to `src`; no cover → no banner). Inline images still
+   resolve in the body; the cover is NOT duplicated inline.
+
+**Verification + /code-review (high, workflow-backed).** admin `tsc --noEmit` + `vite build` green; `@gemek/ui`
+vitest untouched this phase. Admin has **no vitest harness** → no admin unit tests. Review returned **0 Must-fix**;
+5 FE-fixable applied pre-commit (regex tempered token; cover-cap `hasCover` gate; per-kind busy label via
+`kindRef`; module-level `EMPTY_MANIFEST` default; shared `ANNOUNCEMENT_MEDIA_SCHEME` in insert+strip). Debts
+deferred (non-blocking, logged in PROGRESS): unsaved-strip-vs-BE-delete divergence (BY DESIGN per this ruling),
+`^https?://` guard duplication vs resident (a shared `isHttpUrl`/`toMediaManifest` helper would centralize it —
+deferred to avoid widening into the shared pkg + resident), cover `find`-first on transient duplicate COVER
+(harmless), `AnnouncementMediaItem` vs `AnnouncementMediaManifestEntry` DRY.
+
+**Commits.** `2a3f4b0` `style(admin)` layout → `38e7196` `feat(admin)` close-out (two-button + delete-strip +
+cover banner) → this docs entry. Kept separate per the commit-grouping rule; style landed first because the
+cover banner sits inside the restructured preview (layout is its substrate).
+
+**C2.3b CLOSED** (P1 + P1.5 + P2 + close-out all done) — awaiting CTO :80 smoke. NEXT = **C3 (file attachments)**.
+
+**Alternatives rejected.** (a) Keep the single button + checkbox — rejected by CTO for two explicit buttons
+(clearer intent, no sticky-toggle bug class). (b) Leave the body placeholder on delete (P2 behaviour) —
+superseded; the CTO wants the insertion gone with the image. (c) Auto-persist the body strip via an extra PUT
+on delete — rejected; would diverge from the "edits are unsaved until Lưu" model and could ship a body change
+the admin didn't intend.
+
+---
+
 ## 2026-06-26 | C2.3b P2 — announcement media manager (FE-only) + P2/P3 boundary shift (inline preview folded into P2)
 
 **Decision (CTO rulings, locked).** Media manager built on `/announcements/:id/edit` for a DRAFT only

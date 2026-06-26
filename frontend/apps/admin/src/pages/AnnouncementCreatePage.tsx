@@ -7,7 +7,7 @@ import {
   useUploadAnnouncementMedia,
   useUploadAnnouncementAttachment,
 } from '../api/hooks';
-import { getVnErrorMessage } from '@gemek/ui';
+import { getVnErrorMessage, toast } from '@gemek/ui';
 import { useAnnouncementForm, AnnouncementComposeFields } from '../components/AnnouncementComposer';
 import { AnnouncementMediaManager, type AnnouncementMediaItem } from '../components/AnnouncementMediaManager';
 import { AnnouncementAttachmentsManager, type AnnouncementAttachmentItem } from '../components/AnnouncementAttachmentsManager';
@@ -109,7 +109,14 @@ export function AnnouncementCreatePage() {
     kindLabel: 'ảnh' | 'tệp',
   ): Promise<void> => {
     if (inFlight.current) return;          // single-draft concurrency guard (synchronous)
-    if (!form.validate()) return;          // invalid → no draft, no upload
+    if (!form.validate()) {
+      // The picked file lives near the managers at the TOP of the page, but validate()'s inline error
+      // renders at the page BOTTOM — out of the admin's view, so an upload click looks like it hung.
+      // Surface the WHY as a top-right toast (the locked admin toast channel) IN ADDITION to the inline
+      // field error (which still marks WHICH field). No draft, no upload — behaviour unchanged.
+      toast.error('Vui lòng nhập tiêu đề và nội dung thông báo trước khi thêm ảnh hoặc tệp.');
+      return;                              // invalid → no draft, no upload
+    }
     inFlight.current = true;
     setLazyBusy(true);
     let created: any;

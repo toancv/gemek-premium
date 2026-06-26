@@ -5,6 +5,11 @@
 
 ## ▶ CURRENT STATE SNAPSHOT (2026-06-26)
 
+**PHONE-SEARCH — FE search-box placeholders updated (committed `f54c26f`) → phone-search FULLY CLOSED (BE + FE), pending CTO PR per the upcoming topology report. Resume → amenity attribution [deferred].**
+Admin search placeholders now enumerate phone (text-only, no logic): residents `residents.searchPlaceholder` +
+contractors `contractors.searchPlaceholder` (admin i18n vi.ts) + users (hardcoded UsersPage.tsx:214). admin
+tsc --noEmit + vite build green; no test (text only). API-SPEC/DECISIONS unchanged (text-only). Below = the BE half.
+
 **PHONE-SEARCH (BE) — `?search=` now ALSO matches phone on residents/users/contractors list endpoints DONE (committed `763cc29` feat / `f7294f8` test), awaiting CTO HTTP/DB smoke. Resume → amenity attribution [deferred].**
 Extended the existing case-insensitive substring `search` predicate of the three ADMIN list endpoints to ALSO
 match the stored phone (CTO ruling: plain substring on stored value, NO normalization). **All three are Criteria

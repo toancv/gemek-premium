@@ -5,6 +5,63 @@ Format: Date | Decision | Reasoning | Alternatives
 
 ---
 
+## 2026-06-26 | C3 P1 (BE) — announcement file attachments: separate table + forced-download (CTO rulings, locked)
+
+**Decision (CTO rulings, locked; BE-only this phase).** Downloadable DOCUMENT attachments on announcements,
+DISTINCT from C2.x cover/inline images. **Architecture B (separate table)** — new `announcement_attachment`
+(migration `V22`, mirrors V21: `announcement_id` FK **ON DELETE CASCADE**, `object_key` TEXT on the SAME C2.1
+key convention `announcements/{id}/{uuid}` so the existing presign gate parses it unchanged, `display_filename`
+NOT NULL, `created_by` FK SET NULL, index on `announcement_id`; NO `kind` — attachments are a flat list). The
+image media table/caps/validation/manifest path is **UNTOUCHED**. Endpoints `POST/GET/DELETE
+/api/announcements/{id}/attachments` parallel the media trio (ADMIN, draft-only; GET ADMIN/BOARD). Detail
+`GET /announcements/{id}` gains `attachments[] = {id, displayFilename, sizeBytes, downloadUrl}`, gated by the
+SAME `assertMediaPresignAccess` scope rule (out-of-scope/denied → empty, no leak, no 500).
+
+**Serving posture (all four, security-required).** (1) Presigned URL forces
+`response-content-disposition=attachment; filename=…`; (2) `response-content-type=application/octet-stream` —
+both signed into the SigV4 query via a NEW **additive** `FileStorageService.presign(key, disposition, type)`
+overload (the existing `presign(key)` image path is byte-for-byte unchanged → images stay inline); (3) nginx
+:8090 front adds `add_header X-Content-Type-Options "nosniff" always;` (applies to all objects); (4) Tika
+magic-byte allow-list blocks renderable/executable types at upload. Filename sanitized for the
+`Content-Disposition` header per RFC 6266/5987 (`ContentDispositionUtil`: ASCII fallback strips quote/CR/LF/
+control, `filename*` percent-encodes UTF-8) so a filename can't inject header/query-param content.
+
+**Allowed types (magic-byte):** pdf, docx, xlsx, pptx, txt. OOXML (docx/xlsx/pptx) is a ZIP container that
+**tika-core 2.9.1 cannot subtype** (it returns `application/zip`) — disambiguated by peeking the zip's part
+layout (`word/`|`xl/`|`ppt/`), still pure content inspection, NO heavy `tika-parsers` dep, NO extension trust.
+**csv LIMITATION (flagged for CTO confirm at smoke):** csv content is byte-identical to plain text, so
+magic-byte detection reports `text/plain` and a csv is accepted/stored AS txt. The literal ruling said "reject
+csv"; that is **impossible via magic bytes** without trusting the extension (which the ruling also forbids).
+Chosen posture: accept text/plain (txt allowed); forced-download + nosniff neutralize the only browser-relevant
+risk (csv-injection is a downstream spreadsheet-app concern on local open, not a serving risk). NOT silently
+resolved — surfaced for the CTO ruling.
+
+**Caps (INDEPENDENT of image caps):** ≤10 MB per file (service-level, belt-and-suspenders with the unchanged
+servlet `max-file-size=10MB` — gives a coded `ANNOUNCEMENT_ATTACHMENT_TOO_LARGE` even on a direct service call),
+≤5 attachments, ≤50 MB total per announcement. New error codes `ANNOUNCEMENT_ATTACHMENT_{TYPE_NOT_ALLOWED,
+TOO_LARGE,LIMIT_EXCEEDED}` (all 400). Draft delete now collects BOTH media AND attachment object keys for the
+after-commit cleanup (no orphaned objects). `created_by` via the existing `CreatableEntity`/`SecurityAuditorAware`
+auditing (no new code).
+
+**Verification.** Full backend suite **451/451** (was 422, +29): `ContentDispositionUtilTest` (5; quote/CRLF/
+Vietnamese/null), `FileStorageServiceDownloadPresignTest` (2; download URL carries the signed params, image
+presign carries none), `AnnouncementAttachmentServiceIntegrationTest` (13; type allow/reject incl.
+html-renamed-.pdf + plain-zip + svg, caps count/per-file/total, image-caps-independence, draft-only,
+delete+cascade media&attachments, forced-download manifest), `AnnouncementAttachmentManifestScopeTest` (3;
+in/out-scope resident + admin draft), `AnnouncementControllerTest` (+4; 201/403/409/400). Sequential,
+order-independent. Prod-delivery cookie-scope/subdomain stays **[PLANNED]/[TODO]** (out of scope). FE (P2/P3)
+NOT started. API-SPEC updated same phase.
+
+**Alternatives rejected.** (a) Extend `announcement_media` with an ATTACHMENT kind (option A) — CTO chose B
+(clean separation, zero risk to the image caps/validation/manifest). (b) Add `tika-parsers-standard-package`
+for OOXML subtyping — rejected (pulls POI/PDFBox/BouncyCastle, heavy image bloat for pure type detection; the
+zip-peek is sufficient and dependency-free). (c) Extension-based reject of csv/html/svg — rejected for the
+magic-byte allow-list (html/svg ARE distinguishable by bytes and rejected; csv is not — documented limitation
+instead of an extension-trust hole). (d) Raise the global servlet `max-file-size` — rejected (would loosen the
+image path); the per-file attachment cap is enforced in-service instead.
+
+---
+
 ## 2026-06-26 | Authoring layout — row-aligned 2-col MIRROR (supersedes "title full-width on top")
 
 **Decision (CTO ruling, locked; FE style only).** The admin announcement composer (`AnnouncementComposeFields`,

@@ -5,13 +5,21 @@
 
 ## ▶ CURRENT STATE SNAPSHOT (2026-06-26)
 
-**C3 (announcement file ATTACHMENTS) — INVESTIGATION DONE, awaiting CTO ruling.** Read-only map of the reusable
-media infra + document-serving security model + (A) extend `announcement_media` ATTACHMENT-kind vs (B) new
-`announcement_attachment` table options + type/caps options + FE surfaces. Security crux: presign serves
-**inline, no Content-Disposition** (`FileStorageService.presign` `:95-108`), nginx :8090 front sets **no nosniff/CSP**
-(`nginx.conf:93-107`) → recommend forced-download + nosniff + block renderable types. Report:
-`reports/c3-announcement-attachments-investigation.md` (ends with OPEN RULINGS FOR CTO). **No code/schema changed.**
-NEXT = CTO ruling on architecture (A vs B) + serving posture + types/caps, then P1 BE.
+**C3 P1 (BE) — announcement file ATTACHMENTS DONE, awaiting CTO DB/HTTP smoke. NEXT = P2 (FE admin attachments manager).**
+Separate table `announcement_attachment` (migration `V22`, FK CASCADE, C2.1 key convention, NO kind) +
+endpoints `POST/GET/DELETE /api/announcements/{id}/attachments` (ADMIN, draft-only; GET ADMIN/BOARD) + detail
+`attachments[] = {id, displayFilename, sizeBytes, downloadUrl}` gated by the SAME C2.1 `assertMediaPresignAccess`
+scope rule (out-of-scope → empty, no leak). **Image media path UNTOUCHED.** Forced-download serving (all 4
+layers): additive `FileStorageService.presign(key, disposition, type)` overload signs
+`Content-Disposition: attachment` + `response-content-type=application/octet-stream` (image `presign(key)`
+unchanged → stays inline); nginx :8090 adds `X-Content-Type-Options: nosniff`; Tika magic-byte allow-list
+**pdf/docx/xlsx/pptx/txt** (OOXML zip-peek via tika-core, no `tika-parsers` dep), rejects html/svg/plain-zip;
+RFC 6266/5987 filename sanitize (`ContentDispositionUtil`). Caps INDEPENDENT of images: ≤10MB/file, ≤5,
+≤50MB total; new codes `ANNOUNCEMENT_ATTACHMENT_{TYPE_NOT_ALLOWED,TOO_LARGE,LIMIT_EXCEEDED}`. Draft-delete
+cleanup collects media + attachment keys. Suite **451/451** (+29). **csv LIMITATION flagged for CTO:** csv≡txt
+by magic bytes → accepted as text/plain (forced-download mitigates). Prod cookie-scope/subdomain **[TODO]**.
+See DECISIONS 2026-06-26 "C3 P1 (BE)" + `reports/c3-announcement-attachments-investigation.md` + API-SPEC §Announcements.
+**NEXT = P2 (FE admin attachments manager on /:id/edit), then P3 (FE resident download list).**
 
 
 **POST-C2.3b AUTHORING FIXES (3, committed — awaiting CTO smoke; resume pointer STILL → C3):**

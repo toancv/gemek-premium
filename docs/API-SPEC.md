@@ -2038,9 +2038,21 @@ Response `200 OK` — full announcement detail including full `content` text **p
   "media": [
     { "id": "uuid", "kind": "COVER",  "url": "https://…presigned…" },
     { "id": "uuid", "kind": "INLINE", "url": "https://…presigned…" }
+  ],
+  "attachments": [
+    { "id": "uuid", "displayFilename": "Biên bản họp.pdf", "sizeBytes": 184320, "downloadUrl": "https://…presigned-forced-download…" }
   ]
 }
 ```
+
+**Attachment manifest (C3):** `attachments` lists the announcement's downloadable DOCUMENT attachments
+(pdf/docx/xlsx/pptx/txt) — DISTINCT from `media` images. Each `downloadUrl` is a **FRESH presigned GET URL
+minted per request** (10-min expiry) that **forces a download**: the URL carries a signed
+`response-content-disposition=attachment; filename="<sanitized>"` and `response-content-type=application/octet-stream`,
+so the browser downloads (never renders) it regardless of the stored type. Gated by the SAME C2.1 scope rule
+as `media` (ADMIN/BOARD always; RESIDENT iff published AND in-scope) — out-of-scope → **empty `attachments`**,
+never a leaked URL. `attachments` is **detail-only** (empty on list/create/update/publish) and is rendered as
+a plain download list, never inline.
 
 **Media manifest (C2.3a):** `media` lists the announcement's media (cover + inline). Each `url` is a
 **FRESH presigned GET URL minted per request** (10-min expiry) through the C2.1 scope gate — so the
@@ -2179,7 +2191,70 @@ Response `204 No Content`
 Errors: `409 ANNOUNCEMENT_NOT_DRAFT` (published), `404 NOT_FOUND` (no such media in this announcement), `403 FORBIDDEN` (not ADMIN)
 
 > **Draft delete cascade:** `DELETE /api/announcements/{id}` on a draft also removes all its media rows
-> (FK `ON DELETE CASCADE`) and schedules every object for after-commit cleanup.
+> AND attachment rows (FK `ON DELETE CASCADE`) and schedules every object (images + documents) for
+> after-commit cleanup.
+
+---
+
+### POST /api/announcements/{id}/attachments
+
+**Auth:** ADMIN
+**Description:** Upload ONE downloadable DOCUMENT attachment to a **draft** announcement (C3) — distinct from
+images. Published announcements are immutable (reject). `multipart/form-data`.
+
+Request parts:
+- `file` (required) — the document. Real content type is validated by **Tika on the bytes** (magic number),
+  NOT the filename extension or client `Content-Type`. Allowed: **pdf / docx / xlsx / pptx / txt** only.
+  OOXML (docx/xlsx/pptx) is a ZIP container disambiguated by its internal part layout. Renderable/executable
+  types (**html, svg**) are rejected. *Note: csv content is byte-identical to txt and is detected/stored as
+  `text/plain` (forced-download neutralizes the browser risk) — see DECISIONS C3.*
+
+Server-enforced caps (per announcement, in the upload transaction, INDEPENDENT of the image caps):
+**≤10 MB per file**, **≤5 attachments**, **≤50 MB total**. The stored object key follows the C2.1 convention
+`announcements/{announcementId}/{uuid}` so the existing presign scope gate parses the announcement id.
+
+Response `201 Created`:
+```json
+{
+  "id": "uuid",
+  "displayFilename": "Biên bản họp.pdf",
+  "contentType": "application/pdf",
+  "sizeBytes": 184320,
+  "createdAt": "2026-06-26T10:00:00Z"
+}
+```
+> No URL is returned here — the short-lived forced-download URL is minted on the detail read
+> (`GET /api/announcements/{id}` → `attachments[].downloadUrl`).
+
+Errors:
+- `400 ANNOUNCEMENT_ATTACHMENT_TYPE_NOT_ALLOWED` — detected type is not pdf/docx/xlsx/pptx/txt (VN: *"Chỉ chấp nhận tệp PDF, DOCX, XLSX, PPTX hoặc TXT."*)
+- `400 ANNOUNCEMENT_ATTACHMENT_TOO_LARGE` — single file > 10 MB (VN: *"Tệp đính kèm vượt quá 10MB."*)
+- `400 ANNOUNCEMENT_ATTACHMENT_LIMIT_EXCEEDED` — would exceed 5 files (VN: *"Tối đa 5 tệp đính kèm mỗi thông báo."*) or 50 MB total (VN: *"Tổng dung lượng tệp đính kèm của thông báo vượt quá 50MB."*)
+- `409 ANNOUNCEMENT_NOT_DRAFT` — announcement is published (VN: *"Không thể chỉnh sửa tệp đính kèm của thông báo đã xuất bản."*)
+- `403 FORBIDDEN` — caller is not ADMIN
+- `404 NOT_FOUND` — announcement does not exist
+
+---
+
+### GET /api/announcements/{id}/attachments
+
+**Auth:** ADMIN, BOARD_MEMBER
+**Description:** List an announcement's attachment metadata (authoring view), oldest first. Resident download
+happens via the detail path (`attachments[].downloadUrl`) gated by the C2.1 presign check — not this endpoint.
+
+Response `200 OK`: array of the attachment object shown above (no download URLs).
+
+---
+
+### DELETE /api/announcements/{id}/attachments/{attachmentId}
+
+**Auth:** ADMIN
+**Description:** Delete one attachment row from a **draft** announcement. The DB row is removed
+in-transaction; the MinIO object is deleted **after commit** (best-effort). The `attachmentId` must belong to
+`{id}` (dual-key — no cross-announcement delete).
+
+Response `204 No Content`
+Errors: `409 ANNOUNCEMENT_NOT_DRAFT` (published), `404 NOT_FOUND` (no such attachment in this announcement), `403 FORBIDDEN` (not ADMIN)
 
 ---
 

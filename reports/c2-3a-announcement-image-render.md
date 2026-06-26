@@ -192,3 +192,13 @@ entries (COVER + INLINE). No success was fabricated.
 > `content` (Vietnamese diacritics, `…`) returned `500 "Invalid UTF-8 middle byte"` (Jackson) in this
 > environment — possibly a client-encoding artifact under Git-Bash curl rather than a backend defect.
 > The seed body is ASCII, so the helper is unaffected. Flagged for a separate look, not fixed here.
+
+---
+
+**Post-authoring note (2026-06-26):** adjacent inline images appeared to "not both render". Root cause was
+NOT this renderer — it correctly renders well-formed adjacent `announcement-media:{id}` placeholders as two
+`<img>` (regression test added in `MarkdownContent.test.tsx`). The defect was upstream: the admin composer
+left the inserted placeholder selected, so a 2nd consecutive insert wrapped the first's alt into nested
+markdown `![![…](b)](a)` (CommonMark flattens the inner image into the outer alt → one image). Fixed in the
+composer (`insertImage` collapses the caret after the snippet; commit `886365e`). **XSS bounds unchanged** —
+no scheme/allow-list/sanitization change here.

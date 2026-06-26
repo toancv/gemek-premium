@@ -5,6 +5,30 @@ Format: Date | Decision | Reasoning | Alternatives
 
 ---
 
+## 2026-06-26 | Post-C2.3b — image insert COLLAPSES the caret (no nested-image markdown); shared renderer was not the bug
+
+**Decision (locked rule).** Announcement image insertion (`AnnouncementComposer.insertImage` → shared
+`spliceSelection(..., collapseAfter=true)`) MUST collapse the caret to AFTER the inserted snippet, NOT leave
+the placeholder selected. **Rationale:** leaving the alt selected (the toolbar `insertMarkdown` behaviour)
+caused a 2nd consecutive "Chèn vào bài" to wrap the first placeholder's still-selected alt → nested markdown
+`![![…](b)](a)`; CommonMark flattens the inner image into the outer alt, so only one image rendered. **The
+shared `@gemek/ui` `MarkdownContent` renderer was diagnosed and found CORRECT** — well-formed adjacent
+placeholders always render two `<img>` (regression test locks this); the fix therefore stayed in the admin
+composer and the renderer/XSS posture (scheme gate, allow-list, no rehype-raw) was NOT touched, so resident
+detail is unaffected. Toolbar formatting keeps select-after (type-to-replace) via the same primitive with
+`collapseAfter=false`. A real text selection still becomes the image alt (no data loss).
+
+**Accepted trade-off.** Image insert with NO selection ships the generic alt "mô tả ảnh" (the auto-select of
+that generic alt for type-to-replace was dropped — re-selecting it would reopen the nesting class). A user who
+selects descriptive text first still gets a meaningful alt. The composer insert has no unit test (admin has no
+vitest harness — out of scope to stand up); the renderer-contract regression test + CTO smoke cover it.
+
+**Also (FE-only, same batch):** preview renders the title (`<h1>`) below the cover banner (mirrors resident
+`AnnouncementDetailPage`); Loại/Phạm vi/Tòa/Tầng selects made compact. No BE/contract change; API-SPEC unchanged.
+Commits: `886365e` fix · `5398a93` test(ui) · `81ac27c` feat · `6e41cd4` style.
+
+---
+
 ## 2026-06-26 | C2.3b CLOSE-OUT — cover-UX final shape (two upload buttons) + delete-strips-placeholder + layout + cover banner (C2.3b CLOSED)
 
 **Decision (CTO rulings, locked). FE-only, NO backend/contract change** (`docs/API-SPEC.md` unchanged). Four

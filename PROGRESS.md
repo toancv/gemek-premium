@@ -5,6 +5,16 @@
 
 ## ▶ CURRENT STATE SNAPSHOT (2026-06-26)
 
+**C3 P2.5 follow-up (FE admin) — form-invalid-on-lazy-upload now TOASTS (committed `18be536`), awaiting CTO :80 smoke. Resume STILL → P3 (resident download list).**
+When a lazy upload on `/new` is blocked by an invalid create form, `ensureDraftThenUpload` now fires an admin
+top-right `toast.error` ("Vui lòng nhập tiêu đề và nội dung… trước khi thêm ảnh hoặc tệp.") — the managers sit at
+the page top but the inline `form.formError` renders at the bottom, so the toast says WHY while inline still marks
+WHICH field (inline KEPT, not removed). One spot → covers BOTH managers (both route through the orchestrator). No
+draft / no upload (unchanged). Other client-side pick rejections (oversize >10MB, total >50MB, count ≥5) stay
+INLINE — they render right at the pick button (visible), so no toast (no toast spam). admin tsc+vite build green;
+`@gemek/ui` untouched (used existing `toast`); no admin vitest harness. `/code-review` (high, react-reviewer):
+APPROVE, 0 findings. API-SPEC unchanged. Below = the P2.5 lazy-save build.
+
 **C3 P2.5 (FE admin) — LAZY-SAVE on /announcements/new DONE (committed `843010c`), awaiting CTO :80 DB-level smoke. NEXT = P3 (resident download list).**
 Implements CTO ruling A (DECISIONS 2026-06-26 "C3 P2.5"). Both the image media manager AND the attachments
 manager now render on `/new` (same as `/:id/edit`) — upload controls + constraints + empty state. The create

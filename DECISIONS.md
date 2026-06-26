@@ -5,6 +5,20 @@ Format: Date | Decision | Reasoning | Alternatives
 
 ---
 
+## 2026-06-26 | Rule — a client-side block that renders OFF-SCREEN from its trigger gets an admin toast (+ keep inline)
+
+**Decision (CTO ruling, locked; FE pattern).** When a client-side rejection's message renders far from the
+control the user just acted on, ALSO surface it via the locked admin top-right `toast.error` (`@gemek/ui`
+`{ Toaster, toast }`, `<Toaster position="top-right" />` in `App.tsx`) — the toast says WHY, while the existing
+inline error stays and marks WHICH field (toast is IN ADDITION, never a replacement). When the message already
+renders at the point of action (visible to the user), keep it inline ONLY — do NOT toast (avoid toast spam).
+**First application (C3 P2.5):** a lazy upload on `/announcements/new` blocked by an invalid create form now
+toasts (the managers are at the page top; `form.formError` renders at the bottom). The other /new pick
+rejections — oversize >10MB, total >50MB, count ≥5 — render right at the pick button, so they stay inline (no
+toast). No behaviour/contract change; no draft, no upload on the blocked path (unchanged).
+
+---
+
 ## 2026-06-26 | C3 P2.5 (FE admin) — lazy-save on /new (first upload auto-creates draft) — implements CTO ruling A
 
 **Decision (CTO ruling A, locked; FE-only, NO backend/contract change).** On `/announcements/new` BOTH the

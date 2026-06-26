@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useAnnouncement, useUpdateAnnouncement, usePublishAnnouncement } from '../api/hooks';
-import { getVnErrorMessage } from '@gemek/ui';
+import { getVnErrorMessage, ANNOUNCEMENT_MEDIA_SCHEME } from '@gemek/ui';
 import { useAnnouncementForm, AnnouncementComposeFields } from '../components/AnnouncementComposer';
 import { AnnouncementMediaManager, type AnnouncementMediaItem } from '../components/AnnouncementMediaManager';
 
@@ -91,9 +91,25 @@ function AnnouncementEditForm({ announcement }: { announcement: any }) {
   );
 
   // Insert-image: reuse the composer's cursor-aware insertMarkdown (ref+RAF) to drop the internal
-  // `announcement-media:{id}` placeholder at the cursor — no duplicated textarea/RAF logic.
+  // `announcement-media:{id}` placeholder at the cursor — no duplicated textarea/RAF logic. Uses the
+  // shared ANNOUNCEMENT_MEDIA_SCHEME constant so the insert + strip formats can't drift apart.
   const insertImage = (mediaId: string) =>
-    form.insertMarkdown('![', `](announcement-media:${mediaId})`, 'mô tả ảnh');
+    form.insertMarkdown('![', `](${ANNOUNCEMENT_MEDIA_SCHEME}${mediaId})`, 'mô tả ảnh');
+
+  // On a successful media delete, strip every inline placeholder for that id from the editor body
+  // (keyed by id so edited alt text + repeated insertions are all removed). The change is UNSAVED —
+  // the admin still clicks "Lưu" to persist, same as any body edit. Cover ids never appear in the
+  // body so this is a no-op for cover deletes.
+  const stripPlaceholder = (mediaId: string) => {
+    const esc = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const scheme = esc(ANNOUNCEMENT_MEDIA_SCHEME);
+    const id = esc(mediaId);
+    // Tempered token for the alt text: consume any non-newline char that does NOT begin the closing
+    // `](scheme` — so a ']' inside the alt (e.g. `![ảnh [A]](announcement-media:id)`) is matched and
+    // the match never spans into a different placeholder. Anchored on the unique `](scheme:id)` suffix.
+    const re = new RegExp(`!\\[(?:(?!\\]\\(${scheme})[^\\n])*\\]\\(${scheme}${id}\\)`, 'g');
+    form.setContent((c) => c.replace(re, ''));
+  };
 
   const save = async () => {
     if (!form.validate()) return;
@@ -141,7 +157,7 @@ function AnnouncementEditForm({ announcement }: { announcement: any }) {
       {notice && <div className="mb-4 bg-yellow-50 border border-yellow-200 rounded-lg p-4 text-yellow-800">{notice}</div>}
 
       <div className="mb-6">
-        <AnnouncementMediaManager announcementId={announcement.id} media={media} onInsert={insertImage} />
+        <AnnouncementMediaManager announcementId={announcement.id} media={media} onInsert={insertImage} onDeleted={stripPlaceholder} />
       </div>
 
       <AnnouncementComposeFields form={form} mediaManifest={mediaManifest} />

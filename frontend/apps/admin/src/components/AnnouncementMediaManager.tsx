@@ -15,35 +15,50 @@ const ACCEPT = 'image/jpeg,image/png,image/webp';
 
 /**
  * Media manager for the announcement EDIT page (draft only). ONE grid lists every uploaded image
- * (thumbnails from the detail manifest); upload + delete are draft-only (C2.2). Cover = an upload
- * with the "Đặt làm bìa" toggle on (kind=COVER, replaces any existing cover in-tx on the BE).
+ * (thumbnails from the detail manifest); upload + delete are draft-only (C2.2). Cover is chosen at
+ * upload time via TWO separate buttons — "Tải lên ảnh bìa" (kind=COVER) and "Tải lên ảnh bài viết"
+ * (kind=INLINE) — no checkbox. Uploading a 2nd cover replaces the 1st in-tx on the BE (C2.2), so a
+ * cover upload never increases the count when a cover already exists; the inline button is disabled
+ * at the 5-image cap while the cover button stays available to allow that replace.
  *
  * - INLINE item → "Chèn vào bài" (drops `announcement-media:{id}` at the editor cursor via onInsert)
  *   + "Xoá".
  * - COVER item → COVER badge + "Xoá" only (cover renders as a banner, never inline — no insert).
  *
- * Deleting an image does NOT rewrite the body: a placeholder left behind resolves to nothing
- * (C2.3a unknown-id behaviour). After each upload/delete the parent's detail query refetches, so the
- * grid thumbnails and the preview's presigned URLs both refresh.
+ * On a successful delete the parent strips the deleted id's placeholder from the body (onDeleted) so
+ * a dangling insertion doesn't linger. After each upload/delete the parent's detail query refetches,
+ * so the grid thumbnails and the preview's presigned URLs both refresh.
  */
 export function AnnouncementMediaManager({
   announcementId,
   media,
   onInsert,
+  onDeleted,
 }: {
   announcementId: string;
   media: AnnouncementMediaItem[];
   onInsert: (mediaId: string) => void;
+  onDeleted: (mediaId: string) => void;
 }) {
   const upload = useUploadAnnouncementMedia();
   const remove = useDeleteAnnouncementMedia();
   const fileRef = useRef<HTMLInputElement>(null);
-  const [asCover, setAsCover] = useState(false);
+  // The kind the pending file-picker selection will be uploaded as, set by whichever button opened it.
+  const kindRef = useRef<'COVER' | 'INLINE'>('INLINE');
   const [error, setError] = useState('');
   const [pendingDelete, setPendingDelete] = useState<AnnouncementMediaItem | null>(null);
 
   const atLimit = media.length >= MAX_IMAGES;
+  // A cover already exists → a cover upload REPLACES it in-tx (net count unchanged), so it stays
+  // allowed at the cap; a cover upload with no existing cover is net-new and must respect the cap.
+  const hasCover = media.some((m) => m.kind === 'COVER');
   const busy = upload.isPending || remove.isPending;
+
+  // Open the OS file picker, remembering which kind the chosen file should be uploaded as.
+  const pick = (kind: 'COVER' | 'INLINE') => {
+    kindRef.current = kind;
+    fileRef.current?.click();
+  };
 
   // Maps a request failure to a VN message. A servlet per-file size overflow returns HTTP 413 with NO
   // `error` code (it never reaches the app handler), so getVnErrorMessage would collapse it to the
@@ -61,10 +76,7 @@ export function AnnouncementMediaManager({
     if (!file) return;
     setError('');
     try {
-      await upload.mutateAsync({ id: announcementId, file, kind: asCover ? 'COVER' : 'INLINE' });
-      // Cover is a one-shot intent: clear the toggle so the NEXT upload defaults to INLINE rather than
-      // silently replacing the just-set cover (kind=COVER replaces in-tx on the BE).
-      setAsCover(false);
+      await upload.mutateAsync({ id: announcementId, file, kind: kindRef.current });
     } catch (err: any) {
       setError(errorText(err));
     }
@@ -77,6 +89,9 @@ export function AnnouncementMediaManager({
     setError('');
     try {
       await remove.mutateAsync({ id: announcementId, mediaId: item.id });
+      // Strip the deleted image's placeholder from the body so a dangling insertion doesn't linger
+      // (a COVER id never appears in the body → no-op for cover deletes).
+      onDeleted(item.id);
     } catch (err: any) {
       setError(errorText(err));
     }
@@ -91,22 +106,26 @@ export function AnnouncementMediaManager({
 
       <p className="text-xs text-gray-500">Tối đa 5 ảnh, tổng dung lượng tối đa 50MB. Định dạng: JPG, PNG, WebP.</p>
 
-      {/* ── Upload control ─────────────────────────────────────────── */}
+      {/* ── Upload control: two kind-specific buttons (cover stays enabled at cap to allow replace) ── */}
       <div className="flex flex-wrap items-center gap-3">
-        <input ref={fileRef} type="file" accept={ACCEPT} onChange={onPick} disabled={atLimit || busy} className="hidden" />
+        <input ref={fileRef} type="file" accept={ACCEPT} onChange={onPick} className="hidden" />
         <button
           type="button"
-          onClick={() => fileRef.current?.click()}
+          onClick={() => pick('COVER')}
+          disabled={busy || (atLimit && !hasCover)}
+          className="px-3 py-2 text-sm border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50"
+        >
+          {upload.isPending && kindRef.current === 'COVER' ? 'Đang tải lên...' : 'Tải lên ảnh bìa'}
+        </button>
+        <button
+          type="button"
+          onClick={() => pick('INLINE')}
           disabled={atLimit || busy}
           className="px-3 py-2 text-sm border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50"
         >
-          {upload.isPending ? 'Đang tải lên...' : 'Tải ảnh lên'}
+          {upload.isPending && kindRef.current === 'INLINE' ? 'Đang tải lên...' : 'Tải lên ảnh bài viết'}
         </button>
-        <label className="inline-flex items-center gap-2 text-sm text-gray-700">
-          <input type="checkbox" checked={asCover} onChange={(e) => setAsCover(e.target.checked)} disabled={busy} className="rounded border-gray-300" />
-          Đặt làm bìa
-        </label>
-        {atLimit && <span className="text-xs text-amber-600">Đã đạt giới hạn 5 ảnh — xoá bớt để tải thêm.</span>}
+        {atLimit && <span className="text-xs text-amber-600">Đã đạt giới hạn 5 ảnh — xoá bớt để thêm ảnh bài viết{hasCover ? ' (ảnh bìa vẫn có thể thay)' : ''}.</span>}
       </div>
 
       {error && <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded">{error}</p>}
@@ -156,8 +175,8 @@ export function AnnouncementMediaManager({
           <div className="relative bg-white rounded-lg shadow-xl w-full max-w-sm p-6">
             <h3 className="text-lg font-semibold mb-2">Xoá ảnh này?</h3>
             <p className="text-sm text-gray-600 mb-6">
-              Ảnh sẽ bị xoá khỏi thông báo. Nếu ảnh đã được chèn vào nội dung, chỗ chèn sẽ không hiển thị gì
-              (bạn có thể tự xoá đoạn chèn trong nội dung).
+              Ảnh sẽ bị xoá khỏi thông báo, và đoạn chèn ảnh này trong nội dung (nếu có) cũng sẽ được gỡ bỏ.
+              Nhớ bấm "Lưu" để lưu lại thay đổi nội dung.
             </p>
             <div className="flex gap-2 justify-end">
               <button type="button" onClick={() => setPendingDelete(null)} className="px-4 py-2 text-sm border border-gray-300 rounded-md hover:bg-gray-50">Huỷ</button>

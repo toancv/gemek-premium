@@ -130,6 +130,12 @@ export function AnnouncementComposeFields({
 }) {
   const { data: blocksData } = useBlocks();
 
+  // Cover entry for the live preview banner (mirrors resident AnnouncementDetailPage): show the COVER
+  // manifest item as a banner above the body. Defense-in-depth http(s) guard before binding to src so a
+  // non-http manifest value can never reach the DOM. No cover → no banner (same as the resident page).
+  const coverEntry = mediaManifest.find((m) => m.kind === 'COVER');
+  const cover = coverEntry && /^https?:\/\//i.test(coverEntry.url) ? coverEntry : undefined;
+
   return (
     <div className="space-y-6">
       {/* ── Title spans the full width above the compose|preview row ── */}
@@ -169,6 +175,9 @@ export function AnnouncementComposeFields({
           <label className="block text-sm font-medium text-gray-700 mb-1">Xem trước</label>
           <div className="mb-1 min-h-[2.25rem]" aria-hidden="true" />
           <div className="border border-gray-200 rounded-md p-4 bg-gray-50 min-h-[28rem]">
+            {cover && (
+              <img src={cover.url} alt={form.title || 'Ảnh bìa'} loading="lazy" className="w-full max-h-64 object-cover rounded-lg mb-3" />
+            )}
             {form.content.trim()
               ? <MarkdownContent content={form.content} className="text-sm text-gray-700" mediaManifest={mediaManifest} />
               : <p className="text-sm text-gray-400 italic">Chưa có nội dung.</p>}

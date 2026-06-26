@@ -5,6 +5,29 @@ Format: Date | Decision | Reasoning | Alternatives
 
 ---
 
+## 2026-06-26 | Go-forward branch workflow + git topology (master is a 3-commit skeleton)
+
+**Finding (see `reports/git-branch-topology.md`).** `origin` = `github.com/toancv/gemek-premium`. `master`
+exists but is a **3-commit skeleton** (agentic-SDLC setup + architecture design + `CLAUDE.md`) with **NO
+application code**; `master` is a linear **ancestor** of `deploy/local`, which is **524 commits ahead** and
+holds the **entire app**. So per-feature PRs onto the current master are not viable (base files absent) — the
+deploy/local→master gap is the whole product and needs a **one-time consolidation/sanitization PR** (CTO),
+not cherry-picks. Phone-search commits are internally clean (no config files) but cannot reach master in
+isolation; they land inside that consolidation.
+
+**Workflow convention (CONFIRMED, go-forward):**
+- Each new feature / large backlog item → checkout its **OWN branch** from `<base — CTO to confirm; likely
+  `deploy/local` until master is consolidated>` BEFORE coding; work + smoke + `/code-review` + close on the branch.
+- On close → **push the FEATURE BRANCH** to `origin` and **STOP**; the **CTO opens the PR to master**. The agent
+  **NEVER** merges to or pushes `master` (PR-protected). Even `deploy/local` pushes are the CTO's call.
+- **Phone-search is the last exception** (done on `deploy/local`, no branch) — reaches master via a CTO-opened PR
+  per the topology report.
+- `deploy/local` carries **local-only config that must NOT reach master unparameterized**: `docker-compose.yml`/
+  `.dev.yml`, `application-dev.yml`, `nginx/nginx.conf` (localhost/:8090), `scripts/seed-demo-local.sql` + demo
+  seed. `.env.example` is fine; real `.env` stays gitignored.
+
+---
+
 ## 2026-06-26 | Phone added to list `search` filter (residents/users/contractors) — substring, no normalization
 
 **Decision (CTO ruling, locked; BE-only).** The `?search=` param of the three ADMIN list endpoints now ALSO

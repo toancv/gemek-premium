@@ -5,7 +5,9 @@
 
 ## ▶ CURRENT STATE SNAPSHOT (2026-06-26)
 
-**PHONE-SEARCH — FE search-box placeholders updated (committed `f54c26f`) → phone-search FULLY CLOSED (BE + FE), pending CTO PR per the upcoming topology report. Resume → amenity attribution [deferred].**
+**GIT TOPOLOGY — branch workflow adopted (report `reports/git-branch-topology.md`, DECISIONS 2026-06-26).** `master` is a 3-commit skeleton (NO app code); `deploy/local` is the real trunk, **524 commits ahead** (linear ancestor). Go-forward: each feature on its OWN branch → push branch → CTO opens PR (agent never pushes/merges master). Phone-search pending CTO consolidation PR (cannot PR standalone — master lacks the base). **Resume → amenity attribution [deferred] (on its own branch, base per CTO).**
+
+**PHONE-SEARCH — FE search-box placeholders updated (committed `f54c26f`) → phone-search FULLY CLOSED (BE + FE), pending CTO PR per the topology report. Resume → amenity attribution [deferred].**
 Admin search placeholders now enumerate phone (text-only, no logic): residents `residents.searchPlaceholder` +
 contractors `contractors.searchPlaceholder` (admin i18n vi.ts) + users (hardcoded UsersPage.tsx:214). admin
 tsc --noEmit + vite build green; no test (text only). API-SPEC/DECISIONS unchanged (text-only). Below = the BE half.

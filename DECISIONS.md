@@ -5,6 +5,63 @@ Format: Date | Decision | Reasoning | Alternatives
 
 ---
 
+## 2026-06-26 | C2.3b P2 — announcement media manager (FE-only) + P2/P3 boundary shift (inline preview folded into P2)
+
+**Decision (CTO rulings, locked).** Media manager built on `/announcements/:id/edit` for a DRAFT only
+(upload/delete are draft-only on the BE). NOT on `/new` (save-first — no id yet) and NOT for a published
+announcement (P1's read-only block stays). Three locked sub-rulings implemented as specified:
+1. **Unified manager — ONE grid** lists every uploaded image, thumbnails from the **detail manifest**
+   (`GET /announcements/{id}` → `media[]`, ADMIN-on-draft is non-empty/presigned). INLINE item = "Chèn vào
+   bài" + "Xoá"; COVER item = a BÌA badge + "Xoá" **only — no insert** (cover renders as a banner, never in
+   the body). No separate "list" call — the manifest already carries the presigned thumbnail URLs.
+2. **Cover = kind-at-upload toggle** ("Đặt làm bìa": off→INLINE, on→COVER). Uploading a COVER replaces the
+   old cover (C2.2 in-tx). The toggle is reset to off after each successful upload so the *next* upload
+   doesn't silently re-replace the cover (a /code-review CONFIRMED bug, fixed pre-commit).
+3. **Insert reuses `insertMarkdown`** (the preserved ref+RAF from P1's composer) to drop
+   `![mô tả ảnh](announcement-media:{id})` at the cursor from the manifest item id — no duplicated textarea
+   or RAF logic; the composer exposes a `markFocused` flag so an insert before the editor is focused appends
+   at the end instead of prepending at position 0.
+
+**P2/P3 BOUNDARY ADJUSTED (the one deviation from the P1 plan).** The original split put inline-preview
+wiring in P3. It is **folded into P2** because the manifest is already fetched for the grid thumbnails:
+the preview pane now receives `mediaManifest` (BE `id`→renderer `mediaId`, the SAME map the resident
+`AnnouncementDetailPage.tsx:55` does), so an inserted INLINE placeholder resolves live after upload/insert.
+**P3 is now ONLY the COVER-as-banner render in the admin preview + polish** (the cover entry stays a banner,
+never inline — same C2.3a convention as the resident page). Both mutations refetch `['announcements',id]`
+(`refetchType:'all'`) so the grid AND the preview's fresh presigned URLs refresh after every upload/delete.
+
+**Scope: FE-only, NO backend/contract change.** Wired the existing C2.2 endpoints (`POST/GET/DELETE
+/announcements/{id}/media`); only net-new BE-adjacent change is **3 VN error strings** added to
+`getVnErrorMessage` (`ANNOUNCEMENT_MEDIA_TYPE_NOT_ALLOWED`, `ANNOUNCEMENT_MEDIA_LIMIT_EXCEEDED`,
+`ANNOUNCEMENT_NOT_DRAFT`) — these codes already existed on the BE but had no VN mapping. `docs/API-SPEC.md`
+**unchanged.** No body auto-rewrite on delete (a stranded placeholder resolves to nothing — C2.3a unknown-id
+behaviour). Notify flags stay hardcoded (`sendPush:true/Email:false/Sms:false`).
+
+**Verification + /code-review (high, workflow-backed).** admin `tsc --noEmit` + `vite build` green; `@gemek/ui`
+vitest 32/32 (+3 for the new codes + guard-array extension). Admin has **no vitest harness** (per P1) → no
+admin unit tests. The review returned **0 Must-fix**; 5 FE-fixable findings applied pre-commit: (a) cover-toggle
+reset [CONFIRMED]; (b) insert-at-0 → append-when-unfocused [CONFIRMED]; (c) `mediaManifest` `useMemo` so a
+fresh array each keystroke no longer defeats `MarkdownContent`'s memo [CONFIRMED perf]; (d) HTTP 413
+(servlet per-file size, no `error` code) → a specific "Ảnh quá lớn (tối đa 10MB)" message instead of the
+generic fallback [CONFIRMED]; (e) extend the exhaustive VN-guard test array with the 3 new codes.
+
+**DEBT logged for CTO (deferred to P3 polish — none blocking).** (1) **No optimistic insert** — a freshly
+uploaded image only appears in the grid after the detail refetch completes (brief gap on a slow link); this is
+inherent to the CTO-specified refetch-after-upload path. (2) **`atLimit = media.length >= 5`** counts COVER+INLINE
+together — this MATCHES the BE total cap (`MAX_MEDIA_PER_ANNOUNCEMENT=5` counts all kinds), so it is correct, not
+a bug (a finder flagged it on a false premise). (3) **`AnnouncementMediaItem` vs `AnnouncementMediaManifestEntry`**
+differ only by `id` vs `mediaId` — minor DRY; a shared `toMediaManifest` helper is P3 polish. (4) The delete-confirm
+dialog **hand-rolls modal markup** instead of `@gemek/ui` `Modal` (no body-scroll-lock) — an established admin
+pattern (`AnnouncementsPage.tsx` does the same), not new drift; reuse `Modal` in P3.
+
+**Alternatives rejected.** (a) Per-item "set as cover" toggle on an uploaded image — rejected in favour of the
+locked kind-at-upload toggle (simpler, matches C2.2 cover-replace). (b) Auto-insert the image on upload success —
+rejected; the CTO ruling is an explicit per-item "Chèn vào bài", and auto-insert + the refetch path would race
+(the placeholder would reference an id not yet in the manifest). (c) Keeping inline-preview in P3 — rejected
+because the manifest is already in hand for thumbnails, so resolving inline placeholders is free in P2.
+
+---
+
 ## 2026-06-25 | C2.3b P1.5 — announcement UPDATE derives target block/floor from scope (close scope-downgrade desync)
 
 **Decision (CTO ruling, locked).** `AnnouncementServiceImpl.updateAnnouncement` now NORMALIZES the target

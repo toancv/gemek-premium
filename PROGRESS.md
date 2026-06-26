@@ -5,7 +5,19 @@
 
 ## ▶ CURRENT STATE SNAPSHOT (2026-06-26)
 
-**C3 P1 (BE) — announcement file ATTACHMENTS DONE, awaiting CTO DB/HTTP smoke. NEXT = P2 (FE admin attachments manager).**
+**C3 P2 (FE admin) — attachments manager on the EDIT page DONE, awaiting CTO :80 smoke. NEXT = P2.5 (lazy-save uploads on /new for images+attachments), then P3 (resident download list).**
+`AnnouncementAttachmentsManager` (new) mounts as a sibling of the image manager on `/announcements/:id/edit`
+(DRAFT-only): ONE "Tải lên tệp đính kèm" button (accept `.pdf,.docx,.xlsx,.pptx,.txt`; BE Tika authoritative),
+a flat list (file icon + displayFilename + size + "Tải về" anchor to the forced-download `downloadUrl` + "Xoá"
+with VN confirm), counter `x/5 tệp`, disabled at 5. Hooks `useUploadAnnouncementAttachment` (FormData `file`,
+no kind) / `useDeleteAnnouncementAttachment` invalidate `['announcements',id]`; LIST reuses the
+`useAnnouncement` detail `attachments[]`. Added 3 VN error strings to `@gemek/ui` errorMessages
+(`ANNOUNCEMENT_ATTACHMENT_{TYPE_NOT_ALLOWED,TOO_LARGE,LIMIT_EXCEEDED}`, +3 vitest). Image media manager /
+body / preview / scope UNTOUCHED; caps independent; no body-placeholder. admin tsc+vite build green; `@gemek/ui`
+vitest 33; `/code-review` high run. **API-SPEC unchanged** (C3 P1 documented). create-page `/new` NOT wired =
+P2.5 (lazy-save). Component is id-driven so P2.5 mounts it post-save with no rework. Below = C3 P1 BE history.
+
+**C3 P1 (BE) — announcement file ATTACHMENTS DONE (committed `a439387`/`075a9df`/`e1098d5`/`01bb801`), awaiting CTO DB/HTTP smoke.**
 Separate table `announcement_attachment` (migration `V22`, FK CASCADE, C2.1 key convention, NO kind) +
 endpoints `POST/GET/DELETE /api/announcements/{id}/attachments` (ADMIN, draft-only; GET ADMIN/BOARD) + detail
 `attachments[] = {id, displayFilename, sizeBytes, downloadUrl}` gated by the SAME C2.1 `assertMediaPresignAccess`

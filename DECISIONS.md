@@ -5,6 +5,55 @@ Format: Date | Decision | Reasoning | Alternatives
 
 ---
 
+## 2026-06-26 | C3 P2 (FE admin) — attachments manager on the EDIT page only (create-page lazy-save = P2.5)
+
+**Decision (CTO rulings, locked; FE-only, NO backend/contract change).** A new
+`AnnouncementAttachmentsManager` is mounted as a sibling of `AnnouncementMediaManager` on
+`/announcements/:id/edit` (`AnnouncementEditPage.tsx`), DRAFT-only (same guard as the image manager —
+the page blocks editing a published announcement entirely). It is a **flat downloadable list**, NOT a
+thumbnail grid and NOT body-placeholder content: each row = file icon + `displayFilename` +
+human-readable size + "Tải về" (anchor to the detail manifest's forced-download `downloadUrl`) + "Xoá"
+(VN confirm). ONE "Tải lên tệp đính kèm" button (no cover/inline kind); accept hint
+`.pdf,.docx,.xlsx,.pptx,.txt` (the BE Tika magic-byte check is authoritative). Disabled at the 5-file cap.
+
+**Placement = EDIT only this phase.** The **create page (`/new`) is NOT wired** — attachments (like media)
+need a draft id, and `/new` is lazy-save (no id until first save). Wiring uploads on `/new` (create the
+draft on first upload, then attach) is **P2.5**, deferred per CTO. The component is **id-driven** (takes
+`announcementId` + `attachments[]`) so P2.5 mounts it post-save with no rework.
+
+**Reuse + independence.** New hooks `useUploadAnnouncementAttachment` (FormData `file`, no kind) /
+`useDeleteAnnouncementAttachment`, both invalidating `['announcements', id]` (`refetchType:'all'`) so the
+list + presigned URLs refresh — same pattern as the media hooks. The LIST comes from the existing
+`useAnnouncement` detail query's `attachments[]` (no new list call). Error mapping reuses the media
+manager's HTTP-413 special-case + `getVnErrorMessage`. Added the 3 missing VN strings
+(`ANNOUNCEMENT_ATTACHMENT_{TYPE_NOT_ALLOWED,TOO_LARGE,LIMIT_EXCEEDED}`) to `@gemek/ui` `errorMessages.ts`
+(+3 vitest assertions + exhaustive-guard array). The image media manager, body editor, preview, and scope
+logic are **UNTOUCHED**; attachment caps/counter are INDEPENDENT of the image caps. **No body placeholder
+strip** on delete (attachments are never inline). Notify flags unchanged. **API-SPEC unchanged** (C3 P1
+already documented the endpoints + `attachments[]`).
+
+**Verification.** admin `tsc --noEmit` clean; admin `vite build` green (765 modules; a transient Windows
+esbuild temp-file lock on the first two runs, passed on retry — not a code error); `@gemek/ui` vitest
+**33 passed** (errorMessages). Admin has **no vitest harness** → no admin unit test (renderer/contract
+unaffected). `/code-review` (high) run on the FE diff.
+
+**/code-review (high) — applied + debt.** APPLIED FE-fixable: (2) **download anchor scheme guard** — `href`
+is bound only when `^https?://` matches (mirrors the resident page's defense-in-depth), else an inert
+disabled span — closes a `javascript:`/`data:` click vector if the manifest URL were ever contaminated;
+(3-partial) modal `role="dialog"`/`aria-modal`/`aria-labelledby` + **Escape-to-close**; per-row
+`aria-label` on "Tải về"/"Xoá"; hidden file input `aria-hidden`+`tabIndex=-1` + upload button `aria-label`.
+**DEBT (logged, not blocking):** (a) full modal **focus-trap** — the new dialog AND the existing
+`AnnouncementMediaManager`/`AnnouncementsPage` hand-roll modals without focus management; the right fix is
+reusing `@gemek/ui` `Modal` across all three (already-logged C2.3b P2 debt), NOT diverging one component;
+(b) **no ESLint** in the frontend workspace (react-hooks/jsx-a11y never run) — pre-existing project-wide gap,
+separate chore. Both deferred to avoid widening this tight FE phase.
+
+**Alternatives rejected.** (a) Wire `/new` create-page uploads now — deferred to P2.5 (lazy-save complexity;
+out of this phase's CTO scope). (b) Thumbnail grid like images — rejected; documents render as a labeled
+download list. (c) Strip a body placeholder on delete — N/A (attachments have no inline placeholder).
+
+---
+
 ## 2026-06-26 | C3 P1 (BE) — announcement file attachments: separate table + forced-download (CTO rulings, locked)
 
 **Decision (CTO rulings, locked; BE-only this phase).** Downloadable DOCUMENT attachments on announcements,

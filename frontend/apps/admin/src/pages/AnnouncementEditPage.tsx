@@ -90,11 +90,13 @@ function AnnouncementEditForm({ announcement }: { announcement: any }) {
     [media],
   );
 
-  // Insert-image: reuse the composer's cursor-aware insertMarkdown (ref+RAF) to drop the internal
-  // `announcement-media:{id}` placeholder at the cursor — no duplicated textarea/RAF logic. Uses the
-  // shared ANNOUNCEMENT_MEDIA_SCHEME constant so the insert + strip formats can't drift apart.
+  // Insert-image: drop the internal `announcement-media:{id}` placeholder at the cursor via the
+  // composer's insertImage (collapses the caret AFTER the snippet) — NOT insertMarkdown, whose
+  // leave-selected behaviour would make a second consecutive insert wrap the first placeholder's alt
+  // into nested markdown (only one image would then render). A current text selection becomes the alt
+  // (no data loss); the shared ANNOUNCEMENT_MEDIA_SCHEME keeps the insert + strip formats aligned.
   const insertImage = (mediaId: string) =>
-    form.insertMarkdown('![', `](${ANNOUNCEMENT_MEDIA_SCHEME}${mediaId})`, 'mô tả ảnh');
+    form.insertImage('![', `](${ANNOUNCEMENT_MEDIA_SCHEME}${mediaId})`, 'mô tả ảnh');
 
   // On a successful media delete, strip every inline placeholder for that id from the editor body
   // (keyed by id so edited alt text + repeated insertions are all removed). The change is UNSAVED —

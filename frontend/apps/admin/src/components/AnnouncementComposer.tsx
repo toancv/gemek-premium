@@ -46,24 +46,45 @@ export function useAnnouncementForm(initial?: Partial<AnnouncementFormValue>) {
   const focusedRef = useRef(false);
   const markFocused = () => { focusedRef.current = true; };
 
-  // Wraps the current selection (or inserts a placeholder) with Markdown syntax, keeping
-  // the textarea controlled and restoring focus/selection after the state update. This exact
-  // ref + requestAnimationFrame mechanism is what P2's insert-image reuses — do not regress it.
-  const insertMarkdown = (before: string, after = '', placeholder = '') => {
+  // Single splice primitive shared by the toolbar and the image insert: wraps the current selection
+  // (or the placeholder when nothing is selected) as `before+selected+after`, keeps the textarea
+  // controlled, and restores focus + selection via ref + requestAnimationFrame. `collapseAfter`
+  // chooses the post-insert caret: false = re-select the inner text (toolbar — type-to-replace);
+  // true = collapse the caret AFTER the whole snippet (image insert — see insertImage rationale).
+  const spliceSelection = (before: string, after: string, placeholder: string, collapseAfter: boolean) => {
     const ta = textareaRef.current;
     // No live selection to anchor to (ref missing, or never focused) → append at the end.
     if (!ta || !focusedRef.current) { setContent((c) => c + before + placeholder + after); return; }
     const start = ta.selectionStart;
     const end = ta.selectionEnd;
     const selected = content.slice(start, end) || placeholder;
-    const next = content.slice(0, start) + before + selected + after + content.slice(end);
+    const inserted = before + selected + after;
+    const next = content.slice(0, start) + inserted + content.slice(end);
     setContent(next);
     requestAnimationFrame(() => {
       ta.focus();
-      const pos = start + before.length;
-      ta.setSelectionRange(pos, pos + selected.length);
+      if (collapseAfter) {
+        const pos = start + inserted.length;
+        ta.setSelectionRange(pos, pos);
+      } else {
+        const pos = start + before.length;
+        ta.setSelectionRange(pos, pos + selected.length);
+      }
     });
   };
+
+  // Toolbar formatting: wrap the selection and KEEP the inner text selected so the author can type
+  // over the placeholder. Used for **bold**, headings, links, etc.
+  const insertMarkdown = (before: string, after = '', placeholder = '') =>
+    spliceSelection(before, after, placeholder, false);
+
+  // Image insert (media manager "Chèn vào bài"): same wrap (a current selection becomes the alt — no
+  // data loss) but COLLAPSE the caret AFTER the snippet. Leaving the alt selected (insertMarkdown's
+  // behaviour) made a second consecutive image insert WRAP the first placeholder's still-selected alt,
+  // producing nested markdown `![![…](…b)](…a)` whose inner image flattens into the outer alt (only
+  // one renders). Collapsing the caret makes a second insert append a sibling placeholder instead.
+  const insertImage = (before: string, after = '', placeholder = '') =>
+    spliceSelection(before, after, placeholder, true);
 
   // Validates the same three rules the original modal enforced, plus an upper bound on floor:
   // the BE targetFloor column is a Short (max 32767), so an out-of-range value would otherwise
@@ -105,6 +126,7 @@ export function useAnnouncementForm(initial?: Partial<AnnouncementFormValue>) {
     textareaRef,
     markFocused,
     insertMarkdown,
+    insertImage,
     validate,
     toPayload,
   };

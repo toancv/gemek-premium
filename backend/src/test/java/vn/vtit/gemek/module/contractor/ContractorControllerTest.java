@@ -255,4 +255,41 @@ class ContractorControllerTest extends AbstractIntegrationTest {
                 .andExpect(jsonPath("$.id").value(contractorId.toString()))
                 .andExpect(jsonPath("$.active").value(false));
     }
+
+    // =========================================================================
+    // Test 6 — GET /api/contractors?search — substring now ALSO covers phone
+    // (CTO ruling: plain case-insensitive substring on the stored phone, no normalization).
+    // Contractor.phone is NULLABLE → a null-phone row must not break the predicate.
+    // =========================================================================
+
+    @Test
+    @DisplayName("GET /api/contractors?search=<phone-substring> — matches by phone, excludes non-match, null-phone safe")
+    void listContractors_searchByPhone_matchesAndNullSafe() throws Exception {
+        String suffix = "PHSEARCH-" + System.nanoTime();
+        // Distinctive phone fragment '222333' absent from the company name / contact person.
+        CreateContractorRequest withPhone = new CreateContractorRequest(
+                "Phone Match Co " + suffix, "Generic Contact", "0911222333",
+                "pm@" + System.nanoTime() + ".vn", "1 St", ContractorSpecialty.ELECTRICAL,
+                "TAX-A-" + suffix, "notes");
+        // A contractor with NULL phone — must not break the LIKE-over-phone predicate.
+        CreateContractorRequest nullPhone = new CreateContractorRequest(
+                "Null Phone Co " + suffix, "Other Contact", null,
+                "np@" + System.nanoTime() + ".vn", "2 St", ContractorSpecialty.PLUMBING,
+                "TAX-B-" + suffix, "notes");
+        for (CreateContractorRequest req : new CreateContractorRequest[] { withPhone, nullPhone }) {
+            mockMvc.perform(post("/api/contractors")
+                            .header("Authorization", "Bearer " + adminToken)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(req)))
+                    .andExpect(status().isCreated());
+        }
+
+        // Search by the phone substring — returns the phone-bearing contractor (200 also proves null-phone safe).
+        mockMvc.perform(get("/api/contractors")
+                        .param("search", "222333")
+                        .header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[?(@.companyName == 'Phone Match Co " + suffix + "')]").exists())
+                .andExpect(jsonPath("$.data[?(@.companyName == 'Null Phone Co " + suffix + "')]").doesNotExist());
+    }
 }

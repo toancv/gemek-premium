@@ -18,6 +18,8 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import vn.vtit.gemek.module.auth.dto.LoginRequest;
+import vn.vtit.gemek.module.user.dto.CreateUserRequest;
+import vn.vtit.gemek.module.user.entity.UserRole;
 
 import java.util.Map;
 
@@ -102,5 +104,26 @@ class UserControllerTest extends AbstractIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data").isArray())
                 .andExpect(jsonPath("$.total").value(0));
+    }
+
+    @Test
+    @DisplayName("GET /api/users?search=<phone-substring> — matches by phone (not name/email)")
+    void listUsers_searchByPhone_returnsMatch() throws Exception {
+        // A user whose phone contains a distinctive fragment absent from its name/email.
+        CreateUserRequest req = new CreateUserRequest(
+                "phonesearch@gemek.vn", "Phone Search User", "0912340987",
+                UserRole.RESIDENT, "GemekUser@2026");
+        mockMvc.perform(post("/api/users")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(req)))
+                .andExpect(status().isCreated());
+
+        // The phone-substring "340987" appears only in the phone, not the name/email.
+        mockMvc.perform(get("/api/users")
+                        .param("search", "340987")
+                        .header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[?(@.email == 'phonesearch@gemek.vn')]").exists());
     }
 }

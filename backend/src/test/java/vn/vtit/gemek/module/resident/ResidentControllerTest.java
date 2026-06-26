@@ -696,4 +696,34 @@ class ResidentControllerTest extends AbstractIntegrationTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error").value("VALIDATION_ERROR"));
     }
+
+    // -------------------------------------------------------------------------
+    // GET /api/residents?search — substring match now ALSO covers user.phone
+    // (CTO ruling: plain case-insensitive substring on the stored phone, no normalization)
+    // -------------------------------------------------------------------------
+
+    @Test
+    @DisplayName("GET /api/residents?search=<phone-substring> — matches by user.phone (not name), excludes non-match")
+    void listResidents_searchByPhone_matchesAndExcludes() throws Exception {
+        UUID blockId = createBlock("ResBlock-PhoneSearch-" + System.nanoTime());
+        UUID apartmentId = createApartment(blockId, "PS101");
+        String uid = UUID.randomUUID().toString().replace("-", "").substring(0, 8);
+        String phone = phoneFromUid(uid);          // canonical 10-digit 090xxxxxxx
+        String phoneFrag = phone.substring(4);     // distinctive substring, absent from the name
+        createResident(phone, "Phone Search Resident", apartmentId);
+
+        // A phone-substring query returns the resident whose phone contains it (name does not match the digits).
+        mockMvc.perform(get("/api/residents")
+                        .param("search", phoneFrag)
+                        .header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[?(@.user.fullName == 'Phone Search Resident')]").exists());
+
+        // A non-matching query excludes it.
+        mockMvc.perform(get("/api/residents")
+                        .param("search", "zzz-no-match-xyzzy")
+                        .header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[?(@.user.fullName == 'Phone Search Resident')]").doesNotExist());
+    }
 }

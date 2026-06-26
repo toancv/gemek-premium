@@ -29,6 +29,13 @@ export interface AnnouncementItem {
    * these; the COVER entry is shown as a banner.
    */
   media?: { id: string; kind: 'COVER' | 'INLINE'; url: string }[] | null;
+  /**
+   * Detail-only attachment manifest (C3): downloadable DOCUMENT attachments (pdf/docx/xlsx/pptx/txt),
+   * DISTINCT from `media` images. Each `downloadUrl` is a fresh presigned FORCED-DOWNLOAD URL minted
+   * server-side through the SAME C2.1 scope gate — out-of-scope/unauthorized → empty array (never a
+   * leaked URL). Absent on list responses. Rendered as a flat download list, never inline.
+   */
+  attachments?: { id: string; displayFilename: string; sizeBytes: number | null; downloadUrl: string }[] | null;
 }
 
 /**

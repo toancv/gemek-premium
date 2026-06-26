@@ -74,6 +74,8 @@ export const vi: TranslationDict = {
     back: '← Quay lại',
     publishedOn: 'Ngày đăng:',
     loadError: 'Không thể tải tin tức.',
+    attachments: 'Tệp đính kèm',
+    download: 'Tải về',
   },
   amenities: {
     title: 'Đặt tiện ích',

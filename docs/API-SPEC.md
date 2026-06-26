@@ -2165,6 +2165,7 @@ Errors:
 - `400 ANNOUNCEMENT_MEDIA_LIMIT_EXCEEDED` — would exceed 5 images (VN: *"Tối đa 5 ảnh mỗi thông báo."*) or 50 MB total (VN: *"Tổng dung lượng ảnh của thông báo vượt quá 50MB."*)
 - `400 VALIDATION_ERROR` — missing/invalid `kind`
 - `409 ANNOUNCEMENT_NOT_DRAFT` — announcement is published (VN: *"Không thể chỉnh sửa ảnh của thông báo đã xuất bản."*)
+- `413 ANNOUNCEMENT_MEDIA_LIMIT_EXCEEDED` — the single file exceeds the servlet multipart limit (10MB). Returned by the global multipart handler (the limit fires before the controller); the FE renders a size message off the 413 status.
 - `403 FORBIDDEN` — caller is not ADMIN
 - `404 NOT_FOUND` — announcement does not exist
 
@@ -2230,6 +2231,7 @@ Errors:
 - `400 ANNOUNCEMENT_ATTACHMENT_TYPE_NOT_ALLOWED` — detected type is not pdf/docx/xlsx/pptx/txt (VN: *"Chỉ chấp nhận tệp PDF, DOCX, XLSX, PPTX hoặc TXT."*)
 - `400 ANNOUNCEMENT_ATTACHMENT_TOO_LARGE` — single file > 10 MB (VN: *"Tệp đính kèm vượt quá 10MB."*)
 - `400 ANNOUNCEMENT_ATTACHMENT_LIMIT_EXCEEDED` — would exceed 5 files (VN: *"Tối đa 5 tệp đính kèm mỗi thông báo."*) or 50 MB total (VN: *"Tổng dung lượng tệp đính kèm của thông báo vượt quá 50MB."*)
+- `413 ANNOUNCEMENT_ATTACHMENT_TOO_LARGE` — the single file exceeds the servlet multipart limit (10MB). Returned by the global multipart handler (the limit fires before the controller). `server.tomcat.max-swallow-size` (60MB ≥ max-request-size) lets the in-flight body drain so a streaming client receives this 413 instead of a connection reset.
 - `409 ANNOUNCEMENT_NOT_DRAFT` — announcement is published (VN: *"Không thể chỉnh sửa tệp đính kèm của thông báo đã xuất bản."*)
 - `403 FORBIDDEN` — caller is not ADMIN
 - `404 NOT_FOUND` — announcement does not exist

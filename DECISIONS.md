@@ -5,6 +5,47 @@ Format: Date | Decision | Reasoning | Alternatives
 
 ---
 
+## 2026-06-26 | Multipart oversize handling — clean 413 + finite swallow + FE pre-validate (all uploads)
+
+**Decision (CTO rulings, locked; applies to EVERY multipart upload).** Fixes the C3 P2 oversize-upload hang
+(`reports/c3-attachment-oversize-hang-diagnosis.md`). Three coordinated changes:
+
+1. **BE handler → 413.** `GlobalExceptionHandler` now handles `MaxUploadSizeExceededException` (+
+   `MultipartException` fallback) → **HTTP 413** with the standard coded body. The servlet multipart limit
+   fires in `DispatcherServlet.checkMultipart` BEFORE routing, so the surface is inferred from the request
+   path: `/attachments` → `ANNOUNCEMENT_ATTACHMENT_TOO_LARGE`, `/media` → `ANNOUNCEMENT_MEDIA_LIMIT_EXCEEDED`,
+   else generic `PAYLOAD_TOO_LARGE` (new `ErrorCode`, 413). Status 413 is what matters — the FE's existing
+   413-branch renders a size message off the status, not the body code. Previously unhandled → generic 500.
+
+2. **Tomcat `server.tomcat.max-swallow-size: 60MB`** (finite, ≥ the 55MB `max-request-size`), NOT `-1`.
+   Without a swallow allowance Tomcat resets the connection mid-upload for a STREAMING browser, so even a
+   clean 413 never arrives → the "đang tải lên" hang. 60MB lets it drain the in-flight remainder of an
+   over-cap-but-under-edge upload and deliver the 413. **Finite, not -1**, so anything past the nginx edge
+   (`client_max_body_size 20m`) stays edge-rejected rather than drained unbounded (DoS guard). `max-file-size`
+   10MB / `max-request-size` 55MB unchanged; nginx unchanged (20m edge-reject of >20MB is acceptable).
+
+3. **FE pre-validate before upload (both managers).** `AnnouncementAttachmentsManager` rejects instantly when
+   `file.size > 10MB` or running-total + size > 50MB (it has per-item `sizeBytes`); `AnnouncementMediaManager`
+   rejects `file.size > 10MB` per file (its media manifest carries NO per-item size → the 50MB total stays
+   BE-enforced, returning a clean `ANNOUNCEMENT_MEDIA_LIMIT_EXCEEDED`). Count cap (5) already disables the
+   button. So no oversize request is sent for honest clients; the BE 413 (1)+(2) is the backstop for any
+   bypass/non-browser client.
+
+**Scope:** this is multipart-wide (images + attachments + any future upload), not C3-specific — same servlet
+path, handler, and swallow default. **Verification:** backend suite **454/454** (+3 `GlobalExceptionHandlerMultipartTest`
+asserting 413 + path-mapped code); `@gemek/ui` vitest 33 (PAYLOAD_TOO_LARGE VN string + exhaustive guard);
+admin tsc + build green; HTTP smoke — 11MB upload now returns a clean **413** (was 500). API-SPEC notes 413 on
+the upload endpoints. **Prod:** the handler + swallow are app-level (every environment); FE pre-check is
+environment-independent.
+
+**Alternatives rejected.** (a) `max-swallow-size: -1` (unlimited) — rejected by CTO (drain-the-world DoS); a
+finite 60MB ≥ max-request-size suffices and keeps the edge cap meaningful. (b) Per-controller multipart
+exception handling — rejected; the limit fires before routing, so a global advice with path inference is the
+only place it can be caught. (c) FE-only fix — rejected; a non-browser/bypass client still needs a clean
+server 413, and the swallow reset must be fixed for the browser path regardless.
+
+---
+
 ## 2026-06-26 | C3 P2 (FE admin) — attachments manager on the EDIT page only (create-page lazy-save = P2.5)
 
 **Decision (CTO rulings, locked; FE-only, NO backend/contract change).** A new

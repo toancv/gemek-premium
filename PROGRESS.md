@@ -5,15 +5,17 @@
 
 ## ▶ CURRENT STATE SNAPSHOT (2026-06-26)
 
-**C3 P2 smoke — OVERSIZE UPLOAD HANG diagnosed (read-only), fix pending CTO ruling.** Root cause: an over-cap
-attachment (10–20MB) trips Spring multipart `max-file-size 10MB` → `MaxUploadSizeExceededException` that has
-**NO `@ExceptionHandler`** → returns **500** (curl) / **connection-reset hang** in the browser because
-`server.tomcat.max-swallow-size` is at its **default 2MB** (resets mid-upload). A 35MB file exceeds nginx
-`client_max_body_size 20m` (`nginx.conf:16`) → clean edge **413** instead. FE does **no `file.size` pre-check**,
-and the 413 special-case can't catch the 500/reset. General (images share the path), not attachments-specific.
-Recommended (not applied): (a) FE pre-validate size/total/count before upload; (b) BE `@ExceptionHandler`
-(MaxUploadSizeExceeded→413) + `max-swallow-size: -1`. Report: `reports/c3-attachment-oversize-hang-diagnosis.md`.
-**No code/config changed.** Below = C3 P2 ship details.
+**C3 P2 smoke — OVERSIZE UPLOAD HANG FIXED (BE handler + tomcat swallow + FE pre-check, both managers), awaiting CTO browser smoke.**
+Root cause was: over-cap upload (10–20MB) tripped Spring multipart `max-file-size 10MB` →
+`MaxUploadSizeExceededException` with NO handler → 500 (curl) / connection-reset hang (browser, `max-swallow-size`
+default 2MB). Fix: (b)(1) `GlobalExceptionHandler.handleMaxUploadSize` → **413** coded body (path-inferred:
+attachment/media/generic `PAYLOAD_TOO_LARGE`); (b)(2) `application.yml server.tomcat.max-swallow-size: 60MB`
+(finite ≥ 55MB, not -1 — DoS guard); (a) FE pre-validate file.size (+total for attachments) before upload in BOTH
+`AnnouncementAttachmentsManager` and `AnnouncementMediaManager`. Backend **454/454** (+3 handler tests); `@gemek/ui`
+vitest 33; admin tsc+build green. **HTTP self-verify: 11MB → clean 413 (was 500).** nginx 20m edge-reject of >20MB
+unchanged. Multipart-wide fix (not C3-specific). See DECISIONS 2026-06-26 "Multipart oversize handling" +
+`reports/c3-attachment-oversize-hang-diagnosis.md` (## Resolution). **NEXT = C3 P2.5 (lazy-save /new), then P3.**
+Below = C3 P2 ship details.
 
 **C3 P2 (FE admin) — attachments manager on the EDIT page DONE (committed `7092572`/`1d43176`), awaiting CTO :80 smoke. NEXT = P2.5 (lazy-save uploads on /new for images+attachments), then P3 (resident download list).**
 `AnnouncementAttachmentsManager` (new) mounts as a sibling of the image manager on `/announcements/:id/edit`

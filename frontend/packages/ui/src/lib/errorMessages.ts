@@ -69,6 +69,9 @@ const ERROR_MESSAGES: Record<string, string> = {
   ANNOUNCEMENT_ATTACHMENT_TOO_LARGE: 'Tệp đính kèm quá lớn (tối đa 10MB mỗi tệp).',
   ANNOUNCEMENT_ATTACHMENT_LIMIT_EXCEEDED: 'Vượt quá giới hạn tệp đính kèm (tối đa 5 tệp, tổng dung lượng tối đa 50MB).',
 
+  // Multipart upload too large (generic 413 — any upload surface)
+  PAYLOAD_TOO_LARGE: 'Tệp tải lên vượt quá dung lượng cho phép.',
+
   // Rate / server
   RATE_LIMITED: 'Bạn thao tác quá nhanh, vui lòng thử lại sau.',
   INTERNAL_ERROR: 'Có lỗi xảy ra, vui lòng thử lại.',

@@ -117,6 +117,26 @@ The FE pre-validation (a) is environment-independent.
 
 ---
 
+## Resolution (applied 2026-06-26 — CTO ruling: do both, all multipart surfaces)
+
+- **(b)(1) BE handler → 413.** `GlobalExceptionHandler.handleMaxUploadSize` now handles
+  `MaxUploadSizeExceededException` (+ `MultipartException`) → **HTTP 413**, coded body inferred from the path
+  (`/attachments` → `ANNOUNCEMENT_ATTACHMENT_TOO_LARGE`, `/media` → `ANNOUNCEMENT_MEDIA_LIMIT_EXCEEDED`, else
+  new `PAYLOAD_TOO_LARGE`). Was an unhandled 500.
+- **(b)(2) Tomcat swallow.** `application.yml` → `server.tomcat.max-swallow-size: 60MB` (finite, ≥ 55MB
+  `max-request-size`; NOT -1) so a streaming browser's in-flight remainder is drained and the 413 is
+  delivered instead of a connection reset. `max-file-size 10MB` / `max-request-size 55MB` / nginx 20m unchanged.
+- **(a) FE pre-validate.** `AnnouncementAttachmentsManager` rejects `>10MB`/`total >50MB` before upload;
+  `AnnouncementMediaManager` rejects `>10MB`/file (manifest has no per-item size → 50MB total stays BE-enforced).
+  Existing 413-branch kept as backstop (now reachable).
+- **Tests.** Backend **454/454** (+3 `GlobalExceptionHandlerMultipartTest`: 413 + path-mapped code).
+  `@gemek/ui` vitest 33 (PAYLOAD_TOO_LARGE VN + exhaustive guard). admin tsc + vite build green.
+- **HTTP self-verify (curl, full-buffer):** 11MB → now **HTTP 413** `ANNOUNCEMENT_ATTACHMENT_TOO_LARGE`
+  (`{"error":"ANNOUNCEMENT_ATTACHMENT_TOO_LARGE","message":"Tệp tải lên vượt quá dung lượng cho phép."}`,
+  0.26s) — **was 500**. The browser-hang fix (max-swallow-size + FE pre-check) is for CTO in-browser smoke.
+- **Scope:** multipart-wide (images + attachments), applied to both managers. API-SPEC updated (413 on both
+  upload endpoints).
+
 ## OPEN RULING FOR CTO
 Apply **(a)** FE pre-validation, **(b)** server defense-in-depth (multipart `@ExceptionHandler` + `max-swallow-size`),
 or both (recommended)? And whether to fold the same fix into the IMAGE managers (same defect). No code/config

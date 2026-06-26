@@ -211,26 +211,24 @@ export function AnnouncementComposeFields({
         </div>
       </div>
 
-      {/* ── Type / scope / block / floor span the full width below the editor row ── */}
-      <div className="space-y-3">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Loại</label>
-            <select value={form.type} onChange={(e) => form.setType(e.target.value)} className="block w-full border border-gray-300 rounded-md px-3 py-2 text-sm bg-white">
-              {ANNOUNCEMENT_TYPES.map((at) => <option key={at} value={at}>{labelFor('AnnouncementType', at)}</option>)}
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Phạm vi</label>
-            <select value={form.scope} onChange={(e) => { form.setScope(e.target.value); form.setBlockId(''); form.setFloor(''); }} className="block w-full border border-gray-300 rounded-md px-3 py-2 text-sm bg-white">
-              <option value="ALL">{labelFor('AnnouncementScope', 'ALL')}</option>
-              <option value="BLOCK">{labelFor('AnnouncementScope', 'BLOCK')}</option>
-              <option value="FLOOR">{labelFor('AnnouncementScope', 'FLOOR')}</option>
-            </select>
-          </div>
+      {/* ── Type / scope / block / floor — compact selects in a wrapping row (not edge-to-edge) ── */}
+      <div className="flex flex-wrap gap-4">
+        <div className="w-full sm:w-44">
+          <label className="block text-sm font-medium text-gray-700 mb-1">Loại</label>
+          <select value={form.type} onChange={(e) => form.setType(e.target.value)} className="block w-full border border-gray-300 rounded-md px-3 py-2 text-sm bg-white">
+            {ANNOUNCEMENT_TYPES.map((at) => <option key={at} value={at}>{labelFor('AnnouncementType', at)}</option>)}
+          </select>
+        </div>
+        <div className="w-full sm:w-44">
+          <label className="block text-sm font-medium text-gray-700 mb-1">Phạm vi</label>
+          <select value={form.scope} onChange={(e) => { form.setScope(e.target.value); form.setBlockId(''); form.setFloor(''); }} className="block w-full border border-gray-300 rounded-md px-3 py-2 text-sm bg-white">
+            <option value="ALL">{labelFor('AnnouncementScope', 'ALL')}</option>
+            <option value="BLOCK">{labelFor('AnnouncementScope', 'BLOCK')}</option>
+            <option value="FLOOR">{labelFor('AnnouncementScope', 'FLOOR')}</option>
+          </select>
         </div>
         {form.scope !== 'ALL' && (
-          <div>
+          <div className="w-full sm:w-56">
             <label className="block text-sm font-medium text-gray-700 mb-1">Tòa <span className="text-red-500">*</span></label>
             <select value={form.blockId} onChange={(e) => form.setBlockId(e.target.value)} className="block w-full border border-gray-300 rounded-md px-3 py-2 text-sm bg-white">
               <option value="">-- Chọn tòa --</option>
@@ -241,7 +239,7 @@ export function AnnouncementComposeFields({
           </div>
         )}
         {form.scope === 'FLOOR' && (
-          <div>
+          <div className="w-full sm:w-32">
             <label className="block text-sm font-medium text-gray-700 mb-1">Tầng <span className="text-red-500">*</span></label>
             <input type="number" min="1" value={form.floor} onChange={(e) => form.setFloor(e.target.value)} className="block w-full border border-gray-300 rounded-md px-3 py-2 text-sm" placeholder="Số tầng" />
           </div>

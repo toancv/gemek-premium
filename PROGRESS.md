@@ -5,6 +5,25 @@
 
 ## ▶ CURRENT STATE SNAPSHOT (2026-06-26)
 
+**C3 P3 (FE resident) — announcement attachments DOWNLOAD LIST on detail page DONE (committed `f958d9a`) → C3 CLOSED, awaiting CTO :81 smoke. Resume → next backlog (amenity attribution [deferred] / phone-search).**
+`AnnouncementDetailPage` (resident) now renders a flat downloadable attachments section BELOW the markdown
+body (and cover banner) — ONLY when the detail response's `attachments[]` is non-empty. Each row: document
+icon + `displayFilename` (truncate+title) + human-readable size + a "Tải về" anchor (i18n `announcements.download`)
+to the BE-minted **forced-download** presigned `downloadUrl` (`download` attr = belt-and-suspenders; server
+already sets `Content-Disposition: attachment` per C3 P1). **BE-gated:** attachments[] is scope-gated server-side
+(same C2.1 `assertMediaPresignAccess` rule as media) → out-of-scope resident gets EMPTY attachments[] → no
+section; NO client-side access guessing. href scheme-guarded (`^https?://`) → non-http renders inert disabled
+span. **Non-regression:** cover banner, `MarkdownContent` body, inline image manifest, and all scope/gate logic
+UNCHANGED; attachments NEVER flow through MarkdownContent; no new fetch/hook (reuses `useAnnouncement` detail).
+Added resident `AnnouncementItem.attachments?` type + 2 i18n keys (`attachments`, `download`). resident
+tsc --noEmit + vite build green; **`@gemek/ui` UNTOUCHED** (local `formatSize`/`safeHref` — extraction deferred);
+no resident vitest harness (dev/build/preview only → no cheap test). `/code-review` (high, workflow): 1 real bug
+([0] `formatSize` KB→MB rounding boundary "1024 KB") FIXED (also hardened NaN/negative) + i18n label dedup
+applied; target=_blank finding REJECTED (CTO ruling forbids inline-preview; server forces download); admin/shared
+DRY findings (formatSize/safeHref/row/label → @gemek/ui) DEFERRED as debt (would widen scope into shared pkg;
+mirrors existing C2.3b http-guard-dup debt; admin has the same latent formatSize boundary bug — log, fix later).
+**API-SPEC unchanged** (C3 P1 already documented detail `attachments[]`). Below = the C3 P2.5 follow-up.
+
 **C3 P2.5 follow-up (FE admin) — form-invalid-on-lazy-upload now TOASTS (committed `18be536`), awaiting CTO :80 smoke. Resume STILL → P3 (resident download list).**
 When a lazy upload on `/new` is blocked by an invalid create form, `ensureDraftThenUpload` now fires an admin
 top-right `toast.error` ("Vui lòng nhập tiêu đề và nội dung… trước khi thêm ảnh hoặc tệp.") — the managers sit at
@@ -144,11 +163,11 @@ refetch-after-upload, COVER banner. C2.3a CLOSED (smoked PASS 2026-06-25). See
 | C2.3b P1.5 | BE: create+update derive target block/floor from scope (close scope-downgrade desync) + tests + FE full-width 50/50 layout | **ACCEPTED — dev-DB smoke 5/5 PASS** | `4549bed`/`91a0e58`/`0ecef7a`/`22f1b9e` + this phase |
 | C2.3b P2 | media manager (upload/cover-toggle/insert/delete) on /:id/edit + inline preview render (manifest `id`→`mediaId`, folded from P3) | DONE | `3ab5001` |
 | C2.3b close-out | two-button cover/inline upload (no checkbox) + delete strips body placeholder + layout (title full-width, preview aligned) + COVER banner in preview | **DONE — C2.3b CLOSED, awaiting CTO :80 smoke** | `2a3f4b0` style / `38e7196` feat |
-| C3 | file attachments (non-image) | PENDING (NEXT) | — |
+| C3 | file attachments (non-image) — P1 BE + P2 admin manager + P2.5 lazy-save + P3 resident download list | **CLOSED, awaiting CTO :80/:81 smoke** | `a439387`…`f958d9a` |
 
 **OPEN ITEMS / BACKLOG (priority order):**
-1. **C3 — file attachments** (NEXT) — non-image document attachments on announcements. **C2.3b CLOSED** (P1/P1.5/P2/close-out all done, awaiting CTO :80 smoke).
-2. **Amenity multi-residency real attribution rule `[PLANNED]`** — currently primary-or-latest temporary; real rule deferred LAST per CTO.
+1. **Amenity multi-residency real attribution rule `[PLANNED]`** — currently primary-or-latest temporary; real rule deferred LAST per CTO. (or pick up the phone-search backlog item)
+2. **~~C3 — file attachments~~ CLOSED** (P1 BE / P2 admin manager / P2.5 lazy-save / P3 resident download list — all done, awaiting CTO :80/:81 smoke).
 
 **C2.3b close-out /code-review debts (deferred, non-blocking — none change behavior):**
 - **Delete body-strip is UNSAVED** — a media delete persists on the BE immediately but the placeholder removal only updates editor state (discarded on Hủy/navigate-away). This is BY DESIGN per the CTO close-out ruling ("matches how body edits already work"; the confirm dialog tells the admin to bấm "Lưu"); a stale placeholder otherwise resolves to nothing on render anyway. Revisit only if CTO wants delete to auto-persist.

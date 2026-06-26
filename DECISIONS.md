@@ -5,6 +5,38 @@ Format: Date | Decision | Reasoning | Alternatives
 
 ---
 
+## 2026-06-26 | C3 P3 (FE resident) — announcement attachments = flat gated download list (C3 CLOSED)
+
+**Decision (CTO rulings, locked; FE-only this phase).** The resident `AnnouncementDetailPage` renders the
+detail response's `attachments[]` as a **flat download list** below the markdown body (and cover banner),
+ONLY when non-empty. Each row = document icon + `displayFilename` + human-readable size + a "Tải về" anchor
+to the BE-minted `downloadUrl`.
+
+**Why these choices:**
+- **Flat list, NOT inline, NOT through `MarkdownContent`** — documents are downloaded, never rendered; the
+  renderer's safe-img surface stays untouched (no new XSS surface).
+- **Access is BE-gated, never client-guessed** — `attachments[]` is scope-gated server-side by the same C2.1
+  `assertMediaPresignAccess` rule as media; an out-of-scope resident receives an EMPTY array → no section.
+  The FE renders only what it received (no IDOR: it never sends an attachment/announcement id the principal
+  didn't already get in its own gated detail response).
+- **Download forced server-side (C3 P1)** — `downloadUrl` already carries the signed
+  `response-content-disposition=attachment` + `application/octet-stream`, so the FE needs NO disposition
+  handling; a plain anchor downloads. The `download` attribute is belt-and-suspenders only. **No
+  `target=_blank` inline-preview** (CTO ruling; rejected the code-review suggestion to add it).
+- **Resident pattern, NOT admin's** — mobile-first list styling; no admin top-right toast (read-only list
+  needs no feedback). `href` scheme-guarded (`^https?://`) → non-http renders an inert disabled span.
+
+**Deferred (logged debt, non-blocking):** `formatSize` + `safeHref` + the attachment-row markup + the "Tải về"
+label are duplicated with admin's `AnnouncementAttachmentsManager`; a shared `@gemek/ui` `formatBytes` /
+`isHttpUrl` / `AttachmentList` would centralize them (mirrors the existing C2.3b http-guard-dup debt). NOT
+done now to keep C3 P3 from widening into the shared package before the gate. **Admin's `formatSize` has the
+same latent KB→MB rounding boundary bug fixed here in resident** — fix when the shared extraction happens.
+
+**API-SPEC unchanged** — C3 P1 already documented detail `attachments[] = {id, displayFilename, sizeBytes,
+downloadUrl}`. **C3 CLOSED** (P1 BE + P2 admin manager + P2.5 lazy-save + P3 resident download list).
+
+---
+
 ## 2026-06-26 | Rule — a client-side block that renders OFF-SCREEN from its trigger gets an admin toast (+ keep inline)
 
 **Decision (CTO ruling, locked; FE pattern).** When a client-side rejection's message renders far from the

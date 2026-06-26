@@ -5,7 +5,9 @@
 
 ## ▶ CURRENT STATE SNAPSHOT (2026-06-26)
 
-**GIT TOPOLOGY — branch workflow adopted (report `reports/git-branch-topology.md`, DECISIONS 2026-06-26).** `master` is a 3-commit skeleton (NO app code); `deploy/local` is the real trunk, **524 commits ahead** (linear ancestor). Go-forward: each feature on its OWN branch → push branch → CTO opens PR (agent never pushes/merges master). Phone-search pending CTO consolidation PR (cannot PR standalone — master lacks the base). **Resume → amenity attribution [deferred] (on its own branch, base per CTO).**
+**TRUNK = `main` — rename `deploy/local`→`main` runbook ready (report `reports/git-trunk-rename-runbook.md`, DECISIONS 2026-06-26), pending CTO execution.** Pre-flight secret audit SAFE (no real `.env` tracked; prod secrets all `${ENV_REF}`; two dev-only flags: docker-compose.dev.yml hardcoded dev-DB pw + seed-demo bcrypt hashes — keep dev/demo-only). All other branches fully merged into deploy/local (0 unique commits). `deploy/local` becomes trunk renamed `main` (no consolidation needed — it IS the full history); 3-commit `master` retired. SUPERSEDES the prior "consolidate onto master" framing. **Next feature (amenity) branches off `main` (after CTO runs the rename); agent pushes feature branch + STOPs, CTO opens PR.**
+
+**GIT TOPOLOGY — branch workflow adopted (report `reports/git-branch-topology.md`, DECISIONS 2026-06-26).** `master` is a 3-commit skeleton (NO app code); `deploy/local` is the real trunk, **524 commits ahead** (linear ancestor). Go-forward: each feature on its OWN branch → push branch → CTO opens PR (agent never pushes/merges master). [SUPERSEDED by the trunk=main entry above — deploy/local is renamed to main rather than consolidated onto master.]
 
 **PHONE-SEARCH — FE search-box placeholders updated (committed `f54c26f`) → phone-search FULLY CLOSED (BE + FE), pending CTO PR per the topology report. Resume → amenity attribution [deferred].**
 Admin search placeholders now enumerate phone (text-only, no logic): residents `residents.searchPlaceholder` +

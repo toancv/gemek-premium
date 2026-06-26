@@ -5,6 +5,29 @@ Format: Date | Decision | Reasoning | Alternatives
 
 ---
 
+## 2026-06-26 | Trunk = `main` (rename `deploy/local`→`main`; retire the 3-commit `master` skeleton)
+
+**Decision (pending CTO runbook execution; see `reports/git-trunk-rename-runbook.md`).** Rather than consolidating
+524 commits onto the stale 3-commit `master` skeleton, **`deploy/local` itself becomes the trunk, renamed `main`**.
+`deploy/local` already IS the full linear history (descends from master's 3 commits; all other branches —
+`improvement/security`, `phase/backend`, `phase/frontend`, `master` — are ancestors/fully merged, 0 unique
+commits), so no merge/consolidation is needed; the `master` skeleton is **retired** (kept-for-history or deleted
+per CTO). **This SUPERSEDES the earlier "consolidate onto master" framing** in
+`reports/git-branch-topology.md` / the prior DECISIONS entry below.
+
+**Pre-flight secret audit = SAFE to trunk:** no real `.env` tracked (only `.env.example`; `.env` gitignored at
+`.gitignore:6`); all prod secrets are `${ENV_REF}` in `application.yml`. Two non-blocking, dev-only items (CTO
+call): `docker-compose.dev.yml:10` hardcoded **dev** DB password (parameterize or accept dev-only);
+`scripts/seed-demo-local.sql` committed **demo** bcrypt hashes (keep demo-only, never seed prod). Optional:
+gitignore `docker-compose.override.yml`.
+
+**Go-forward (unchanged from the workflow convention, now based off `main`):** feature-per-branch off `main`
+before coding → work + smoke + `/code-review` + close → **push the feature branch + STOP; CTO opens the PR**.
+Agent NEVER pushes/merges `main` (PR-protected). All rename/push/branch-delete/GitHub-default/protection ops are
+**CTO-executed** per the runbook — the agent does not perform them.
+
+---
+
 ## 2026-06-26 | Go-forward branch workflow + git topology (master is a 3-commit skeleton)
 
 **Finding (see `reports/git-branch-topology.md`).** `origin` = `github.com/toancv/gemek-premium`. `master`

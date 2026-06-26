@@ -5,6 +5,21 @@
 
 ## ▶ CURRENT STATE SNAPSHOT (2026-06-26)
 
+**PHONE-SEARCH (BE) — `?search=` now ALSO matches phone on residents/users/contractors list endpoints DONE (committed `763cc29` feat / `f7294f8` test), awaiting CTO HTTP/DB smoke. Resume → amenity attribution [deferred].**
+Extended the existing case-insensitive substring `search` predicate of the three ADMIN list endpoints to ALSO
+match the stored phone (CTO ruling: plain substring on stored value, NO normalization). **All three are Criteria
+API** (no JPQL-with-nullable-param — the locked null-safe rule holds; none STOP-flagged), so phone was ADDED to
+the existing OR group, existing fields kept: residents → `user.fullName|email|phone` (ResidentServiceImpl.java:531),
+users → `fullName|email|phone` (UserServiceImpl.java:80), contractors → `companyName|contactPerson|phone`
+(ContractorServiceImpl.java:107). `User.phone` NOT NULL; `Contractor.phone` nullable — `cb.like` over a NULL
+column yields NULL (no match, never an error; pattern is non-null, guarded by the blank-check), mirroring the
+existing email LIKE → no isNotNull guard needed. Pagination/sort/other filters unchanged. **Tests:** +3 real-DB
+MockMvc integration tests (one per endpoint; phone-substring matches a record whose name/email/company does NOT;
+non-match excluded; contractor null-phone row keeps the query 200). **Full suite 457/457 green** (was 454).
+HTTP self-verify: stack not up → covered by the green real-DB integration tests (MockMvc → real PostgreSQL).
+**API-SPEC updated** (search-param desc for all three: users line 239, residents 548, contractors 1404).
+Below = C3 (CLOSED).
+
 **C3 P3 (FE resident) — announcement attachments DOWNLOAD LIST on detail page DONE (committed `f958d9a`) → C3 CLOSED, awaiting CTO :81 smoke. Resume → next backlog (amenity attribution [deferred] / phone-search).**
 `AnnouncementDetailPage` (resident) now renders a flat downloadable attachments section BELOW the markdown
 body (and cover banner) — ONLY when the detail response's `attachments[]` is non-empty. Each row: document
@@ -166,8 +181,9 @@ refetch-after-upload, COVER banner. C2.3a CLOSED (smoked PASS 2026-06-25). See
 | C3 | file attachments (non-image) — P1 BE + P2 admin manager + P2.5 lazy-save + P3 resident download list | **CLOSED, awaiting CTO :80/:81 smoke** | `a439387`…`f958d9a` |
 
 **OPEN ITEMS / BACKLOG (priority order):**
-1. **Amenity multi-residency real attribution rule `[PLANNED]`** — currently primary-or-latest temporary; real rule deferred LAST per CTO. (or pick up the phone-search backlog item)
-2. **~~C3 — file attachments~~ CLOSED** (P1 BE / P2 admin manager / P2.5 lazy-save / P3 resident download list — all done, awaiting CTO :80/:81 smoke).
+1. **Amenity multi-residency real attribution rule `[PLANNED]`** — currently primary-or-latest temporary; real rule deferred LAST per CTO.
+2. **~~Phone-search on list endpoints~~ DONE** (residents/users/contractors `?search=` now matches phone too; `763cc29`/`f7294f8`, awaiting CTO HTTP/DB smoke).
+3. **~~C3 — file attachments~~ CLOSED** (P1 BE / P2 admin manager / P2.5 lazy-save / P3 resident download list — all done, awaiting CTO :80/:81 smoke).
 
 **C2.3b close-out /code-review debts (deferred, non-blocking — none change behavior):**
 - **Delete body-strip is UNSAVED** — a media delete persists on the BE immediately but the placeholder removal only updates editor state (discarded on Hủy/navigate-away). This is BY DESIGN per the CTO close-out ruling ("matches how body edits already work"; the confirm dialog tells the admin to bấm "Lưu"); a stale placeholder otherwise resolves to nothing on render anyway. Revisit only if CTO wants delete to auto-persist.

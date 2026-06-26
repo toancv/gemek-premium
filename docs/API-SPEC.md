@@ -236,7 +236,7 @@ Response `204 No Content`
 **Auth:** ADMIN
 **Description:** List all users with optional filters.
 
-Query params: `role`, `isActive` (bool), `search` (name or email substring)
+Query params: `role`, `isActive` (bool), `search` (case-insensitive substring on name, email, or phone)
 Default sort: `createdAt desc`
 
 Response `200 OK` — paginated:
@@ -545,7 +545,7 @@ Errors: none specific (an empty list, not an error, represents "no active reside
 ### GET /api/residents
 
 **Auth:** ADMIN
-Query params: `apartmentId`, `type` (`OWNER`/`TENANT`), `isActive` (bool — filters by `move_out_date IS NULL`), `search` (optional string — case-insensitive substring match on resident user's `fullName` or `email`; blank/absent = no filter)
+Query params: `apartmentId`, `type` (`OWNER`/`TENANT`), `isActive` (bool — filters by `move_out_date IS NULL`), `search` (optional string — case-insensitive substring match on resident user's `fullName`, `email`, or `phone`; blank/absent = no filter)
 Default sort: `apartment.unitNumber asc, createdAt desc`
 
 Response `200 OK` — paginated list of resident objects. Each resident includes `apartment.block.name`.
@@ -1401,7 +1401,7 @@ Response `200 OK`
 ### GET /api/contractors
 
 **Auth:** ADMIN, TECHNICIAN, BOARD_MEMBER
-Query params: `specialty`, `isActive`, `search` (company name substring)
+Query params: `specialty`, `isActive`, `search` (case-insensitive substring on company name, contact person, or phone)
 Default sort: `companyName asc`
 
 Response `200 OK` — paginated:

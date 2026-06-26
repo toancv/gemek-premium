@@ -5,6 +5,20 @@ Format: Date | Decision | Reasoning | Alternatives
 
 ---
 
+## 2026-06-26 | Phone added to list `search` filter (residents/users/contractors) — substring, no normalization
+
+**Decision (CTO ruling, locked; BE-only).** The `?search=` param of the three ADMIN list endpoints now ALSO
+matches the **stored phone** via plain case-insensitive substring (`lower(phone) LIKE %lower(:q)%`) — NO
+canonicalization of either the query or the stored value. Phone was ADDED to each endpoint's existing OR group
+(name/email for residents+users; company name/contact person for contractors), not replacing the existing
+matched fields. All three build the predicate via the **Criteria API**, so this respects the locked
+Hibernate-null-safe rule (no JPQL with a nullable param); none needed conversion or a STOP-flag. `Contractor.phone`
+is nullable, but `cb.like` over a NULL column evaluates to NULL (no match, never an error — the pattern is
+non-null), so no `isNotNull` guard was added (mirrors the existing email LIKE). **Alternative rejected:**
+normalizing the search term to canonical phone before matching — rejected per CTO (substring-only).
+
+---
+
 ## 2026-06-26 | C3 P3 (FE resident) — announcement attachments = flat gated download list (C3 CLOSED)
 
 **Decision (CTO rulings, locked; FE-only this phase).** The resident `AnnouncementDetailPage` renders the

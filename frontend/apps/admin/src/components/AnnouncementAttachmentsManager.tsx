@@ -44,9 +44,19 @@ function formatSize(bytes: number | null): string {
 export function AnnouncementAttachmentsManager({
   announcementId,
   attachments,
+  onLazyUpload,
+  externalBusy = false,
 }: {
   announcementId: string;
   attachments: AnnouncementAttachmentItem[];
+  /**
+   * Lazy-save hook for the create page (/new), where no draft id exists yet. When provided, a picked
+   * file (already size-pre-checked below) is handed to the parent's create-then-upload orchestrator
+   * instead of uploaded directly. Absent on the edit page → the existing direct-upload path runs.
+   */
+  onLazyUpload?: (file: File) => void | Promise<void>;
+  /** External busy flag (e.g. a lazy-save in flight on /new) — ORed into the local busy disable. */
+  externalBusy?: boolean;
 }) {
   const upload = useUploadAnnouncementAttachment();
   const remove = useDeleteAnnouncementAttachment();
@@ -55,7 +65,7 @@ export function AnnouncementAttachmentsManager({
   const [pendingDelete, setPendingDelete] = useState<AnnouncementAttachmentItem | null>(null);
 
   const atLimit = attachments.length >= MAX_ATTACHMENTS;
-  const busy = upload.isPending || remove.isPending;
+  const busy = upload.isPending || remove.isPending || externalBusy;
 
   // Dismiss the delete-confirm dialog on Escape (the backdrop already dismisses on click).
   useEffect(() => {
@@ -95,6 +105,13 @@ export function AnnouncementAttachmentsManager({
     const currentTotal = attachments.reduce((sum, a) => sum + (a.sizeBytes ?? 0), 0);
     if (currentTotal + file.size > MAX_TOTAL_BYTES) {
       setError('Tổng dung lượng tệp đính kèm vượt quá 50MB.');
+      return;
+    }
+    // /new lazy-save: the size pre-checks above have already passed, so hand the file to the parent's
+    // create-then-upload orchestrator (validate form → create draft → upload → navigate to edit). The
+    // orchestrator owns its own errors (form error / edit-page notice), so nothing to catch here.
+    if (onLazyUpload) {
+      await onLazyUpload(file);
       return;
     }
     try {

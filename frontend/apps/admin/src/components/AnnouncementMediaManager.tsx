@@ -35,11 +35,21 @@ export function AnnouncementMediaManager({
   media,
   onInsert,
   onDeleted,
+  onLazyUpload,
+  externalBusy = false,
 }: {
   announcementId: string;
   media: AnnouncementMediaItem[];
   onInsert: (mediaId: string) => void;
   onDeleted: (mediaId: string) => void;
+  /**
+   * Lazy-save hook for the create page (/new), where no draft id exists yet. When provided, a picked
+   * file (already size-pre-checked below) is handed to the parent's create-then-upload orchestrator
+   * instead of uploaded directly. Absent on the edit page → the existing direct-upload path runs.
+   */
+  onLazyUpload?: (file: File, kind: 'COVER' | 'INLINE') => void | Promise<void>;
+  /** External busy flag (e.g. a lazy-save in flight on /new) — ORed into the local busy disable. */
+  externalBusy?: boolean;
 }) {
   const upload = useUploadAnnouncementMedia();
   const remove = useDeleteAnnouncementMedia();
@@ -53,7 +63,7 @@ export function AnnouncementMediaManager({
   // A cover already exists → a cover upload REPLACES it in-tx (net count unchanged), so it stays
   // allowed at the cap; a cover upload with no existing cover is net-new and must respect the cap.
   const hasCover = media.some((m) => m.kind === 'COVER');
-  const busy = upload.isPending || remove.isPending;
+  const busy = upload.isPending || remove.isPending || externalBusy;
 
   // Open the OS file picker, remembering which kind the chosen file should be uploaded as.
   const pick = (kind: 'COVER' | 'INLINE') => {
@@ -82,6 +92,13 @@ export function AnnouncementMediaManager({
     // enforces it and returns a clean ANNOUNCEMENT_MEDIA_LIMIT_EXCEEDED (handled below).
     if (file.size > MAX_IMAGE_FILE_BYTES) {
       setError('Ảnh quá lớn (tối đa 10MB mỗi ảnh).');
+      return;
+    }
+    // /new lazy-save: the size pre-check above has already passed, so hand the file to the parent's
+    // create-then-upload orchestrator (validate form → create draft → upload → navigate to edit). The
+    // orchestrator owns its own errors (form error / edit-page notice), so nothing to catch here.
+    if (onLazyUpload) {
+      await onLazyUpload(file, kindRef.current);
       return;
     }
     try {

@@ -18,18 +18,22 @@ import org.springframework.web.multipart.MultipartFile;
 import vn.vtit.gemek.common.exception.AppException;
 import vn.vtit.gemek.common.exception.ErrorCode;
 import vn.vtit.gemek.common.model.PageResponse;
+import vn.vtit.gemek.common.storage.ContentDispositionUtil;
 import vn.vtit.gemek.common.storage.FileStorageService;
 import vn.vtit.gemek.common.storage.ObjectKeysObsoleteEvent;
+import vn.vtit.gemek.module.announcement.dto.AnnouncementAttachmentResponse;
 import vn.vtit.gemek.module.announcement.dto.AnnouncementMediaResponse;
 import vn.vtit.gemek.module.announcement.dto.AnnouncementResponse;
 import vn.vtit.gemek.module.announcement.dto.CreateAnnouncementRequest;
 import vn.vtit.gemek.module.announcement.dto.MarkReadResponse;
 import vn.vtit.gemek.module.announcement.dto.UpdateAnnouncementRequest;
 import vn.vtit.gemek.module.announcement.entity.Announcement;
+import vn.vtit.gemek.module.announcement.entity.AnnouncementAttachment;
 import vn.vtit.gemek.module.announcement.entity.AnnouncementMedia;
 import vn.vtit.gemek.module.announcement.entity.AnnouncementMediaKind;
 import vn.vtit.gemek.module.announcement.entity.AnnouncementRead;
 import vn.vtit.gemek.module.announcement.entity.AnnouncementScope;
+import vn.vtit.gemek.module.announcement.repository.AnnouncementAttachmentRepository;
 import vn.vtit.gemek.module.announcement.repository.AnnouncementMediaRepository;
 import vn.vtit.gemek.module.announcement.repository.AnnouncementReadRepository;
 import vn.vtit.gemek.module.announcement.repository.AnnouncementRepository;
@@ -45,6 +49,7 @@ import vn.vtit.gemek.module.user.entity.User;
 import vn.vtit.gemek.module.user.repository.UserRepository;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -55,6 +60,8 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
 
 /**
  * Implementation of {@link AnnouncementService}.
@@ -101,6 +108,36 @@ public class AnnouncementServiceImpl implements AnnouncementService {
     /** Tika instance for magic-byte content-type detection (thread-safe). */
     private static final Tika TIKA = new Tika();
 
+    /** Maximum attachment rows per announcement (C3 cap, INDEPENDENT of the image cap, in-tx). */
+    private static final int MAX_ATTACHMENTS_PER_ANNOUNCEMENT = 5;
+
+    /** Maximum total attachment bytes per announcement (50 MB, C3 cap, INDEPENDENT of images, in-tx). */
+    private static final long MAX_ATTACHMENT_TOTAL_BYTES = 50L * 1024 * 1024;
+
+    /**
+     * Maximum bytes for a single attachment (10 MB). Belt-and-suspenders with the servlet
+     * {@code spring.servlet.multipart.max-file-size=10MB} so a direct service call (no servlet) is
+     * still bounded and yields a coded error rather than relying on the 413 the servlet emits.
+     */
+    private static final long MAX_ATTACHMENT_FILE_BYTES = 10L * 1024 * 1024;
+
+    /**
+     * Allowed attachment content types (C3), validated by Tika on the bytes — pdf/docx/xlsx/pptx/txt
+     * ONLY. Renderable/script-capable types (html, svg) and csv are EXCLUDED. Macro/JS risk in Office
+     * docs is mitigated by forced-download (the browser never executes them).
+     */
+    private static final String MIME_PDF = "application/pdf";
+    private static final String MIME_DOCX = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+    private static final String MIME_XLSX = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+    private static final String MIME_PPTX = "application/vnd.openxmlformats-officedocument.presentationml.presentation";
+    private static final String MIME_TXT = "text/plain";
+
+    private static final Set<String> ALLOWED_ATTACHMENT_MIME_TYPES =
+            Set.of(MIME_PDF, MIME_DOCX, MIME_XLSX, MIME_PPTX, MIME_TXT);
+
+    /** Forced-download content type override applied to every attachment presigned URL. */
+    private static final String DOWNLOAD_RESPONSE_CONTENT_TYPE = "application/octet-stream";
+
     private final AnnouncementRepository announcementRepository;
     private final AnnouncementReadRepository announcementReadRepository;
     private final BlockRepository blockRepository;
@@ -108,6 +145,7 @@ public class AnnouncementServiceImpl implements AnnouncementService {
     private final ResidentRepository residentRepository;
     private final NotificationRepository notificationRepository;
     private final AnnouncementMediaRepository mediaRepository;
+    private final AnnouncementAttachmentRepository attachmentRepository;
     private final FileStorageService fileStorageService;
     private final ApplicationEventPublisher eventPublisher;
 
@@ -121,6 +159,7 @@ public class AnnouncementServiceImpl implements AnnouncementService {
      * @param residentRepository         the resident JPA repository.
      * @param notificationRepository     the notification JPA repository for publish dispatch.
      * @param mediaRepository            the announcement media JPA repository (C2.2).
+     * @param attachmentRepository       the announcement attachment JPA repository (C3).
      * @param fileStorageService         the MinIO storage service for media upload/delete (C2.2).
      * @param eventPublisher             publisher for the after-commit object-cleanup event (C2.2).
      */
@@ -131,6 +170,7 @@ public class AnnouncementServiceImpl implements AnnouncementService {
                                    ResidentRepository residentRepository,
                                    NotificationRepository notificationRepository,
                                    AnnouncementMediaRepository mediaRepository,
+                                   AnnouncementAttachmentRepository attachmentRepository,
                                    FileStorageService fileStorageService,
                                    ApplicationEventPublisher eventPublisher) {
         this.announcementRepository = announcementRepository;
@@ -140,6 +180,7 @@ public class AnnouncementServiceImpl implements AnnouncementService {
         this.residentRepository = residentRepository;
         this.notificationRepository = notificationRepository;
         this.mediaRepository = mediaRepository;
+        this.attachmentRepository = attachmentRepository;
         this.fileStorageService = fileStorageService;
         this.eventPublisher = eventPublisher;
     }
@@ -255,7 +296,49 @@ public class AnnouncementServiceImpl implements AnnouncementService {
         // Detail-only: attach a media manifest with FRESH presigned URLs, gated by the C2.1 scope
         // check so an out-of-scope resident gets the text but no media URLs (no leak).
         List<AnnouncementResponse.MediaRef> manifest = buildMediaManifest(announcement, principalId, role);
-        return toResponse(announcement, isRead, resolveCreatorNames(List.of(announcement)), manifest);
+        // Detail-only: attach the downloadable-attachment manifest, gated by the SAME C2.1 scope check.
+        List<AnnouncementResponse.AttachmentRef> attachments =
+                buildAttachmentManifest(announcement, principalId, role);
+        return toResponse(announcement, isRead, resolveCreatorNames(List.of(announcement)),
+                manifest, attachments);
+    }
+
+    /**
+     * Builds the detail ATTACHMENT manifest: each row mapped to a FRESH short-lived FORCED-DOWNLOAD
+     * presigned URL ({@code Content-Disposition: attachment} + {@code application/octet-stream}, both
+     * signed), minted only when the caller may access the announcement. Access reuses the SAME C2.1
+     * presign gate ({@link #assertMediaPresignAccess}) as the image manifest — checked ONCE because every
+     * row of one announcement shares the same access decision. An out-of-scope resident (or any denied
+     * role) gets an empty list, never a leaked URL.
+     *
+     * @param announcement the announcement being detailed.
+     * @param principalId  the caller's UUID.
+     * @param role         the caller's role string.
+     * @return the attachment manifest (possibly empty), never null.
+     */
+    private List<AnnouncementResponse.AttachmentRef> buildAttachmentManifest(Announcement announcement,
+                                                                             UUID principalId, String role) {
+        List<AnnouncementAttachment> rows =
+                attachmentRepository.findByAnnouncementIdOrderByCreatedAtAsc(announcement.getId());
+        if (rows.isEmpty()) {
+            return List.of();
+        }
+        // Gate once via the C2.1 presign access rule; denial → empty manifest (no leak), not a 500.
+        try {
+            assertMediaPresignAccess(rows.get(0).getObjectKey(), principalId, role);
+        } catch (AppException denied) {
+            return List.of();
+        }
+        return rows.stream()
+                .map(a -> AnnouncementResponse.AttachmentRef.builder()
+                        .id(a.getId())
+                        .displayFilename(a.getDisplayFilename())
+                        .sizeBytes(a.getSizeBytes())
+                        .downloadUrl(fileStorageService.presign(a.getObjectKey(),
+                                ContentDispositionUtil.attachment(a.getDisplayFilename()),
+                                DOWNLOAD_RESPONSE_CONTENT_TYPE))
+                        .build())
+                .collect(Collectors.toList());
     }
 
     /**
@@ -597,15 +680,20 @@ public class AnnouncementServiceImpl implements AnnouncementService {
                     "Cannot delete a published announcement.");
         }
 
-        // Collect media object keys BEFORE the delete; the rows go via FK ON DELETE CASCADE, but the
-        // MinIO objects must be cleaned up separately — schedule them for best-effort after-commit delete.
-        List<String> mediaKeys = mediaRepository.findByAnnouncementIdOrderByCreatedAtAsc(id).stream()
+        // Collect media AND attachment object keys BEFORE the delete; the rows go via FK ON DELETE
+        // CASCADE, but the MinIO objects must be cleaned up separately — schedule both surfaces for
+        // best-effort after-commit delete so neither images nor documents are orphaned in storage.
+        List<String> objectKeys = new ArrayList<>();
+        mediaRepository.findByAnnouncementIdOrderByCreatedAtAsc(id).stream()
                 .map(AnnouncementMedia::getObjectKey)
-                .collect(Collectors.toList());
+                .forEach(objectKeys::add);
+        attachmentRepository.findByAnnouncementIdOrderByCreatedAtAsc(id).stream()
+                .map(AnnouncementAttachment::getObjectKey)
+                .forEach(objectKeys::add);
 
         announcementRepository.delete(announcement);
-        scheduleObjectCleanup(mediaKeys);
-        log.info("Announcement draft deleted — id={}, mediaObjects={}", id, mediaKeys.size());
+        scheduleObjectCleanup(objectKeys);
+        log.info("Announcement draft deleted — id={}, objects={}", id, objectKeys.size());
     }
 
     // =========================================================================
@@ -717,6 +805,103 @@ public class AnnouncementServiceImpl implements AnnouncementService {
     }
 
     // =========================================================================
+    // Attachments (C3) — ADMIN, drafts only, downloadable documents
+    // =========================================================================
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    @Transactional
+    public AnnouncementAttachmentResponse uploadAttachment(UUID announcementId, MultipartFile file,
+                                                           UUID principalId) {
+        log.debug("uploadAttachment — announcementId={}", announcementId);
+
+        Announcement announcement = requireDraftForAttachment(announcementId);
+
+        long fileSize = file.getSize();
+        // Per-file cap FIRST (cheap) — coded error rather than relying on the servlet 413.
+        if (fileSize > MAX_ATTACHMENT_FILE_BYTES) {
+            throw new AppException(ErrorCode.ANNOUNCEMENT_ATTACHMENT_TOO_LARGE,
+                    "Tệp đính kèm vượt quá 10MB.");
+        }
+
+        // Magic-byte validation: trust the bytes (pdf/docx/xlsx/pptx/txt), never the filename/header.
+        String detectedMime = detectAttachmentMime(file);
+
+        // Caps are INDEPENDENT of the image caps — counted over announcement_attachment only.
+        long currentCount = attachmentRepository.countByAnnouncementId(announcementId);
+        long currentBytes = attachmentRepository.sumSizeBytesByAnnouncementId(announcementId);
+        if (currentCount + 1 > MAX_ATTACHMENTS_PER_ANNOUNCEMENT) {
+            throw new AppException(ErrorCode.ANNOUNCEMENT_ATTACHMENT_LIMIT_EXCEEDED,
+                    "Tối đa " + MAX_ATTACHMENTS_PER_ANNOUNCEMENT + " tệp đính kèm mỗi thông báo.");
+        }
+        if (currentBytes + fileSize > MAX_ATTACHMENT_TOTAL_BYTES) {
+            throw new AppException(ErrorCode.ANNOUNCEMENT_ATTACHMENT_LIMIT_EXCEEDED,
+                    "Tổng dung lượng tệp đính kèm của thông báo vượt quá 50MB.");
+        }
+
+        // Key per C2.1 convention announcements/{announcementId}/{uuid}{ext} — id is the first segment,
+        // so the EXISTING presign scope gate parses it unchanged.
+        String objectKey = AnnouncementService.MEDIA_KEY_PREFIX + announcementId + "/"
+                + UUID.randomUUID() + attachmentExtensionFor(detectedMime);
+
+        try {
+            fileStorageService.upload(objectKey, file.getInputStream(), detectedMime, fileSize);
+        } catch (IOException e) {
+            log.error("Failed to read announcement attachment upload stream: {}", e.getMessage(), e);
+            throw new AppException(ErrorCode.INTERNAL_ERROR, "Không thể đọc tệp tải lên.");
+        }
+
+        AnnouncementAttachment attachment = new AnnouncementAttachment();
+        attachment.setAnnouncement(announcement);
+        attachment.setObjectKey(objectKey);
+        attachment.setContentType(detectedMime);
+        attachment.setSizeBytes(fileSize);
+        attachment.setDisplayFilename(sanitizeDisplayFilename(file.getOriginalFilename()));
+        AnnouncementAttachment saved = attachmentRepository.save(attachment);
+
+        log.info("Announcement {} attachment uploaded — type={}, size={}B, key={}",
+                announcementId, detectedMime, fileSize, objectKey);
+        return toAttachmentResponse(saved);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public List<AnnouncementAttachmentResponse> listAttachments(UUID announcementId) {
+        log.debug("listAttachments — announcementId={}", announcementId);
+
+        // Existence check so a missing announcement is a clean 404 rather than an empty list.
+        requireAnnouncement(announcementId);
+        return attachmentRepository.findByAnnouncementIdOrderByCreatedAtAsc(announcementId).stream()
+                .map(this::toAttachmentResponse)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    @Transactional
+    public void deleteAttachment(UUID announcementId, UUID attachmentId) {
+        log.debug("deleteAttachment — announcementId={}, attachmentId={}", announcementId, attachmentId);
+
+        requireDraftForAttachment(announcementId);
+        // Dual-key lookup: the row must belong to the announcement in the path (no cross-announcement delete).
+        AnnouncementAttachment attachment = attachmentRepository
+                .findByAnnouncementIdAndId(announcementId, attachmentId)
+                .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND,
+                        "Announcement attachment not found: " + attachmentId));
+
+        String objectKey = attachment.getObjectKey();
+        attachmentRepository.delete(attachment);
+        scheduleObjectCleanup(List.of(objectKey));
+        log.info("Announcement {} attachment deleted — attachmentId={}", announcementId, attachmentId);
+    }
+
+    // =========================================================================
     // Private helpers
     // =========================================================================
 
@@ -800,6 +985,143 @@ public class AnnouncementServiceImpl implements AnnouncementService {
             return;
         }
         eventPublisher.publishEvent(new ObjectKeysObsoleteEvent(objectKeys));
+    }
+
+    /**
+     * Loads an announcement and asserts it is a DRAFT (attachments are mutable on drafts only).
+     *
+     * @param announcementId the announcement id.
+     * @return the draft announcement.
+     * @throws AppException NOT_FOUND if missing, ANNOUNCEMENT_NOT_DRAFT if already published.
+     */
+    private Announcement requireDraftForAttachment(UUID announcementId) {
+        Announcement announcement = requireAnnouncement(announcementId);
+        if (announcement.getPublishedAt() != null) {
+            throw new AppException(ErrorCode.ANNOUNCEMENT_NOT_DRAFT,
+                    "Không thể chỉnh sửa tệp đính kèm của thông báo đã xuất bản.");
+        }
+        return announcement;
+    }
+
+    /**
+     * Detects the real document content type from the file bytes and asserts it is an allowed attachment
+     * type (pdf/docx/xlsx/pptx/txt). OOXML files (docx/xlsx/pptx) are ZIP containers that tika-core
+     * reports as {@code application/zip}; they are disambiguated by inspecting the zip's internal part
+     * layout ({@link #classifyZipContainer}) — still pure content inspection, never the filename. A bare
+     * zip, html, svg, csv, or anything else falls outside the allow-list and is rejected.
+     *
+     * @param file the uploaded multipart file.
+     * @return the detected, allowed document MIME type (the value stored as content_type).
+     * @throws AppException ANNOUNCEMENT_ATTACHMENT_TYPE_NOT_ALLOWED if not allowed; INTERNAL_ERROR on read failure.
+     */
+    private String detectAttachmentMime(MultipartFile file) {
+        try {
+            String detected = TIKA.detect(file.getInputStream());
+            // tika-core can't peek inside a zip — resolve OOXML subtypes from the container layout.
+            if ("application/zip".equals(detected) || "application/x-tika-ooxml".equals(detected)) {
+                detected = classifyZipContainer(file);
+            }
+            if (!ALLOWED_ATTACHMENT_MIME_TYPES.contains(detected)) {
+                throw new AppException(ErrorCode.ANNOUNCEMENT_ATTACHMENT_TYPE_NOT_ALLOWED,
+                        "Chỉ chấp nhận tệp PDF, DOCX, XLSX, PPTX hoặc TXT.");
+            }
+            return detected;
+        } catch (IOException e) {
+            throw new AppException(ErrorCode.INTERNAL_ERROR, "Không thể kiểm tra định dạng tệp.");
+        }
+    }
+
+    /**
+     * Classifies a ZIP container as an OOXML document type by inspecting its entry names. Real Office
+     * files carry a {@code word/}, {@code xl/}, or {@code ppt/} part tree; the first match wins. Any zip
+     * lacking these (a plain archive) returns {@code application/zip} so the caller rejects it.
+     *
+     * @param file the uploaded multipart file (a detected zip container).
+     * @return the OOXML MIME type, or {@code application/zip} if it is not an Office document.
+     * @throws IOException if the stream cannot be read.
+     */
+    private String classifyZipContainer(MultipartFile file) throws IOException {
+        try (InputStream in = file.getInputStream();
+             ZipInputStream zip = new ZipInputStream(in)) {
+            ZipEntry entry;
+            // Scan part names; OOXML always has a top-level word/ | xl/ | ppt/ directory.
+            while ((entry = zip.getNextEntry()) != null) {
+                String name = entry.getName();
+                if (name.startsWith("word/")) {
+                    return MIME_DOCX;
+                }
+                if (name.startsWith("xl/")) {
+                    return MIME_XLSX;
+                }
+                if (name.startsWith("ppt/")) {
+                    return MIME_PPTX;
+                }
+            }
+        }
+        // No OOXML part tree → a plain zip, which is not an allowed attachment type.
+        return "application/zip";
+    }
+
+    /**
+     * Maps an allowed document MIME type to its canonical file extension (object-key cosmetic only —
+     * serving forces a download with the stored display filename regardless of this).
+     *
+     * @param mime the detected MIME type (already validated as allowed).
+     * @return the extension including the dot, e.g. {@code ".pdf"}.
+     */
+    private String attachmentExtensionFor(String mime) {
+        return switch (mime) {
+            case MIME_PDF -> ".pdf";
+            case MIME_DOCX -> ".docx";
+            case MIME_XLSX -> ".xlsx";
+            case MIME_PPTX -> ".pptx";
+            case MIME_TXT -> ".txt";
+            default -> "";
+        };
+    }
+
+    /**
+     * Sanitizes the client filename for STORAGE/display: trims, drops path separators and control chars,
+     * and bounds the length to the column width. The full RFC 6266 header sanitization (against
+     * header/query-param injection) happens at presign time via {@code ContentDispositionUtil}.
+     *
+     * @param original the client-supplied original filename, may be null.
+     * @return a non-blank display filename safe to persist (≤255 chars).
+     */
+    private String sanitizeDisplayFilename(String original) {
+        if (original == null || original.isBlank()) {
+            return "tep-dinh-kem";
+        }
+        StringBuilder sb = new StringBuilder(original.length());
+        for (int i = 0; i < original.length(); i++) {
+            char c = original.charAt(i);
+            // Drop path separators and control chars; keep the rest (incl. Vietnamese) for display.
+            if (c == '/' || c == '\\' || c < 0x20 || c == 0x7F) {
+                continue;
+            }
+            sb.append(c);
+        }
+        String cleaned = sb.toString().trim();
+        if (cleaned.isEmpty()) {
+            return "tep-dinh-kem";
+        }
+        return cleaned.length() > 255 ? cleaned.substring(0, 255) : cleaned;
+    }
+
+    /**
+     * Maps an attachment entity to its response DTO.
+     *
+     * @param attachment the attachment entity.
+     * @return the response DTO.
+     */
+    private AnnouncementAttachmentResponse toAttachmentResponse(AnnouncementAttachment attachment) {
+        return AnnouncementAttachmentResponse.builder()
+                .id(attachment.getId())
+                .displayFilename(attachment.getDisplayFilename())
+                .contentType(attachment.getContentType())
+                .sizeBytes(attachment.getSizeBytes())
+                .createdAt(attachment.getCreatedAt())
+                .build();
     }
 
     /**
@@ -1016,6 +1338,26 @@ public class AnnouncementServiceImpl implements AnnouncementService {
     private AnnouncementResponse toResponse(Announcement announcement, boolean isRead,
                                             Map<UUID, String> creatorNames,
                                             List<AnnouncementResponse.MediaRef> media) {
+        // List/mutation paths carry no attachment manifest — only the detail path mints download URLs.
+        return toResponse(announcement, isRead, creatorNames, media, List.of());
+    }
+
+    /**
+     * Maps an {@link Announcement} entity to an {@link AnnouncementResponse} DTO, including both the
+     * media manifest and the attachment manifest. Only the detail path passes non-empty manifests
+     * (presigned per request); all other callers pass empty lists.
+     *
+     * @param announcement the entity to map.
+     * @param isRead       whether the requesting user has read this announcement.
+     * @param creatorNames id&rarr;fullName map covering the createdBy UUIDs being mapped.
+     * @param media        the media manifest (empty for list/mutation responses).
+     * @param attachments  the attachment manifest (empty for list/mutation responses).
+     * @return the response DTO.
+     */
+    private AnnouncementResponse toResponse(Announcement announcement, boolean isRead,
+                                            Map<UUID, String> creatorNames,
+                                            List<AnnouncementResponse.MediaRef> media,
+                                            List<AnnouncementResponse.AttachmentRef> attachments) {
         AnnouncementResponse.BlockRef blockRef = null;
         if (announcement.getTargetBlock() != null) {
             Block block = announcement.getTargetBlock();
@@ -1053,6 +1395,7 @@ public class AnnouncementServiceImpl implements AnnouncementService {
                 .readByCount(readByCount)
                 .isRead(isRead)
                 .media(media)
+                .attachments(attachments)
                 .build();
     }
 }

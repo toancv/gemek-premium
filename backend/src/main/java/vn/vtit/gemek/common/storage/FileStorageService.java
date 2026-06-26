@@ -18,6 +18,8 @@ import vn.vtit.gemek.common.exception.ErrorCode;
 import vn.vtit.gemek.config.MinioConfig;
 
 import java.io.InputStream;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -103,6 +105,49 @@ public class FileStorageService {
                     .build());
         } catch (Exception e) {
             log.error("MinIO presign failed for key {}: {}", objectKey, e.getMessage(), e);
+            throw new AppException(ErrorCode.INTERNAL_ERROR, "Could not generate file URL.");
+        }
+    }
+
+    /**
+     * Generates a presigned GET URL valid for {@link #PRESIGN_EXPIRY_SECONDS} seconds with S3
+     * response-override parameters folded into the SigV4 signature.
+     *
+     * <p>Used to force a download for document attachments (C3): pass
+     * {@code Content-Disposition: attachment; filename=…} and {@code application/octet-stream} so the
+     * browser downloads the object regardless of its stored content type and never renders it inline
+     * (defense against an uploaded renderable/script-capable type). The override params are signed, so
+     * they cannot be tampered with after the URL is minted. The image media path calls
+     * {@link #presign(String)} (no overrides) so image URLs are byte-for-byte unchanged (still inline).
+     *
+     * @param objectKey                  the MinIO object key.
+     * @param responseContentDisposition the {@code response-content-disposition} value (e.g.
+     *                                   {@code attachment; filename="..."}); ignored if null/blank.
+     * @param responseContentType        the {@code response-content-type} override (e.g.
+     *                                   {@code application/octet-stream}); ignored if null/blank.
+     * @return presigned URL string carrying the signed response-override query params.
+     * @throws AppException with {@code INTERNAL_ERROR} if URL generation fails.
+     */
+    public String presign(String objectKey, String responseContentDisposition, String responseContentType) {
+        Map<String, String> extraQueryParams = new HashMap<>();
+        // Only add the override params that are actually supplied — keeps the signed query minimal.
+        if (responseContentDisposition != null && !responseContentDisposition.isBlank()) {
+            extraQueryParams.put("response-content-disposition", responseContentDisposition);
+        }
+        if (responseContentType != null && !responseContentType.isBlank()) {
+            extraQueryParams.put("response-content-type", responseContentType);
+        }
+        try {
+            // Sign with the PUBLIC client; extraQueryParams are folded into the SigV4 signature (offline).
+            return minioPresignClient.getPresignedObjectUrl(GetPresignedObjectUrlArgs.builder()
+                    .bucket(minioConfig.getBucket())
+                    .object(objectKey)
+                    .method(Method.GET)
+                    .expiry(PRESIGN_EXPIRY_SECONDS, TimeUnit.SECONDS)
+                    .extraQueryParams(extraQueryParams)
+                    .build());
+        } catch (Exception e) {
+            log.error("MinIO presign (download) failed for key {}: {}", objectKey, e.getMessage(), e);
             throw new AppException(ErrorCode.INTERNAL_ERROR, "Could not generate file URL.");
         }
     }

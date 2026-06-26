@@ -109,7 +109,16 @@ public enum ErrorCode {
     ANNOUNCEMENT_MEDIA_LIMIT_EXCEEDED(HttpStatus.BAD_REQUEST),
 
     /** Announcement media mutation rejected — the announcement is published (media is editable on drafts only). */
-    ANNOUNCEMENT_NOT_DRAFT(HttpStatus.CONFLICT);
+    ANNOUNCEMENT_NOT_DRAFT(HttpStatus.CONFLICT),
+
+    /** Announcement attachment upload rejected — detected byte content-type is not an allowed document type. */
+    ANNOUNCEMENT_ATTACHMENT_TYPE_NOT_ALLOWED(HttpStatus.BAD_REQUEST),
+
+    /** Announcement attachment upload rejected — the single file exceeds the per-file size cap (10MB). */
+    ANNOUNCEMENT_ATTACHMENT_TOO_LARGE(HttpStatus.BAD_REQUEST),
+
+    /** Announcement attachment upload rejected — would exceed the per-announcement count or total-size cap. */
+    ANNOUNCEMENT_ATTACHMENT_LIMIT_EXCEEDED(HttpStatus.BAD_REQUEST);
 
     /** HTTP status code associated with this error code. */
     private final HttpStatus httpStatus;

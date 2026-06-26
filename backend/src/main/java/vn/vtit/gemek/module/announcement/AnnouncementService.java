@@ -7,6 +7,7 @@ package vn.vtit.gemek.module.announcement;
 import org.springframework.data.domain.Pageable;
 import org.springframework.web.multipart.MultipartFile;
 import vn.vtit.gemek.common.model.PageResponse;
+import vn.vtit.gemek.module.announcement.dto.AnnouncementAttachmentResponse;
 import vn.vtit.gemek.module.announcement.dto.AnnouncementMediaResponse;
 import vn.vtit.gemek.module.announcement.dto.AnnouncementResponse;
 import vn.vtit.gemek.module.announcement.dto.CreateAnnouncementRequest;
@@ -174,4 +175,45 @@ public interface AnnouncementService {
      * @param mediaId        the media row id (must belong to the announcement).
      */
     void deleteMedia(UUID announcementId, UUID mediaId);
+
+    // =========================================================================
+    // Attachments (C3) — ADMIN, drafts only, downloadable documents
+    // =========================================================================
+
+    /**
+     * Uploads one downloadable DOCUMENT attachment to a DRAFT announcement (C3).
+     *
+     * <p>ADMIN only; the announcement MUST be a draft (published = immutable). The file's real content
+     * type is validated by Tika on the bytes — only {@code pdf, docx, xlsx, pptx, txt} are accepted
+     * (renderable/executable types such as html/svg/csv and the client header/extension are NOT
+     * trusted). Per-announcement caps are enforced inside the transaction INDEPENDENTLY of the image
+     * caps: ≤10MB per file, ≤5 attachments AND ≤50MB total. The object key follows the C2.1 convention
+     * {@code announcements/{announcementId}/{uuid}} so the existing presign scope gate applies unchanged.
+     * Served strictly as forced-download (never inline).
+     *
+     * @param announcementId the owning announcement id.
+     * @param file           the uploaded document.
+     * @param principalId    the uploading admin's UUID.
+     * @return the persisted attachment metadata (no download URL).
+     */
+    AnnouncementAttachmentResponse uploadAttachment(UUID announcementId, MultipartFile file, UUID principalId);
+
+    /**
+     * Lists the attachment rows of an announcement (ADMIN/BOARD authoring view).
+     *
+     * @param announcementId the owning announcement id.
+     * @return the announcement's attachment metadata, oldest first.
+     */
+    List<AnnouncementAttachmentResponse> listAttachments(UUID announcementId);
+
+    /**
+     * Deletes one attachment row from a DRAFT announcement.
+     *
+     * <p>ADMIN only; the announcement MUST be a draft. The DB row is removed inside the transaction
+     * and the MinIO object is scheduled for best-effort AFTER-COMMIT delete.
+     *
+     * @param announcementId the owning announcement id.
+     * @param attachmentId   the attachment row id (must belong to the announcement).
+     */
+    void deleteAttachment(UUID announcementId, UUID attachmentId);
 }

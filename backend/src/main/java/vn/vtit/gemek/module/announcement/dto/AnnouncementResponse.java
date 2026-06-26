@@ -96,9 +96,38 @@ public class AnnouncementResponse {
      */
     private final List<MediaRef> media;
 
+    /**
+     * Attachment manifest for download: each entry maps an attachment row id to a FRESH short-lived
+     * FORCED-DOWNLOAD presigned URL (minted per request through the C2.1 scope gate). Populated ONLY on
+     * the detail response and ONLY for attachments the caller may access; {@code null}/empty elsewhere
+     * (list/create/update/publish). Distinct from {@link #media} (inline/cover images): attachments are
+     * a flat downloadable list, never rendered inline.
+     */
+    private final List<AttachmentRef> attachments;
+
     // =========================================================================
     // Nested reference types
     // =========================================================================
+
+    /**
+     * One attachment manifest entry — an attachment row id paired with a short-lived forced-download URL.
+     */
+    @Getter
+    @Builder
+    public static class AttachmentRef {
+
+        /** Attachment row id. */
+        private final UUID id;
+
+        /** Original filename, shown to the user. */
+        private final String displayFilename;
+
+        /** Object size in bytes. */
+        private final Long sizeBytes;
+
+        /** Fresh presigned FORCED-DOWNLOAD URL (short-lived); never a raw object key or long-lived URL. */
+        private final String downloadUrl;
+    }
 
     /**
      * One media manifest entry — a media row id paired with a short-lived presigned URL.

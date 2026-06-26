@@ -27,6 +27,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 import vn.vtit.gemek.common.model.PageResponse;
 import vn.vtit.gemek.common.security.UserPrincipal;
+import vn.vtit.gemek.module.announcement.dto.AnnouncementAttachmentResponse;
 import vn.vtit.gemek.module.announcement.dto.AnnouncementMediaResponse;
 import vn.vtit.gemek.module.announcement.dto.AnnouncementResponse;
 import vn.vtit.gemek.module.announcement.dto.CreateAnnouncementRequest;
@@ -307,6 +308,71 @@ public class AnnouncementController {
             @AuthenticationPrincipal UserPrincipal principal) {
 
         announcementService.deleteMedia(id, mediaId);
+        return ResponseEntity.noContent().build();
+    }
+
+    // =========================================================================
+    // Attachments (C3) — ADMIN upload/delete (drafts only), ADMIN/BOARD list
+    // =========================================================================
+
+    /**
+     * Uploads one downloadable document attachment to a draft announcement.
+     *
+     * <p>ADMIN only; the announcement must be a draft. Type is validated by Tika on the bytes
+     * (pdf/docx/xlsx/pptx/txt only); caps (≤10MB/file, ≤5 attachments, ≤50MB total) are enforced
+     * server-side, INDEPENDENT of the image caps. Served strictly as forced-download.
+     *
+     * @param id        the announcement UUID path variable.
+     * @param file      the uploaded document (multipart part {@code file}).
+     * @param principal the authenticated admin.
+     * @return 201 Created with the persisted attachment metadata (no download URL).
+     */
+    @PostMapping(value = "/{id}/attachments", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Upload a document attachment to a draft announcement")
+    public ResponseEntity<AnnouncementAttachmentResponse> uploadAttachment(
+            @PathVariable UUID id,
+            @RequestParam("file") MultipartFile file,
+            @AuthenticationPrincipal UserPrincipal principal) {
+
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(announcementService.uploadAttachment(id, file, principal.getId()));
+    }
+
+    /**
+     * Lists the document attachments of an announcement (authoring view).
+     *
+     * @param id        the announcement UUID path variable.
+     * @param principal the authenticated caller.
+     * @return 200 OK with the announcement's attachment metadata.
+     */
+    @GetMapping("/{id}/attachments")
+    @PreAuthorize("hasAnyRole('ADMIN','BOARD_MEMBER')")
+    @Operation(summary = "List an announcement's document attachments")
+    public ResponseEntity<List<AnnouncementAttachmentResponse>> listAttachments(
+            @PathVariable UUID id,
+            @AuthenticationPrincipal UserPrincipal principal) {
+
+        return ResponseEntity.ok(announcementService.listAttachments(id));
+    }
+
+    /**
+     * Deletes one document attachment from a draft announcement.
+     *
+     * @param id           the announcement UUID path variable.
+     * @param attachmentId the attachment row UUID path variable.
+     * @param principal    the authenticated admin.
+     * @return 204 No Content on success.
+     */
+    @DeleteMapping("/{id}/attachments/{attachmentId}")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Delete a document attachment from a draft announcement")
+    public ResponseEntity<Void> deleteAttachment(
+            @PathVariable UUID id,
+            @PathVariable UUID attachmentId,
+            @AuthenticationPrincipal UserPrincipal principal) {
+
+        announcementService.deleteAttachment(id, attachmentId);
         return ResponseEntity.noContent().build();
     }
 

@@ -211,7 +211,7 @@ export function UsersPage() {
 
       <div className="bg-white rounded-lg border border-gray-200 p-4 mb-4 flex flex-wrap gap-3">
         <input value={search} onChange={(e) => { setSearch(e.target.value); setPage(0); }}
-          placeholder="Tìm theo tên hoặc email..." className="border border-gray-300 rounded-md px-3 py-2 text-sm w-72 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+          placeholder="Tìm theo tên, email, số điện thoại..." className="border border-gray-300 rounded-md px-3 py-2 text-sm w-72 focus:outline-none focus:ring-2 focus:ring-blue-500" />
         <select value={roleFilter} onChange={(e) => { setRoleFilter(e.target.value); setPage(0); }}
           className="border border-gray-300 rounded-md px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
           <option value="">Tất cả vai trò</option>

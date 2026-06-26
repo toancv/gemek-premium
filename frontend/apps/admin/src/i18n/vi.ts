@@ -67,7 +67,7 @@ export const vi: TranslationDict = {
   residents: {
     title: 'Cư dân',
     add: 'Thêm cư dân',
-    searchPlaceholder: 'Tìm theo tên hoặc email...',
+    searchPlaceholder: 'Tìm theo tên, email, số điện thoại...',
     loadError: 'Không thể tải danh sách cư dân.',
     name: 'Họ tên',
     apartment: 'Căn hộ',
@@ -110,7 +110,7 @@ export const vi: TranslationDict = {
   contractors: {
     title: 'Nhà thầu',
     add: 'Thêm nhà thầu',
-    searchPlaceholder: 'Tìm tên công ty...',
+    searchPlaceholder: 'Tìm theo tên công ty, số điện thoại...',
     loadError: 'Không thể tải danh sách nhà thầu.',
     company: 'Công ty',
     contact: 'Người liên hệ',

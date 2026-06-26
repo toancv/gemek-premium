@@ -12,6 +12,8 @@ export interface AnnouncementAttachmentItem {
 }
 
 const MAX_ATTACHMENTS = 5;
+const MAX_FILE_BYTES = 10 * 1024 * 1024;
+const MAX_TOTAL_BYTES = 50 * 1024 * 1024;
 // accept hint only — the BE Tika magic-byte check is authoritative.
 const ACCEPT = '.pdf,.docx,.xlsx,.pptx,.txt';
 
@@ -82,6 +84,19 @@ export function AnnouncementAttachmentsManager({
     e.target.value = '';
     if (!file) return;
     setError('');
+    // Pre-validate BEFORE uploading so an oversize file is never sent — a >10MB multipart upload would
+    // otherwise be aborted mid-stream by the servlet limit (clean 413 on the server now, but the FE
+    // pre-check is instant and avoids the wasted upload + any streaming-reset edge). Caps are independent
+    // of the image manager's and mirror the BE (10MB/file, 50MB total, 5 files).
+    if (file.size > MAX_FILE_BYTES) {
+      setError('Tệp quá lớn (tối đa 10MB mỗi tệp).');
+      return;
+    }
+    const currentTotal = attachments.reduce((sum, a) => sum + (a.sizeBytes ?? 0), 0);
+    if (currentTotal + file.size > MAX_TOTAL_BYTES) {
+      setError('Tổng dung lượng tệp đính kèm vượt quá 50MB.');
+      return;
+    }
     try {
       await upload.mutateAsync({ id: announcementId, file });
     } catch (err: any) {

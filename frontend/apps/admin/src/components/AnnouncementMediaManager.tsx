@@ -11,6 +11,7 @@ export interface AnnouncementMediaItem {
 }
 
 const MAX_IMAGES = 5;
+const MAX_IMAGE_FILE_BYTES = 10 * 1024 * 1024;
 const ACCEPT = 'image/jpeg,image/png,image/webp';
 
 /**
@@ -75,6 +76,14 @@ export function AnnouncementMediaManager({
     e.target.value = '';
     if (!file) return;
     setError('');
+    // Pre-validate per-file size BEFORE uploading so a >10MB image is never sent (a multipart-limit abort
+    // mid-stream is the "đang tải lên" hang — see reports/c3-attachment-oversize-hang-diagnosis.md). The
+    // 50MB-total cap is NOT pre-checked here because the media manifest carries no per-item size; the BE
+    // enforces it and returns a clean ANNOUNCEMENT_MEDIA_LIMIT_EXCEEDED (handled below).
+    if (file.size > MAX_IMAGE_FILE_BYTES) {
+      setError('Ảnh quá lớn (tối đa 10MB mỗi ảnh).');
+      return;
+    }
     try {
       await upload.mutateAsync({ id: announcementId, file, kind: kindRef.current });
     } catch (err: any) {

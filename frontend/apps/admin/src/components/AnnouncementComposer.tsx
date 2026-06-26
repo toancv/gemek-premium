@@ -200,6 +200,10 @@ export function AnnouncementComposeFields({
             {cover && (
               <img src={cover.url} alt={form.title || 'Ảnh bìa'} loading="lazy" className="w-full max-h-64 object-cover rounded-lg mb-3" />
             )}
+            {/* Title under the banner, above the body — mirrors resident AnnouncementDetailPage (banner → title → body). */}
+            {form.title.trim()
+              ? <h1 className="font-semibold text-gray-900 mb-2">{form.title}</h1>
+              : <p className="text-sm text-gray-400 italic mb-2">Chưa có tiêu đề.</p>}
             {form.content.trim()
               ? <MarkdownContent content={form.content} className="text-sm text-gray-700" mediaManifest={mediaManifest} />
               : <p className="text-sm text-gray-400 italic">Chưa có nội dung.</p>}

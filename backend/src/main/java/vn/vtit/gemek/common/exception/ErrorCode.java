@@ -118,7 +118,10 @@ public enum ErrorCode {
     ANNOUNCEMENT_ATTACHMENT_TOO_LARGE(HttpStatus.BAD_REQUEST),
 
     /** Announcement attachment upload rejected — would exceed the per-announcement count or total-size cap. */
-    ANNOUNCEMENT_ATTACHMENT_LIMIT_EXCEEDED(HttpStatus.BAD_REQUEST);
+    ANNOUNCEMENT_ATTACHMENT_LIMIT_EXCEEDED(HttpStatus.BAD_REQUEST),
+
+    /** Multipart upload exceeds the servlet per-file/request size limit (generic 413, any upload surface). */
+    PAYLOAD_TOO_LARGE(HttpStatus.PAYLOAD_TOO_LARGE);
 
     /** HTTP status code associated with this error code. */
     private final HttpStatus httpStatus;

@@ -2,6 +2,13 @@ server:
   port: 8080
   servlet:
     context-path: /
+  tomcat:
+    # Drain (swallow) an aborted upload's in-flight remainder up to this size so a multipart-limit
+    # rejection returns a clean 413 to a STREAMING browser instead of resetting the connection mid-upload
+    # (the cause of the "đang tải lên" hang — see reports/c3-attachment-oversize-hang-diagnosis.md). FINITE
+    # and >= multipart max-request-size (55MB); NOT -1, so anything past the nginx edge cap stays
+    # edge-rejected rather than drained unbounded (DoS guard).
+    max-swallow-size: 60MB
 
 spring:
   application:

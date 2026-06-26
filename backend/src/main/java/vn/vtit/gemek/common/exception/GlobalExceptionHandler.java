@@ -17,6 +17,8 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
+import org.springframework.web.multipart.MultipartException;
 
 import java.time.Instant;
 import java.util.LinkedHashMap;
@@ -173,6 +175,41 @@ public class GlobalExceptionHandler {
         log.warn("Authentication failure on {}: {}", request.getRequestURI(), ex.getMessage());
         return buildErrorResponse(ErrorCode.UNAUTHORIZED.name(), "Authentication required.",
                 HttpStatus.UNAUTHORIZED, request.getRequestURI());
+    }
+
+    /**
+     * Handles a multipart upload that exceeds the servlet size limit
+     * ({@code spring.servlet.multipart.max-file-size}/{@code max-request-size}).
+     *
+     * <p>The limit fires in {@code DispatcherServlet.checkMultipart} BEFORE the controller, so without this
+     * handler it falls to the catch-all and returns 500 (and, for a streaming browser, can reset the
+     * connection mid-upload — see {@code reports/c3-attachment-oversize-hang-diagnosis.md}). This returns a
+     * clean {@code 413} so the frontend's existing 413-branch renders a size message instead of hanging.
+     * The limit fires before routing, so the surface is inferred from the request path to pick a fitting
+     * coded body (attachment vs image vs generic). The companion {@code server.tomcat.max-swallow-size}
+     * (≥ {@code max-request-size}) lets Tomcat drain the in-flight remainder so this 413 actually reaches a
+     * streaming client rather than being lost to a connection reset.
+     *
+     * @param ex      the multipart/size exception.
+     * @param request the current HTTP request.
+     * @return 413 PAYLOAD_TOO_LARGE with a path-inferred too-large error code.
+     */
+    @ExceptionHandler({MaxUploadSizeExceededException.class, MultipartException.class})
+    public ResponseEntity<Map<String, Object>> handleMaxUploadSize(
+            MultipartException ex, HttpServletRequest request) {
+        String path = request.getRequestURI();
+        // Multipart limit fires before routing — infer the surface from the path for a fitting coded body.
+        String code;
+        if (path != null && path.contains("/attachments")) {
+            code = ErrorCode.ANNOUNCEMENT_ATTACHMENT_TOO_LARGE.name();
+        } else if (path != null && path.contains("/media")) {
+            code = ErrorCode.ANNOUNCEMENT_MEDIA_LIMIT_EXCEEDED.name();
+        } else {
+            code = ErrorCode.PAYLOAD_TOO_LARGE.name();
+        }
+        log.warn("Multipart upload too large on {}: {}", path, ex.getMessage());
+        return buildErrorResponse(code, "Tệp tải lên vượt quá dung lượng cho phép.",
+                HttpStatus.PAYLOAD_TOO_LARGE, path);
     }
 
     /**

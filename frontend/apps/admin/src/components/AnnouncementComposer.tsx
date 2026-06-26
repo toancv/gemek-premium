@@ -160,25 +160,56 @@ export function AnnouncementComposeFields({
 
   return (
     <div className="space-y-6">
-      {/* ── Title spans the full width above the compose|preview row ── */}
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Tiêu đề <span className="text-red-500">*</span></label>
-        <input value={form.title} onChange={(e) => form.setTitle(e.target.value)} className="block w-full border border-gray-300 rounded-md px-3 py-2 text-sm" />
-      </div>
+      {/* ── Row-aligned 2-col mirror: left "Soạn" ↔ right "Xem trước", aligned row-by-row
+            (cover-slot ↔ cover-slot, title ↔ title, body ↔ body). One grid so each grid row sizes to its
+            taller cell, keeping the two columns in lockstep. items-start aligns cell content to the top.
+            Mobile (single column): `order-*` regroups the cells into compose-first then preview-second
+            (DOM order is column-pair order for the desktop row mirror); `lg:order-none` restores it. ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-6 lg:gap-x-8 gap-y-2 items-start">
+        {/* Section headers (row 0) */}
+        <h2 className="order-1 lg:order-none text-sm font-semibold text-gray-500 uppercase tracking-wide">Soạn</h2>
+        <h2 className="order-5 lg:order-none text-sm font-semibold text-gray-500 uppercase tracking-wide">Xem trước</h2>
 
-      {/* ── Body editor | live preview, tops aligned (items-start). Both columns lead with a label + a
-            same-height toolbar row so the textarea and the preview box start at the same Y. ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8 items-start">
-        {/* Left: compose body */}
-        <div className="flex flex-col">
-          <label className="block text-sm font-medium text-gray-700 mb-1">Nội dung <span className="text-red-500">*</span></label>
-          <div className="flex flex-wrap items-center gap-1 mb-1 min-h-[2.25rem]">
-            <span className="text-xs text-gray-500 mr-1">Định dạng:</span>
-            <button type="button" onClick={() => form.insertMarkdown('**', '**', 'văn bản đậm')} className="px-2 py-1 text-xs font-bold border border-gray-300 rounded hover:bg-gray-50" title="Đậm">Đậm</button>
-            <button type="button" onClick={() => form.insertMarkdown('*', '*', 'văn bản nghiêng')} className="px-2 py-1 text-xs italic border border-gray-300 rounded hover:bg-gray-50" title="Nghiêng">Nghiêng</button>
-            <button type="button" onClick={() => form.insertMarkdown('## ', '', 'Tiêu đề')} className="px-2 py-1 text-xs border border-gray-300 rounded hover:bg-gray-50" title="Tiêu đề">Tiêu đề</button>
-            <button type="button" onClick={() => form.insertMarkdown('- ', '', 'Mục danh sách')} className="px-2 py-1 text-xs border border-gray-300 rounded hover:bg-gray-50" title="Danh sách">Danh sách</button>
-            <button type="button" onClick={() => form.insertMarkdown('[', '](https://)', 'văn bản liên kết')} className="px-2 py-1 text-xs border border-gray-300 rounded hover:bg-gray-50" title="Liên kết">Liên kết</button>
+        {/* ROW 1 — cover slot (fixed admin-side height so title/body stay aligned regardless of cover) */}
+        <div className="hidden lg:flex h-40 items-center justify-center text-center px-3 border border-dashed border-gray-200 rounded-md text-xs text-gray-400">
+          Ảnh bìa quản lý ở Thư viện ảnh phía trên
+        </div>
+        {cover ? (
+          <div className="order-6 lg:order-none h-40 rounded-md overflow-hidden bg-gray-100">
+            <img src={cover.url} alt={form.title || 'Ảnh bìa'} loading="lazy" className="w-full h-full object-cover" />
+          </div>
+        ) : (
+          <div className="order-6 lg:order-none h-40 flex items-center justify-center border border-gray-200 rounded-md bg-gray-50 text-sm text-gray-400 italic">
+            Chưa có ảnh bìa
+          </div>
+        )}
+
+        {/* ROW 2 — title (input on the left, preview title on the right) */}
+        <div className="order-2 lg:order-none">
+          <label className="block text-sm font-medium text-gray-700 mb-1">Tiêu đề <span className="text-red-500">*</span></label>
+          <input value={form.title} onChange={(e) => form.setTitle(e.target.value)} className="block w-full border border-gray-300 rounded-md px-3 py-2 text-sm" />
+        </div>
+        <div className="order-7 lg:order-none px-1">
+          {/* desktop spacer matches the left label height so the preview title aligns with the input, not the label */}
+          <div className="hidden lg:block h-5 mb-1" aria-hidden="true" />
+          {form.title.trim()
+            ? <h1 className="font-semibold text-gray-900">{form.title}</h1>
+            : <p className="text-sm text-gray-400 italic">Chưa có tiêu đề.</p>}
+        </div>
+
+        {/* ROW 3 — body (editor on the left, markdown render on the right). A matched-height header band
+              on both cells (label + toolbar vs a spacer) keeps the textarea and the preview box tops aligned. */}
+        <div className="order-3 lg:order-none flex flex-col">
+          <div className="min-h-[3.75rem]">
+            <label className="block text-sm font-medium text-gray-700 mb-1">Nội dung <span className="text-red-500">*</span></label>
+            <div className="flex flex-wrap items-center gap-1">
+              <span className="text-xs text-gray-500 mr-1">Định dạng:</span>
+              <button type="button" onClick={() => form.insertMarkdown('**', '**', 'văn bản đậm')} className="px-2 py-1 text-xs font-bold border border-gray-300 rounded hover:bg-gray-50" title="Đậm">Đậm</button>
+              <button type="button" onClick={() => form.insertMarkdown('*', '*', 'văn bản nghiêng')} className="px-2 py-1 text-xs italic border border-gray-300 rounded hover:bg-gray-50" title="Nghiêng">Nghiêng</button>
+              <button type="button" onClick={() => form.insertMarkdown('## ', '', 'Tiêu đề')} className="px-2 py-1 text-xs border border-gray-300 rounded hover:bg-gray-50" title="Tiêu đề">Tiêu đề</button>
+              <button type="button" onClick={() => form.insertMarkdown('- ', '', 'Mục danh sách')} className="px-2 py-1 text-xs border border-gray-300 rounded hover:bg-gray-50" title="Danh sách">Danh sách</button>
+              <button type="button" onClick={() => form.insertMarkdown('[', '](https://)', 'văn bản liên kết')} className="px-2 py-1 text-xs border border-gray-300 rounded hover:bg-gray-50" title="Liên kết">Liên kết</button>
+            </div>
           </div>
           <textarea
             ref={form.textareaRef}
@@ -190,20 +221,10 @@ export function AnnouncementComposeFields({
             placeholder="Hỗ trợ Markdown: **đậm**, *nghiêng*, ## tiêu đề, - danh sách, [liên kết](https://...)"
           />
         </div>
-
-        {/* Right: live preview (same safe renderer the resident app uses). The label + spacer match the
-            left column's label + toolbar height so the preview box top aligns with the textarea top. */}
-        <div className="flex flex-col">
-          <label className="block text-sm font-medium text-gray-700 mb-1">Xem trước</label>
-          <div className="mb-1 min-h-[2.25rem]" aria-hidden="true" />
+        <div className="order-8 lg:order-none flex flex-col">
+          {/* desktop spacer matches the left label+toolbar band; mobile groups under the row-0 "Xem trước" header */}
+          <div className="hidden lg:block min-h-[3.75rem]" aria-hidden="true" />
           <div className="border border-gray-200 rounded-md p-4 bg-gray-50 min-h-[28rem]">
-            {cover && (
-              <img src={cover.url} alt={form.title || 'Ảnh bìa'} loading="lazy" className="w-full max-h-64 object-cover rounded-lg mb-3" />
-            )}
-            {/* Title under the banner, above the body — mirrors resident AnnouncementDetailPage (banner → title → body). */}
-            {form.title.trim()
-              ? <h1 className="font-semibold text-gray-900 mb-2">{form.title}</h1>
-              : <p className="text-sm text-gray-400 italic mb-2">Chưa có tiêu đề.</p>}
             {form.content.trim()
               ? <MarkdownContent content={form.content} className="text-sm text-gray-700" mediaManifest={mediaManifest} />
               : <p className="text-sm text-gray-400 italic">Chưa có nội dung.</p>}

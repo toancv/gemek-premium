@@ -452,4 +452,77 @@ class AnnouncementControllerTest extends AbstractIntegrationTest {
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.error").value("ANNOUNCEMENT_NOT_DRAFT"));
     }
+
+    // =========================================================================
+    // Attachments (C3) — ADMIN upload, role + draft + type gates
+    // =========================================================================
+
+    /** Minimal valid PDF — %PDF magic makes Tika detect application/pdf. */
+    private static final byte[] PDF_BYTES =
+            "%PDF-1.4\n1 0 obj<<>>endobj\ntrailer<<>>\n%%EOF".getBytes();
+
+    @Test
+    @DisplayName("POST /api/announcements/{id}/attachments — ADMIN uploads a PDF to a draft, returns 201")
+    void uploadAttachment_adminDraft_returns201() throws Exception {
+        UUID announcementId = createAnnouncement(adminToken, "Attach draft " + System.nanoTime());
+        MockMultipartFile file = new MockMultipartFile("file", "báo cáo.pdf", "application/pdf", PDF_BYTES);
+
+        mockMvc.perform(multipart("/api/announcements/" + announcementId + "/attachments")
+                        .file(file)
+                        .header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.id").isNotEmpty())
+                .andExpect(jsonPath("$.displayFilename").value("báo cáo.pdf"))
+                .andExpect(jsonPath("$.contentType").value("application/pdf"));
+    }
+
+    @Test
+    @DisplayName("POST /api/announcements/{id}/attachments — RESIDENT caller is forbidden (403)")
+    void uploadAttachment_resident_returns403() throws Exception {
+        UUID announcementId = createAnnouncement(adminToken, "Attach forbid " + System.nanoTime());
+
+        String uid = UUID.randomUUID().toString().replace("-", "").substring(0, 8);
+        String phone = phoneFromUid(uid);
+        UUID blockId = createBlock("AttachBlock-" + uid);
+        UUID apartmentId = createApartment(blockId, "AR301");
+        assignResident(phone, apartmentId);
+        String residentToken = login(phone, "Password@123456");
+
+        MockMultipartFile file = new MockMultipartFile("file", "x.pdf", "application/pdf", PDF_BYTES);
+        mockMvc.perform(multipart("/api/announcements/" + announcementId + "/attachments")
+                        .file(file)
+                        .header("Authorization", "Bearer " + residentToken))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @DisplayName("POST /api/announcements/{id}/attachments — upload to a PUBLISHED announcement is rejected (409)")
+    void uploadAttachment_published_returns409() throws Exception {
+        UUID announcementId = createAnnouncement(adminToken, "Attach published " + System.nanoTime());
+        mockMvc.perform(post("/api/announcements/" + announcementId + "/publish")
+                        .header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isOk());
+
+        MockMultipartFile file = new MockMultipartFile("file", "x.pdf", "application/pdf", PDF_BYTES);
+        mockMvc.perform(multipart("/api/announcements/" + announcementId + "/attachments")
+                        .file(file)
+                        .header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.error").value("ANNOUNCEMENT_NOT_DRAFT"));
+    }
+
+    @Test
+    @DisplayName("POST /api/announcements/{id}/attachments — a renderable type (HTML) is rejected (400)")
+    void uploadAttachment_html_returns400() throws Exception {
+        UUID announcementId = createAnnouncement(adminToken, "Attach html " + System.nanoTime());
+        byte[] html = "<!DOCTYPE html><html><body><script>1</script></body></html>".getBytes();
+        // Renamed .pdf — the extension is not trusted; content detection rejects it.
+        MockMultipartFile file = new MockMultipartFile("file", "evil.pdf", "application/pdf", html);
+
+        mockMvc.perform(multipart("/api/announcements/" + announcementId + "/attachments")
+                        .file(file)
+                        .header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("ANNOUNCEMENT_ATTACHMENT_TYPE_NOT_ALLOWED"));
+    }
 }

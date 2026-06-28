@@ -3,7 +3,23 @@
 > Fresh assistant: read **HANDOFF.md** first, then this snapshot, then DECISIONS.md, then the cited reports.
 > The repo files are ground truth — do not trust any chat summary.
 
-## ▶ CURRENT STATE SNAPSHOT (2026-06-26)
+## ▶ CURRENT STATE SNAPSHOT (2026-06-28)
+
+**CONTRACTOR DOCUMENTS — BE P1 DONE (committed `093265b` feat / `6d8c611` test / docs this commit), awaiting CTO HTTP/DB smoke. Resume → P2 dedicated contractor pages.**
+On branch `feature/contractor-contract-upload` (off `main`). CTO ruling (DECISIONS 2026-06-28): contract
+documents attach to the **CONTRACTOR** as a row-per-file list (new table `contractor_document`), reusing the C3
+forced-download stack — SUPERSEDES the unbuilt `/api/contracts/{id}/attachment` + dormant
+`contracts.attachment_url` (write-idle, not dropped). Staff-only: ADMIN upload/delete, ADMIN+BOARD read/download,
+TECHNICIAN+RESIDENT excluded (§13 R-4). As-built: migration `V23__create_contractor_document.sql`; entity/repo/dto;
+service upload/list/delete + `assertContractorDocumentPresignAccess` (parse contractorId from key → 403 on
+malformed; never 500); 3 endpoints `POST|GET|DELETE /api/contractors/{id}/documents`; reused generic
+`FileStorageService`/`ContentDispositionUtil`/`MinioConfig`/after-commit cleanup. Tika allowlist
+{pdf,docx,xlsx,pptx,txt}; caps per contractor ≤10MB/file, ≤5 files, ≤50MB total. Divergences from C3 (logged):
+`CONTRACTOR_DOCUMENT_TOO_LARGE`→413; no draft gate. **Suite 457 → 477 GREEN.** API-SPEC §8+§13 updated;
+authoritative report `reports/contractor-documents-p1.md` (incl. `/code-review` high triage — 0 correctness bugs,
+all findings intentional/inherited-C3/deferred-DRY). **NEXT = P2: dedicated contractor create/edit pages (replace
+the modal) + documents manager cloned from `AnnouncementAttachmentsManager` with lazy-save on `/new`.** Below = the
+prior 2026-06-26 snapshot.
 
 **TRUNK = `main` — rename `deploy/local`→`main` runbook ready (report `reports/git-trunk-rename-runbook.md`, DECISIONS 2026-06-26), pending CTO execution.** Pre-flight secret audit SAFE (no real `.env` tracked; prod secrets all `${ENV_REF}`; two dev-only flags: docker-compose.dev.yml hardcoded dev-DB pw + seed-demo bcrypt hashes — keep dev/demo-only). All other branches fully merged into deploy/local (0 unique commits). `deploy/local` becomes trunk renamed `main` (no consolidation needed — it IS the full history); 3-commit `master` retired. SUPERSEDES the prior "consolidate onto master" framing. **Next feature (amenity) branches off `main` (after CTO runs the rename); agent pushes feature branch + STOPs, CTO opens PR.**
 

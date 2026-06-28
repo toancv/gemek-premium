@@ -1956,3 +1956,53 @@ Content-Type (REJECTED — spoofable; Tika on bytes).
 
 **Tests:** `AnnouncementMediaServiceIntegrationTest` (+12, non-transactional to exercise after-commit),
 `AnnouncementControllerTest` (+3 security/status). Full backend suite GREEN (412).
+
+---
+
+## 2026-06-28 — Contractor documents = files attach to CONTRACTOR (option C), C3-mechanics
+
+**Decision:** Contract documents are uploaded as a row-per-file list against the **CONTRACTOR** entity
+(new table `contractor_document`), reusing the C3 forced-download attachment stack — NOT against the
+existing `Contract` entity. This SUPERSEDES the spec'd-but-unbuilt `POST/GET /api/contracts/{id}/attachment`
+(API-SPEC §8) and the dormant `contracts.attachment_url` column, which are marked SUPERSEDED (kept
+write-idle; NOT dropped).
+
+**Access (staff-only, no resident surface):** ADMIN uploads/deletes; ADMIN+BOARD_MEMBER read/download;
+TECHNICIAN and RESIDENT excluded (per §13 R-4). This deliberately diverges from the announcement gate's
+resident-readable branch.
+
+**BE P1 as-built (committed `093265b` feat / `6d8c611` test):** migration `V23__create_contractor_document.sql`
+(FK contractor ON DELETE CASCADE, creator ON DELETE SET NULL, index on contractor_id); `ContractorDocument`
+entity (extends `CreatableEntity`, append-only) + repository (count / sumSizeBytes / findOrdered / dual-key
+find); service `uploadDocument`/`listDocuments`/`deleteDocument` + `assertContractorDocumentPresignAccess`;
+3 endpoints `POST|GET|DELETE /api/contractors/{id}/documents`. REUSED generic `FileStorageService`
+(incl. forced-download `presign(key,disp,type)`), `ContentDispositionUtil`, `MinioConfig` dual client, and the
+after-commit `ObjectKeysObsoleteEvent`/`ObsoleteObjectCleanupListener`. Key convention
+`contractors/{contractorId}/documents/{uuid}`. Tika magic-byte allowlist {pdf,docx,xlsx,pptx,txt}; caps PER
+contractor ≤10MB/file, ≤5 files, ≤50MB total.
+
+**Deliberate divergences from C3 (logged):** (1) `CONTRACTOR_DOCUMENT_TOO_LARGE` → HTTP **413** (C3's
+attachment-too-large is 400) so the service-cap and the servlet multipart limit present the FE the same coded
+413, and the MockMvc oversize test is deterministic. (2) No draft gate — contractors have no draft/published
+lifecycle, so upload is allowed on any existing contractor (404 if missing).
+
+**Reused global 413 handler:** `GlobalExceptionHandler.handleMaxUploadSize` is `@RestControllerAdvice` with a
+generic `PAYLOAD_TOO_LARGE` fallback (NOT announcement-coupled) — confirmed global, reused as-is (no STOP).
+
+**Deferred debt (NOT this phase):** cross-module DRY — Tika/caps constants AND the stateless
+`detectDocumentMime`/`classifyZipContainer` detection logic duplicate the announcement versions; role-string
+extraction duplicated across controllers; OOXML 3× stream re-read; cap TOCTOU (same as C3). Natural home is
+`common.storage`. Consistent with prior C3 DRY-debt handling. Logged in `reports/contractor-documents-p1.md`,
+not extracted.
+
+**Alternatives rejected:** attach to existing `Contract` entity / new contract record (CTO chose CONTRACTOR);
+revive single-key `contracts.attachment_url` (CONTRADICTS C3 row-per-file precedent); resident-readable branch
+(CONTRADICTS staff-only ruling); inline preview (CONTRADICTS forced-download ruling). The `/code-review` (high)
+"dead gate" finding was REJECTED — the gate is mandated by §13 R-4 + the malformed-key 403 guard.
+
+**Tests:** `ContractorDocumentServiceIntegrationTest` (+11), `ContractorDocumentControllerTest` (+9),
+`ContractorServiceImplTest` constructor updated. Full backend suite **457 → 477 GREEN**.
+
+**FE (later phases):** dedicated contractor create/edit pages replacing the modal + a documents manager cloned
+from `AnnouncementAttachmentsManager`, with full-parity lazy-save on `/new` (first file pick validates
+companyName then auto-creates the contractor).

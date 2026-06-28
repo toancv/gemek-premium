@@ -1492,6 +1492,61 @@ Errors: `409 CONFLICT` (contractor has active contracts)
 
 ---
 
+### Contractor documents (DECISIONS 2026-06-28 — staff-only forced-download)
+
+Row-per-file downloadable documents (pdf/docx/xlsx/pptx/txt) attached to a CONTRACTOR, reusing the C3
+forced-download attachment stack. Bytes live in MinIO under the key convention
+`contractors/{contractorId}/documents/{uuid}`. Content type is validated by Tika on the file BYTES
+(never the header/extension). Caps PER contractor: ≤10MB/file, ≤5 documents, ≤50MB total. Served strictly
+as forced-download (signed `Content-Disposition: attachment` + `response-content-type=application/octet-stream`).
+**No resident surface.** Supersedes the old `/api/contracts/{id}/attachment` endpoints and `contracts.attachment_url`.
+
+#### POST /api/contractors/{id}/documents
+
+**Auth:** ADMIN
+**Description:** Upload one document to a contractor.
+Request: `multipart/form-data` — field `file`.
+
+Response `201 Created`:
+```json
+{
+  "id": "uuid",
+  "displayFilename": "hợp đồng.pdf",
+  "contentType": "application/pdf",
+  "sizeBytes": 184320,
+  "createdAt": "ISO8601",
+  "downloadUrl": null
+}
+```
+Errors: `400 CONTRACTOR_DOCUMENT_TYPE_NOT_ALLOWED` (detected byte type not pdf/docx/xlsx/pptx/txt);
+`413 CONTRACTOR_DOCUMENT_TOO_LARGE` (file > 10MB; also the generic servlet `413 PAYLOAD_TOO_LARGE` past the
+multipart limit); `400 CONTRACTOR_DOCUMENT_LIMIT_EXCEEDED` (> 5 files or > 50MB total); `404 NOT_FOUND` (contractor).
+
+#### GET /api/contractors/{id}/documents
+
+**Auth:** ADMIN, BOARD_MEMBER
+**Description:** List a contractor's documents; each row carries a freshly-minted, short-lived
+FORCED-DOWNLOAD presigned `downloadUrl`. Minted only after the staff-only presign gate
+(`assertContractorDocumentPresignAccess`) passes. TECHNICIAN and RESIDENT are denied (`403`).
+
+Response `200 OK` — array:
+```json
+[
+  { "id": "uuid", "displayFilename": "hợp đồng.pdf", "contentType": "application/pdf",
+    "sizeBytes": 184320, "createdAt": "ISO8601", "downloadUrl": "https://…forced-download…" }
+]
+```
+Errors: `404 NOT_FOUND` (contractor).
+
+#### DELETE /api/contractors/{id}/documents/{documentId}
+
+**Auth:** ADMIN
+**Description:** Delete one document from a contractor (dual-key — the row must belong to the contractor
+in the path). The MinIO object is removed after the transaction commits.
+Response `204 No Content`. Errors: `404 NOT_FOUND` (contractor or document).
+
+---
+
 ### GET /api/contractors/{id}/work-history
 
 > 🚧 **[PLANNED — chưa implement]** No controller mapping. NOT a duplicate: this returns **tickets** assigned to a contractor, which no live endpoint serves — `GET /api/tickets` does not bind an `assignedToContractorId` filter (TicketController:106-128), and `GET /api/contractors/{id}/contracts` returns contracts, not tickets. Genuinely planned-but-unbuilt; kept as intent record. Resolution: `reports/c-p5-stale-resolution.md` S1.
@@ -1605,38 +1660,15 @@ Response `200 OK` — updated contract object.
 
 ---
 
-### POST /api/contracts/{id}/attachment
+### ~~POST /api/contracts/{id}/attachment~~ — SUPERSEDED
 
-> ⚠️ **NOT IMPLEMENTED + security gate (R-4):** this endpoint is spec'd but has no controller code. When built, it MUST validate contract-level access (staff-only) through the presign ownership check before touching MinIO — see the file-surface access matrix in §13.
-
-**Auth:** ADMIN
-**Description:** Upload or replace the PDF attachment for a contract.
-
-Request: `multipart/form-data` — field `file` (PDF only, max 20 MB)
-
-Response `200 OK`:
-```json
-{ "objectKey": "contracts/<id>/attachment/contract.pdf" }
-```
+> ⛔ **SUPERSEDED (DECISIONS 2026-06-28) — not implemented, not planned.** Contract documents now attach to the **CONTRACTOR** via `POST /api/contractors/{id}/documents` (row-per-file list, staff-only forced-download; see §8 "Contractor documents"). This replaces the single-key design; the dormant `contracts.attachment_url` column is kept write-idle, NOT dropped. The prior R-4 gate requirement is satisfied by `ContractorService.assertContractorDocumentPresignAccess` (see §13).
 
 ---
 
-### GET /api/contracts/{id}/attachment
+### ~~GET /api/contracts/{id}/attachment~~ — SUPERSEDED
 
-> ⚠️ **NOT IMPLEMENTED + security gate (R-4):** this endpoint is spec'd but has no controller code. When built, it MUST validate contract-level access (staff-only) through the presign ownership check before touching MinIO — see the file-surface access matrix in §13.
-
-**Auth:** ADMIN, BOARD_MEMBER
-**Description:** Get a short-lived presigned download URL for the contract attachment.
-
-Response `200 OK`:
-```json
-{
-  "presignedUrl": "https://minio.../...",
-  "expiresAt": "2026-05-29T11:00:00Z"
-}
-```
-
-Errors: `404 NOT_FOUND` (no attachment uploaded)
+> ⛔ **SUPERSEDED (DECISIONS 2026-06-28) — not implemented, not planned.** Download a contractor document via `GET /api/contractors/{id}/documents` (returns each row with a freshly-minted forced-download `downloadUrl`). See §8 "Contractor documents".
 
 ---
 
@@ -2512,7 +2544,8 @@ Thread = all `notification_subscriptions` rows for the ticket (CREATOR + ASSIGNE
 | Surface | Who may obtain a presigned URL |
 |---|---|
 | Ticket photos (`tickets/…` keys) | Active residents of the ticket's apartment; assigned TECHNICIAN; any TECHNICIAN while the ticket is in `NEW` status (triage rule, E5); ADMIN; BOARD_MEMBER. **Public-ticket visibility grants NO photo access — PERMANENT rule (E4): photos can show home interiors; any future "public photos" needs a per-photo creator-consent feature, not a presign widening.** |
-| Contract attachments (endpoints below — NOT yet implemented) | Staff only (ADMIN/BOARD_MEMBER) when built; MUST route through an `assertPresignAccess`-style ownership check before issuing URLs (R-4). |
+| ~~Contract attachments~~ | **SUPERSEDED (DECISIONS 2026-06-28)** — replaced by the contractor-documents row below; the `/api/contracts/{id}/attachment` endpoints were never built and are not planned. |
+| Contractor documents (`contractors/{contractorId}/documents/{uuid}` keys) | **Staff only — ADMIN/BOARD_MEMBER.** TECHNICIAN and RESIDENT denied (no resident surface). The list endpoint mints forced-download presigned URLs only after `ContractorService.assertContractorDocumentPresignAccess` parses the contractor id from the key and confirms a staff role; a malformed/unparseable key → `403` (never 500). Forced-download (signed `Content-Disposition: attachment` + `application/octet-stream`). Object key is server-derived, never client-supplied. |
 | Announcement images (`announcements/{announcementId}/{file}` keys) | **Scope-mirrored (C2.1)** — exactly whoever may READ the owning announcement: ADMIN/BOARD_MEMBER unrestricted (drafts included, for authoring preview); RESIDENT iff the announcement is PUBLISHED and its ALL/BLOCK/FLOOR scope matches one of the caller's ACTIVE residencies (the same predicate as the resident feed — `AnnouncementRepository.existsReadableByResident`); every other role denied. A DRAFT's media is ADMIN/BOARD-only. Malformed key or nonexistent announcement → `403` (never a 500). The pre-C2.1 any-authenticated stub is REMOVED. Key convention: the announcement id is the first path segment after the prefix so the gate recovers it from the key alone. Upload endpoint lands with C2.2. |
 
 Query params: `objectKey` (required)

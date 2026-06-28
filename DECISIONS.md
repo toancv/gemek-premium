@@ -2014,3 +2014,39 @@ revive single-key `contracts.attachment_url` (CONTRADICTS C3 row-per-file preced
 **FE (later phases):** dedicated contractor create/edit pages replacing the modal + a documents manager cloned
 from `AnnouncementAttachmentsManager`, with full-parity lazy-save on `/new` (first file pick validates
 companyName then auto-creates the contractor).
+
+---
+
+## 2026-06-28 — Contractor documents FE P3a (documents manager on edit page)
+
+**What:** Built `ContractorDocumentsManager` (admin) and mounted it on `ContractorEditPage` ONLY (contractor
+id present), as a sibling of the form. Cloned the C3 `AnnouncementAttachmentsManager` mechanics against the P1
+endpoints `POST|GET|DELETE /api/contractors/{id}/documents[/{documentId}]`. No BE / auth / schema / API-SPEC
+change (P1 endpoints already exist + spec'd). NO `/new` mounting, NO lazy-save (deferred to P3b).
+
+**Decisions / rationale:**
+- **Manager owns its list query** (`useContractorDocuments`, key `['contractors', id, 'documents']`) rather
+  than receiving the list as a prop. Why: unlike announcements (attachments embedded in the draft detail
+  manifest), contractor documents are a SEPARATE GET endpoint — so a self-fetching query + precise
+  invalidate-on-mutation (`refetchType:'all'`) is the faithful adaptation. Alt (fold documents into
+  `GET /contractors/{id}` detail) rejected: would be a BE/API-SPEC change, out of scope.
+- **413 size branch (reaffirming the 2026-06-28 BE sanctioned divergence):** the FE maps ANY `status===413`
+  to ONE VN "Tệp quá lớn (tối đa 10MB)" message, covering both `CONTRACTOR_DOCUMENT_TOO_LARGE` (413 service
+  cap) and `PAYLOAD_TOO_LARGE` (413 servlet limit). Did NOT copy C3's status-413-only special-case-plus-400-code
+  branch. The 400 codes (`TYPE_NOT_ALLOWED`, `LIMIT_EXCEEDED`) route via `getVnErrorMessage`; 3 new
+  `CONTRACTOR_DOCUMENT_*` keys added to the shared `@gemek/ui errorMessages.ts` (+ test), parallel to the
+  existing `ANNOUNCEMENT_ATTACHMENT_*` keys. Shared-ui infra edit (additive, not the resident app).
+- **Boundary-correct `formatSize`:** rounds KB first and promotes to MB if rounding hits 1024, so KB never
+  displays ≥1024. The known-buggy admin **announcement `formatSize` boundary bug is LEFT OPEN** (announcement
+  module out of scope this phase) — logged, not fixed.
+- **BOARD_MEMBER read-access stays API-only this phase** — the edit page is ADMIN-only, so no BOARD FE surface
+  was built; deferred FE surface.
+- **`/code-review` high (workflow, 23 agents):** 7 verified, **0 correctness bugs**. Applied 4 trivial/
+  sibling-aligning fixes (disable upload on isError so the total-size pre-check can't be bypassed against an
+  unknown list; use shared `formatVNDate` instead of a local `toLocaleDateString`; single date guard;
+  doc-specific success toasts). Deferred 2 (shared-busy cross-disable — verbatim C3 pattern; broad
+  `['contractors']` invalidate on contractor save — pre-existing hook, not new P3a code). 6 DRY findings
+  refuted (faithful C3 reproduction; consistent with the pre-approved P1 cross-module DRY deferral).
+
+**P1 BE live verification:** STILL deferred to (and now to be discharged by) this P3a CTO :80 browser smoke
+(upload/list/download/403/413 vs the running stack + real MinIO).

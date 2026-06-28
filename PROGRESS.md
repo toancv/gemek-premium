@@ -5,7 +5,32 @@
 
 ## ▶ CURRENT STATE SNAPSHOT (2026-06-28)
 
-**CONTRACTOR DOCUMENTS — FE P2 DONE (committed `5d2df1a` feat), awaiting CTO :80 smoke. Resume → P3 documents manager.**
+**CONTRACTOR DOCUMENTS — FE P3a DONE (committed `4c76ecf` feat / docs this commit), awaiting CTO :80 smoke. Resume → P3b lazy-save on `/new`.**
+`ContractorDocumentsManager` built + mounted on `ContractorEditPage` ONLY (contractor id present), as a sibling
+of the form (documents save immediately via their own endpoints, NOT on form submit). NO `/new` mounting, NO
+lazy-save (that is P3b). Clones the C3 `AnnouncementAttachmentsManager` mechanics — multi-file upload, inline
+pre-checks (≤10MB/file, ≤5 files, ≤50MB total, VN msgs), scheme-guarded forced-download anchor (signed
+Content-Disposition drives the filename; no client `download` attr), delete-confirm dialog, Escape-dismiss —
+against the P1 endpoints `POST|GET|DELETE /api/contractors/{id}/documents[/{documentId}]`. KEY divergence from
+C3: the list is a SEPARATE GET (not embedded in detail), so the manager OWNS its query
+(`useContractorDocuments`, key `['contractors', id, 'documents']`) + upload/delete invalidate it
+(`refetchType:'all'`). **413 size branch (sanctioned, DECISIONS 2026-06-28):** `errorText` keys off
+`status===413` → ONE VN "Tệp quá lớn (tối đa 10MB)" covering BOTH `CONTRACTOR_DOCUMENT_TOO_LARGE` (413 service
+cap) AND `PAYLOAD_TOO_LARGE` (413 servlet) — did NOT copy C3's 400 branch; the 400 codes (`TYPE_NOT_ALLOWED`,
+`LIMIT_EXCEEDED`) route via `getVnErrorMessage` (3 new keys added to shared `@gemek/ui errorMessages.ts` +
+test, parallel to `ANNOUNCEMENT_ATTACHMENT_*`). **formatSize is boundary-correct** (rounds KB first, promotes
+to MB at 1024 so KB never shows ≥1024); the known-buggy admin **announcement `formatSize` boundary bug stays
+OPEN** (not touched this phase — announcement module out of scope). **BOARD_MEMBER read-access stays API-only
+this phase — FE surface DEFERRED** (edit page is ADMIN-only; no BOARD view built). admin `tsc --noEmit` exit 0
++ `vite build` 769 modules GREEN; ui `errorMessages.test` 34 pass; no admin vitest harness (backlog gap) →
+build-green + pending CTO smoke. `/code-review` high (workflow, 23 agents): 7 verified (0 correctness bugs) →
+**4 fixed** (isError-disable upload, shared `formatVNDate`, single date guard, doc-specific success toasts),
+2 deferred (C3-faithful shared-busy + pre-existing broad-invalidate hook), 6 DRY refuted. **P1 BE live
+HTTP/DB/MinIO smoke is STILL to be discharged by this P3a CTO :80 smoke** (upload/list/download/403/413 vs
+running stack + real MinIO). Report `reports/contractor-documents-p3a.md`. **NEXT = P3b: lazy-save documents
+section on `/contractors/new` (create-then-upload orchestrator).** Below = the P2 snapshot.
+
+**CONTRACTOR DOCUMENTS — FE P2 DONE (committed `5d2df1a` feat), CTO :80 smoke folded into the P3a smoke above. [Resume pointer now P3b — see block above.]**
 Dedicated admin contractor **create** (`/contractors/new`) + **edit** (`/contractors/:id/edit`) PAGES replace the
 list-page modal, mirroring the C2.3b announcement create/edit pattern (shared `useContractorForm` hook +
 `ContractorFormFields`; loader/guard edit page; `getVnErrorMessage` inline + MutationCache top-right toast). Field

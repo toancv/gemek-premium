@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { getVnErrorMessage, PageSpinner } from '@gemek/ui';
 import { useContractor, useUpdateContractor } from '../api/hooks';
 import { useContractorForm, ContractorFormFields } from '../components/ContractorForm';
+import { ContractorDocumentsManager } from '../components/ContractorDocumentsManager';
 import { t } from '../i18n/vi';
 
 /**
@@ -77,8 +78,6 @@ function ContractorEditForm({ contractor }: { contractor: any }) {
       <form onSubmit={(e) => { e.preventDefault(); save(); }}>
         <ContractorFormFields form={form} />
 
-        {/* P3 will append the contractor documents/upload section below the form fields here. */}
-
         {form.formError && <p className="mt-4 text-sm text-red-600 bg-red-50 px-3 py-2 rounded">{form.formError}</p>}
 
         <div className="flex gap-2 justify-end pt-6 mt-4 border-t border-gray-200">
@@ -88,6 +87,10 @@ function ContractorEditForm({ contractor }: { contractor: any }) {
           </button>
         </div>
       </form>
+
+      {/* Documents section — sibling of the form (saves immediately via its own endpoints, NOT on form
+          submit). Only on the edit page, where the contractor id exists; /new gets lazy-save in P3b. */}
+      <ContractorDocumentsManager contractorId={contractor.id} />
     </div>
   );
 }

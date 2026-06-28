@@ -22,9 +22,12 @@ import vn.vtit.gemek.module.contractor.entity.Contract;
 import vn.vtit.gemek.module.contractor.entity.ContractStatus;
 import vn.vtit.gemek.module.contractor.entity.Contractor;
 import vn.vtit.gemek.module.contractor.entity.ContractorSpecialty;
+import org.springframework.context.ApplicationEventPublisher;
+import vn.vtit.gemek.common.storage.FileStorageService;
 import vn.vtit.gemek.module.contractor.mapper.ContractorMapper;
 import vn.vtit.gemek.module.contractor.repository.ContractPaymentRepository;
 import vn.vtit.gemek.module.contractor.repository.ContractRepository;
+import vn.vtit.gemek.module.contractor.repository.ContractorDocumentRepository;
 import vn.vtit.gemek.module.contractor.repository.ContractorRepository;
 import vn.vtit.gemek.module.contractor.repository.MaintenanceScheduleRepository;
 import vn.vtit.gemek.module.user.repository.UserRepository;
@@ -58,6 +61,9 @@ class ContractorServiceImplTest {
     @Mock private MaintenanceScheduleRepository scheduleRepository;
     @Mock private UserRepository userRepository;
     @Mock private ContractorMapper contractorMapper;
+    @Mock private ContractorDocumentRepository documentRepository;
+    @Mock private FileStorageService fileStorageService;
+    @Mock private ApplicationEventPublisher eventPublisher;
 
     private ContractorServiceImpl service;
 
@@ -70,7 +76,8 @@ class ContractorServiceImplTest {
     void setUp() {
         service = new ContractorServiceImpl(
                 contractorRepository, contractRepository, paymentRepository,
-                scheduleRepository, userRepository, contractorMapper);
+                scheduleRepository, userRepository, contractorMapper,
+                documentRepository, fileStorageService, eventPublisher);
 
         contractorId = UUID.randomUUID();
         contractId = UUID.randomUUID();

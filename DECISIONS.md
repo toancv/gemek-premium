@@ -5,6 +5,14 @@ Format: Date | Decision | Reasoning | Alternatives
 
 ---
 
+## 2026-06-28 | Contractor-document oversize → HTTP **413** (sanctioned divergence from C3's 400)
+
+**Decision.** The contractor-document service-cap-too-large condition (`CONTRACTOR_DOCUMENT_TOO_LARGE`) returns **HTTP 413**, and the FE consolidates ALL oversize signals (per-file, per-contractor, total) onto 413. C3's announcement attachment path returned 400 for its app-level cap; the contractor path deliberately uses 413 (semantically correct for "payload too large", and aligns the app-level cap with the servlet/multipart 413 the FE already maps). **This is an intentional, logged divergence — NOT a drift.** P3's documents manager will therefore treat 413 (no coded body) as the single oversize message, the same belt-and-suspenders the announcement managers' `errorText` already uses for the servlet 413.
+
+**Scope note (P2, this commit):** P2 ships FE create/edit PAGES only (no upload UI), so no 413 handling is wired yet — this entry pre-records the contract P3 will consume. **Alternatives considered:** match C3's 400 (rejected — 413 is the correct status and avoids a second app-vs-servlet split on the FE).
+
+---
+
 ## 2026-06-26 | Trunk = `main` (rename `deploy/local`→`main`; retire the 3-commit `master` skeleton)
 
 **Decision (pending CTO runbook execution; see `reports/git-trunk-rename-runbook.md`).** Rather than consolidating

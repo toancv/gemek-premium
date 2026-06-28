@@ -5,7 +5,23 @@
 
 ## ▶ CURRENT STATE SNAPSHOT (2026-06-28)
 
-**CONTRACTOR DOCUMENTS — BE P1 DONE (committed `093265b` feat / `6d8c611` test / docs this commit), awaiting CTO HTTP/DB smoke. Resume → P2 dedicated contractor pages.**
+**CONTRACTOR DOCUMENTS — FE P2 DONE (committed `5d2df1a` feat), awaiting CTO :80 smoke. Resume → P3 documents manager.**
+Dedicated admin contractor **create** (`/contractors/new`) + **edit** (`/contractors/:id/edit`) PAGES replace the
+list-page modal, mirroring the C2.3b announcement create/edit pattern (shared `useContractorForm` hook +
+`ContractorFormFields`; loader/guard edit page; `getVnErrorMessage` inline + MutationCache top-right toast). Field
+set/validation reproduced EXACTLY from the retired modal (companyName required; contactPerson/phone/email/specialty/
+address/taxCode/notes — none added/removed). Reuses EXISTING create/update + GET-by-id endpoints unchanged (new FE
+`useContractor(id)` hook only) — **no BE / no API-SPEC change.** Create OK → redirect to the new record's edit page
+(sets up P3 upload); update OK → stay on edit. List "Thêm"/"Sửa" now NAVIGATE; inline modal removed (no other
+consumer). Routes gated ADMIN-only (writes are ADMIN). admin `tsc --noEmit` + `vite build` GREEN; no admin vitest
+harness (backlog gap) → build-green + pending CTO smoke. `/code-review` high (workflow, 33 agents): 8 verified →
+**4 fixed** (synchronous double-submit guard, detail-cache seed, Enter-to-submit `<form>`, shared `PageSpinner` —
+all aligning with the sibling), rest out-of-scope/pre-existing/matches-sibling (logged, not drift). **P1 BE live
+HTTP/DB/MinIO smoke is DEFERRED to the end-of-P3 browser smoke** (upload/list/download/403/413 vs running stack +
+real MinIO). Report `reports/contractor-documents-p2.md`. **NEXT = P3: `ContractorDocumentsManager` (clone of
+`AnnouncementAttachmentsManager`) + lazy-save on `/contractors/new`, appended to the edit page.** Below = the P1 (BE) snapshot.
+
+**CONTRACTOR DOCUMENTS — BE P1 DONE (committed `093265b` feat / `6d8c611` test / docs this commit), awaiting CTO HTTP/DB smoke (now folded into end-of-P3 smoke).**
 On branch `feature/contractor-contract-upload` (off `main`). CTO ruling (DECISIONS 2026-06-28): contract
 documents attach to the **CONTRACTOR** as a row-per-file list (new table `contractor_document`), reusing the C3
 forced-download stack — SUPERSEDES the unbuilt `/api/contracts/{id}/attachment` + dormant
@@ -17,8 +33,7 @@ malformed; never 500); 3 endpoints `POST|GET|DELETE /api/contractors/{id}/docume
 {pdf,docx,xlsx,pptx,txt}; caps per contractor ≤10MB/file, ≤5 files, ≤50MB total. Divergences from C3 (logged):
 `CONTRACTOR_DOCUMENT_TOO_LARGE`→413; no draft gate. **Suite 457 → 477 GREEN.** API-SPEC §8+§13 updated;
 authoritative report `reports/contractor-documents-p1.md` (incl. `/code-review` high triage — 0 correctness bugs,
-all findings intentional/inherited-C3/deferred-DRY). **NEXT = P2: dedicated contractor create/edit pages (replace
-the modal) + documents manager cloned from `AnnouncementAttachmentsManager` with lazy-save on `/new`.** Below = the
+all findings intentional/inherited-C3/deferred-DRY). **P2 (FE pages) is now DONE — see the block above.** Below = the
 prior 2026-06-26 snapshot.
 
 **TRUNK = `main` — rename `deploy/local`→`main` runbook ready (report `reports/git-trunk-rename-runbook.md`, DECISIONS 2026-06-26), pending CTO execution.** Pre-flight secret audit SAFE (no real `.env` tracked; prod secrets all `${ENV_REF}`; two dev-only flags: docker-compose.dev.yml hardcoded dev-DB pw + seed-demo bcrypt hashes — keep dev/demo-only). All other branches fully merged into deploy/local (0 unique commits). `deploy/local` becomes trunk renamed `main` (no consolidation needed — it IS the full history); 3-commit `master` retired. SUPERSEDES the prior "consolidate onto master" framing. **Next feature (amenity) branches off `main` (after CTO runs the rename); agent pushes feature branch + STOPs, CTO opens PR.**

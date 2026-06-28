@@ -11,6 +11,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -22,10 +23,12 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 import vn.vtit.gemek.common.model.PageResponse;
 import vn.vtit.gemek.common.security.UserPrincipal;
 import vn.vtit.gemek.module.contractor.dto.ContractPaymentResponse;
 import vn.vtit.gemek.module.contractor.dto.ContractResponse;
+import vn.vtit.gemek.module.contractor.dto.ContractorDocumentResponse;
 import vn.vtit.gemek.module.contractor.dto.ContractorResponse;
 import vn.vtit.gemek.module.contractor.dto.CreateContractPaymentRequest;
 import vn.vtit.gemek.module.contractor.dto.CreateContractRequest;
@@ -299,5 +302,69 @@ public class ContractorController {
             @Valid @RequestBody CreateMaintenanceScheduleRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(contractorService.addSchedule(id, request));
+    }
+
+    // =========================================================================
+    // Contractor documents — /api/contractors/{id}/documents (staff-only forced-download)
+    // =========================================================================
+
+    /**
+     * Uploads one downloadable document to a contractor.
+     *
+     * <p>The detected byte content-type must be pdf/docx/xlsx/pptx/txt; caps (≤10MB/file,
+     * ≤5 documents, ≤50MB total per contractor) are enforced server-side. Served strictly as
+     * forced-download.
+     *
+     * @param id        the contractor UUID path variable.
+     * @param file      the multipart {@code file} part.
+     * @param principal the authenticated user principal.
+     * @return 201 Created with the persisted document metadata (no download URL).
+     */
+    @PostMapping(value = "/api/contractors/{id}/documents", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Upload a document to a contractor")
+    public ResponseEntity<ContractorDocumentResponse> uploadDocument(
+            @PathVariable UUID id,
+            @RequestParam("file") MultipartFile file,
+            @AuthenticationPrincipal UserPrincipal principal) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(contractorService.uploadDocument(id, file, principal.getId()));
+    }
+
+    /**
+     * Lists a contractor's documents, each with a freshly-minted forced-download {@code downloadUrl}.
+     *
+     * @param id        the contractor UUID path variable.
+     * @param principal the authenticated user principal.
+     * @return 200 OK with the contractor's document list.
+     */
+    @GetMapping("/api/contractors/{id}/documents")
+    @PreAuthorize("hasAnyRole('ADMIN','BOARD_MEMBER')")
+    @Operation(summary = "List a contractor's documents (forced-download URLs)")
+    public ResponseEntity<List<ContractorDocumentResponse>> listDocuments(
+            @PathVariable UUID id,
+            @AuthenticationPrincipal UserPrincipal principal) {
+        String role = principal.getAuthorities().stream()
+                .findFirst()
+                .map(a -> a.getAuthority().replace("ROLE_", ""))
+                .orElse("");
+        return ResponseEntity.ok(contractorService.listDocuments(id, principal.getId(), role));
+    }
+
+    /**
+     * Deletes one document from a contractor.
+     *
+     * @param id         the contractor UUID path variable.
+     * @param documentId the document row UUID path variable.
+     * @return 204 No Content.
+     */
+    @DeleteMapping("/api/contractors/{id}/documents/{documentId}")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Delete a document from a contractor")
+    public ResponseEntity<Void> deleteDocument(
+            @PathVariable UUID id,
+            @PathVariable UUID documentId) {
+        contractorService.deleteDocument(id, documentId);
+        return ResponseEntity.noContent().build();
     }
 }

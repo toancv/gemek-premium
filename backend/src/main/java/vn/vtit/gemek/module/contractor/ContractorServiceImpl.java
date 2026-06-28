@@ -4,19 +4,26 @@
  */
 package vn.vtit.gemek.module.contractor;
 
+import org.apache.tika.Tika;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 import vn.vtit.gemek.common.exception.AppException;
 import vn.vtit.gemek.common.exception.ErrorCode;
 import vn.vtit.gemek.common.model.PageResponse;
+import vn.vtit.gemek.common.storage.ContentDispositionUtil;
+import vn.vtit.gemek.common.storage.FileStorageService;
+import vn.vtit.gemek.common.storage.ObjectKeysObsoleteEvent;
 import vn.vtit.gemek.module.contractor.dto.ContractPaymentResponse;
 import vn.vtit.gemek.module.contractor.dto.ContractResponse;
+import vn.vtit.gemek.module.contractor.dto.ContractorDocumentResponse;
 import vn.vtit.gemek.module.contractor.dto.ContractorResponse;
 import vn.vtit.gemek.module.contractor.dto.CreateContractPaymentRequest;
 import vn.vtit.gemek.module.contractor.dto.CreateContractRequest;
@@ -29,16 +36,20 @@ import vn.vtit.gemek.module.contractor.entity.Contract;
 import vn.vtit.gemek.module.contractor.entity.ContractPayment;
 import vn.vtit.gemek.module.contractor.entity.ContractStatus;
 import vn.vtit.gemek.module.contractor.entity.Contractor;
+import vn.vtit.gemek.module.contractor.entity.ContractorDocument;
 import vn.vtit.gemek.module.contractor.entity.ContractorSpecialty;
 import vn.vtit.gemek.module.contractor.entity.MaintenanceSchedule;
 import vn.vtit.gemek.module.contractor.mapper.ContractorMapper;
 import vn.vtit.gemek.module.contractor.repository.ContractPaymentRepository;
 import vn.vtit.gemek.module.contractor.repository.ContractRepository;
+import vn.vtit.gemek.module.contractor.repository.ContractorDocumentRepository;
 import vn.vtit.gemek.module.contractor.repository.ContractorRepository;
 import vn.vtit.gemek.module.contractor.repository.MaintenanceScheduleRepository;
 import vn.vtit.gemek.module.user.entity.User;
 import vn.vtit.gemek.module.user.repository.UserRepository;
 
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -46,6 +57,8 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
 
 /**
  * Implementation of {@link ContractorService}.
@@ -59,12 +72,50 @@ public class ContractorServiceImpl implements ContractorService {
 
     private static final Logger log = LoggerFactory.getLogger(ContractorServiceImpl.class);
 
+    /** Object-key prefix for contractor documents: {@code contractors/{contractorId}/documents/{uuid}}. */
+    static final String DOCUMENT_KEY_PREFIX = "contractors/";
+
+    /** Object-key segment that follows the contractor id (so the gate can validate the key shape). */
+    private static final String DOCUMENT_KEY_SEGMENT = "documents/";
+
+    /** Maximum document rows per contractor (mirrors the C3 attachment cap). */
+    private static final int MAX_DOCUMENTS_PER_CONTRACTOR = 5;
+
+    /** Maximum total document bytes per contractor (50 MB, mirrors the C3 attachment cap). */
+    private static final long MAX_DOCUMENT_TOTAL_BYTES = 50L * 1024 * 1024;
+
+    /** Maximum bytes for a single document (10 MB, mirrors the C3 attachment per-file cap). */
+    private static final long MAX_DOCUMENT_FILE_BYTES = 10L * 1024 * 1024;
+
+    /**
+     * Allowed document content types, validated by Tika on the BYTES — pdf/docx/xlsx/pptx/txt ONLY.
+     * These VALUES intentionally duplicate the announcement attachment set (C3); extracting a shared
+     * constant is deferred debt (see reports/contractor-documents-p1.md), mirroring prior C3 DRY debt.
+     */
+    private static final String MIME_PDF = "application/pdf";
+    private static final String MIME_DOCX = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+    private static final String MIME_XLSX = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+    private static final String MIME_PPTX = "application/vnd.openxmlformats-officedocument.presentationml.presentation";
+    private static final String MIME_TXT = "text/plain";
+
+    private static final Set<String> ALLOWED_DOCUMENT_MIME_TYPES =
+            Set.of(MIME_PDF, MIME_DOCX, MIME_XLSX, MIME_PPTX, MIME_TXT);
+
+    /** Forced-download content type override applied to every document presigned URL. */
+    private static final String DOWNLOAD_RESPONSE_CONTENT_TYPE = "application/octet-stream";
+
+    /** Tika instance for magic-byte content-type detection (thread-safe). */
+    private static final Tika TIKA = new Tika();
+
     private final ContractorRepository contractorRepository;
     private final ContractRepository contractRepository;
     private final ContractPaymentRepository paymentRepository;
     private final MaintenanceScheduleRepository scheduleRepository;
     private final UserRepository userRepository;
     private final ContractorMapper contractorMapper;
+    private final ContractorDocumentRepository documentRepository;
+    private final FileStorageService fileStorageService;
+    private final ApplicationEventPublisher eventPublisher;
 
     /**
      * Constructs the service with all required dependencies via constructor injection.
@@ -75,19 +126,28 @@ public class ContractorServiceImpl implements ContractorService {
      * @param scheduleRepository   the maintenance schedule JPA repository.
      * @param userRepository       the user JPA repository.
      * @param contractorMapper     the MapStruct contractor mapper.
+     * @param documentRepository   the contractor document JPA repository.
+     * @param fileStorageService   the generic MinIO-backed storage service (reused as-is).
+     * @param eventPublisher       publisher for after-commit MinIO object cleanup events.
      */
     public ContractorServiceImpl(ContractorRepository contractorRepository,
                                  ContractRepository contractRepository,
                                  ContractPaymentRepository paymentRepository,
                                  MaintenanceScheduleRepository scheduleRepository,
                                  UserRepository userRepository,
-                                 ContractorMapper contractorMapper) {
+                                 ContractorMapper contractorMapper,
+                                 ContractorDocumentRepository documentRepository,
+                                 FileStorageService fileStorageService,
+                                 ApplicationEventPublisher eventPublisher) {
         this.contractorRepository = contractorRepository;
         this.contractRepository = contractRepository;
         this.paymentRepository = paymentRepository;
         this.scheduleRepository = scheduleRepository;
         this.userRepository = userRepository;
         this.contractorMapper = contractorMapper;
+        this.documentRepository = documentRepository;
+        this.fileStorageService = fileStorageService;
+        this.eventPublisher = eventPublisher;
     }
 
     /**
@@ -392,8 +452,307 @@ public class ContractorServiceImpl implements ContractorService {
     }
 
     // -------------------------------------------------------------------------
+    // =========================================================================
+    // Contractor documents (staff-only forced-download; DECISIONS 2026-06-28)
+    // =========================================================================
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    @Transactional
+    public ContractorDocumentResponse uploadDocument(UUID contractorId, MultipartFile file, UUID principalId) {
+        log.debug("uploadDocument — contractorId={}", contractorId);
+
+        Contractor contractor = loadContractorOrThrow(contractorId);
+
+        long fileSize = file.getSize();
+        // Per-file cap FIRST (cheap) — coded 413 rather than relying on the servlet limit alone.
+        if (fileSize > MAX_DOCUMENT_FILE_BYTES) {
+            throw new AppException(ErrorCode.CONTRACTOR_DOCUMENT_TOO_LARGE,
+                    "Tệp tài liệu vượt quá 10MB.");
+        }
+
+        // Magic-byte validation: trust the bytes (pdf/docx/xlsx/pptx/txt), never the filename/header.
+        String detectedMime = detectDocumentMime(file);
+
+        long currentCount = documentRepository.countByContractorId(contractorId);
+        long currentBytes = documentRepository.sumSizeBytesByContractorId(contractorId);
+        if (currentCount + 1 > MAX_DOCUMENTS_PER_CONTRACTOR) {
+            throw new AppException(ErrorCode.CONTRACTOR_DOCUMENT_LIMIT_EXCEEDED,
+                    "Tối đa " + MAX_DOCUMENTS_PER_CONTRACTOR + " tài liệu mỗi nhà thầu.");
+        }
+        if (currentBytes + fileSize > MAX_DOCUMENT_TOTAL_BYTES) {
+            throw new AppException(ErrorCode.CONTRACTOR_DOCUMENT_LIMIT_EXCEEDED,
+                    "Tổng dung lượng tài liệu của nhà thầu vượt quá 50MB.");
+        }
+
+        // Key convention contractors/{contractorId}/documents/{uuid}{ext} — the contractor id is the
+        // first segment after the prefix so the presign scope gate parses it from the key alone.
+        String objectKey = DOCUMENT_KEY_PREFIX + contractorId + "/" + DOCUMENT_KEY_SEGMENT
+                + UUID.randomUUID() + documentExtensionFor(detectedMime);
+
+        try {
+            fileStorageService.upload(objectKey, file.getInputStream(), detectedMime, fileSize);
+        } catch (IOException e) {
+            log.error("Failed to read contractor document upload stream: {}", e.getMessage(), e);
+            throw new AppException(ErrorCode.INTERNAL_ERROR, "Không thể đọc tệp tải lên.");
+        }
+
+        ContractorDocument document = new ContractorDocument();
+        document.setContractor(contractor);
+        document.setObjectKey(objectKey);
+        document.setContentType(detectedMime);
+        document.setSizeBytes(fileSize);
+        document.setDisplayFilename(sanitizeDisplayFilename(file.getOriginalFilename()));
+        ContractorDocument saved = documentRepository.save(document);
+
+        log.info("Contractor {} document uploaded — type={}, size={}B, key={}",
+                contractorId, detectedMime, fileSize, objectKey);
+        return toDocumentResponse(saved, null);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public List<ContractorDocumentResponse> listDocuments(UUID contractorId, UUID principalId, String role) {
+        log.debug("listDocuments — contractorId={}", contractorId);
+
+        // Existence check so a missing contractor is a clean 404 rather than an empty list.
+        loadContractorOrThrow(contractorId);
+        List<ContractorDocument> rows = documentRepository.findByContractorIdOrderByCreatedAtAsc(contractorId);
+        if (rows.isEmpty()) {
+            return List.of();
+        }
+        // Gate once via the staff-only access rule; denial → empty list (no leak), not a 500/403 body.
+        try {
+            assertContractorDocumentPresignAccess(rows.get(0).getObjectKey(), principalId, role);
+        } catch (AppException denied) {
+            return List.of();
+        }
+        return rows.stream()
+                .map(d -> toDocumentResponse(d, fileStorageService.presign(d.getObjectKey(),
+                        ContentDispositionUtil.attachment(d.getDisplayFilename()),
+                        DOWNLOAD_RESPONSE_CONTENT_TYPE)))
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    @Transactional
+    public void deleteDocument(UUID contractorId, UUID documentId) {
+        log.debug("deleteDocument — contractorId={}, documentId={}", contractorId, documentId);
+
+        // Existence check so a missing contractor is a clean 404.
+        loadContractorOrThrow(contractorId);
+        // Dual-key lookup: the row must belong to the contractor in the path (no cross-contractor delete).
+        ContractorDocument document = documentRepository
+                .findByContractorIdAndId(contractorId, documentId)
+                .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND,
+                        "Contractor document not found: " + documentId));
+
+        String objectKey = document.getObjectKey();
+        documentRepository.delete(document);
+        scheduleObjectCleanup(List.of(objectKey));
+        log.info("Contractor {} document deleted — documentId={}", contractorId, documentId);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void assertContractorDocumentPresignAccess(String objectKey, UUID principalId, String role) {
+        // Parse the owning contractor id FIRST — a malformed key is denied for every role
+        // (FORBIDDEN, never a 500 from a bad UUID reaching MinIO).
+        UUID contractorId = parseContractorIdFromKey(objectKey);
+        if (contractorId == null) {
+            log.warn("Denied contractor-document presign — malformed key.");
+            throw new AppException(ErrorCode.FORBIDDEN, "Access denied to contractor document.");
+        }
+
+        // STAFF-ONLY: ADMIN and BOARD_MEMBER may read; every other role (incl. TECHNICIAN, RESIDENT)
+        // is denied. This deliberately omits the announcement gate's resident-readable branch
+        // (DECISIONS 2026-06-28: no resident surface for contractor documents).
+        if ("ADMIN".equals(role) || "BOARD_MEMBER".equals(role)) {
+            return;
+        }
+        log.warn("Denied contractor-document presign — role {} is not staff.", role);
+        throw new AppException(ErrorCode.FORBIDDEN, "Access denied to contractor document.");
+    }
+
     // Private helpers
     // -------------------------------------------------------------------------
+
+    /**
+     * Recovers the contractor UUID from a document object key per {@link #DOCUMENT_KEY_PREFIX}.
+     *
+     * <p>Convention: {@code contractors/{contractorId}/documents/{uuid-filename}} — the id is the first
+     * path segment after the prefix, and the next segment must be {@code documents/}. Returns
+     * {@code null} (caller denies) for any key that does not match this shape or whose id segment is not
+     * a UUID, so a malformed key never produces a 500.
+     *
+     * @param objectKey the MinIO object key.
+     * @return the parsed contractor UUID, or {@code null} if the key is malformed.
+     */
+    private static UUID parseContractorIdFromKey(String objectKey) {
+        if (objectKey == null || !objectKey.startsWith(DOCUMENT_KEY_PREFIX)) {
+            return null;
+        }
+        String remainder = objectKey.substring(DOCUMENT_KEY_PREFIX.length());
+        int slash = remainder.indexOf('/');
+        // Require a non-empty id segment.
+        if (slash <= 0) {
+            return null;
+        }
+        String afterId = remainder.substring(slash + 1);
+        // Require the documents/ segment AND a non-empty filename after it ("documents/<file>").
+        if (!afterId.startsWith(DOCUMENT_KEY_SEGMENT) || afterId.length() <= DOCUMENT_KEY_SEGMENT.length()) {
+            return null;
+        }
+        try {
+            return UUID.fromString(remainder.substring(0, slash));
+        } catch (IllegalArgumentException ex) {
+            // First segment is not a UUID — malformed key, deny.
+            return null;
+        }
+    }
+
+    /**
+     * Detects the real document content type from the file bytes and asserts it is an allowed type
+     * (pdf/docx/xlsx/pptx/txt). OOXML files are ZIP containers tika-core reports as
+     * {@code application/zip}; they are disambiguated by their internal part layout
+     * ({@link #classifyZipContainer}) — still pure content inspection, never the filename.
+     *
+     * @param file the uploaded multipart file.
+     * @return the detected, allowed document MIME type.
+     * @throws AppException CONTRACTOR_DOCUMENT_TYPE_NOT_ALLOWED if not allowed; INTERNAL_ERROR on read failure.
+     */
+    private String detectDocumentMime(MultipartFile file) {
+        try {
+            String detected = TIKA.detect(file.getInputStream());
+            // tika-core can't peek inside a zip — resolve OOXML subtypes from the container layout.
+            if ("application/zip".equals(detected) || "application/x-tika-ooxml".equals(detected)) {
+                detected = classifyZipContainer(file);
+            }
+            if (!ALLOWED_DOCUMENT_MIME_TYPES.contains(detected)) {
+                throw new AppException(ErrorCode.CONTRACTOR_DOCUMENT_TYPE_NOT_ALLOWED,
+                        "Chỉ chấp nhận tệp PDF, DOCX, XLSX, PPTX hoặc TXT.");
+            }
+            return detected;
+        } catch (IOException e) {
+            throw new AppException(ErrorCode.INTERNAL_ERROR, "Không thể kiểm tra định dạng tệp.");
+        }
+    }
+
+    /**
+     * Classifies a ZIP container as an OOXML document type by inspecting its entry names. Real Office
+     * files carry a {@code word/}, {@code xl/}, or {@code ppt/} part tree; the first match wins. A zip
+     * lacking these returns {@code application/zip} so the caller rejects it.
+     *
+     * @param file the uploaded multipart file (a detected zip container).
+     * @return the OOXML MIME type, or {@code application/zip} if it is not an Office document.
+     * @throws IOException if the stream cannot be read.
+     */
+    private String classifyZipContainer(MultipartFile file) throws IOException {
+        try (InputStream in = file.getInputStream();
+             ZipInputStream zip = new ZipInputStream(in)) {
+            ZipEntry entry;
+            // Scan part names; OOXML always has a top-level word/ | xl/ | ppt/ directory.
+            while ((entry = zip.getNextEntry()) != null) {
+                String name = entry.getName();
+                if (name.startsWith("word/")) {
+                    return MIME_DOCX;
+                }
+                if (name.startsWith("xl/")) {
+                    return MIME_XLSX;
+                }
+                if (name.startsWith("ppt/")) {
+                    return MIME_PPTX;
+                }
+            }
+        }
+        // No OOXML part tree → a plain zip, which is not an allowed document type.
+        return "application/zip";
+    }
+
+    /**
+     * Maps an allowed document MIME type to its canonical file extension (object-key cosmetic only —
+     * serving forces a download with the stored display filename regardless of this).
+     *
+     * @param mime the detected MIME type (already validated as allowed).
+     * @return the extension including the dot, e.g. {@code ".pdf"}.
+     */
+    private String documentExtensionFor(String mime) {
+        return switch (mime) {
+            case MIME_PDF -> ".pdf";
+            case MIME_DOCX -> ".docx";
+            case MIME_XLSX -> ".xlsx";
+            case MIME_PPTX -> ".pptx";
+            case MIME_TXT -> ".txt";
+            default -> "";
+        };
+    }
+
+    /**
+     * Sanitizes the client filename for STORAGE/display: drops path separators and control chars and
+     * bounds the length to the column width. The full RFC 6266 header sanitization (against
+     * header/query-param injection) happens at presign time via {@code ContentDispositionUtil}.
+     *
+     * @param original the client-supplied original filename, may be null.
+     * @return a non-blank display filename safe to persist (≤255 chars).
+     */
+    private String sanitizeDisplayFilename(String original) {
+        if (original == null || original.isBlank()) {
+            return "tai-lieu";
+        }
+        StringBuilder sb = new StringBuilder(original.length());
+        for (int i = 0; i < original.length(); i++) {
+            char c = original.charAt(i);
+            // Drop path separators and control chars; keep the rest (incl. Vietnamese) for display.
+            if (c == '/' || c == '\\' || c < 0x20 || c == 0x7F) {
+                continue;
+            }
+            sb.append(c);
+        }
+        String cleaned = sb.toString().trim();
+        if (cleaned.isEmpty()) {
+            return "tai-lieu";
+        }
+        return cleaned.length() > 255 ? cleaned.substring(0, 255) : cleaned;
+    }
+
+    /**
+     * Publishes an after-commit MinIO object-cleanup event for the given keys (no-op if empty).
+     *
+     * @param objectKeys the object keys to delete after the current transaction commits.
+     */
+    private void scheduleObjectCleanup(List<String> objectKeys) {
+        if (objectKeys == null || objectKeys.isEmpty()) {
+            return;
+        }
+        eventPublisher.publishEvent(new ObjectKeysObsoleteEvent(objectKeys));
+    }
+
+    /**
+     * Maps a document entity to its response DTO.
+     *
+     * @param document    the document entity.
+     * @param downloadUrl the forced-download presigned URL, or {@code null} on the upload response.
+     * @return the response DTO.
+     */
+    private ContractorDocumentResponse toDocumentResponse(ContractorDocument document, String downloadUrl) {
+        return ContractorDocumentResponse.builder()
+                .id(document.getId())
+                .displayFilename(document.getDisplayFilename())
+                .contentType(document.getContentType())
+                .sizeBytes(document.getSizeBytes())
+                .createdAt(document.getCreatedAt())
+                .downloadUrl(downloadUrl)
+                .build();
+    }
 
     /**
      * Loads a contractor by ID or throws {@link AppException} with {@code NOT_FOUND}.

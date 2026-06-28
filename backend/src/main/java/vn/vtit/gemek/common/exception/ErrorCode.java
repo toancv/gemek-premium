@@ -121,7 +121,20 @@ public enum ErrorCode {
     ANNOUNCEMENT_ATTACHMENT_LIMIT_EXCEEDED(HttpStatus.BAD_REQUEST),
 
     /** Multipart upload exceeds the servlet per-file/request size limit (generic 413, any upload surface). */
-    PAYLOAD_TOO_LARGE(HttpStatus.PAYLOAD_TOO_LARGE);
+    PAYLOAD_TOO_LARGE(HttpStatus.PAYLOAD_TOO_LARGE),
+
+    /** Contractor document upload rejected — detected byte content-type is not an allowed document type. */
+    CONTRACTOR_DOCUMENT_TYPE_NOT_ALLOWED(HttpStatus.BAD_REQUEST),
+
+    /**
+     * Contractor document upload rejected — the single file exceeds the per-file size cap (10MB).
+     * Mapped to 413 (not 400 like the announcement equivalent) so a service-layer cap hit and the
+     * servlet multipart limit present the frontend the same coded 413 size signal (DECISIONS 2026-06-28).
+     */
+    CONTRACTOR_DOCUMENT_TOO_LARGE(HttpStatus.PAYLOAD_TOO_LARGE),
+
+    /** Contractor document upload rejected — would exceed the per-contractor count or total-size cap. */
+    CONTRACTOR_DOCUMENT_LIMIT_EXCEEDED(HttpStatus.BAD_REQUEST);
 
     /** HTTP status code associated with this error code. */
     private final HttpStatus httpStatus;

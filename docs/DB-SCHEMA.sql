@@ -590,7 +590,8 @@ CREATE TABLE contracts (
     start_date          DATE                NOT NULL,
     end_date            DATE,
     status              contract_status     NOT NULL DEFAULT 'PENDING',
-    attachment_url      VARCHAR(1000),               -- MinIO object key for contract PDF
+    attachment_url      VARCHAR(1000),               -- SUPERSEDED by contractor_document (DECISIONS 2026-06-28); write-idle, not dropped
+
     notes               TEXT,
     created_by_user_id  UUID,
     created_at          TIMESTAMPTZ         NOT NULL DEFAULT NOW(),
@@ -800,6 +801,29 @@ VALUES
     ('Meeting Room B',        'Conference room, 6 seats',      'Floor 1', 6,  '08:00', '21:00', 2, TRUE,  TRUE),
     ('Kids Playground',       'Outdoor playground area',       'Ground',  NULL,'07:00', '20:00', 0, FALSE, TRUE);
 -- Note: max_daily_bookings_per_resident = 0 on Kids Playground means no booking required (walk-in).
+
+-- =============================================================================
+-- TABLE: contractor_document  (migration V23 — contractor documents, staff-only forced-download)
+-- Row-per-file downloadable documents (pdf/docx/xlsx/pptx/txt) attached to a CONTRACTOR.
+-- DECISIONS 2026-06-28: contract documents attach to the CONTRACTOR (reusing the C3 forced-download
+-- attachment stack), SUPERSEDING the dormant contracts.attachment_url column and the spec'd-but-unbuilt
+-- /api/contracts/{id}/attachment endpoints. Bytes live in MinIO under
+-- contractors/{contractor_id}/documents/{uuid}; served strictly as forced-download.
+-- =============================================================================
+CREATE TABLE contractor_document (
+    id                 UUID            NOT NULL DEFAULT gen_random_uuid(),
+    contractor_id      UUID            NOT NULL,
+    object_key         TEXT            NOT NULL,
+    content_type       VARCHAR(100),
+    size_bytes         BIGINT,
+    display_filename   VARCHAR(255)    NOT NULL,
+    created_by         UUID,
+    created_at         TIMESTAMPTZ     NOT NULL DEFAULT NOW(),
+    CONSTRAINT pk_contractor_document PRIMARY KEY (id),
+    CONSTRAINT fk_contractor_document_contractor FOREIGN KEY (contractor_id) REFERENCES contractors (id) ON DELETE CASCADE,
+    CONSTRAINT fk_contractor_document_creator    FOREIGN KEY (created_by)    REFERENCES users       (id) ON DELETE SET NULL
+);
+CREATE INDEX idx_contractor_document_contractor_id ON contractor_document (contractor_id);
 
 -- =============================================================================
 -- NOTES FOR FLYWAY MIGRATION SPLIT

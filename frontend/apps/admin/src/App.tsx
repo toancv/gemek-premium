@@ -11,6 +11,8 @@ import { UsersPage } from './pages/UsersPage';
 import { TicketsPage } from './pages/TicketsPage';
 import { TicketDetailPage } from './pages/TicketDetailPage';
 import { ContractorsPage } from './pages/ContractorsPage';
+import { ContractorCreatePage } from './pages/ContractorCreatePage';
+import { ContractorEditPage } from './pages/ContractorEditPage';
 import { AnnouncementsPage } from './pages/AnnouncementsPage';
 import { AnnouncementCreatePage } from './pages/AnnouncementCreatePage';
 import { AnnouncementEditPage } from './pages/AnnouncementEditPage';
@@ -72,6 +74,8 @@ export default function App() {
           <Route path="tickets" element={<RequireRole roles={['ADMIN','BOARD_MEMBER','TECHNICIAN']}><TicketsPage /></RequireRole>} />
           <Route path="tickets/:id" element={<RequireRole roles={['ADMIN','BOARD_MEMBER','TECHNICIAN']}><TicketDetailPage /></RequireRole>} />
           <Route path="contractors" element={<RequireRole roles={['ADMIN','BOARD_MEMBER']}><ContractorsPage /></RequireRole>} />
+          <Route path="contractors/new" element={<RequireRole roles={['ADMIN']}><ContractorCreatePage /></RequireRole>} />
+          <Route path="contractors/:id/edit" element={<RequireRole roles={['ADMIN']}><ContractorEditPage /></RequireRole>} />
           <Route path="announcements" element={<RequireRole roles={['ADMIN','BOARD_MEMBER']}><AnnouncementsPage /></RequireRole>} />
           <Route path="announcements/new" element={<RequireRole roles={['ADMIN','BOARD_MEMBER']}><AnnouncementCreatePage /></RequireRole>} />
           <Route path="announcements/:id/edit" element={<RequireRole roles={['ADMIN','BOARD_MEMBER']}><AnnouncementEditPage /></RequireRole>} />

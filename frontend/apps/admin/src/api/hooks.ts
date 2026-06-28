@@ -186,6 +186,11 @@ export const useUpdateTicketStatus = () => {
 export const useContractors = (params?: Record<string, unknown>) =>
   useQuery({ queryKey: ['contractors', params], queryFn: () => get('/contractors', params) });
 
+// Single-contractor detail. Used by the edit page to populate the form. Same key family as the list
+// (['contractors', ...]) so a create/update invalidation refreshes both list and detail.
+export const useContractor = (id: string) =>
+  useQuery({ queryKey: ['contractors', id], queryFn: () => get(`/contractors/${id}`), enabled: !!id });
+
 export const useCreateContractor = () => {
   const qc = useQueryClient();
   return useMutation({

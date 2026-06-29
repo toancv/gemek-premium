@@ -87,7 +87,11 @@ export function ContractorCreatePage() {
     try {
       created = await create.mutateAsync(form.toPayload());
     } catch (err: any) {
-      form.setFormError(getVnErrorMessage(err?.response?.data?.error));
+      const msg = getVnErrorMessage(err?.response?.data?.error);
+      form.setFormError(msg);
+      // The inline error sits in the form ABOVE the documents section the admin just used and may be
+      // off-screen, so carry the WHY as a toast too (same reasoning as the invalid-form branch above).
+      toast.error(msg);
       inFlight.current = false;
       setLazyBusy(false);
       return;                              // create failed → no orphan id, no upload; retry re-creates

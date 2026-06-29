@@ -175,7 +175,9 @@ export function ContractorDocumentsManager({
           aria-label="Tải lên tài liệu"
           className="px-3 py-2 text-sm border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50"
         >
-          {upload.isPending ? 'Đang tải lên...' : 'Tải lên tài liệu'}
+          {/* externalBusy covers lazy (create-page) upload, where the actual mutation runs on the page,
+              not this manager's own `upload` — so the in-progress label still shows. */}
+          {(upload.isPending || externalBusy) ? 'Đang tải lên...' : 'Tải lên tài liệu'}
         </button>
         {atLimit && <span className="text-xs text-amber-600">Đã đạt giới hạn 5 tệp — xoá bớt để thêm tệp mới.</span>}
       </div>

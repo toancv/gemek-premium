@@ -56,9 +56,24 @@ function formatSize(bytes: number | null): string {
  * <p>Caps (≤5 files, ≤10MB/file, ≤50MB total) are enforced server-side and surfaced up front; the upload
  * button disables at the 5-file cap. The edit page is ADMIN-only, so this surfaces full upload/delete for
  * ADMIN; BOARD_MEMBER read-access stays API-only this phase (no FE surface).
+ *
+ * <p>P3b LAZY-SAVE: the create page (/contractors/new) mounts this same manager with `onLazyUpload` (and no
+ * `contractorId`). In that mode the SAME pre-checks run, then the validated file is handed to the
+ * orchestrator (which creates the contractor then uploads) instead of the internal mutation — so the caps
+ * pre-check + 413 errorText live in exactly one place (no duplicate create-mode component, mirrors how the
+ * C3 attachments manager is parameterized). With no id the list query stays idle and shows the empty state;
+ * the create page redirects to /:id/edit on the first successful upload, so the list never renders there.
  */
-export function ContractorDocumentsManager({ contractorId }: { contractorId: string }) {
-  const { data, isLoading, isError } = useContractorDocuments(contractorId);
+export function ContractorDocumentsManager({
+  contractorId,
+  onLazyUpload,
+  externalBusy,
+}: {
+  contractorId?: string;
+  onLazyUpload?: (file: File) => Promise<void>;
+  externalBusy?: boolean;
+}) {
+  const { data, isLoading, isError } = useContractorDocuments(contractorId ?? '');
   const upload = useUploadContractorDocument();
   const remove = useDeleteContractorDocument();
   const fileRef = useRef<HTMLInputElement>(null);
@@ -67,7 +82,8 @@ export function ContractorDocumentsManager({ contractorId }: { contractorId: str
 
   const documents: ContractorDocumentItem[] = Array.isArray(data) ? data : [];
   const atLimit = documents.length >= MAX_DOCUMENTS;
-  const busy = upload.isPending || remove.isPending;
+  // externalBusy folds in the create page's lazy create+upload so the trigger disables while it runs.
+  const busy = upload.isPending || remove.isPending || !!externalBusy;
 
   // Dismiss the delete-confirm dialog on Escape (the backdrop already dismisses on click).
   useEffect(() => {
@@ -110,7 +126,14 @@ export function ContractorDocumentsManager({ contractorId }: { contractorId: str
       return;
     }
     try {
-      await upload.mutateAsync({ id: contractorId, file });
+      // Lazy mode: hand the validated file to the create-page orchestrator (create-then-upload). It owns
+      // create-failure/upload-failure surfacing + the redirect, so on success this manager unmounts. Eager
+      // mode (edit page): upload directly against the known id (`!` safe — edit always passes contractorId).
+      if (onLazyUpload) {
+        await onLazyUpload(file);
+      } else {
+        await upload.mutateAsync({ id: contractorId!, file });
+      }
     } catch (err: any) {
       setError(errorText(err));
     }
@@ -122,7 +145,9 @@ export function ContractorDocumentsManager({ contractorId }: { contractorId: str
     setPendingDelete(null);
     setError('');
     try {
-      await remove.mutateAsync({ id: contractorId, documentId: item.id });
+      // `!` safe: delete only renders for existing rows, which exist only in eager (edit) mode where
+      // contractorId is always present — lazy (create) mode shows no rows, so this path is unreachable there.
+      await remove.mutateAsync({ id: contractorId!, documentId: item.id });
     } catch (err: any) {
       setError(errorText(err));
     }

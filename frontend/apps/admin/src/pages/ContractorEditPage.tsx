@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { getVnErrorMessage, PageSpinner } from '@gemek/ui';
 import { useContractor, useUpdateContractor } from '../api/hooks';
 import { useContractorForm, ContractorFormFields } from '../components/ContractorForm';
@@ -41,8 +41,13 @@ export function ContractorEditPage() {
  */
 function ContractorEditForm({ contractor }: { contractor: any }) {
   const navigate = useNavigate();
+  const location = useLocation();
   const update = useUpdateContractor();
   const [submitting, setSubmitting] = useState(false);
+  // A notice carried over from the create page's lazy-save upload-failure recovery (the contractor was
+  // created but its first document upload failed — the admin retries via the manager below). Mirrors
+  // AnnouncementEditPage's create→publish-failure notice.
+  const [notice] = useState<string>((location.state as any)?.notice ?? '');
 
   const form = useContractorForm({
     companyName: contractor.companyName ?? '',
@@ -73,6 +78,8 @@ function ContractorEditForm({ contractor }: { contractor: any }) {
         <button type="button" onClick={() => navigate('/contractors')} className="text-sm text-blue-600 hover:underline">← Quay lại danh sách</button>
         <h1 className="text-2xl font-bold text-gray-900 mt-2">{t('contractors.editTitle')}</h1>
       </div>
+
+      {notice && <div className="mb-4 bg-yellow-50 border border-yellow-200 rounded-lg p-4 text-yellow-800">{notice}</div>}
 
       {/* <form> so Enter in any text field submits (restores the retired modal's Enter-to-save). */}
       <form onSubmit={(e) => { e.preventDefault(); save(); }}>

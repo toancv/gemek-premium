@@ -5,6 +5,32 @@ Format: Date | Decision | Reasoning | Alternatives
 
 ---
 
+## 2026-06-29 | P3b lazy-save: parameterize the SAME documents manager (NOT a duplicate create-mode component)
+
+**Decision.** The contractor create page's lazy-save reuses the P3a `ContractorDocumentsManager` via two new
+OPTIONAL props (`onLazyUpload`, `externalBusy`) rather than a separate create-mode component. In lazy mode the
+SAME caps pre-checks (≤10MB/file, ≤5, ≤50MB) and the SAME 413 `errorText` run; only the terminal action
+swaps (route the validated file to the page orchestrator instead of the internal mutation). Mirrors how C3
+extended `AnnouncementAttachmentsManager` with `onLazyUpload`/`externalBusy`. **Alternatives:** a dedicated
+create-mode wrapper (rejected — would duplicate the pre-check + 413 mapping and risk drift; the task required
+reusing them verbatim). NO BE/draft change — the agreed model is plain create + immediate upload.
+
+**Deterministic multi-pick rule (logged).** First file on `/new` → create → upload → redirect to `/:id/edit`;
+all further files are picked on the edit page (the create page never holds a document list — single source of
+truth). A second file picked DURING the in-flight create is dropped by the `inFlight` guard (no double-create,
+no saved-data loss); single-file input + `externalBusy` disable cover the normal case.
+
+**Upload-fail-after-create → edit-page notice.** When create succeeds but the first upload fails, the record
+survived, so we still `navigate(replace)` to the edit page carrying a `state.notice`; the edit page renders a
+yellow banner (mirrors `AnnouncementEditPage`). Avoids stranding the admin / a second source of truth on `/new`.
+
+**Deferred DRY (not drift).** `ensureContractorThenUpload` clones the announcement `ensureDraftThenUpload`, and
+the 413 mapping + detail-cache seed are duplicated — matches the established announcement pattern. Extracting a
+shared `useLazyCreateThenUpload` hook is a cross-module refactor, OUT OF SCOPE for this isolate-cleanly phase;
+logged in `reports/contractor-documents-p3b.md` as known debt.
+
+---
+
 ## 2026-06-28 | Contractor-document oversize → HTTP **413** (sanctioned divergence from C3's 400)
 
 **Decision.** The contractor-document service-cap-too-large condition (`CONTRACTOR_DOCUMENT_TOO_LARGE`) returns **HTTP 413**, and the FE consolidates ALL oversize signals (per-file, per-contractor, total) onto 413. C3's announcement attachment path returned 400 for its app-level cap; the contractor path deliberately uses 413 (semantically correct for "payload too large", and aligns the app-level cap with the servlet/multipart 413 the FE already maps). **This is an intentional, logged divergence — NOT a drift.** P3's documents manager will therefore treat 413 (no coded body) as the single oversize message, the same belt-and-suspenders the announcement managers' `errorText` already uses for the servlet 413.

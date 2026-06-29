@@ -3,9 +3,30 @@
 > Fresh assistant: read **HANDOFF.md** first, then this snapshot, then DECISIONS.md, then the cited reports.
 > The repo files are ground truth — do not trust any chat summary.
 
-## ▶ CURRENT STATE SNAPSHOT (2026-06-28)
+## ▶ CURRENT STATE SNAPSHOT (2026-06-29)
 
-**CONTRACTOR DOCUMENTS — FE P3a DONE (committed `4c76ecf` feat / docs this commit), awaiting CTO :80 smoke. Resume → P3b lazy-save on `/new`.**
+**CONTRACTOR DOCUMENTS — FEATURE-COMPLETE pending CTO :80 smoke. FE P3b DONE (committed `90ae857` feat / `f14c657` fix / docs this commit). Resume → final smoke; CTO opens PR to `main`.**
+Lazy-save document upload now on the create page `/contractors/new` (ensure-record-then-upload — plain
+create + immediate upload, NO draft; a created contractor is immediately active). The SAME P3a
+`ContractorDocumentsManager` is mounted there with new optional props `onLazyUpload`/`externalBusy` (NOT a
+duplicate component) so the caps pre-checks + the 413 `errorText` live in ONE place — mirrors how C3
+parameterized `AnnouncementAttachmentsManager`. The create page's `ensureContractorThenUpload(file)`:
+validate form (companyName @NotBlank, P2 rule unchanged; invalid → toast + inline, NO create) → create ONCE
+(synchronous `inFlight` ref set before any await + single-file input + `externalBusy` disable ⇒ exactly one
+create even on double-click/rapid pick; create-fail → inline + toast, NO phantom id, retry re-creates) →
+seed detail cache → upload → `navigate(replace)` to `/:id/edit` (P3a manager owns further uploads).
+Upload-fail-after-create still navigates with a `state.notice` (record survived); the edit page now renders
+that yellow notice banner (mirrors `AnnouncementEditPage`). **Deterministic "remaining picks" rule:** first
+file on create → redirect → rest on edit (the create page never holds a doc list). admin `tsc --noEmit`
+exit 0 + `vite build` 769 modules GREEN; no admin vitest harness (backlog gap) → build-green + pending CTO
+smoke. **NOTE (Windows):** `vite build` intermittently fails on a Defender esbuild temp-lock AFTER "769
+modules transformed" (not a code error); `TEMP`/`TMP`→scratchpad builds GREEN. `/code-review` high (workflow,
+43 agents): **0 correctness/data-loss bugs** (race/double-create guard CONFIRMED sound) → **2 fixed** (F3
+toast on create-fail, F5 in-progress upload label), rest UX-by-design / C3-faithful / DRY-deferred (logged in
+report). **P1 BE live HTTP/DB/MinIO smoke STILL to be discharged by the CTO :80 smoke** (upload/list/download/
+403/413 vs running stack + real MinIO). Report `reports/contractor-documents-p3b.md`. Below = the P3a snapshot.
+
+**CONTRACTOR DOCUMENTS — FE P3a DONE (committed `4c76ecf` feat), awaiting CTO :80 smoke. [Resume pointer now P3b/feature-complete — see block above.]**
 `ContractorDocumentsManager` built + mounted on `ContractorEditPage` ONLY (contractor id present), as a sibling
 of the form (documents save immediately via their own endpoints, NOT on form submit). NO `/new` mounting, NO
 lazy-save (that is P3b). Clones the C3 `AnnouncementAttachmentsManager` mechanics — multi-file upload, inline

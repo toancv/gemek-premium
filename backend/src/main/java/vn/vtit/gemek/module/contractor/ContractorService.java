@@ -5,9 +5,11 @@
 package vn.vtit.gemek.module.contractor;
 
 import org.springframework.data.domain.Pageable;
+import org.springframework.web.multipart.MultipartFile;
 import vn.vtit.gemek.common.model.PageResponse;
 import vn.vtit.gemek.module.contractor.dto.ContractPaymentResponse;
 import vn.vtit.gemek.module.contractor.dto.ContractResponse;
+import vn.vtit.gemek.module.contractor.dto.ContractorDocumentResponse;
 import vn.vtit.gemek.module.contractor.dto.ContractorResponse;
 import vn.vtit.gemek.module.contractor.dto.CreateContractPaymentRequest;
 import vn.vtit.gemek.module.contractor.dto.CreateContractRequest;
@@ -147,4 +149,56 @@ public interface ContractorService {
      * @return list of schedule responses.
      */
     List<MaintenanceScheduleResponse> listSchedules(UUID contractId);
+
+    // =========================================================================
+    // Contractor documents (staff-only forced-download; DECISIONS 2026-06-28)
+    // =========================================================================
+
+    /**
+     * Uploads one downloadable document (pdf/docx/xlsx/pptx/txt) to a contractor.
+     *
+     * <p>Content type is validated by Tika on the file BYTES (not the header/extension). Caps are
+     * enforced per contractor: ≤10MB/file, ≤5 documents, ≤50MB total. Bytes are stored in MinIO under
+     * {@code contractors/{contractorId}/documents/{uuid}}.
+     *
+     * @param contractorId the owning contractor UUID.
+     * @param file         the uploaded multipart file.
+     * @param principalId  the uploading user UUID.
+     * @return the persisted document metadata (no download URL).
+     */
+    ContractorDocumentResponse uploadDocument(UUID contractorId, MultipartFile file, UUID principalId);
+
+    /**
+     * Lists a contractor's documents, each with a freshly-minted FORCED-DOWNLOAD presigned URL.
+     *
+     * <p>The presigned URLs are minted only after the staff-only access gate
+     * ({@link #assertContractorDocumentPresignAccess}) passes for the caller; a denied caller gets an
+     * empty list, never a leaked URL.
+     *
+     * @param contractorId the owning contractor UUID.
+     * @param principalId  the caller's UUID.
+     * @param role         the caller's role string.
+     * @return the document list (possibly empty), never null.
+     */
+    List<ContractorDocumentResponse> listDocuments(UUID contractorId, UUID principalId, String role);
+
+    /**
+     * Deletes one document from a contractor (after-commit MinIO object cleanup).
+     *
+     * @param contractorId the owning contractor UUID.
+     * @param documentId   the document row UUID.
+     */
+    void deleteDocument(UUID contractorId, UUID documentId);
+
+    /**
+     * Asserts the caller may obtain a presigned URL for a contractor-document object key. Staff-only:
+     * ADMIN and BOARD_MEMBER are allowed; every other role (incl. TECHNICIAN, RESIDENT) is denied. A
+     * malformed/unparseable key is denied for every role (403, never a 500).
+     *
+     * @param objectKey   the MinIO object key (server-derived; never client-supplied).
+     * @param principalId the caller's UUID.
+     * @param role        the caller's role string.
+     * @throws vn.vtit.gemek.common.exception.AppException with {@code FORBIDDEN} when access is denied.
+     */
+    void assertContractorDocumentPresignAccess(String objectKey, UUID principalId, String role);
 }

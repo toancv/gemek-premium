@@ -69,6 +69,13 @@ const ERROR_MESSAGES: Record<string, string> = {
   ANNOUNCEMENT_ATTACHMENT_TOO_LARGE: 'Tệp đính kèm quá lớn (tối đa 10MB mỗi tệp).',
   ANNOUNCEMENT_ATTACHMENT_LIMIT_EXCEEDED: 'Vượt quá giới hạn tệp đính kèm (tối đa 5 tệp, tổng dung lượng tối đa 50MB).',
 
+  // Contractor documents (staff-only document upload/delete — P1 endpoints).
+  // TOO_LARGE is HTTP 413 here (sanctioned divergence from C3's 400) — the manager maps any 413 by
+  // status, but the code is mapped too for completeness/parity.
+  CONTRACTOR_DOCUMENT_TYPE_NOT_ALLOWED: 'Định dạng tệp không hợp lệ. Chỉ chấp nhận PDF, Word, Excel, PowerPoint hoặc TXT.',
+  CONTRACTOR_DOCUMENT_TOO_LARGE: 'Tệp quá lớn (tối đa 10MB mỗi tệp).',
+  CONTRACTOR_DOCUMENT_LIMIT_EXCEEDED: 'Vượt quá giới hạn tệp (tối đa 5 tệp, tổng dung lượng tối đa 50MB).',
+
   // Multipart upload too large (generic 413 — any upload surface)
   PAYLOAD_TOO_LARGE: 'Tệp tải lên vượt quá dung lượng cho phép.',
 

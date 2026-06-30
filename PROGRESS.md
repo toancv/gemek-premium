@@ -3,7 +3,84 @@
 > Fresh assistant: read **HANDOFF.md** first, then this snapshot, then DECISIONS.md, then the cited reports.
 > The repo files are ground truth — do not trust any chat summary.
 
-## ▶ CURRENT STATE SNAPSHOT (2026-06-26)
+## ▶ CURRENT STATE SNAPSHOT (2026-06-29)
+
+**CONTRACTOR DOCUMENTS — FEATURE-COMPLETE pending CTO :80 smoke. FE P3b DONE (committed `90ae857` feat / `f14c657` fix / docs this commit). Resume → final smoke; CTO opens PR to `main`.**
+Lazy-save document upload now on the create page `/contractors/new` (ensure-record-then-upload — plain
+create + immediate upload, NO draft; a created contractor is immediately active). The SAME P3a
+`ContractorDocumentsManager` is mounted there with new optional props `onLazyUpload`/`externalBusy` (NOT a
+duplicate component) so the caps pre-checks + the 413 `errorText` live in ONE place — mirrors how C3
+parameterized `AnnouncementAttachmentsManager`. The create page's `ensureContractorThenUpload(file)`:
+validate form (companyName @NotBlank, P2 rule unchanged; invalid → toast + inline, NO create) → create ONCE
+(synchronous `inFlight` ref set before any await + single-file input + `externalBusy` disable ⇒ exactly one
+create even on double-click/rapid pick; create-fail → inline + toast, NO phantom id, retry re-creates) →
+seed detail cache → upload → `navigate(replace)` to `/:id/edit` (P3a manager owns further uploads).
+Upload-fail-after-create still navigates with a `state.notice` (record survived); the edit page now renders
+that yellow notice banner (mirrors `AnnouncementEditPage`). **Deterministic "remaining picks" rule:** first
+file on create → redirect → rest on edit (the create page never holds a doc list). admin `tsc --noEmit`
+exit 0 + `vite build` 769 modules GREEN; no admin vitest harness (backlog gap) → build-green + pending CTO
+smoke. **NOTE (Windows):** `vite build` intermittently fails on a Defender esbuild temp-lock AFTER "769
+modules transformed" (not a code error); `TEMP`/`TMP`→scratchpad builds GREEN. `/code-review` high (workflow,
+43 agents): **0 correctness/data-loss bugs** (race/double-create guard CONFIRMED sound) → **2 fixed** (F3
+toast on create-fail, F5 in-progress upload label), rest UX-by-design / C3-faithful / DRY-deferred (logged in
+report). **P1 BE live HTTP/DB/MinIO smoke STILL to be discharged by the CTO :80 smoke** (upload/list/download/
+403/413 vs running stack + real MinIO). Report `reports/contractor-documents-p3b.md`. Below = the P3a snapshot.
+
+**CONTRACTOR DOCUMENTS — FE P3a DONE (committed `4c76ecf` feat), awaiting CTO :80 smoke. [Resume pointer now P3b/feature-complete — see block above.]**
+`ContractorDocumentsManager` built + mounted on `ContractorEditPage` ONLY (contractor id present), as a sibling
+of the form (documents save immediately via their own endpoints, NOT on form submit). NO `/new` mounting, NO
+lazy-save (that is P3b). Clones the C3 `AnnouncementAttachmentsManager` mechanics — multi-file upload, inline
+pre-checks (≤10MB/file, ≤5 files, ≤50MB total, VN msgs), scheme-guarded forced-download anchor (signed
+Content-Disposition drives the filename; no client `download` attr), delete-confirm dialog, Escape-dismiss —
+against the P1 endpoints `POST|GET|DELETE /api/contractors/{id}/documents[/{documentId}]`. KEY divergence from
+C3: the list is a SEPARATE GET (not embedded in detail), so the manager OWNS its query
+(`useContractorDocuments`, key `['contractors', id, 'documents']`) + upload/delete invalidate it
+(`refetchType:'all'`). **413 size branch (sanctioned, DECISIONS 2026-06-28):** `errorText` keys off
+`status===413` → ONE VN "Tệp quá lớn (tối đa 10MB)" covering BOTH `CONTRACTOR_DOCUMENT_TOO_LARGE` (413 service
+cap) AND `PAYLOAD_TOO_LARGE` (413 servlet) — did NOT copy C3's 400 branch; the 400 codes (`TYPE_NOT_ALLOWED`,
+`LIMIT_EXCEEDED`) route via `getVnErrorMessage` (3 new keys added to shared `@gemek/ui errorMessages.ts` +
+test, parallel to `ANNOUNCEMENT_ATTACHMENT_*`). **formatSize is boundary-correct** (rounds KB first, promotes
+to MB at 1024 so KB never shows ≥1024); the known-buggy admin **announcement `formatSize` boundary bug stays
+OPEN** (not touched this phase — announcement module out of scope). **BOARD_MEMBER read-access stays API-only
+this phase — FE surface DEFERRED** (edit page is ADMIN-only; no BOARD view built). admin `tsc --noEmit` exit 0
++ `vite build` 769 modules GREEN; ui `errorMessages.test` 34 pass; no admin vitest harness (backlog gap) →
+build-green + pending CTO smoke. `/code-review` high (workflow, 23 agents): 7 verified (0 correctness bugs) →
+**4 fixed** (isError-disable upload, shared `formatVNDate`, single date guard, doc-specific success toasts),
+2 deferred (C3-faithful shared-busy + pre-existing broad-invalidate hook), 6 DRY refuted. **P1 BE live
+HTTP/DB/MinIO smoke is STILL to be discharged by this P3a CTO :80 smoke** (upload/list/download/403/413 vs
+running stack + real MinIO). Report `reports/contractor-documents-p3a.md`. **NEXT = P3b: lazy-save documents
+section on `/contractors/new` (create-then-upload orchestrator).** Below = the P2 snapshot.
+
+**CONTRACTOR DOCUMENTS — FE P2 DONE (committed `5d2df1a` feat), CTO :80 smoke folded into the P3a smoke above. [Resume pointer now P3b — see block above.]**
+Dedicated admin contractor **create** (`/contractors/new`) + **edit** (`/contractors/:id/edit`) PAGES replace the
+list-page modal, mirroring the C2.3b announcement create/edit pattern (shared `useContractorForm` hook +
+`ContractorFormFields`; loader/guard edit page; `getVnErrorMessage` inline + MutationCache top-right toast). Field
+set/validation reproduced EXACTLY from the retired modal (companyName required; contactPerson/phone/email/specialty/
+address/taxCode/notes — none added/removed). Reuses EXISTING create/update + GET-by-id endpoints unchanged (new FE
+`useContractor(id)` hook only) — **no BE / no API-SPEC change.** Create OK → redirect to the new record's edit page
+(sets up P3 upload); update OK → stay on edit. List "Thêm"/"Sửa" now NAVIGATE; inline modal removed (no other
+consumer). Routes gated ADMIN-only (writes are ADMIN). admin `tsc --noEmit` + `vite build` GREEN; no admin vitest
+harness (backlog gap) → build-green + pending CTO smoke. `/code-review` high (workflow, 33 agents): 8 verified →
+**4 fixed** (synchronous double-submit guard, detail-cache seed, Enter-to-submit `<form>`, shared `PageSpinner` —
+all aligning with the sibling), rest out-of-scope/pre-existing/matches-sibling (logged, not drift). **P1 BE live
+HTTP/DB/MinIO smoke is DEFERRED to the end-of-P3 browser smoke** (upload/list/download/403/413 vs running stack +
+real MinIO). Report `reports/contractor-documents-p2.md`. **NEXT = P3: `ContractorDocumentsManager` (clone of
+`AnnouncementAttachmentsManager`) + lazy-save on `/contractors/new`, appended to the edit page.** Below = the P1 (BE) snapshot.
+
+**CONTRACTOR DOCUMENTS — BE P1 DONE (committed `093265b` feat / `6d8c611` test / docs this commit), awaiting CTO HTTP/DB smoke (now folded into end-of-P3 smoke).**
+On branch `feature/contractor-contract-upload` (off `main`). CTO ruling (DECISIONS 2026-06-28): contract
+documents attach to the **CONTRACTOR** as a row-per-file list (new table `contractor_document`), reusing the C3
+forced-download stack — SUPERSEDES the unbuilt `/api/contracts/{id}/attachment` + dormant
+`contracts.attachment_url` (write-idle, not dropped). Staff-only: ADMIN upload/delete, ADMIN+BOARD read/download,
+TECHNICIAN+RESIDENT excluded (§13 R-4). As-built: migration `V23__create_contractor_document.sql`; entity/repo/dto;
+service upload/list/delete + `assertContractorDocumentPresignAccess` (parse contractorId from key → 403 on
+malformed; never 500); 3 endpoints `POST|GET|DELETE /api/contractors/{id}/documents`; reused generic
+`FileStorageService`/`ContentDispositionUtil`/`MinioConfig`/after-commit cleanup. Tika allowlist
+{pdf,docx,xlsx,pptx,txt}; caps per contractor ≤10MB/file, ≤5 files, ≤50MB total. Divergences from C3 (logged):
+`CONTRACTOR_DOCUMENT_TOO_LARGE`→413; no draft gate. **Suite 457 → 477 GREEN.** API-SPEC §8+§13 updated;
+authoritative report `reports/contractor-documents-p1.md` (incl. `/code-review` high triage — 0 correctness bugs,
+all findings intentional/inherited-C3/deferred-DRY). **P2 (FE pages) is now DONE — see the block above.** Below = the
+prior 2026-06-26 snapshot.
 
 **TRUNK = `main` — rename `deploy/local`→`main` runbook ready (report `reports/git-trunk-rename-runbook.md`, DECISIONS 2026-06-26), pending CTO execution.** Pre-flight secret audit SAFE (no real `.env` tracked; prod secrets all `${ENV_REF}`; two dev-only flags: docker-compose.dev.yml hardcoded dev-DB pw + seed-demo bcrypt hashes — keep dev/demo-only). All other branches fully merged into deploy/local (0 unique commits). `deploy/local` becomes trunk renamed `main` (no consolidation needed — it IS the full history); 3-commit `master` retired. SUPERSEDES the prior "consolidate onto master" framing. **Next feature (amenity) branches off `main` (after CTO runs the rename); agent pushes feature branch + STOPs, CTO opens PR.**
 

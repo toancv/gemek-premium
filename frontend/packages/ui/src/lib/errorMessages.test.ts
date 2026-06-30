@@ -136,6 +136,12 @@ describe('getVnErrorMessage', () => {
     expect(getVnErrorMessage('ANNOUNCEMENT_ATTACHMENT_LIMIT_EXCEEDED')).toBe('Vượt quá giới hạn tệp đính kèm (tối đa 5 tệp, tổng dung lượng tối đa 50MB).');
   });
 
+  it('CONTRACTOR_DOCUMENT_* codes return VN messages about contractor documents', () => {
+    expect(getVnErrorMessage('CONTRACTOR_DOCUMENT_TYPE_NOT_ALLOWED')).toBe('Định dạng tệp không hợp lệ. Chỉ chấp nhận PDF, Word, Excel, PowerPoint hoặc TXT.');
+    expect(getVnErrorMessage('CONTRACTOR_DOCUMENT_TOO_LARGE')).toBe('Tệp quá lớn (tối đa 10MB mỗi tệp).');
+    expect(getVnErrorMessage('CONTRACTOR_DOCUMENT_LIMIT_EXCEEDED')).toBe('Vượt quá giới hạn tệp (tối đa 5 tệp, tổng dung lượng tối đa 50MB).');
+  });
+
   it('never returns empty string for any known code', () => {
     const knownCodes = [
       'PHONE_ALREADY_EXISTS', 'EMAIL_ALREADY_EXISTS', 'INVALID_CREDENTIALS',
@@ -148,6 +154,7 @@ describe('getVnErrorMessage', () => {
       'PASSWORD_POLICY_VIOLATION', 'AMENITY_NAME_EXISTS', 'BOOKING_NOT_PENDING',
       'ANNOUNCEMENT_MEDIA_TYPE_NOT_ALLOWED', 'ANNOUNCEMENT_MEDIA_LIMIT_EXCEEDED', 'ANNOUNCEMENT_NOT_DRAFT',
       'ANNOUNCEMENT_ATTACHMENT_TYPE_NOT_ALLOWED', 'ANNOUNCEMENT_ATTACHMENT_TOO_LARGE', 'ANNOUNCEMENT_ATTACHMENT_LIMIT_EXCEEDED',
+      'CONTRACTOR_DOCUMENT_TYPE_NOT_ALLOWED', 'CONTRACTOR_DOCUMENT_TOO_LARGE', 'CONTRACTOR_DOCUMENT_LIMIT_EXCEEDED',
       'PAYLOAD_TOO_LARGE',
     ];
     for (const code of knownCodes) {

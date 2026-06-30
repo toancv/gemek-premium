@@ -186,6 +186,11 @@ export const useUpdateTicketStatus = () => {
 export const useContractors = (params?: Record<string, unknown>) =>
   useQuery({ queryKey: ['contractors', params], queryFn: () => get('/contractors', params) });
 
+// Single-contractor detail. Used by the edit page to populate the form. Same key family as the list
+// (['contractors', ...]) so a create/update invalidation refreshes both list and detail.
+export const useContractor = (id: string) =>
+  useQuery({ queryKey: ['contractors', id], queryFn: () => get(`/contractors/${id}`), enabled: !!id });
+
 export const useCreateContractor = () => {
   const qc = useQueryClient();
   return useMutation({
@@ -201,6 +206,46 @@ export const useUpdateContractor = () => {
     mutationFn: ({ id, data }: { id: string; data: unknown }) => put(`/contractors/${id}`, data),
     meta: { skipErrorToast: true, successMessage: 'Cập nhật nhà thầu thành công' },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['contractors'] }),
+  });
+};
+
+// Contractor documents (P1 endpoints, staff-only forced-download). Unlike announcement attachments
+// (embedded in the draft detail manifest), the contractor document list is a SEPARATE GET endpoint, so
+// the manager owns its own query (['contractors', id, 'documents']) and the mutations invalidate it.
+// refetchType:'all' matches the announcement managers (the query may be inactive at invalidation time).
+
+// Lists one contractor's documents, each with a freshly-minted forced-download `downloadUrl`.
+export const useContractorDocuments = (id: string) =>
+  useQuery({
+    queryKey: ['contractors', id, 'documents'],
+    queryFn: () => get(`/contractors/${id}/documents`),
+    enabled: !!id,
+  });
+
+// Upload one document (multipart `file` only — Tika magic-byte validates type on the BE).
+export const useUploadContractorDocument = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, file }: { id: string; file: File }) => {
+      const fd = new FormData();
+      fd.append('file', file);
+      return post(`/contractors/${id}/documents`, fd);
+    },
+    meta: { skipErrorToast: true, successMessage: 'Đã tải lên tài liệu.' },
+    onSuccess: (_res, { id }) =>
+      qc.invalidateQueries({ queryKey: ['contractors', id, 'documents'], refetchType: 'all' }),
+  });
+};
+
+// Delete one document row (204).
+export const useDeleteContractorDocument = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, documentId }: { id: string; documentId: string }) =>
+      del(`/contractors/${id}/documents/${documentId}`),
+    meta: { skipErrorToast: true, successMessage: 'Đã xoá tài liệu.' },
+    onSuccess: (_res, { id }) =>
+      qc.invalidateQueries({ queryKey: ['contractors', id, 'documents'], refetchType: 'all' }),
   });
 };
 

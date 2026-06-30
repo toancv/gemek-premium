@@ -12,11 +12,16 @@ This note points to those files — it does not duplicate them. Keep it short; u
 4. **`docs/API-SPEC.md`** → endpoint contracts (must stay in sync with any API change, same phase).
 5. Role/workflow rules: **`CLAUDE.md`** (root) + **`.claude/rules/*.md`**.
 
-## Current resume pointer (2026-06-23)
-**C2.3a** (resident safe image render + `announcement-media:` placeholder→manifest + cover banner) is
-**committed but NOT yet CTO-smoked**. HEAD before this freeze = `2c9e946`.
-- **Next action:** run the manual XSS smoke in `reports/c2-3a-announcement-image-render.md` → "CTO smoke checklist".
-- **After it passes:** start **C2.3b** (admin authoring UX — see PROGRESS backlog item 2). Do NOT start C2.3b first.
+## Current resume pointer (2026-06-28)
+**CONTRACTOR DOCUMENTS feature** in progress on branch `feature/contractor-contract-upload` (off `main`).
+- **P1 (BE)** — `contractor_document` table V23 + 3 endpoints + forced-download, committed (`093265b` feat /
+  `6d8c611` test / `62e5258` docs). **Live HTTP/DB/MinIO smoke still DEFERRED** → folded into the end-of-P3 browser smoke (upload/list/download/403/413 against the running stack + real MinIO). See `reports/contractor-documents-p1.md`.
+- **P2 (FE)** — dedicated contractor create/edit PAGES replacing the list-page modal, committed (`5d2df1a` feat).
+  Build green (tsc + vite); `/code-review` high triaged (4 fixed, rest out-of-scope/pre-existing). See
+  `reports/contractor-documents-p2.md`. **Awaiting CTO :80 manual smoke** (create→redirect-to-edit, edit-save, list nav).
+- **Next action:** CTO :80 smoke of the P2 pages → then start **P3** = `ContractorDocumentsManager` (clone of
+  `AnnouncementAttachmentsManager`) + lazy-save on `/contractors/new`, appended to the edit page.
+- Trunk = `main` (rename runbook ready, pending CTO). Agent pushes feature branch + STOPs; CTO opens the PR.
 
 ## Stable project facts
 - **Stack:** Spring Boot backend (`backend/`, Maven via `./mvnw`, Java) · React monorepo frontend

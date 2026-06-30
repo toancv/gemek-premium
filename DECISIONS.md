@@ -5,6 +5,40 @@ Format: Date | Decision | Reasoning | Alternatives
 
 ---
 
+## 2026-06-29 | P3b lazy-save: parameterize the SAME documents manager (NOT a duplicate create-mode component)
+
+**Decision.** The contractor create page's lazy-save reuses the P3a `ContractorDocumentsManager` via two new
+OPTIONAL props (`onLazyUpload`, `externalBusy`) rather than a separate create-mode component. In lazy mode the
+SAME caps pre-checks (≤10MB/file, ≤5, ≤50MB) and the SAME 413 `errorText` run; only the terminal action
+swaps (route the validated file to the page orchestrator instead of the internal mutation). Mirrors how C3
+extended `AnnouncementAttachmentsManager` with `onLazyUpload`/`externalBusy`. **Alternatives:** a dedicated
+create-mode wrapper (rejected — would duplicate the pre-check + 413 mapping and risk drift; the task required
+reusing them verbatim). NO BE/draft change — the agreed model is plain create + immediate upload.
+
+**Deterministic multi-pick rule (logged).** First file on `/new` → create → upload → redirect to `/:id/edit`;
+all further files are picked on the edit page (the create page never holds a document list — single source of
+truth). A second file picked DURING the in-flight create is dropped by the `inFlight` guard (no double-create,
+no saved-data loss); single-file input + `externalBusy` disable cover the normal case.
+
+**Upload-fail-after-create → edit-page notice.** When create succeeds but the first upload fails, the record
+survived, so we still `navigate(replace)` to the edit page carrying a `state.notice`; the edit page renders a
+yellow banner (mirrors `AnnouncementEditPage`). Avoids stranding the admin / a second source of truth on `/new`.
+
+**Deferred DRY (not drift).** `ensureContractorThenUpload` clones the announcement `ensureDraftThenUpload`, and
+the 413 mapping + detail-cache seed are duplicated — matches the established announcement pattern. Extracting a
+shared `useLazyCreateThenUpload` hook is a cross-module refactor, OUT OF SCOPE for this isolate-cleanly phase;
+logged in `reports/contractor-documents-p3b.md` as known debt.
+
+---
+
+## 2026-06-28 | Contractor-document oversize → HTTP **413** (sanctioned divergence from C3's 400)
+
+**Decision.** The contractor-document service-cap-too-large condition (`CONTRACTOR_DOCUMENT_TOO_LARGE`) returns **HTTP 413**, and the FE consolidates ALL oversize signals (per-file, per-contractor, total) onto 413. C3's announcement attachment path returned 400 for its app-level cap; the contractor path deliberately uses 413 (semantically correct for "payload too large", and aligns the app-level cap with the servlet/multipart 413 the FE already maps). **This is an intentional, logged divergence — NOT a drift.** P3's documents manager will therefore treat 413 (no coded body) as the single oversize message, the same belt-and-suspenders the announcement managers' `errorText` already uses for the servlet 413.
+
+**Scope note (P2, this commit):** P2 ships FE create/edit PAGES only (no upload UI), so no 413 handling is wired yet — this entry pre-records the contract P3 will consume. **Alternatives considered:** match C3's 400 (rejected — 413 is the correct status and avoids a second app-vs-servlet split on the FE).
+
+---
+
 ## 2026-06-26 | Trunk = `main` (rename `deploy/local`→`main`; retire the 3-commit `master` skeleton)
 
 **Decision (pending CTO runbook execution; see `reports/git-trunk-rename-runbook.md`).** Rather than consolidating
@@ -1956,3 +1990,89 @@ Content-Type (REJECTED — spoofable; Tika on bytes).
 
 **Tests:** `AnnouncementMediaServiceIntegrationTest` (+12, non-transactional to exercise after-commit),
 `AnnouncementControllerTest` (+3 security/status). Full backend suite GREEN (412).
+
+---
+
+## 2026-06-28 — Contractor documents = files attach to CONTRACTOR (option C), C3-mechanics
+
+**Decision:** Contract documents are uploaded as a row-per-file list against the **CONTRACTOR** entity
+(new table `contractor_document`), reusing the C3 forced-download attachment stack — NOT against the
+existing `Contract` entity. This SUPERSEDES the spec'd-but-unbuilt `POST/GET /api/contracts/{id}/attachment`
+(API-SPEC §8) and the dormant `contracts.attachment_url` column, which are marked SUPERSEDED (kept
+write-idle; NOT dropped).
+
+**Access (staff-only, no resident surface):** ADMIN uploads/deletes; ADMIN+BOARD_MEMBER read/download;
+TECHNICIAN and RESIDENT excluded (per §13 R-4). This deliberately diverges from the announcement gate's
+resident-readable branch.
+
+**BE P1 as-built (committed `093265b` feat / `6d8c611` test):** migration `V23__create_contractor_document.sql`
+(FK contractor ON DELETE CASCADE, creator ON DELETE SET NULL, index on contractor_id); `ContractorDocument`
+entity (extends `CreatableEntity`, append-only) + repository (count / sumSizeBytes / findOrdered / dual-key
+find); service `uploadDocument`/`listDocuments`/`deleteDocument` + `assertContractorDocumentPresignAccess`;
+3 endpoints `POST|GET|DELETE /api/contractors/{id}/documents`. REUSED generic `FileStorageService`
+(incl. forced-download `presign(key,disp,type)`), `ContentDispositionUtil`, `MinioConfig` dual client, and the
+after-commit `ObjectKeysObsoleteEvent`/`ObsoleteObjectCleanupListener`. Key convention
+`contractors/{contractorId}/documents/{uuid}`. Tika magic-byte allowlist {pdf,docx,xlsx,pptx,txt}; caps PER
+contractor ≤10MB/file, ≤5 files, ≤50MB total.
+
+**Deliberate divergences from C3 (logged):** (1) `CONTRACTOR_DOCUMENT_TOO_LARGE` → HTTP **413** (C3's
+attachment-too-large is 400) so the service-cap and the servlet multipart limit present the FE the same coded
+413, and the MockMvc oversize test is deterministic. (2) No draft gate — contractors have no draft/published
+lifecycle, so upload is allowed on any existing contractor (404 if missing).
+
+**Reused global 413 handler:** `GlobalExceptionHandler.handleMaxUploadSize` is `@RestControllerAdvice` with a
+generic `PAYLOAD_TOO_LARGE` fallback (NOT announcement-coupled) — confirmed global, reused as-is (no STOP).
+
+**Deferred debt (NOT this phase):** cross-module DRY — Tika/caps constants AND the stateless
+`detectDocumentMime`/`classifyZipContainer` detection logic duplicate the announcement versions; role-string
+extraction duplicated across controllers; OOXML 3× stream re-read; cap TOCTOU (same as C3). Natural home is
+`common.storage`. Consistent with prior C3 DRY-debt handling. Logged in `reports/contractor-documents-p1.md`,
+not extracted.
+
+**Alternatives rejected:** attach to existing `Contract` entity / new contract record (CTO chose CONTRACTOR);
+revive single-key `contracts.attachment_url` (CONTRADICTS C3 row-per-file precedent); resident-readable branch
+(CONTRADICTS staff-only ruling); inline preview (CONTRADICTS forced-download ruling). The `/code-review` (high)
+"dead gate" finding was REJECTED — the gate is mandated by §13 R-4 + the malformed-key 403 guard.
+
+**Tests:** `ContractorDocumentServiceIntegrationTest` (+11), `ContractorDocumentControllerTest` (+9),
+`ContractorServiceImplTest` constructor updated. Full backend suite **457 → 477 GREEN**.
+
+**FE (later phases):** dedicated contractor create/edit pages replacing the modal + a documents manager cloned
+from `AnnouncementAttachmentsManager`, with full-parity lazy-save on `/new` (first file pick validates
+companyName then auto-creates the contractor).
+
+---
+
+## 2026-06-28 — Contractor documents FE P3a (documents manager on edit page)
+
+**What:** Built `ContractorDocumentsManager` (admin) and mounted it on `ContractorEditPage` ONLY (contractor
+id present), as a sibling of the form. Cloned the C3 `AnnouncementAttachmentsManager` mechanics against the P1
+endpoints `POST|GET|DELETE /api/contractors/{id}/documents[/{documentId}]`. No BE / auth / schema / API-SPEC
+change (P1 endpoints already exist + spec'd). NO `/new` mounting, NO lazy-save (deferred to P3b).
+
+**Decisions / rationale:**
+- **Manager owns its list query** (`useContractorDocuments`, key `['contractors', id, 'documents']`) rather
+  than receiving the list as a prop. Why: unlike announcements (attachments embedded in the draft detail
+  manifest), contractor documents are a SEPARATE GET endpoint — so a self-fetching query + precise
+  invalidate-on-mutation (`refetchType:'all'`) is the faithful adaptation. Alt (fold documents into
+  `GET /contractors/{id}` detail) rejected: would be a BE/API-SPEC change, out of scope.
+- **413 size branch (reaffirming the 2026-06-28 BE sanctioned divergence):** the FE maps ANY `status===413`
+  to ONE VN "Tệp quá lớn (tối đa 10MB)" message, covering both `CONTRACTOR_DOCUMENT_TOO_LARGE` (413 service
+  cap) and `PAYLOAD_TOO_LARGE` (413 servlet limit). Did NOT copy C3's status-413-only special-case-plus-400-code
+  branch. The 400 codes (`TYPE_NOT_ALLOWED`, `LIMIT_EXCEEDED`) route via `getVnErrorMessage`; 3 new
+  `CONTRACTOR_DOCUMENT_*` keys added to the shared `@gemek/ui errorMessages.ts` (+ test), parallel to the
+  existing `ANNOUNCEMENT_ATTACHMENT_*` keys. Shared-ui infra edit (additive, not the resident app).
+- **Boundary-correct `formatSize`:** rounds KB first and promotes to MB if rounding hits 1024, so KB never
+  displays ≥1024. The known-buggy admin **announcement `formatSize` boundary bug is LEFT OPEN** (announcement
+  module out of scope this phase) — logged, not fixed.
+- **BOARD_MEMBER read-access stays API-only this phase** — the edit page is ADMIN-only, so no BOARD FE surface
+  was built; deferred FE surface.
+- **`/code-review` high (workflow, 23 agents):** 7 verified, **0 correctness bugs**. Applied 4 trivial/
+  sibling-aligning fixes (disable upload on isError so the total-size pre-check can't be bypassed against an
+  unknown list; use shared `formatVNDate` instead of a local `toLocaleDateString`; single date guard;
+  doc-specific success toasts). Deferred 2 (shared-busy cross-disable — verbatim C3 pattern; broad
+  `['contractors']` invalidate on contractor save — pre-existing hook, not new P3a code). 6 DRY findings
+  refuted (faithful C3 reproduction; consistent with the pre-approved P1 cross-module DRY deferral).
+
+**P1 BE live verification:** STILL deferred to (and now to be discharged by) this P3a CTO :80 browser smoke
+(upload/list/download/403/413 vs the running stack + real MinIO).
